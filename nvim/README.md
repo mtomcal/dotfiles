@@ -4,12 +4,12 @@ This setup uses kickstart.nvim as the base configuration.
 
 ## Installation
 
-The install script will automatically clone your kickstart.nvim fork to `~/.config/nvim`.
+The install script will automatically clone official kickstart.nvim to `~/.config/nvim`.
 
 If you need to do it manually:
 
 ```bash
-git clone https://github.com/mtomcal/kickstart.nvim.git ~/.config/nvim
+git clone https://github.com/nvim-lua/kickstart.nvim.git ~/.config/nvim
 ```
 
 ## First Launch
