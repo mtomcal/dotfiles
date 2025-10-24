@@ -399,11 +399,17 @@ else
     print_warning "init.lua not found at ~/.config/nvim/init.lua"
 fi
 
-# Clean neovim cache and data (fresh start)
-print_info "Cleaning neovim cache for fresh installation..."
-rm -rf "$HOME/.local/share/nvim"
-rm -rf "$HOME/.local/state/nvim"
-rm -rf "$HOME/.cache/nvim"
+# Only clean cache on fresh installation (not when updating dotfiles)
+if [ ! -d "$HOME/.local/share/nvim/lazy" ]; then
+    print_info "Fresh installation detected - cleaning neovim cache..."
+    rm -rf "$HOME/.local/share/nvim"
+    rm -rf "$HOME/.local/state/nvim"
+    rm -rf "$HOME/.cache/nvim"
+else
+    print_info "Existing neovim installation detected - preserving Mason packages and cache"
+    # Only clean the cache, preserve data (Mason packages)
+    rm -rf "$HOME/.cache/nvim"
+fi
 
 # Install neovim plugins
 print_info "Installing neovim plugins (this may take a minute)..."
