@@ -215,7 +215,7 @@ if command -v fnm &> /dev/null; then
 
     # Temporarily enable fnm for this session
     export PATH="$HOME/.local/share/fnm:$PATH"
-    eval "$(fnm env --use-on-cd)"
+    eval "$(fnm env --use-on-cd --shell bash)"
 
     # Install and use latest LTS
     fnm install --lts
