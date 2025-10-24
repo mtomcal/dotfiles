@@ -382,6 +382,23 @@ fi
 ln -sf "$DOTFILES_DIR/nvim/custom" "$HOME/.config/nvim/lua/custom"
 print_success "Custom neovim config linked"
 
+# Enable custom plugins in kickstart.nvim init.lua
+print_info "Enabling custom plugin loading in kickstart.nvim..."
+if [ -f "$HOME/.config/nvim/init.lua" ]; then
+    # Check if the import line is commented out
+    if grep -q "^  -- { import = 'custom.plugins' }," "$HOME/.config/nvim/init.lua"; then
+        # Uncomment the import line using sed
+        sed -i "s/^  -- { import = 'custom\.plugins' },/  { import = 'custom.plugins' },/" "$HOME/.config/nvim/init.lua"
+        print_success "Custom plugin loading enabled"
+    elif grep -q "^  { import = 'custom.plugins' }," "$HOME/.config/nvim/init.lua"; then
+        print_success "Custom plugin loading already enabled"
+    else
+        print_warning "Could not find custom.plugins import line in init.lua"
+    fi
+else
+    print_warning "init.lua not found at ~/.config/nvim/init.lua"
+fi
+
 # Clean neovim cache and data (fresh start)
 print_info "Cleaning neovim cache for fresh installation..."
 rm -rf "$HOME/.local/share/nvim"
