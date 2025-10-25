@@ -7,6 +7,7 @@ Personal development environment configuration for tmux, neovim, and zsh.
 - **Tmux**: Vim-style navigation and keybindings with optimized settings for neovim
 - **Neovim**: Official [kickstart.nvim](https://github.com/nvim-lua/kickstart.nvim) base with custom plugin layer
 - **Zsh**: Oh My Zsh with custom aliases and tmux integration
+- **Claude Code**: Custom slash commands for development workflows
 - **Node.js**: fnm (Fast Node Manager) with auto-version switching
 - **Cross-platform**: Supports both Ubuntu/Debian (apt) and macOS (Homebrew)
 
@@ -51,6 +52,10 @@ nvim
 dotfiles/
 ├── install.sh              # Installation script (Ubuntu + macOS)
 ├── README.md              # This file
+├── claude/
+│   ├── commands/          # Claude Code slash commands
+│   ├── settings.json      # Claude Code settings
+│   └── README.md          # Claude Code documentation
 ├── tmux/
 │   └── .tmux.conf         # Tmux configuration
 ├── zsh/
@@ -180,6 +185,27 @@ fnm install --lts
 ```
 
 **Auto-switching**: fnm automatically switches Node versions when you `cd` into directories with `.node-version` or `.nvmrc` files.
+
+### Claude Code
+
+**Custom slash commands** for enhanced development workflows. See [claude/README.md](claude/README.md) for details.
+
+**Available Commands**:
+- `/save-session` - Create detailed session summaries
+- `/create_plan` - Interactive implementation planning
+- `/implement_plan` - Execute approved technical plans
+- `/research_codebase` - Comprehensive codebase research
+- `/validate_plan` - Validate plan execution
+
+**Adding Custom Commands**:
+
+Create a new markdown file in `~/dotfiles/claude/commands/`:
+
+```bash
+nvim ~/dotfiles/claude/commands/my-command.md
+```
+
+The command will be available as `/my-command` in Claude Code.
 
 ## Platform-Specific Notes
 

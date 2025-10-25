@@ -417,6 +417,47 @@ nvim --headless "+Lazy! sync" +qa
 print_success "Neovim plugins installed"
 
 # ===========================
+# Claude Code Configuration
+# ===========================
+
+print_header "Setting up Claude Code configuration"
+
+# Create .claude directory if it doesn't exist
+if [ ! -d "$HOME/.claude" ]; then
+    print_info "Creating ~/.claude directory..."
+    mkdir -p "$HOME/.claude"
+    print_success "Created ~/.claude directory"
+fi
+
+# Link Claude Code commands
+print_info "Linking Claude Code commands..."
+if [ -L "$HOME/.claude/commands" ]; then
+    rm "$HOME/.claude/commands"
+elif [ -d "$HOME/.claude/commands" ]; then
+    TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+    mv "$HOME/.claude/commands" "$HOME/.claude/commands.backup.$TIMESTAMP"
+    print_warning "Backed up existing commands to commands.backup.$TIMESTAMP"
+fi
+
+ln -s "$DOTFILES_DIR/claude/commands" "$HOME/.claude/commands"
+print_success "Claude Code commands linked"
+
+# Link Claude Code settings
+print_info "Linking Claude Code settings..."
+if [ -f "$HOME/.claude/settings.json" ] && [ ! -L "$HOME/.claude/settings.json" ]; then
+    TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+    mv "$HOME/.claude/settings.json" "$HOME/.claude/settings.json.backup.$TIMESTAMP"
+    print_warning "Backed up existing settings to settings.json.backup.$TIMESTAMP"
+fi
+
+if [ -f "$DOTFILES_DIR/claude/settings.json" ]; then
+    ln -s "$DOTFILES_DIR/claude/settings.json" "$HOME/.claude/settings.json"
+    print_success "Claude Code settings linked"
+else
+    print_info "No settings.json found in dotfiles (skipping)"
+fi
+
+# ===========================
 # Git Configuration (Optional)
 # ===========================
 
