@@ -77,3 +77,9 @@ For privacy and security, the following are excluded from version control:
 - Session data, file history, and generated caches
 
 These files remain in your local `~/.claude/` directory but are not synced to dotfiles.
+
+## Credits
+
+The custom commands (`/create_plan`, `/implement_plan`, `/research_codebase`, `/validate_plan`) are based on techniques from Dexter Horthy's article on [Advanced Context Engineering for Coding Agents](https://github.com/humanlayer/advanced-context-engineering-for-coding-agents/blob/main/ace-fca.md).
+
+The `/save-session` command is a custom implementation for tracking conversation history.
