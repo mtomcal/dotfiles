@@ -177,18 +177,27 @@ else
 fi
 
 # Set zsh as default shell if not already
-if [ "$SHELL" != "$(which zsh)" ]; then
-    print_info "Setting zsh as default shell..."
+CURRENT_SHELL=$(basename "$SHELL")
+if [ "$CURRENT_SHELL" != "zsh" ]; then
+    print_info "Current shell is $CURRENT_SHELL, changing to zsh..."
+
+    ZSH_PATH=$(which zsh)
+    if [ -z "$ZSH_PATH" ]; then
+        print_error "zsh not found in PATH"
+        exit 1
+    fi
 
     if [ "$OS" == "macos" ]; then
         # macOS uses chsh differently
-        chsh -s "$(which zsh)"
+        chsh -s "$ZSH_PATH"
     else
         # Ubuntu
-        chsh -s "$(which zsh)"
+        chsh -s "$ZSH_PATH"
     fi
 
     print_success "Default shell set to zsh (restart required)"
+else
+    print_success "zsh is already the default shell"
 fi
 
 # ===========================
