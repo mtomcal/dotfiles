@@ -32,6 +32,10 @@ print_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
+print_header() {
+    echo -e "${BLUE}[INFO]${NC} $1"
+}
+
 # Get the dotfiles directory
 DOTFILES_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 print_info "Dotfiles directory: $DOTFILES_DIR"
@@ -396,8 +400,12 @@ print_info "Enabling custom plugin loading in kickstart.nvim..."
 if [ -f "$HOME/.config/nvim/init.lua" ]; then
     # Check if the import line is commented out
     if grep -q "^  -- { import = 'custom.plugins' }," "$HOME/.config/nvim/init.lua"; then
-        # Uncomment the import line using sed
-        sed -i "s/^  -- { import = 'custom\.plugins' },/  { import = 'custom.plugins' },/" "$HOME/.config/nvim/init.lua"
+        # Uncomment the import line using sed (handle macOS vs Linux differences)
+        if [ "$OS" == "macos" ]; then
+            sed -i '' "s/^  -- { import = 'custom\.plugins' },/  { import = 'custom.plugins' },/" "$HOME/.config/nvim/init.lua"
+        else
+            sed -i "s/^  -- { import = 'custom\.plugins' },/  { import = 'custom.plugins' },/" "$HOME/.config/nvim/init.lua"
+        fi
         print_success "Custom plugin loading enabled"
     elif grep -q "^  { import = 'custom.plugins' }," "$HOME/.config/nvim/init.lua"; then
         print_success "Custom plugin loading already enabled"
