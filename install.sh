@@ -135,10 +135,12 @@ if [ "$OS" == "ubuntu" ]; then
     install_package "build-essential"
     install_package "fd-find"
     install_package "xclip"
+    install_package "python3-venv"  # Required for Mason to install Python tools
 elif [ "$OS" == "macos" ]; then
     install_package "gcc" "gcc"
     install_package "fd" "fd"
     # macOS uses pbcopy/pbpaste built-in, no xclip needed
+    # macOS Python includes venv by default, no additional package needed
 fi
 
 # ===========================
