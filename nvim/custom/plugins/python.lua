@@ -10,6 +10,11 @@ return {
       python = { 'ruff' },
     }
 
+    -- Configure ruff to use the virtualenv's Python
+    -- This ensures ruff uses the Poetry virtualenv and finds pyproject.toml
+    lint.linters.ruff.cmd = 'python'
+    lint.linters.ruff.args = { '-m', 'ruff', 'check', '--output-format', 'json', '--stdin-filename' }
+
     -- Create autocommand to trigger linting
     local lint_augroup = vim.api.nvim_create_augroup('lint', { clear = true })
     vim.api.nvim_create_autocmd({ 'BufEnter', 'BufWritePost', 'InsertLeave' }, {
