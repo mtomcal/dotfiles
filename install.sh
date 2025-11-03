@@ -439,7 +439,20 @@ print_success "Neovim plugins installed"
 # Claude Code Configuration
 # ===========================
 
-print_header "Setting up Claude Code configuration"
+print_header "Setting up Claude Code"
+
+# Install Claude Code if not already installed
+if ! command -v claude &> /dev/null; then
+    print_info "Installing Claude Code CLI..."
+    curl -fsSL https://claude.ai/install.sh | bash
+
+    # Add Claude Code to PATH for this session
+    export PATH="$HOME/.local/bin:$PATH"
+
+    print_success "Claude Code CLI installed"
+else
+    print_success "Claude Code CLI is already installed"
+fi
 
 # Create .claude directory if it doesn't exist
 if [ ! -d "$HOME/.claude" ]; then
@@ -460,6 +473,9 @@ fi
 
 ln -s "$DOTFILES_DIR/claude/commands" "$HOME/.claude/commands"
 print_success "Claude Code commands linked"
+
+# Note about authentication
+print_info "Note: Run 'claude auth login' to configure Claude Code authentication when ready"
 
 # Link Claude Code settings
 print_info "Linking Claude Code settings..."
