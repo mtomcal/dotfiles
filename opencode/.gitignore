@@ -1,0 +1,20 @@
+# OpenCode - Exclude sensitive and local data
+# Only track commands and configuration
+
+# Authentication and credentials
+auth.json
+.credentials.json
+
+# Local data and history
+history.jsonl
+projects/
+.opencode-cache/
+
+# Session data
+sessions/
+
+# File history
+file_history.jsonl
+
+# Generated files
+*.log

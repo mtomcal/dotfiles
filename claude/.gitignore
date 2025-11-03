@@ -1,0 +1,18 @@
+# Sensitive credentials
+.credentials.json
+credentials.json
+
+# User-specific data
+history.jsonl
+projects/
+todos/
+
+# Generated/cache data
+file-history/
+session-env/
+shell-snapshots/
+debug/
+statsig/
+
+# Logs
+*.log

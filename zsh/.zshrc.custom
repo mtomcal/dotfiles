@@ -1,0 +1,49 @@
+# ===========================
+# Custom ZSH Configuration
+# ===========================
+# This file should be sourced from your main .zshrc
+# Add this line to the end of your .zshrc:
+#   source ~/dotfiles/zsh/.zshrc.custom
+
+# Preferred editor for local and remote sessions
+export EDITOR='nvim'
+export VISUAL='nvim'
+
+# ===========================
+# Tmux + Neovim Configuration
+# ===========================
+
+# Tmux aliases
+alias t='tmux'
+alias ta='tmux attach -t'
+alias tn='tmux new -s'
+alias tl='tmux ls'
+alias tk='tmux kill-session -t'
+alias td='tmux detach'
+
+# Start tmux on login (skip if already in tmux or not in SSH)
+if [[ -z "$TMUX" ]] && [[ -n "$SSH_CONNECTION" ]]; then
+  # Attach to existing session or create new one
+  tmux attach -t 1 || tmux new -s 1
+fi
+
+# Neovim aliases
+alias vim='nvim'
+alias vi='nvim'
+
+# AI Coding Assistant aliases
+alias oc='opencode'
+
+# Better navigation with neovim inside tmux
+export TERM=xterm-256color
+
+# ===========================
+# Node Version Manager (fnm)
+# ===========================
+
+# fnm (Fast Node Manager)
+FNM_PATH="$HOME/.local/share/fnm"
+if [ -d "$FNM_PATH" ]; then
+  export PATH="$FNM_PATH:$PATH"
+  eval "$(fnm env --use-on-cd --shell zsh)"
+fi
