@@ -18,7 +18,7 @@ Personal development environment configuration for tmux, neovim, and zsh.
 Clone this repository and run the install script:
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/dotfiles.git ~/dotfiles
+git clone https://github.com/mtomcal/dotfiles.git ~/dotfiles
 cd ~/dotfiles
 ./install.sh
 ```
@@ -306,7 +306,7 @@ On a new Ubuntu server or Mac:
 
 ```bash
 # Clone your dotfiles
-git clone https://github.com/YOUR_USERNAME/dotfiles.git ~/dotfiles
+git clone https://github.com/mtomcal/dotfiles.git ~/dotfiles
 
 # Run install script
 cd ~/dotfiles
