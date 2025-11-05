@@ -7,7 +7,7 @@ Personal development environment configuration for tmux, neovim, and zsh.
 - **Tmux**: Vim-style navigation and keybindings with optimized settings for neovim
 - **Neovim**: Official [kickstart.nvim](https://github.com/nvim-lua/kickstart.nvim) base with custom plugin layer
 - **Zsh**: Oh My Zsh with custom aliases and tmux integration
-- **Claude Code**: Custom slash commands for development workflows
+- **AI Coding Tools**: Claude Code, OpenCode CLI, and GitHub Copilot CLI with custom commands
 - **Node.js**: fnm (Fast Node Manager) with auto-version switching
 - **Cross-platform**: Supports both Ubuntu/Debian (apt) and macOS (Homebrew)
 
@@ -30,6 +30,7 @@ The install script will:
 - Clone official kickstart.nvim
 - Link configuration files
 - Install neovim plugins
+- Install AI coding tools (Claude Code, OpenCode CLI, GitHub Copilot CLI)
 
 ### Post-Installation
 
@@ -52,10 +53,14 @@ nvim
 dotfiles/
 ├── install.sh              # Installation script (Ubuntu + macOS)
 ├── README.md              # This file
+├── AGENTS.md              # Shared AI agent instructions
 ├── claude/
 │   ├── commands/          # Claude Code slash commands
 │   ├── settings.json      # Claude Code settings
 │   └── README.md          # Claude Code documentation
+├── opencode/
+│   ├── commands/          # OpenCode CLI slash commands
+│   └── README.md          # OpenCode documentation
 ├── tmux/
 │   └── .tmux.conf         # Tmux configuration
 ├── zsh/
@@ -186,9 +191,18 @@ fnm install --lts
 
 **Auto-switching**: fnm automatically switches Node versions when you `cd` into directories with `.node-version` or `.nvmrc` files.
 
-### Claude Code
+### AI Coding Tools
+
+Three AI coding assistants are configured with custom workflows:
+
+#### Claude Code
 
 **Custom slash commands** for enhanced development workflows. See [claude/README.md](claude/README.md) for details.
+
+**Authentication**:
+```bash
+claude auth login
+```
 
 **Available Commands**:
 - `/save-session` - Create detailed session summaries
@@ -206,6 +220,105 @@ nvim ~/dotfiles/claude/commands/my-command.md
 ```
 
 The command will be available as `/my-command` in Claude Code.
+
+#### OpenCode CLI
+
+Multi-model AI coding assistant with shared custom commands. See [opencode/README.md](opencode/README.md) for details.
+
+**Authentication**:
+```bash
+opencode auth login
+```
+
+**Features**:
+- Shares the same custom slash commands as Claude Code
+- Uses the shared `AGENTS.md` for agent instructions
+- Supports multiple AI models
+
+**Usage**:
+```bash
+opencode  # Start interactive session
+```
+
+#### GitHub Copilot CLI
+
+Terminal-based GitHub Copilot powered by AI. Requires Node.js v22+.
+
+**Requirements**:
+- Active GitHub Copilot subscription
+- Node.js v22 or higher
+
+**Authentication**:
+```bash
+copilot             # Start interactive session
+# Then use /login   # Authenticate with GitHub
+```
+
+Alternatively, set a GitHub Personal Access Token with "Copilot Requests" permission:
+```bash
+export GH_TOKEN=your_token_here
+```
+
+**Usage**:
+```bash
+copilot                                    # Start interactive mode
+copilot -p "explain this code"             # Non-interactive prompt
+copilot --continue                         # Resume last session
+copilot --model gpt-5                      # Use specific model
+```
+
+**Features**:
+- Natural language terminal commands
+- Code explanation and debugging
+- Integration with GitHub workflows
+- Powered by Claude Sonnet 4.5 by default
+- Session management and resumption
+- Custom agents and MCP server support
+
+#### AI Command Helper (`ai-commands`)
+
+**Universal command access** for AI tools that don't support custom slash commands.
+
+**Purpose**: Makes your Claude Code custom commands available to **any** AI agent that can execute bash commands (like GitHub Copilot CLI).
+
+**Setup in any project**:
+```bash
+cd ~/my-project
+ai-commands setup           # Adds instructions to AGENTS.md
+```
+
+**What it does**: Adds instructions to `AGENTS.md` that tell AI agents how to retrieve command prompts using bash.
+
+**AI agents can then**:
+```bash
+ai-commands get save-session        # Returns full save-session prompt
+ai-commands get create-plan         # Returns full create-plan prompt
+ai-commands list                    # Lists all available commands
+```
+
+**Usage example with Copilot CLI**:
+```bash
+copilot
+# User: "save the session"
+# Copilot reads AGENTS.md, sees instruction
+# Copilot runs: ai-commands get save-session
+# Copilot receives full prompt and executes workflow
+```
+
+**Available commands**:
+- `save-session` - Create detailed conversation summaries
+- `create-plan` - Interactive implementation planning
+- `implement-plan` - Execute approved technical plans
+- `research-codebase` - Comprehensive codebase research
+- `validate-plan` - Validate plan execution
+
+**Benefits**:
+- Single source of truth - commands only in `~/dotfiles/claude/commands/`
+- Works with Copilot CLI, Claude Code custom agents, and any AI that can run bash
+- Commands auto-update when dotfiles change
+- No content duplication across projects
+
+**Adding new commands**: Create `.md` files in `~/dotfiles/claude/commands/` and they're automatically available.
 
 ## Platform-Specific Notes
 

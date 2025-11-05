@@ -432,8 +432,13 @@ fi
 
 # Install neovim plugins
 print_info "Installing neovim plugins (this may take a minute)..."
-nvim --headless "+Lazy! sync" +qa
-print_success "Neovim plugins installed"
+if nvim --headless "+Lazy! sync" +qa 2>/dev/null; then
+    print_success "Neovim plugins installed"
+else
+    print_warning "Neovim plugin installation encountered an issue"
+    print_info "This is often a one-time issue. Plugins will install when you first launch nvim"
+    print_info "You can manually install plugins later by running: nvim --headless '+Lazy! sync' +qa"
+fi
 
 # ===========================
 # Claude Code Configuration
@@ -555,6 +560,60 @@ print_success "Shared AGENTS.md linked"
 print_info "Note: Run 'opencode auth login' to configure API keys when ready"
 
 # ===========================
+# GitHub Copilot CLI Configuration
+# ===========================
+
+print_header "Setting up GitHub Copilot CLI"
+
+# Check Node.js version requirement (v22 or higher)
+if command -v node &> /dev/null; then
+    NODE_MAJOR_VERSION=$(node --version | cut -d'.' -f1 | sed 's/v//')
+    if [ "$NODE_MAJOR_VERSION" -ge 22 ]; then
+        # Install GitHub Copilot CLI if not already installed
+        if ! command -v copilot &> /dev/null; then
+            print_info "Installing GitHub Copilot CLI..."
+            npm install -g @github/copilot
+            print_success "GitHub Copilot CLI installed"
+        else
+            print_success "GitHub Copilot CLI is already installed"
+        fi
+    else
+        print_warning "Node.js v22+ required for GitHub Copilot CLI (current: v$NODE_MAJOR_VERSION)"
+        print_info "Skipping GitHub Copilot CLI installation. Run 'fnm install 22 && fnm use 22' to upgrade."
+    fi
+else
+    print_warning "Node.js not found - skipping GitHub Copilot CLI installation"
+fi
+
+# Note about authentication
+print_info "Note: Run 'copilot' and use '/login' command to authenticate with GitHub"
+print_info "      Requires active GitHub Copilot subscription"
+
+# ===========================
+# AI Command Helper Script
+# ===========================
+
+print_header "Setting up AI command helper script"
+
+# Create .local/bin directory if it doesn't exist
+mkdir -p "$HOME/.local/bin"
+
+# Link ai-commands script to PATH
+if [ -L "$HOME/.local/bin/ai-commands" ]; then
+    rm "$HOME/.local/bin/ai-commands"
+fi
+
+ln -sf "$DOTFILES_DIR/bin/ai-commands" "$HOME/.local/bin/ai-commands"
+
+# Make script executable
+chmod +x "$DOTFILES_DIR/bin/ai-commands"
+
+print_success "AI command helper script installed"
+print_info "  - ai-commands setup: Add command instructions to project AGENTS.md"
+print_info "  - ai-commands get <name>: Retrieve command prompt content"
+print_info "  - ai-commands list: Show all available commands"
+
+# ===========================
 # Git Configuration (Optional)
 # ===========================
 
@@ -634,9 +693,15 @@ echo "  - Navigate panes: Ctrl-a h/j/k/l"
 echo "  - Tmux aliases: t, ta, tn, tl, tk, td"
 echo ""
 print_info "AI Coding Assistants:"
-echo "  - Claude Code: Custom commands in ~/.claude/commands"
+echo "  - Claude Code: Custom commands in ~/.claude/commands (auth: claude auth login)"
 echo "  - OpenCode CLI: Run 'opencode' to start (auth: opencode auth login)"
-echo "  - Both share commands: /save-session, /create-plan, /implement-plan, etc."
+echo "  - GitHub Copilot CLI: Run 'copilot' then use '/login' to authenticate"
+echo ""
+print_info "AI Command Helper:"
+echo "  - ai-commands setup: Add command instructions to any project's AGENTS.md"
+echo "  - ai-commands get <name>: Get command prompt (for AI agents without slash commands)"
+echo "  - ai-commands list: Show all available commands"
+echo "  - Works with Copilot CLI, Claude Code custom agents, and any tool that can run bash"
 
 if [ -n "$PLATFORM_NOTES" ]; then
     echo ""
