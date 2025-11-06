@@ -10,10 +10,31 @@ return {
       python = { 'ruff' },
     }
 
-    -- Configure ruff to use the virtualenv's Python
-    -- This ensures ruff uses the Poetry virtualenv and finds pyproject.toml
-    lint.linters.ruff.cmd = 'python'
-    lint.linters.ruff.args = { '-m', 'ruff', 'check', '--output-format', 'json', '--stdin-filename' }
+    -- Configure ruff to use Poetry if available, otherwise fall back to direct ruff
+    -- This ensures ruff uses the Poetry virtualenv and finds pyproject.toml when available
+    local function find_poetry_root()
+      -- Look for pyproject.toml with [tool.poetry] section
+      local root = vim.fn.findfile('pyproject.toml', vim.fn.getcwd() .. ';')
+      if root ~= '' then
+        local pyproject_path = vim.fn.fnamemodify(root, ':p')
+        local content = vim.fn.readfile(pyproject_path)
+        for _, line in ipairs(content) do
+          if line:match('%[tool%.poetry%]') then
+            return true
+          end
+        end
+      end
+      return false
+    end
+
+    if find_poetry_root() then
+      lint.linters.ruff.cmd = 'poetry'
+      lint.linters.ruff.args = { 'run', 'ruff', 'check', '--output-format', 'json', '--stdin-filename' }
+    else
+      -- Fallback to direct ruff command for non-Poetry projects
+      lint.linters.ruff.cmd = 'ruff'
+      lint.linters.ruff.args = { 'check', '--output-format', 'json', '--stdin-filename' }
+    end
 
     -- Create autocommand to trigger linting
     local lint_augroup = vim.api.nvim_create_augroup('lint', { clear = true })
