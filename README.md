@@ -88,7 +88,7 @@ dotfiles/
 - `Ctrl-a -` - Split window horizontally
 - `Ctrl-a h/j/k/l` - Navigate panes (vim-style)
 - `Ctrl-a H/J/K/L` - Resize panes (vim-style)
-- `Ctrl-a c` - Create new window
+- `Ctrl-a c` - Create new window (adjacent to current window)
 - `Ctrl-a d` - Detach from session
 - `Ctrl-a r` - Reload tmux config
 - `Ctrl-a [` - Enter copy mode (use vim keys)
@@ -108,6 +108,8 @@ dotfiles/
 - 50,000 line scrollback
 - Vim-style copy mode
 - Auto tmux on SSH login (Ubuntu)
+- Automatic window naming with folder name and current process
+- Adjacent window creation (optimized for worktree workflows)
 
 ### Neovim
 
@@ -226,6 +228,11 @@ claude auth login
   - Supports TypeScript, JavaScript, Python, Go, Rust, Java, Kotlin
   - Reviews tests, security, maintainability, and architecture
   - Provides actionable feedback with priority levels
+- **documentation-updater** - Automated documentation synchronization
+  - Analyzes git diffs and updates relevant documentation files
+  - Keeps README.md, AGENTS.md, and other docs in sync with code changes
+  - Provides specific before/after proposals with rationale
+  - Maintains documentation consistency and accuracy
 
 **Adding Custom Commands**:
 

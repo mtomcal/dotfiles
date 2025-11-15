@@ -45,6 +45,7 @@ This dotfiles setup supports both **Claude Code** and **OpenCode CLI**:
 - Commands: Custom slash commands in `claude/commands/`
 - Agents: Custom agents in `claude/agents/`
   - `code-quality-guardian`: Language-agnostic code quality reviewer (TypeScript, JS, Python, Go, Rust, Java, Kotlin)
+  - `documentation-updater`: Automatically reviews git diffs and updates relevant documentation files
 - Settings: `claude/settings.json`
 
 **OpenCode CLI**:
@@ -164,6 +165,34 @@ The `code-quality-guardian` agent provides automated code reviews for completed 
 5. Gives verdict: Approved, Approved with changes, or Needs revision
 
 The agent automatically invokes when you complete significant work units.
+
+### Documentation Updater Agent
+
+The `documentation-updater` agent keeps documentation synchronized with code changes:
+
+**Features:**
+- **Git diff analysis**: Examines recent code changes to identify documentation impacts
+- **Multi-file support**: Updates README.md, AGENTS.md, CHANGELOG.md, and other documentation
+- **Smart detection**: Identifies new features, configuration changes, workflow modifications
+- **Specific proposals**: Provides exact before/after content with rationale
+- **Maintains consistency**: Preserves documentation tone, style, and structure
+
+**When to use:**
+- After completing a new feature
+- After modifying configuration files or workflows
+- After adding new commands, agents, or tools
+- After refactoring that affects user-facing behavior
+- Before creating a pull request or release
+
+**How it works:**
+1. Analyzes git diff to understand code changes
+2. Reads existing documentation to understand structure
+3. Identifies sections that need updates
+4. Proposes specific changes with before/after content
+5. Prioritizes updates (critical vs. optional)
+6. Provides clear rationale linking changes to code
+
+The agent ensures users always have accurate, up-to-date information about the project.
 
 ### AI Assistant Privacy
 
