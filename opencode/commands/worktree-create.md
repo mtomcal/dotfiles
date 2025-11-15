@@ -15,7 +15,7 @@ Create a new git worktree to enable parallel AI coding workflows. This allows mu
    - If it doesn't exist, create it: `mkdir -p trees`
 
 3. **Create the worktree**
-   - Run: `wtp create <branch-name>`
+   - Run: `wtp add -b <branch-name>`
    - Alternative (without wtp): `git worktree add trees/<branch-name> -b <branch-name>`
 
 4. **Copy essential files to the new worktree**
@@ -75,7 +75,7 @@ Your response:
 I'll create a new worktree for the authentication feature.
 
 Creating worktree with branch name: feature-authentication
-[Runs: wtp create feature-authentication]
+[Runs: wtp add -b feature-authentication]
 
 Copying essential files to worktree...
 - Copied .env
