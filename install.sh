@@ -441,166 +441,179 @@ else
 fi
 
 # ===========================
-# Claude Code Configuration
+# AI Coding Agents (Optional)
 # ===========================
 
-print_header "Setting up Claude Code"
+print_header "AI Coding Agents Setup"
+echo ""
+read -p "Install AI coding agents? (y/n) " -n 1 -r
+echo ""
 
-# Install Claude Code if not already installed
-if ! command -v claude &> /dev/null; then
-    print_info "Installing Claude Code CLI..."
-    curl -fsSL https://claude.ai/install.sh | bash
+if [[ $REPLY =~ ^[Yy]$ ]]; then
+    # ===========================
+    # Claude Code Configuration
+    # ===========================
 
-    # Add Claude Code to PATH for this session
-    export PATH="$HOME/.local/bin:$PATH"
+    print_header "Setting up Claude Code"
 
-    print_success "Claude Code CLI installed"
-else
-    print_success "Claude Code CLI is already installed"
-fi
+    # Install Claude Code if not already installed
+    if ! command -v claude &> /dev/null; then
+        print_info "Installing Claude Code CLI..."
+        curl -fsSL https://claude.ai/install.sh | bash
 
-# Create .claude directory if it doesn't exist
-if [ ! -d "$HOME/.claude" ]; then
-    print_info "Creating ~/.claude directory..."
-    mkdir -p "$HOME/.claude"
-    print_success "Created ~/.claude directory"
-fi
+        # Add Claude Code to PATH for this session
+        export PATH="$HOME/.local/bin:$PATH"
 
-# Link Claude Code commands
-print_info "Linking Claude Code commands..."
-if [ -L "$HOME/.claude/commands" ]; then
-    rm "$HOME/.claude/commands"
-elif [ -d "$HOME/.claude/commands" ]; then
-    TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-    mv "$HOME/.claude/commands" "$HOME/.claude/commands.backup.$TIMESTAMP"
-    print_warning "Backed up existing commands to commands.backup.$TIMESTAMP"
-fi
+        print_success "Claude Code CLI installed"
+    else
+        print_success "Claude Code CLI is already installed"
+    fi
 
-ln -s "$DOTFILES_DIR/claude/commands" "$HOME/.claude/commands"
-print_success "Claude Code commands linked"
+    # Create .claude directory if it doesn't exist
+    if [ ! -d "$HOME/.claude" ]; then
+        print_info "Creating ~/.claude directory..."
+        mkdir -p "$HOME/.claude"
+        print_success "Created ~/.claude directory"
+    fi
 
-# Note about authentication
-print_info "Note: Run 'claude auth login' to configure Claude Code authentication when ready"
+    # Link Claude Code commands
+    print_info "Linking Claude Code commands..."
+    if [ -L "$HOME/.claude/commands" ]; then
+        rm "$HOME/.claude/commands"
+    elif [ -d "$HOME/.claude/commands" ]; then
+        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+        mv "$HOME/.claude/commands" "$HOME/.claude/commands.backup.$TIMESTAMP"
+        print_warning "Backed up existing commands to commands.backup.$TIMESTAMP"
+    fi
 
-# Link Claude Code agents
-print_info "Linking Claude Code agents..."
-if [ -L "$HOME/.claude/agents" ]; then
-    rm "$HOME/.claude/agents"
-elif [ -d "$HOME/.claude/agents" ]; then
-    TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-    mv "$HOME/.claude/agents" "$HOME/.claude/agents.backup.$TIMESTAMP"
-    print_warning "Backed up existing agents to agents.backup.$TIMESTAMP"
-fi
+    ln -s "$DOTFILES_DIR/claude/commands" "$HOME/.claude/commands"
+    print_success "Claude Code commands linked"
 
-ln -s "$DOTFILES_DIR/claude/agents" "$HOME/.claude/agents"
-print_success "Claude Code agents linked"
+    # Note about authentication
+    print_info "Note: Run 'claude auth login' to configure Claude Code authentication when ready"
 
-# Link Claude Code settings
-print_info "Linking Claude Code settings..."
-if [ -f "$HOME/.claude/settings.json" ] && [ ! -L "$HOME/.claude/settings.json" ]; then
-    TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-    mv "$HOME/.claude/settings.json" "$HOME/.claude/settings.json.backup.$TIMESTAMP"
-    print_warning "Backed up existing settings to settings.json.backup.$TIMESTAMP"
-fi
+    # Link Claude Code agents
+    print_info "Linking Claude Code agents..."
+    if [ -L "$HOME/.claude/agents" ]; then
+        rm "$HOME/.claude/agents"
+    elif [ -d "$HOME/.claude/agents" ]; then
+        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+        mv "$HOME/.claude/agents" "$HOME/.claude/agents.backup.$TIMESTAMP"
+        print_warning "Backed up existing agents to agents.backup.$TIMESTAMP"
+    fi
 
-# Remove existing symlink if it exists
-if [ -L "$HOME/.claude/settings.json" ]; then
-    rm "$HOME/.claude/settings.json"
-fi
+    ln -s "$DOTFILES_DIR/claude/agents" "$HOME/.claude/agents"
+    print_success "Claude Code agents linked"
 
-if [ -f "$DOTFILES_DIR/claude/settings.json" ]; then
-    ln -s "$DOTFILES_DIR/claude/settings.json" "$HOME/.claude/settings.json"
-    print_success "Claude Code settings linked"
-else
-    print_info "No settings.json found in dotfiles (skipping)"
-fi
+    # Link Claude Code settings
+    print_info "Linking Claude Code settings..."
+    if [ -f "$HOME/.claude/settings.json" ] && [ ! -L "$HOME/.claude/settings.json" ]; then
+        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+        mv "$HOME/.claude/settings.json" "$HOME/.claude/settings.json.backup.$TIMESTAMP"
+        print_warning "Backed up existing settings to settings.json.backup.$TIMESTAMP"
+    fi
 
-# ===========================
-# OpenCode CLI Configuration
-# ===========================
+    # Remove existing symlink if it exists
+    if [ -L "$HOME/.claude/settings.json" ]; then
+        rm "$HOME/.claude/settings.json"
+    fi
 
-print_header "Setting up OpenCode CLI"
+    if [ -f "$DOTFILES_DIR/claude/settings.json" ]; then
+        ln -s "$DOTFILES_DIR/claude/settings.json" "$HOME/.claude/settings.json"
+        print_success "Claude Code settings linked"
+    else
+        print_info "No settings.json found in dotfiles (skipping)"
+    fi
 
-# Install OpenCode if not already installed
-if ! command -v opencode &> /dev/null; then
-    print_info "Installing OpenCode CLI..."
-    curl -fsSL https://opencode.ai/install | bash
+    # ===========================
+    # OpenCode CLI Configuration
+    # ===========================
 
-    # Add OpenCode to PATH for this session
-    export PATH="$HOME/.local/bin:$PATH"
+    print_header "Setting up OpenCode CLI"
 
-    print_success "OpenCode CLI installed"
-else
-    print_success "OpenCode CLI is already installed"
-fi
+    # Install OpenCode if not already installed
+    if ! command -v opencode &> /dev/null; then
+        print_info "Installing OpenCode CLI..."
+        curl -fsSL https://opencode.ai/install | bash
 
-# Create .config/opencode directory if it doesn't exist
-if [ ! -d "$HOME/.config/opencode" ]; then
-    print_info "Creating ~/.config/opencode directory..."
-    mkdir -p "$HOME/.config/opencode"
-    print_success "Created ~/.config/opencode directory"
-fi
+        # Add OpenCode to PATH for this session
+        export PATH="$HOME/.local/bin:$PATH"
 
-# Link OpenCode commands
-print_info "Linking OpenCode commands..."
-if [ -L "$HOME/.config/opencode/command" ]; then
-    rm "$HOME/.config/opencode/command"
-elif [ -d "$HOME/.config/opencode/command" ]; then
-    TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-    mv "$HOME/.config/opencode/command" "$HOME/.config/opencode/command.backup.$TIMESTAMP"
-    print_warning "Backed up existing commands to command.backup.$TIMESTAMP"
-fi
+        print_success "OpenCode CLI installed"
+    else
+        print_success "OpenCode CLI is already installed"
+    fi
 
-ln -s "$DOTFILES_DIR/opencode/commands" "$HOME/.config/opencode/command"
-print_success "OpenCode commands linked"
+    # Create .config/opencode directory if it doesn't exist
+    if [ ! -d "$HOME/.config/opencode" ]; then
+        print_info "Creating ~/.config/opencode directory..."
+        mkdir -p "$HOME/.config/opencode"
+        print_success "Created ~/.config/opencode directory"
+    fi
 
-# Link shared AGENTS.md
-print_info "Linking shared AGENTS.md for OpenCode..."
-if [ -f "$HOME/.config/opencode/AGENTS.md" ] && [ ! -L "$HOME/.config/opencode/AGENTS.md" ]; then
-    TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-    mv "$HOME/.config/opencode/AGENTS.md" "$HOME/.config/opencode/AGENTS.md.backup.$TIMESTAMP"
-    print_warning "Backed up existing AGENTS.md to AGENTS.md.backup.$TIMESTAMP"
-fi
+    # Link OpenCode commands
+    print_info "Linking OpenCode commands..."
+    if [ -L "$HOME/.config/opencode/command" ]; then
+        rm "$HOME/.config/opencode/command"
+    elif [ -d "$HOME/.config/opencode/command" ]; then
+        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+        mv "$HOME/.config/opencode/command" "$HOME/.config/opencode/command.backup.$TIMESTAMP"
+        print_warning "Backed up existing commands to command.backup.$TIMESTAMP"
+    fi
 
-if [ -L "$HOME/.config/opencode/AGENTS.md" ]; then
-    rm "$HOME/.config/opencode/AGENTS.md"
-fi
+    ln -s "$DOTFILES_DIR/opencode/commands" "$HOME/.config/opencode/command"
+    print_success "OpenCode commands linked"
 
-ln -s "$DOTFILES_DIR/AGENTS.md" "$HOME/.config/opencode/AGENTS.md"
-print_success "Shared AGENTS.md linked"
+    # Link shared AGENTS.md
+    print_info "Linking shared AGENTS.md for OpenCode..."
+    if [ -f "$HOME/.config/opencode/AGENTS.md" ] && [ ! -L "$HOME/.config/opencode/AGENTS.md" ]; then
+        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+        mv "$HOME/.config/opencode/AGENTS.md" "$HOME/.config/opencode/AGENTS.md.backup.$TIMESTAMP"
+        print_warning "Backed up existing AGENTS.md to AGENTS.md.backup.$TIMESTAMP"
+    fi
 
-# Note about authentication
-print_info "Note: Run 'opencode auth login' to configure API keys when ready"
+    if [ -L "$HOME/.config/opencode/AGENTS.md" ]; then
+        rm "$HOME/.config/opencode/AGENTS.md"
+    fi
 
-# ===========================
-# GitHub Copilot CLI Configuration
-# ===========================
+    ln -s "$DOTFILES_DIR/AGENTS.md" "$HOME/.config/opencode/AGENTS.md"
+    print_success "Shared AGENTS.md linked"
 
-print_header "Setting up GitHub Copilot CLI"
+    # Note about authentication
+    print_info "Note: Run 'opencode auth login' to configure API keys when ready"
 
-# Check Node.js version requirement (v22 or higher)
-if command -v node &> /dev/null; then
-    NODE_MAJOR_VERSION=$(node --version | cut -d'.' -f1 | sed 's/v//')
-    if [ "$NODE_MAJOR_VERSION" -ge 22 ]; then
-        # Install GitHub Copilot CLI if not already installed
-        if ! command -v copilot &> /dev/null; then
-            print_info "Installing GitHub Copilot CLI..."
-            npm install -g @github/copilot
-            print_success "GitHub Copilot CLI installed"
+    # ===========================
+    # GitHub Copilot CLI Configuration
+    # ===========================
+
+    print_header "Setting up GitHub Copilot CLI"
+
+    # Check Node.js version requirement (v22 or higher)
+    if command -v node &> /dev/null; then
+        NODE_MAJOR_VERSION=$(node --version | cut -d'.' -f1 | sed 's/v//')
+        if [ "$NODE_MAJOR_VERSION" -ge 22 ]; then
+            # Install GitHub Copilot CLI if not already installed
+            if ! command -v copilot &> /dev/null; then
+                print_info "Installing GitHub Copilot CLI..."
+                npm install -g @github/copilot
+                print_success "GitHub Copilot CLI installed"
+            else
+                print_success "GitHub Copilot CLI is already installed"
+            fi
         else
-            print_success "GitHub Copilot CLI is already installed"
+            print_warning "Node.js v22+ required for GitHub Copilot CLI (current: v$NODE_MAJOR_VERSION)"
+            print_info "Skipping GitHub Copilot CLI installation. Run 'fnm install 22 && fnm use 22' to upgrade."
         fi
     else
-        print_warning "Node.js v22+ required for GitHub Copilot CLI (current: v$NODE_MAJOR_VERSION)"
-        print_info "Skipping GitHub Copilot CLI installation. Run 'fnm install 22 && fnm use 22' to upgrade."
+        print_warning "Node.js not found - skipping GitHub Copilot CLI installation"
     fi
-else
-    print_warning "Node.js not found - skipping GitHub Copilot CLI installation"
-fi
 
-# Note about authentication
-print_info "Note: Run 'copilot' and use '/login' command to authenticate with GitHub"
-print_info "      Requires active GitHub Copilot subscription"
+    # Note about authentication
+    print_info "Note: Run 'copilot' and use '/login' command to authenticate with GitHub"
+    print_info "      Requires active GitHub Copilot subscription"
+else
+    print_info "Skipping AI coding agents installation."
+fi
 
 # ===========================
 # Git Worktree Manager (wtp)
