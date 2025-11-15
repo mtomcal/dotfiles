@@ -327,6 +327,10 @@ copilot
 - `implement-plan` - Execute approved technical plans
 - `research-codebase` - Comprehensive codebase research
 - `validate-plan` - Validate plan execution
+- `worktree-create` - Create git worktree for parallel development
+- `worktree-merge` - Merge worktree back to main
+- `worktree-list` - List all active worktrees
+- `worktree-status` - Show detailed worktree status
 
 **Benefits**:
 - Single source of truth - commands only in `~/dotfiles/claude/commands/`
