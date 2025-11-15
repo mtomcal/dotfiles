@@ -7,7 +7,9 @@ Personal development environment configuration for tmux, neovim, and zsh.
 - **Tmux**: Vim-style navigation and keybindings with optimized settings for neovim
 - **Neovim**: Official [kickstart.nvim](https://github.com/nvim-lua/kickstart.nvim) base with custom plugin layer
 - **Zsh**: Oh My Zsh with custom aliases and tmux integration
-- **AI Coding Tools**: Claude Code, OpenCode CLI, and GitHub Copilot CLI with custom commands
+- **AI Coding Tools**: Claude Code, OpenCode CLI, and GitHub Copilot CLI with custom commands and agents
+- **Git Worktrees**: Parallel AI development workflow with `wtp` for running multiple agents simultaneously
+- **Code Quality**: Language-agnostic code-quality-guardian agent for automated reviews
 - **Node.js**: fnm (Fast Node Manager) with auto-version switching
 - **Cross-platform**: Supports both Ubuntu/Debian (apt) and macOS (Homebrew)
 
@@ -31,6 +33,8 @@ The install script will:
 - Link configuration files
 - Install neovim plugins
 - Install AI coding tools (Claude Code, OpenCode CLI, GitHub Copilot CLI)
+- Install wtp (git worktree manager) for parallel AI workflows
+- Configure code-quality-guardian agent for automated code reviews
 
 ### Post-Installation
 
@@ -55,6 +59,7 @@ dotfiles/
 ├── README.md              # This file
 ├── AGENTS.md              # Shared AI agent instructions
 ├── claude/
+│   ├── agents/            # Custom AI agents (e.g., code-quality-guardian)
 │   ├── commands/          # Claude Code slash commands
 │   ├── settings.json      # Claude Code settings
 │   └── README.md          # Claude Code documentation
@@ -197,7 +202,7 @@ Three AI coding assistants are configured with custom workflows:
 
 #### Claude Code
 
-**Custom slash commands** for enhanced development workflows. See [claude/README.md](claude/README.md) for details.
+**Custom slash commands** and **AI agents** for enhanced development workflows. See [claude/README.md](claude/README.md) for details.
 
 **Authentication**:
 ```bash
@@ -210,6 +215,17 @@ claude auth login
 - `/implement_plan` - Execute approved technical plans
 - `/research_codebase` - Comprehensive codebase research
 - `/validate_plan` - Validate plan execution
+- `/worktree_create` - Create new git worktree for parallel development
+- `/worktree_merge` - Merge worktree back to main branch
+- `/worktree_list` - List all active worktrees
+- `/worktree_status` - Show detailed status of all worktrees
+
+**AI Agents**:
+- **code-quality-guardian** - Language-agnostic code reviewer
+  - Automatically invoked after completing features, bug fixes, or refactors
+  - Supports TypeScript, JavaScript, Python, Go, Rust, Java, Kotlin
+  - Reviews tests, security, maintainability, and architecture
+  - Provides actionable feedback with priority levels
 
 **Adding Custom Commands**:
 
@@ -319,6 +335,63 @@ copilot
 - No content duplication across projects
 
 **Adding new commands**: Create `.md` files in `~/dotfiles/claude/commands/` and they're automatically available.
+
+### Git Worktrees for Parallel AI Development
+
+**wtp** (git worktree manager) enables running multiple AI agents simultaneously on different features.
+
+**What are git worktrees?**
+- Multiple working directories from a single Git repository
+- Each worktree on a different branch
+- Perfect for parallel AI development workflows
+- No context switching = better AI performance
+
+**Quick Start**:
+```bash
+# Create a worktree
+wtp create feature-name
+
+# Work in the worktree
+cd trees/feature-name
+claude  # or opencode
+
+# List worktrees
+wtp list
+
+# Merge and cleanup
+git checkout main
+git merge feature-name
+wtp delete feature-name
+```
+
+**Use Cases**:
+- Run 3-5 Claude Code instances on different features simultaneously
+- Try multiple implementation approaches, pick the winner
+- One agent codes while another reviews
+- Divide large refactors across multiple agents
+
+**Directory Structure**:
+```
+project/
+├── .git/                  # Shared Git database
+├── main-code/             # Main worktree
+└── trees/                 # Additional worktrees (gitignored)
+    ├── feature-auth/
+    ├── refactor-db/
+    └── experiment-ui/
+```
+
+**Commands Available**:
+- Claude Code: `/worktree_create`, `/worktree_merge`, `/worktree_list`, `/worktree_status`
+- OpenCode: `/worktree-create`, `/worktree-merge`, `/worktree-list`, `/worktree-status`
+
+**Benefits**:
+- 2-3x faster development (parallel work)
+- No context switching for AI agents
+- Experiment-driven development
+- Tool agnostic (works with VSCode, Cursor, etc.)
+
+See [AGENTS.md](AGENTS.md) for comprehensive documentation.
 
 ## Platform-Specific Notes
 

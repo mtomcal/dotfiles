@@ -6,52 +6,109 @@ Custom commands and settings for [Claude Code](https://claude.com/claude-code).
 
 ```
 claude/
+├── agents/                # Custom AI agents
+│   └── code-quality-guardian.md  # Language-agnostic code reviewer
 ├── commands/              # Custom slash commands
 │   ├── save-session.md   # Save conversation summaries
 │   ├── create_plan.md    # Create implementation plans
 │   ├── implement_plan.md # Execute implementation plans
 │   ├── research_codebase.md # Comprehensive codebase research
-│   └── validate_plan.md  # Validate plan execution
+│   ├── validate_plan.md  # Validate plan execution
+│   ├── worktree_create.md # Create git worktree
+│   ├── worktree_merge.md  # Merge worktree to main
+│   ├── worktree_list.md   # List all worktrees
+│   └── worktree_status.md # Show worktree status
 ├── settings.json         # Claude Code settings
 └── .gitignore           # Prevents committing sensitive data
 ```
 
+## Agents
+
+### `code-quality-guardian`
+
+Language-agnostic code quality reviewer that provides automated reviews after completing features, bug fixes, or refactors.
+
+**Supported Languages**:
+- TypeScript, JavaScript, Python, Go, Rust, Java, Kotlin
+
+**Features**:
+- Automatic language detection from files and project config
+- Comprehensive reviews: tests, maintainability, security, modularity, complexity
+- Language-specific tooling awareness (ESLint, mypy, clippy, gofmt, etc.)
+- Actionable feedback with priority levels (Critical/Important/Minor)
+- Structured output with verdict (Approved/Needs Changes/Needs Revision)
+
+**When it runs**:
+- Automatically invoked after completing significant work units
+- After marking tasks as complete
+- When explicitly requested
+
+The agent adapts its review criteria to the detected language ecosystem.
+
 ## Commands
 
-### `/save-session`
+### Planning & Research
+
+#### `/save-session`
 Creates detailed session summaries and saves them to `./sessions/` directory.
 
-### `/create_plan`
+#### `/create_plan`
 Interactive planning command that:
 - Researches the codebase thoroughly
 - Creates detailed implementation plans
 - Saves plans to `thoughts/shared/plans/`
 
-### `/implement_plan`
+#### `/implement_plan`
 Executes approved technical plans:
 - Reads and validates plan files
 - Implements changes phase by phase
 - Tracks progress with checkboxes
 
-### `/research_codebase`
+#### `/research_codebase`
 Conducts comprehensive codebase research:
 - Spawns parallel research agents
 - Generates detailed research documents
 - Saves to `thoughts/shared/research/`
 
-### `/validate_plan`
+#### `/validate_plan`
 Validates implementation plan execution:
 - Checks completion status
 - Runs automated verification
 - Generates validation reports
+
+### Git Worktrees
+
+#### `/worktree_create`
+Creates a new git worktree for parallel AI development:
+- Guides you through worktree creation
+- Automatically copies essential files (.env, CLAUDE.md, AGENTS.md, .readyq.jsonl)
+- Sets up branch and directory structure
+
+#### `/worktree_merge`
+Safely merges a worktree back to main branch:
+- Checks for uncommitted changes
+- Runs tests if applicable
+- Handles merge conflicts
+- Cleans up worktree after successful merge
+
+#### `/worktree_list`
+Lists all active git worktrees with their branches and locations.
+
+#### `/worktree_status`
+Shows detailed status of all worktrees:
+- Uncommitted changes
+- Commits ahead/behind main
+- Last commit information
+- Recommendations for next steps
 
 ## Installation
 
 The install script will automatically:
 1. Create `~/.claude/` directory if needed
 2. Symlink `~/.claude/commands` → `~/dotfiles/claude/commands`
-3. Symlink `~/.claude/settings.json` → `~/dotfiles/claude/settings.json`
-4. Preserve existing credentials and history
+3. Symlink `~/.claude/agents` → `~/dotfiles/claude/agents`
+4. Symlink `~/.claude/settings.json` → `~/dotfiles/claude/settings.json`
+5. Preserve existing credentials and history
 
 ## Adding Custom Commands
 
