@@ -24,3 +24,6 @@ Thumbs.db
 research
 sessions
 
+# Git worktrees for parallel AI development
+trees/
+

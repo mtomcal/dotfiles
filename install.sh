@@ -482,6 +482,19 @@ print_success "Claude Code commands linked"
 # Note about authentication
 print_info "Note: Run 'claude auth login' to configure Claude Code authentication when ready"
 
+# Link Claude Code agents
+print_info "Linking Claude Code agents..."
+if [ -L "$HOME/.claude/agents" ]; then
+    rm "$HOME/.claude/agents"
+elif [ -d "$HOME/.claude/agents" ]; then
+    TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+    mv "$HOME/.claude/agents" "$HOME/.claude/agents.backup.$TIMESTAMP"
+    print_warning "Backed up existing agents to agents.backup.$TIMESTAMP"
+fi
+
+ln -s "$DOTFILES_DIR/claude/agents" "$HOME/.claude/agents"
+print_success "Claude Code agents linked"
+
 # Link Claude Code settings
 print_info "Linking Claude Code settings..."
 if [ -f "$HOME/.claude/settings.json" ] && [ ! -L "$HOME/.claude/settings.json" ]; then
@@ -590,6 +603,70 @@ print_info "Note: Run 'copilot' and use '/login' command to authenticate with Gi
 print_info "      Requires active GitHub Copilot subscription"
 
 # ===========================
+# Git Worktree Manager (wtp)
+# ===========================
+
+print_header "Setting up wtp (git worktree manager)"
+
+# Install wtp based on platform
+if [ "$OS" == "macos" ]; then
+    if ! command -v wtp &> /dev/null; then
+        print_info "Installing wtp via Homebrew..."
+        brew tap satococoa/tap
+        brew install satococoa/tap/wtp
+        print_success "wtp installed"
+    else
+        print_success "wtp is already installed"
+    fi
+elif [ "$OS" == "ubuntu" ]; then
+    if ! command -v wtp &> /dev/null; then
+        print_info "Installing wtp (downloading latest release)..."
+
+        # Detect architecture
+        ARCH=$(uname -m)
+        if [ "$ARCH" = "x86_64" ]; then
+            WTP_ARCH="x86_64"
+        elif [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
+            WTP_ARCH="arm64"
+        else
+            print_error "Unsupported architecture: $ARCH"
+            print_info "Please install wtp manually from: https://github.com/satococoa/wtp/releases"
+            exit 1
+        fi
+
+        # Download latest release
+        WTP_VERSION=$(curl -s https://api.github.com/repos/satococoa/wtp/releases/latest | grep '"tag_name"' | sed -E 's/.*"([^"]+)".*/\1/')
+        WTP_VERSION_NUM=$(echo "$WTP_VERSION" | sed 's/^v//')
+        WTP_URL="https://github.com/satococoa/wtp/releases/download/${WTP_VERSION}/wtp_${WTP_VERSION_NUM}_Linux_${WTP_ARCH}.tar.gz"
+
+        # Create temp directory and download
+        TMP_DIR=$(mktemp -d)
+        cd "$TMP_DIR"
+        curl -sL "$WTP_URL" -o wtp.tar.gz
+        tar -xzf wtp.tar.gz
+
+        # Move to ~/.local/bin
+        mkdir -p "$HOME/.local/bin"
+        mv wtp "$HOME/.local/bin/"
+        chmod +x "$HOME/.local/bin/wtp"
+
+        # Cleanup
+        cd - > /dev/null
+        rm -rf "$TMP_DIR"
+
+        print_success "wtp installed to ~/.local/bin/wtp"
+    else
+        print_success "wtp is already installed"
+    fi
+fi
+
+# Add shell completion hint
+print_info "Note: Add wtp shell completions to your shell config if desired:"
+print_info "  Bash: eval \"\$(wtp completion bash)\""
+print_info "  Zsh:  eval \"\$(wtp completion zsh)\""
+print_info "  Fish: wtp completion fish | source"
+
+# ===========================
 # AI Command Helper Script
 # ===========================
 
@@ -671,8 +748,9 @@ echo "  ✓ Neovim with official kickstart.nvim"
 echo "  ✓ Custom config directory (~/dotfiles/nvim/custom)"
 echo "  ✓ Zsh with Oh My Zsh"
 echo "  ✓ fnm (Fast Node Manager) + Node.js LTS"
-echo "  ✓ Claude Code custom commands"
+echo "  ✓ Claude Code custom commands and agents"
 echo "  ✓ OpenCode CLI with custom commands"
+echo "  ✓ wtp (git worktree manager for parallel AI workflows)"
 echo "  ✓ All required dependencies"
 echo ""
 print_info "Next steps:"
@@ -693,7 +771,7 @@ echo "  - Navigate panes: Ctrl-a h/j/k/l"
 echo "  - Tmux aliases: t, ta, tn, tl, tk, td"
 echo ""
 print_info "AI Coding Assistants:"
-echo "  - Claude Code: Custom commands in ~/.claude/commands (auth: claude auth login)"
+echo "  - Claude Code: Custom commands in ~/.claude/commands and agents in ~/.claude/agents (auth: claude auth login)"
 echo "  - OpenCode CLI: Run 'opencode' to start (auth: opencode auth login)"
 echo "  - GitHub Copilot CLI: Run 'copilot' then use '/login' to authenticate"
 echo ""
@@ -702,6 +780,13 @@ echo "  - ai-commands setup: Add command instructions to any project's AGENTS.md
 echo "  - ai-commands get <name>: Get command prompt (for AI agents without slash commands)"
 echo "  - ai-commands list: Show all available commands"
 echo "  - Works with Copilot CLI, Claude Code custom agents, and any tool that can run bash"
+echo ""
+print_info "Git Worktree Manager (wtp):"
+echo "  - wtp create <name>: Create new worktree for parallel AI development"
+echo "  - wtp list: List all active worktrees"
+echo "  - wtp switch: Switch to a worktree interactively"
+echo "  - wtp delete <name>: Remove worktree and branch"
+echo "  - Use with: /worktree-create, /worktree-merge commands in AI assistants"
 
 if [ -n "$PLATFORM_NOTES" ]; then
     echo ""
