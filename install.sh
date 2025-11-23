@@ -151,22 +151,22 @@ if [ "$OS" == "ubuntu" ]; then
     print_info "Checking Neovim version..."
     NVIM_VERSION=$(nvim --version | head -n1 | grep -oP 'v\K[0-9]+\.[0-9]+')
 
-    if [[ $(echo "$NVIM_VERSION < 0.11" | bc -l 2>/dev/null || echo "1") -eq 1 ]]; then
-        print_warning "Neovim version is $NVIM_VERSION (recommended: 0.11+)"
-        read -p "Would you like to upgrade to the latest Neovim from neovim-ppa/unstable? (y/n) " -n 1 -r
+    if [[ $(echo "$NVIM_VERSION < 0.10" | bc -l 2>/dev/null || echo "1") -eq 1 ]]; then
+        print_warning "Neovim version is $NVIM_VERSION (recommended: 0.10+)"
+        read -p "Would you like to upgrade to stable Neovim from neovim-ppa/stable? (y/n) " -n 1 -r
         echo
         if [[ $REPLY =~ ^[Yy]$ ]]; then
-            print_info "Adding neovim-ppa/unstable..."
-            sudo add-apt-repository ppa:neovim-ppa/unstable -y
+            print_info "Adding neovim-ppa/stable..."
+            sudo add-apt-repository ppa:neovim-ppa/stable -y
             sudo apt update
             sudo apt install -y neovim
-            print_success "Neovim upgraded to latest version"
+            print_success "Neovim upgraded to stable version"
         fi
     else
         print_success "Neovim version is $NVIM_VERSION (meets requirements)"
     fi
 elif [ "$OS" == "macos" ]; then
-    print_info "Updating Neovim to latest version via Homebrew..."
+    print_info "Installing stable Neovim via Homebrew..."
     brew upgrade neovim || print_success "Neovim is already up to date"
 fi
 
