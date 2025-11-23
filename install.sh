@@ -184,19 +184,30 @@ if [ "$OS" == "ubuntu" ]; then
             TMP_DIR=$(mktemp -d)
             cd "$TMP_DIR"
 
+            # Detect architecture
+            ARCH=$(uname -m)
+            if [ "$ARCH" = "x86_64" ]; then
+                APPIMAGE_NAME="nvim-linux-x86_64.appimage"
+            elif [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
+                APPIMAGE_NAME="nvim-linux-arm64.appimage"
+            else
+                print_error "Unsupported architecture: $ARCH"
+                exit 1
+            fi
+
             # Download AppImage
-            curl -LO "https://github.com/neovim/neovim/releases/download/${LATEST_VERSION}/nvim.appimage"
+            curl -LO "https://github.com/neovim/neovim/releases/download/${LATEST_VERSION}/${APPIMAGE_NAME}"
 
             # Make it executable
-            chmod +x nvim.appimage
+            chmod +x "$APPIMAGE_NAME"
 
             # Install to /usr/local/bin (requires sudo) or ~/.local/bin (no sudo)
             if [ -w /usr/local/bin ]; then
-                mv nvim.appimage /usr/local/bin/nvim
+                mv "$APPIMAGE_NAME" /usr/local/bin/nvim
                 print_success "Neovim installed to /usr/local/bin/nvim"
             else
                 mkdir -p "$HOME/.local/bin"
-                mv nvim.appimage "$HOME/.local/bin/nvim"
+                mv "$APPIMAGE_NAME" "$HOME/.local/bin/nvim"
                 print_success "Neovim installed to ~/.local/bin/nvim"
 
                 # Add to PATH if not already there
