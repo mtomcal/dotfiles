@@ -126,7 +126,7 @@ fi
 install_package "git" "git"
 install_package "curl" "curl"
 install_package "tmux" "tmux"
-install_package "neovim" "neovim"
+# Note: Neovim is installed later via AppImage (Ubuntu) or brew (macOS)
 install_package "ripgrep" "ripgrep"
 install_package "zsh" "zsh"
 
@@ -218,7 +218,11 @@ if [ "$OS" == "ubuntu" ]; then
     fi
 elif [ "$OS" == "macos" ]; then
     print_info "Installing stable Neovim via Homebrew..."
-    brew upgrade neovim || print_success "Neovim is already up to date"
+    if ! brew list neovim &> /dev/null; then
+        brew install neovim
+    else
+        brew upgrade neovim || print_success "Neovim is already up to date"
+    fi
 fi
 
 # ===========================
