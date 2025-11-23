@@ -144,23 +144,74 @@ elif [ "$OS" == "macos" ]; then
 fi
 
 # ===========================
-# Install Latest Neovim (Ubuntu only)
+# Install Latest Neovim
 # ===========================
 
 if [ "$OS" == "ubuntu" ]; then
     print_info "Checking Neovim version..."
-    NVIM_VERSION=$(nvim --version | head -n1 | grep -oP 'v\K[0-9]+\.[0-9]+')
+
+    # Check if nvim exists and get version
+    if command -v nvim &> /dev/null; then
+        NVIM_VERSION=$(nvim --version 2>/dev/null | head -n1 | grep -oP 'v\K[0-9]+\.[0-9]+' || echo "0.0")
+    else
+        NVIM_VERSION="0.0"
+    fi
 
     if [[ $(echo "$NVIM_VERSION < 0.10" | bc -l 2>/dev/null || echo "1") -eq 1 ]]; then
         print_warning "Neovim version is $NVIM_VERSION (recommended: 0.10+)"
-        read -p "Would you like to upgrade to stable Neovim from neovim-ppa/stable? (y/n) " -n 1 -r
+        read -p "Would you like to install latest stable Neovim via AppImage? (y/n) " -n 1 -r
         echo
         if [[ $REPLY =~ ^[Yy]$ ]]; then
-            print_info "Adding neovim-ppa/stable..."
-            sudo add-apt-repository ppa:neovim-ppa/stable -y
-            sudo apt update
-            sudo apt install -y neovim
-            print_success "Neovim upgraded to stable version"
+            print_info "Installing Neovim via AppImage..."
+
+            # Remove any existing apt-installed neovim to avoid conflicts
+            if dpkg -l | grep -q "^ii  neovim "; then
+                print_info "Removing apt-installed neovim..."
+                sudo apt remove -y neovim neovim-runtime 2>/dev/null || true
+            fi
+
+            # Get latest stable release version
+            LATEST_VERSION=$(curl -s https://api.github.com/repos/neovim/neovim/releases | grep '"tag_name"' | grep -v 'nightly\|stable' | head -1 | cut -d'"' -f4)
+
+            if [ -z "$LATEST_VERSION" ]; then
+                print_error "Failed to fetch latest Neovim version"
+                exit 1
+            fi
+
+            print_info "Downloading Neovim $LATEST_VERSION..."
+
+            # Create temp directory
+            TMP_DIR=$(mktemp -d)
+            cd "$TMP_DIR"
+
+            # Download AppImage
+            curl -LO "https://github.com/neovim/neovim/releases/download/${LATEST_VERSION}/nvim.appimage"
+
+            # Make it executable
+            chmod +x nvim.appimage
+
+            # Install to /usr/local/bin (requires sudo) or ~/.local/bin (no sudo)
+            if [ -w /usr/local/bin ]; then
+                mv nvim.appimage /usr/local/bin/nvim
+                print_success "Neovim installed to /usr/local/bin/nvim"
+            else
+                mkdir -p "$HOME/.local/bin"
+                mv nvim.appimage "$HOME/.local/bin/nvim"
+                print_success "Neovim installed to ~/.local/bin/nvim"
+
+                # Add to PATH if not already there
+                if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
+                    print_info "Note: Add ~/.local/bin to your PATH if not already done"
+                fi
+            fi
+
+            # Cleanup
+            cd - > /dev/null
+            rm -rf "$TMP_DIR"
+
+            # Verify installation
+            INSTALLED_VERSION=$(nvim --version | head -n1 | grep -oP 'v\K[0-9]+\.[0-9]+\.[0-9]+')
+            print_success "Neovim $INSTALLED_VERSION installed successfully"
         fi
     else
         print_success "Neovim version is $NVIM_VERSION (meets requirements)"
