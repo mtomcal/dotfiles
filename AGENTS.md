@@ -10,13 +10,16 @@ Personal dotfiles repository for a tmux + neovim + zsh development environment. 
 
 The primary entry point is `./install.sh`, which:
 - Auto-detects OS (Ubuntu/Debian via apt, or macOS via brew)
-- Installs dependencies (tmux, neovim 0.11+, zsh, ripgrep, fd, build tools)
+- Installs dependencies (tmux, neovim 0.10+, zsh, ripgrep, fd, build tools)
 - Sets up Oh My Zsh framework
 - Clones official kickstart.nvim to `~/.config/nvim`
 - Creates symlinks for configurations
+- Installs Go (Golang) 1.24+ with architecture detection (x86_64/arm64)
 - Installs fnm (Fast Node Manager) and Node.js LTS
 - Links AI coding assistant configurations (Claude Code, OpenCode)
-- Installs OpenCode CLI alongside Claude Code
+- Installs OpenCode CLI and optionally GitHub Copilot CLI
+- Installs wtp (git worktree manager) for parallel development
+- Sets up Mason LSP/formatter packages (Python, Go, Lua)
 
 **Key behavior**: The script is idempotent and safe to re-run for updates.
 
@@ -74,6 +77,14 @@ This design allows updating kickstart.nvim independently (`cd ~/.config/nvim && 
 
 **Adding custom neovim plugins**: Create files in `~/dotfiles/nvim/custom/plugins/` using lazy.nvim format. The install script ensures `{ import = 'custom.plugins' }` is uncommented in kickstart's init.lua (line ~402-403 of install.sh).
 
+**Current custom plugins**:
+- `go.lua` - Go debugging (nvim-dap-go) and testing (neotest-golang)
+- `python.lua` - Python linting with Ruff and Poetry auto-detection
+- `markdown.lua` - Beautiful markdown rendering
+- `neo-tree.lua` - File explorer with SSH-friendly ASCII icons
+- `diffview.lua` - Git diff viewer optimized for code review
+- `neogit.lua` - Interactive git interface for commits, rebases, pulls, pushes
+
 ### Tmux Configuration
 
 **Prefix key**: Ctrl-a (not default Ctrl-b)
@@ -87,11 +98,19 @@ Vim-style navigation keybindings throughout (h/j/k/l for panes, H/J/K/L for resi
 
 ### Platform-Specific Handling
 
-The install script contains OS detection logic (install.sh:48-64):
-- **Ubuntu/Debian**: Uses apt, installs xclip for clipboard, optionally adds neovim-ppa/unstable
-- **macOS**: Uses brew, installs fd (not fd-find), uses pbcopy/pbpaste for clipboard
+The install script contains OS detection logic (install.sh:48-68):
+- **Ubuntu/Debian**: Uses apt, installs xclip for clipboard, downloads Neovim AppImage with architecture detection
+- **macOS**: Uses brew, installs fd (not fd-find), uses pbcopy/pbpaste for clipboard, Neovim via Homebrew
 
 When modifying the install script, ensure platform-specific packages use correct names (e.g., `fd-find` on Ubuntu, `fd` on macOS).
+
+**Go (Golang) Installation**:
+- **Ubuntu/Debian**: Official binary from golang.org with architecture detection (amd64/arm64)
+- **macOS**: Via Homebrew with version checking
+- Requires Go 1.24+ (required by gofumpt formatter)
+- PATH configuration includes `/usr/local/go/bin` and `$HOME/go/bin`
+- Optional: govulncheck security scanner
+- Mason Go tools installed conditionally: gopls, delve, gofumpt, goimports
 
 ### SSH Auto-Attach Behavior
 
@@ -122,6 +141,24 @@ Update the install script's dependency installation section (install.sh:114-138)
 - **Claude Code**: Add markdown files to `claude/commands/`, they become slash commands
 - **OpenCode**: Add markdown files to `opencode/commands/`, they become custom commands
 
+### Language-Specific Development
+
+**Python Development**:
+- LSP: Pyright (via Mason) with type checking mode set to 'basic'
+- Linting: Ruff with Poetry auto-detection (nvim-lint)
+- Formatting: Ruff format on save
+- Keybindings: `<leader>f` (format), `<leader>l` (lint), `K` (hover docs)
+- See `docs/PYTHON_DEVELOPMENT.md` for comprehensive guide
+
+**Go (Golang) Development**:
+- LSP: gopls (via Mason) for code completion and navigation
+- Debugger: delve with nvim-dap-go integration
+- Testing: neotest-golang for test running and visualization
+- Formatting: gofumpt, goimports (via Mason)
+- Keybindings:
+  - `<leader>dt` (debug test), `<leader>db` (breakpoint), `<leader>dc` (continue)
+  - `<leader>tn` (nearest test), `<leader>tf` (file tests), `<leader>to` (output), `<leader>ts` (summary)
+
 ### Updating Kickstart.nvim
 
 ```bash
@@ -140,6 +177,26 @@ The install script optionally prompts for git user.name and user.email (install.
 ### Neovim Cache Management
 
 Fresh installations clean all cache directories (install.sh:412-421). Updates preserve `~/.local/share/nvim` (Mason packages) but clear `~/.cache/nvim` to prevent stale plugin issues.
+
+### Neovim Git Integration for Code Review
+
+Two plugins work together for comprehensive git workflows:
+
+**diffview.nvim** - Git diff visualization:
+- `<leader>dv` - Open diffview (perfect for reviewing AI-generated code changes)
+- `<leader>dc` - Close diffview
+- `<leader>dh` - Diff history for current file
+- `<leader>df` - Diff history for all files
+- Single-tabpage interface with horizontal diffs
+- Tree-style file listing
+
+**neogit.nvim** - Interactive git operations:
+- `<leader>gg` - Open Neogit interface
+- `<leader>gc` - Git commit
+- `<leader>gp` - Git pull
+- `<leader>gP` - Git push
+- Integrates with diffview for visual diffs
+- Interactive rebasing, staging, and committing
 
 ### Code Quality Guardian Agent
 

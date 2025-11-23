@@ -10,7 +10,12 @@ Personal development environment configuration for tmux, neovim, and zsh.
 - **AI Coding Tools**: Claude Code, OpenCode CLI, and GitHub Copilot CLI with custom commands and agents
 - **Git Worktrees**: Parallel AI development workflow with `wtp` for running multiple agents simultaneously
 - **Code Quality**: Language-agnostic code-quality-guardian agent for automated reviews
+- **Language Support**:
+  - **Python**: Pyright LSP + Ruff linting/formatting with Poetry auto-detection
+  - **Go (Golang)**: Full toolchain (gopls, delve debugger, gofumpt, goimports) with testing and debugging support
+  - **Lua**: stylua formatting
 - **Node.js**: fnm (Fast Node Manager) with auto-version switching
+- **Git Integration**: diffview and neogit for comprehensive code review workflows
 - **Cross-platform**: Supports both Ubuntu/Debian (apt) and macOS (Homebrew)
 
 ## Quick Start
@@ -31,10 +36,11 @@ The install script will:
 - Set up Oh My Zsh
 - Clone official kickstart.nvim
 - Link configuration files
-- Install neovim plugins
+- Install Go (Golang) 1.24+ with architecture detection
+- Install neovim plugins with language support (Python, Go, Lua)
 - Install AI coding tools (Claude Code, OpenCode CLI, GitHub Copilot CLI)
 - Install wtp (git worktree manager) for parallel AI workflows
-- Configure code-quality-guardian agent for automated code reviews
+- Configure code-quality-guardian and documentation-updater agents
 
 ### Post-Installation
 
@@ -58,14 +64,18 @@ dotfiles/
 ├── install.sh              # Installation script (Ubuntu + macOS)
 ├── README.md              # This file
 ├── AGENTS.md              # Shared AI agent instructions
+├── bin/
+│   └── ai-commands        # Universal AI command helper
 ├── claude/
-│   ├── agents/            # Custom AI agents (e.g., code-quality-guardian)
-│   ├── commands/          # Claude Code slash commands
+│   ├── agents/            # Custom AI agents (code-quality-guardian, documentation-updater)
+│   ├── commands/          # Claude Code slash commands (9 commands)
 │   ├── settings.json      # Claude Code settings
 │   └── README.md          # Claude Code documentation
 ├── opencode/
-│   ├── commands/          # OpenCode CLI slash commands
+│   ├── commands/          # OpenCode CLI slash commands (9 commands)
 │   └── README.md          # OpenCode documentation
+├── docs/
+│   └── PYTHON_DEVELOPMENT.md  # Python development guide
 ├── tmux/
 │   └── .tmux.conf         # Tmux configuration
 ├── zsh/
@@ -74,7 +84,13 @@ dotfiles/
     ├── README.md          # Neovim setup documentation
     └── custom/            # Custom neovim configs (symlinked)
         ├── README.md      # Custom config documentation
-        └── plugins/       # Your custom plugins
+        └── plugins/       # Your custom plugins (6 plugins)
+            ├── go.lua     # Go debugging and testing
+            ├── python.lua # Python linting with Ruff
+            ├── markdown.lua   # Markdown rendering
+            ├── neo-tree.lua   # File explorer
+            ├── diffview.lua   # Git diff viewer
+            └── neogit.lua     # Git operations
 ```
 
 ## Configuration Details
@@ -128,6 +144,33 @@ git pull
 ```
 
 Your custom configs persist across updates!
+
+**Current Custom Plugins**:
+
+1. **go.lua** - Go development with debugging and testing
+   - nvim-dap-go for debugging
+   - neotest-golang for test running
+   - Keybindings: `<leader>dt` (debug test), `<leader>db` (breakpoint), `<leader>tn` (nearest test)
+
+2. **python.lua** - Python linting with Ruff
+   - Poetry project auto-detection
+   - Real-time linting on save
+   - Keybindings: `<leader>l` (lint)
+
+3. **markdown.lua** - Beautiful markdown rendering
+   - MeanderingProgrammer/render-markdown.nvim
+   - Only loads for markdown files
+
+4. **neo-tree.lua** - File explorer
+   - SSH-friendly ASCII icons
+   - Git status tracking
+
+5. **diffview.nvim** - Git diff viewer
+   - Perfect for code review
+   - Keybindings: `<leader>dv` (open), `<leader>dc` (close), `<leader>dh` (history)
+
+6. **neogit.nvim** - Interactive git operations
+   - Keybindings: `<leader>gg` (open), `<leader>gc` (commit), `<leader>gp` (pull)
 
 **Adding Custom Plugins**:
 
@@ -197,6 +240,54 @@ fnm install --lts
 ```
 
 **Auto-switching**: fnm automatically switches Node versions when you `cd` into directories with `.node-version` or `.nvmrc` files.
+
+### Language Development
+
+#### Python Development
+
+Full Python development environment with LSP, linting, and formatting.
+
+**Features**:
+- **Pyright LSP**: Type checking and code intelligence
+- **Ruff**: Fast linting and formatting
+- **Poetry Detection**: Automatically uses Poetry virtual environment when detected
+- **Real-time linting**: Triggers on save and edit
+
+**Keybindings**:
+- `<leader>f` - Format buffer with Ruff
+- `<leader>l` - Manually trigger linting
+- `K` - Show hover documentation
+- `grd` - Go to definition
+- `grr` - Find references
+
+See [docs/PYTHON_DEVELOPMENT.md](docs/PYTHON_DEVELOPMENT.md) for comprehensive guide.
+
+#### Go (Golang) Development
+
+Complete Go development toolchain with debugging and testing support.
+
+**Features**:
+- **gopls**: Official Go LSP server
+- **delve**: Go debugger with DAP integration
+- **gofumpt**: Go formatter (requires Go 1.24+)
+- **goimports**: Import organizer
+- **neotest-golang**: Test runner integration
+
+**Debugging Keybindings**:
+- `<leader>dt` - Debug nearest test
+- `<leader>db` - Toggle breakpoint
+- `<leader>dc` - Continue debugging
+
+**Testing Keybindings**:
+- `<leader>tn` - Run nearest test
+- `<leader>tf` - Run all tests in file
+- `<leader>to` - Show test output panel
+- `<leader>ts` - Toggle test summary
+
+**Installation**:
+- macOS: Via Homebrew (automatic)
+- Ubuntu: Official binary with architecture detection (amd64/arm64)
+- Version check: Ensures Go 1.24+ is installed
 
 ### AI Coding Tools
 
@@ -413,9 +504,18 @@ See [AGENTS.md](AGENTS.md) for comprehensive documentation.
 - build-essential (C compiler)
 - ripgrep, fd-find (telescope searching)
 - xclip (clipboard support)
+- python3-venv (Python virtual environments)
 
-**Neovim Version**:
-- Script offers to install latest neovim from neovim-ppa/unstable if your version is < 0.11
+**Neovim Installation**:
+- Downloads official AppImage (v0.11.5) with architecture detection (x86_64/arm64)
+- Script offers upgrade if current version is < 0.10
+- Installs to `/usr/local/bin/nvim` (with sudo) or `~/.local/bin/nvim` (without)
+
+**Go Installation**:
+- Official binary from golang.org
+- Architecture detection (amd64/arm64)
+- Version 1.24+ installed
+- PATH: `/usr/local/go/bin` and `$HOME/go/bin`
 
 **Clipboard**:
 - Uses xclip for system clipboard integration
@@ -427,8 +527,13 @@ See [AGENTS.md](AGENTS.md) for comprehensive documentation.
 - gcc (C compiler via Homebrew)
 - ripgrep, fd (telescope searching)
 
-**Neovim Version**:
+**Neovim Installation**:
 - Installs/updates neovim via Homebrew (always latest)
+
+**Go Installation**:
+- Via Homebrew (go package)
+- Version checking and upgrade prompts
+- Automatic PATH configuration
 
 **Clipboard**:
 - Uses built-in pbcopy/pbpaste
