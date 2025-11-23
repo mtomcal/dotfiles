@@ -41,7 +41,15 @@ return {
     vim.api.nvim_create_autocmd({ 'BufEnter', 'BufWritePost', 'InsertLeave' }, {
       group = lint_augroup,
       callback = function()
-        lint.try_lint()
+        -- Only lint Python files
+        if vim.bo.filetype == 'python' then
+          -- Wrap in pcall to catch any errors and prevent them from propagating
+          local ok, err = pcall(lint.try_lint)
+          if not ok then
+            -- Silently log the error instead of showing it to the user
+            vim.notify('Linting error: ' .. tostring(err), vim.log.levels.DEBUG)
+          end
+        end
       end,
     })
 

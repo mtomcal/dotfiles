@@ -440,6 +440,15 @@ else
     print_info "You can manually install plugins later by running: nvim --headless '+Lazy! sync' +qa"
 fi
 
+# Install Mason packages for Python development
+print_info "Installing Mason packages for Python development..."
+if nvim --headless "+MasonInstall ruff pyright" +qa 2>/dev/null; then
+    print_success "Mason packages installed (ruff, pyright)"
+else
+    print_warning "Mason package installation encountered an issue"
+    print_info "You can manually install Mason packages later by running: :Mason in nvim"
+fi
+
 # ===========================
 # AI Coding Agents (Optional)
 # ===========================
