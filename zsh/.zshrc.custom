@@ -38,6 +38,15 @@ alias oc='opencode'
 export TERM=xterm-256color
 
 # ===========================
+# Go (Golang) Configuration
+# ===========================
+
+# Add Go binaries to PATH
+export PATH=$PATH:/usr/local/go/bin
+export PATH=$PATH:$HOME/go/bin
+export GOPATH=$HOME/go
+
+# ===========================
 # Node Version Manager (fnm)
 # ===========================
 

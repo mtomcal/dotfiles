@@ -237,6 +237,132 @@ elif [ "$OS" == "macos" ]; then
 fi
 
 # ===========================
+# Install Go (Golang)
+# ===========================
+
+print_header "Installing Go"
+
+# Function to compare versions
+version_lt() {
+    [ "$(printf '%s\n' "$1" "$2" | sort -V | head -n1)" != "$2" ]
+}
+
+if [ "$OS" == "macos" ]; then
+    # macOS: Use Homebrew
+    if ! command -v go &> /dev/null; then
+        print_info "Installing Go via Homebrew..."
+        brew install go
+        print_success "Go installed"
+    else
+        GO_VERSION=$(go version | grep -oP '\d+\.\d+' | head -1)
+        if version_lt "$GO_VERSION" "1.24"; then
+            print_warning "Go $GO_VERSION detected (recommended: 1.24+)"
+            read -p "Upgrade to latest Go? (y/n) " -n 1 -r
+            echo ""
+            if [[ $REPLY =~ ^[Yy]$ ]]; then
+                brew upgrade go
+                print_success "Go upgraded"
+            fi
+        else
+            print_success "Go $GO_VERSION is already installed"
+        fi
+    fi
+elif [ "$OS" == "ubuntu" ]; then
+    # Ubuntu: Use official binary (apt versions are too old)
+    if ! command -v go &> /dev/null; then
+        print_info "Installing Go (official binary)..."
+
+        # Detect architecture
+        ARCH=$(uname -m)
+        if [ "$ARCH" = "x86_64" ]; then
+            GO_ARCH="amd64"
+        elif [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
+            GO_ARCH="arm64"
+        else
+            print_error "Unsupported architecture: $ARCH"
+            print_info "Please install Go manually from https://go.dev/dl/"
+            exit 1
+        fi
+
+        # Get latest stable version
+        print_info "Fetching latest Go version..."
+        GO_VERSION=$(curl -s https://go.dev/VERSION?m=text | head -1)
+
+        if [ -z "$GO_VERSION" ]; then
+            print_error "Failed to fetch Go version"
+            exit 1
+        fi
+
+        GO_TARBALL="${GO_VERSION}.linux-${GO_ARCH}.tar.gz"
+        GO_URL="https://go.dev/dl/${GO_TARBALL}"
+
+        print_info "Downloading Go ${GO_VERSION}..."
+
+        # Create temp directory
+        TMP_DIR=$(mktemp -d)
+        cd "$TMP_DIR"
+
+        # Download
+        if ! wget -q --show-progress "$GO_URL"; then
+            print_error "Failed to download Go"
+            cd - > /dev/null
+            rm -rf "$TMP_DIR"
+            exit 1
+        fi
+
+        # Remove old installation (if exists)
+        if [ -d "/usr/local/go" ]; then
+            print_info "Removing previous Go installation..."
+            sudo rm -rf /usr/local/go
+        fi
+
+        # Extract new installation
+        print_info "Installing Go to /usr/local/go..."
+        sudo tar -C /usr/local -xzf "$GO_TARBALL"
+
+        # Cleanup
+        cd - > /dev/null
+        rm -rf "$TMP_DIR"
+
+        print_success "Go ${GO_VERSION} installed"
+    else
+        GO_VERSION=$(go version | grep -oP '\d+\.\d+' | head -1)
+        if version_lt "$GO_VERSION" "1.24"; then
+            print_warning "Go $GO_VERSION detected (recommended: 1.24+)"
+            print_info "Visit https://go.dev/dl/ to upgrade manually"
+        else
+            print_success "Go $GO_VERSION is already installed"
+        fi
+    fi
+fi
+
+# Verify Go installation
+if command -v go &> /dev/null; then
+    GO_FULL_VERSION=$(go version)
+    print_success "Go verified: $GO_FULL_VERSION"
+
+    # Create GOPATH bin directory
+    mkdir -p "$HOME/go/bin"
+
+    # Add Go to PATH for this session
+    export PATH=$PATH:/usr/local/go/bin
+    export PATH=$PATH:$HOME/go/bin
+    export GOPATH=$HOME/go
+else
+    print_error "Go installation verification failed"
+    exit 1
+fi
+
+# Optional: Install govulncheck for security scanning
+read -p "Install govulncheck (Go vulnerability scanner)? (y/n) " -n 1 -r
+echo ""
+if [[ $REPLY =~ ^[Yy]$ ]]; then
+    print_info "Installing govulncheck..."
+    go install golang.org/x/vuln/cmd/govulncheck@latest
+    print_success "govulncheck installed (use: govulncheck ./...)"
+fi
+
+# ===========================
 # Install Oh My Zsh
 # ===========================
 
@@ -506,10 +632,27 @@ else
     print_info "You can manually install plugins later by running: nvim --headless '+Lazy! sync' +qa"
 fi
 
-# Install Mason packages for Python development
-print_info "Installing Mason packages for Python development..."
-if nvim --headless "+MasonInstall ruff pyright" +qa 2>/dev/null; then
-    print_success "Mason packages installed (ruff, pyright)"
+# Install Mason packages for development
+print_info "Installing Mason packages..."
+
+# Build package list based on available tools
+MASON_PACKAGES="stylua"  # Lua formatter (always installed)
+
+# Python tools
+MASON_PACKAGES="$MASON_PACKAGES ruff pyright"
+
+# Go tools (only if Go is installed)
+if command -v go &> /dev/null; then
+    MASON_PACKAGES="$MASON_PACKAGES gopls delve gofumpt goimports"
+    print_info "Go detected - including Go development tools"
+else
+    print_warning "Go not found - skipping Go tools"
+fi
+
+print_info "Installing Mason packages: $MASON_PACKAGES"
+
+if nvim --headless "+MasonInstall $MASON_PACKAGES" +qa 2>/dev/null; then
+    print_success "Mason packages installed"
 else
     print_warning "Mason package installation encountered an issue"
     print_info "You can manually install Mason packages later by running: :Mason in nvim"
@@ -835,6 +978,7 @@ echo "  ✓ Tmux with vim-style bindings"
 echo "  ✓ Neovim with official kickstart.nvim"
 echo "  ✓ Custom config directory (~/dotfiles/nvim/custom)"
 echo "  ✓ Zsh with Oh My Zsh"
+echo "  ✓ Go 1.24+ (Golang)"
 echo "  ✓ fnm (Fast Node Manager) + Node.js LTS"
 echo "  ✓ Claude Code custom commands and agents"
 echo "  ✓ OpenCode CLI with custom commands"
