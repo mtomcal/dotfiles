@@ -152,7 +152,7 @@ if [ "$OS" == "ubuntu" ]; then
 
     # Check if nvim exists and get version
     if command -v nvim &> /dev/null; then
-        NVIM_VERSION=$(nvim --version 2>/dev/null | head -n1 | grep -oP 'v\K[0-9]+\.[0-9]+' || echo "0.0")
+        NVIM_VERSION=$(nvim --version 2>/dev/null | head -n1 | sed 's/.*v\([0-9]*\.[0-9]*\).*/\1/' || echo "0.0")
     else
         NVIM_VERSION="0.0"
     fi
@@ -221,7 +221,7 @@ if [ "$OS" == "ubuntu" ]; then
             rm -rf "$TMP_DIR"
 
             # Verify installation
-            INSTALLED_VERSION=$(nvim --version | head -n1 | grep -oP 'v\K[0-9]+\.[0-9]+\.[0-9]+')
+            INSTALLED_VERSION=$(nvim --version | head -n1 | sed 's/.*v\([0-9]*\.[0-9]*\.[0-9]*\).*/\1/')
             print_success "Neovim $INSTALLED_VERSION installed successfully"
         fi
     else
@@ -254,14 +254,29 @@ if [ "$OS" == "macos" ]; then
         brew install go
         print_success "Go installed"
     else
-        GO_VERSION=$(go version | grep -oP '\d+\.\d+' | head -1)
+        GO_VERSION=$(go version | sed 's/.*go\([0-9]*\.[0-9]*\).*/\1/')
         if version_lt "$GO_VERSION" "1.24"; then
             print_warning "Go $GO_VERSION detected (recommended: 1.24+)"
-            read -p "Upgrade to latest Go? (y/n) " -n 1 -r
-            echo ""
-            if [[ $REPLY =~ ^[Yy]$ ]]; then
-                brew upgrade go
-                print_success "Go upgraded"
+            # Check if Go was installed via Homebrew
+            if brew list go &> /dev/null; then
+                read -p "Upgrade Go via Homebrew? (y/n) " -n 1 -r
+                echo ""
+                if [[ $REPLY =~ ^[Yy]$ ]]; then
+                    brew upgrade go
+                    print_success "Go upgraded"
+                fi
+            else
+                # Go exists but not from Homebrew (manual install at /usr/local/go)
+                read -p "Go was not installed via Homebrew. Install Homebrew version? (y/n) " -n 1 -r
+                echo ""
+                if [[ $REPLY =~ ^[Yy]$ ]]; then
+                    print_info "Installing Go via Homebrew (will take precedence in PATH)..."
+                    brew install go
+                    print_success "Go installed via Homebrew"
+                    print_info "Note: Homebrew Go will be used. You can remove /usr/local/go manually if desired."
+                else
+                    print_info "Keeping existing Go $GO_VERSION. Visit https://go.dev/dl/ to upgrade manually."
+                fi
             fi
         else
             print_success "Go $GO_VERSION is already installed"
@@ -326,7 +341,7 @@ elif [ "$OS" == "ubuntu" ]; then
 
         print_success "Go ${GO_VERSION} installed"
     else
-        GO_VERSION=$(go version | grep -oP '\d+\.\d+' | head -1)
+        GO_VERSION=$(go version | sed 's/.*go\([0-9]*\.[0-9]*\).*/\1/')
         if version_lt "$GO_VERSION" "1.24"; then
             print_warning "Go $GO_VERSION detected (recommended: 1.24+)"
             print_info "Visit https://go.dev/dl/ to upgrade manually"
