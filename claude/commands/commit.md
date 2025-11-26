@@ -5,7 +5,12 @@
     <purpose>You are responsible for making a git commit with a detailed commit message for serving AI memory and transparency for humans</purpose>
 </system-instructions>
 
+<template-variable>
+    <symbol>{hashId:abc1234}</symbol>
+    <description>Hash of the issue id and an example id</description>
+</template-variable>
 <output-template>
+
 {conventional-commit-topic}: {100 char commit message}
 
 {foreach}
@@ -14,6 +19,13 @@
     - Change detail 2
     - Change detail 3
 {endforeach}
+
+{if readyq issues are contained}
+Related Issues:
+    - {hashId1:abc1234}
+    - {hashId2:abc1234}
+    - {hashId3:abc1234}
+{endif}
 
 Next Steps:
     - Next step 1
