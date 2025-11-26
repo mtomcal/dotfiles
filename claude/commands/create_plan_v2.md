@@ -4,6 +4,7 @@
 <critical>⚠️ EPIC STRUCTURE PRINCIPLE: Each epic MUST deliver USER VALUE, not just technical capability. Epics are NOT organized by technical layers (database, API, frontend). Each epic should result in something USERS can actually use or benefit from. Exception: Foundation/setup stories at the start of first epic are acceptable.</critical>
 <critical>LIVING DOCUMENT: Write to epics.md continuously as you work - never wait until the end</critical>
 <critical>⚠️ ABSOLUTELY NO TIME ESTIMATES - NEVER mention hours, days, weeks, months, or ANY time-based predictions. AI has fundamentally changed development speed - what once took teams weeks/months can now be done by one person in hours. DO NOT give ANY time estimates whatsoever.</critical>
+<critical>Stories MUST follow test driven development (TDD) best practices and setup developer for success in running TDD</critical>
 
 <output-template>
 # {{project_name}} - Epic Breakdown
@@ -407,7 +408,8 @@ Answer these critical questions:
 3. **Technical Soundness:** Do stories properly implement Architecture decisions?
 4. **User Experience:** {{if ux_design_content}} Do stories follow UX design patterns? {{/if}}
 5. **Implementation Ready:** Can dev agents implement these stories autonomously?
-   </action>
+6. **Unit Testing Coverage:** Does this have detailed unit testing cases
+</action>
 
 <output>**✅ EPIC AND STORY CREATION COMPLETE**
 
