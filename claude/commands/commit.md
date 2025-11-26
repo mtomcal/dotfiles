@@ -49,7 +49,12 @@ Next Steps:
             terminal command tool
         </tool>
     </phase>
+    <phase num="5" title="Ask whether to push to remote">
+        <action>Ask user whether to push to remote</action>
+        <choices>
+            <choice id="Yes" shortcut="y" />
+            <choice id="No" shortcut="n" />
+        </choices>
+    </phase>
 </workflow-engine>
 
-<important-notes>
-</important-notes>
