@@ -50,10 +50,21 @@
     <phase num="5" title="Run code quality jobs">
         <action>Run any typecheck and linter from the project build file (e.g. package.json, gradle, poetry, go.mod)</action>
     </phase>
-    <phase num="5" title="Run final testing coverage check">
-        <action>Run unit and integration tests from the project build file with coverage to ensure we hit our coverage quality standards</action>
+    <phase num="6" title="Run final testing coverage check">
+        <action>Run unit tests from the project build file with coverage to ensure we hit our coverage quality standards</action>
     </phase>
-    <phase num="6" title="Ask whether to move story to done">
+    <phase num="7" title="Run integration test job">
+        <action>Find the build system job for running integration tests and ensure both client and server are running prior to running the integration tests</action>
+        <reason>Think whether the integration tests cover acceptance criteria cases</reason>
+        <action>Propose to the user whether they want to update integration test cases with the acceptance criteria cases</action>
+         <list>
+            <list-item text="Proposal 1..." shortcut="1" />
+            <list-item text="Proposal 2..." shortcut="2" />
+            <list-item text="Proposal 3..." shortcut="3" />
+        </list>
+        <user-message>Accept one or more proposals with a list of choices (e.g. 1, 3, 5)</user-message>
+    </phase>
+    <phase num="8" title="Ask whether to move story to done">
         <action>Summarize the changes and ask whether to move the story to done</action>
          <choices>
             <choice id="Yes" shortcut="y" />
