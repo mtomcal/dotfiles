@@ -1,6 +1,5 @@
 ---
 description: Create a detailed summary of the conversation and save it to ./sessions/
-agent: build
 ---
 
 Your task is to create a detailed summary of the conversation so far, paying close attention to the user's explicit requests and your previous actions.

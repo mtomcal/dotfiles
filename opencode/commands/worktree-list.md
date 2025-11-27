@@ -31,7 +31,7 @@ Active worktrees:
 
 Total: 4 worktrees (1 main + 3 feature worktrees)
 
-Tip: Each worktree can run its own OpenCode instance for parallel development.
+Tip: Each worktree can run its own Claude Code instance for parallel development.
 ```
 
 ## Additional Information

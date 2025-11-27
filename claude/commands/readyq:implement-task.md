@@ -2,7 +2,7 @@
 
 <critical>Must follow a test driven development workflow to achieve >90% coverage on all metrics</critical>
 <critical>Must pass type check and linting</critical>
-<critical>Must use native build system (e.g. package.json) scriptsto perform testing, linting, typechecking. Do not use one-off commands (e.g. `npx` or complex shell commands)</critical>
+<critical>Must use native build system (e.g. package.json) scripts to perform testing, linting, typechecking. Do not use one-off commands (e.g. `npx` or complex shell commands)</critical>
 <critical>If you find an issue thats outside the scope of this task, propose a new ReadyQ task and block the current one and STOP WORKFLOW</critical>
 
 <system-instructions>
@@ -51,7 +51,7 @@
         <action>Run any typecheck and linter from the project build file (e.g. package.json, gradle, poetry, go.mod)</action>
     </phase>
     <phase num="5" title="Run final testing coverage check">
-        <action>Run unit tests from the project build file with coverage to ensure we hit our coverage quality standards</action>
+        <action>Run unit and integration tests from the project build file with coverage to ensure we hit our coverage quality standards</action>
     </phase>
     <phase num="6" title="Ask whether to move story to done">
         <action>Summarize the changes and ask whether to move the story to done</action>

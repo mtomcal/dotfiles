@@ -127,4 +127,3 @@ Would you like me to read the conflicted files and suggest resolutions?
 - Keep the worktree until merge is confirmed successful
 - If merge is complex, consider creating a PR instead of direct merge
 - For remote repositories, consider: `git push origin <branch-name>` before merging to create a PR
-- Works in both Plan and Build modes

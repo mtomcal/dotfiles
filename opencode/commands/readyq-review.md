@@ -47,7 +47,10 @@
     <phase num="5" title="Run final testing coverage check">
         <action>Run unit tests from the project build file with coverage to ensure we hit our coverage quality standards</action>
     </phase>
-    <phase num="6" title="Propose changes based on any flagged issues">
+    <phase num="6" title="Run integration testing check" if="integration tests exist">
+        <action>Run integration tests from the project build file with coverage to ensure we have a functional app</action>
+    </phase>
+    <phase num="7" title="Propose changes based on any flagged issues">
         <action>Propose a list of changes to make and why for the user to multi select to bring the changes made up to standards and passing acceptance criteria</action>
         <list>
             <list-item text="Proposal 1..." shortcut="1" />

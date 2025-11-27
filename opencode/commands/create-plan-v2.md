@@ -130,6 +130,7 @@ Scan comprehensively for any technical details needed to create complete user st
 - Any other technical decisions, patterns, or constraints that impact implementation
 
 Focus on extracting whatever technical context exists in the Architecture document that will be needed to create comprehensive, actionable user stories for all PRD requirements.
+
 </action>
 
 <action if="UX Design Exists">
@@ -149,6 +150,7 @@ Scan comprehensively for any user experience details needed to create complete u
 - Any other UX/UI decisions, patterns, or specifications that impact implementation
 
 Focus on extracting whatever user experience context exists in the UX document that will be needed to create comprehensive, actionable user stories for all PRD requirements.
+
 </action>
 
 <template-output>context_validation</template-output>
@@ -320,10 +322,11 @@ And I cannot log in until email is verified
 </action>
 
 <action>**Generate all stories for Epic {{N}}**</action>
-<template-output>epic{{N}}</template-output>
+<template-output>epic*title*{{N}}</template-output>
+<template-output>epic*goal*{{N}}</template-output>
 
 <action>For each story M in epic {{N}}, generate story content</action>
-<template-output>story{{N}}{{M}}</template-output>
+<template-output>story*{{N}}*{{M}}</template-output>
 
 <action>**EPIC {{N}} COMPLETION REVIEW:**</action>
 
@@ -335,11 +338,13 @@ Stories Created: {{count}}
 
 **Technical Context Used:** {{Architecture sections referenced}}
 
-{{if ux}}**UX Patterns Incorporated:** {{UX sections referenced}}{{/if}}
+{{if ux_design_content}}
+**UX Patterns Incorporated:** {{UX sections referenced}}
+{{/if}}
 
 Ready for checkpoint validation.</output>
 
-<template-output>epic_{{N}}_complete</template-output>
+<template-output>epic\_{{N}}\_complete</template-output>
 </step>
 
 <step n="3" goal="Final validation and coverage matrix">
@@ -370,7 +375,7 @@ Verify that Architecture decisions are properly implemented:
 - Error handling follows Architecture patterns
 - Integration points between systems are properly handled
 
-**UX INTEGRATION VALIDATION** {{if ux}}:
+**UX INTEGRATION VALIDATION** {{if ux_design_content}}:
 
 Verify that UX design patterns are properly implemented:
 
@@ -382,7 +387,7 @@ Verify that UX design patterns are properly implemented:
 - Error states and feedback patterns are implemented
 - Form validation follows UX guidelines
 - Loading states and transitions are implemented
-{{/if}}
+  {{/if}}
 
 **STORY QUALITY VALIDATION:**
 
@@ -401,7 +406,7 @@ Answer these critical questions:
 1. **User Value:** Does each epic deliver something users can actually do/use?
 2. **Completeness:** Are ALL PRD functional requirements covered?
 3. **Technical Soundness:** Do stories properly implement Architecture decisions?
-4. **User Experience:** {{if ux}} Do stories follow UX design patterns? {{/if}}
+4. **User Experience:** {{if ux_design_content}} Do stories follow UX design patterns? {{/if}}
 5. **Implementation Ready:** Can dev agents implement these stories autonomously?
 6. **Unit Testing Coverage:** Does this have detailed unit testing cases
 </action>
@@ -411,9 +416,12 @@ Answer these critical questions:
 **Output Generated:** epics.md with comprehensive implementation details
 
 **Full Context Incorporated:**
+
 - ✅ PRD functional requirements and scope
 - ✅ Architecture technical decisions and contracts
-  {{if ux}}- ✅ UX Design interaction patterns and specifications{{/if}}
+  {{if ux_design_content}}
+- ✅ UX Design interaction patterns and specifications
+  {{/if}}
 
 **FR Coverage:** {{count}} functional requirements mapped to {{story_count}} stories
 **Epic Structure:** {{epic_count}} epics delivering incremental user value

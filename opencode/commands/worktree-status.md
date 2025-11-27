@@ -98,4 +98,3 @@ Use these indicators for clarity:
 - Helps identify stale worktrees that should be cleaned up
 - Shows overall parallel development progress
 - Use before running `/worktree-merge` to ensure worktrees are in good state
-- Works in both Plan and Build modes
