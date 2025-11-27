@@ -48,7 +48,8 @@
         <action>Run unit tests from the project build file with coverage to ensure we hit our coverage quality standards</action>
     </phase>
     <phase num="6" title="Run integration testing check" if="integration tests exist">
-        <action>Run integration tests from the project build file with coverage to ensure we have a functional app</action>
+        <action>Find the build system job for running integration tests and ensure both client and server are running prior to running the integration tests</action>
+        <reason>Think whether the integration tests cover acceptance criteria cases</reason>
     </phase>
     <phase num="7" title="Propose changes based on any flagged issues">
         <action>Propose a list of changes to make and why for the user to multi select to bring the changes made up to standards and passing acceptance criteria</action>
@@ -70,4 +71,3 @@
         <action if="no">Use <tool id="cli" command="./readyq.py update {hashId} --log {summary step by step of changes}" /> to summarize what we did here. DONT UPDATE status.</action>
     </phase>
 </workflow>
-
