@@ -816,6 +816,31 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
     print_info "Note: Run 'opencode auth login' to configure API keys when ready"
 
     # ===========================
+    # OpenCode Configuration Management
+    # ===========================
+
+    print_header "Setting up OpenCode configuration"
+
+    # Link standard opencode.json configuration
+    print_info "Linking OpenCode configuration..."
+    if [ -f "$HOME/.config/opencode/opencode.json" ] && [ ! -L "$HOME/.config/opencode/opencode.json" ]; then
+        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+        mv "$HOME/.config/opencode/opencode.json" "$HOME/.config/opencode/opencode.json.backup.$TIMESTAMP"
+        print_warning "Backed up existing opencode.json to opencode.json.backup.$TIMESTAMP"
+    fi
+
+    if [ -L "$HOME/.config/opencode/opencode.json" ]; then
+        rm "$HOME/.config/opencode/opencode.json"
+    fi
+
+    if [ -f "$DOTFILES_DIR/opencode/opencode.json" ]; then
+        ln -s "$DOTFILES_DIR/opencode/opencode.json" "$HOME/.config/opencode/opencode.json"
+        print_success "OpenCode configuration linked"
+    else
+        print_info "No opencode.json found in dotfiles (skipping configuration linking)"
+    fi
+
+    # ===========================
     # GitHub Copilot CLI Configuration
     # ===========================
 

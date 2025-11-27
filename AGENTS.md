@@ -54,6 +54,8 @@ This dotfiles setup supports both **Claude Code** and **OpenCode CLI**:
 **OpenCode CLI**:
 - Configuration: `opencode/` directory
 - Commands: Optimized commands in `opencode/commands/`
+- Standard config: `opencode/opencode.json` (symlinked globally)
+- Project template: `opencode/opencode.project.json` (for project-specific overrides)
 - Shared instructions: This AGENTS.md file
 - Uses Build/Plan mode switching
 
