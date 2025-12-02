@@ -647,6 +647,16 @@ else
     print_info "You can manually install plugins later by running: nvim --headless '+Lazy! sync' +qa"
 fi
 
+# Update treesitter parsers to match current Neovim version
+# This prevents "Parser could not be created" errors after Neovim upgrades
+print_info "Updating treesitter parsers..."
+if nvim --headless "+TSUpdateSync" +qa 2>/dev/null; then
+    print_success "Treesitter parsers updated"
+else
+    print_warning "Treesitter parser update encountered an issue"
+    print_info "You can manually update parsers later by running: nvim -c 'TSUpdate' or :TSUpdate in nvim"
+fi
+
 # Install Mason packages for development
 print_info "Installing Mason packages..."
 
