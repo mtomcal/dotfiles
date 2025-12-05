@@ -253,6 +253,60 @@ The `documentation-updater` agent keeps documentation synchronized with code cha
 
 The agent ensures users always have accurate, up-to-date information about the project.
 
+### Modularity Reviewer Command
+
+The `/readyq:review-modularity` command proactively analyzes codebases for large monolithic files and proposes refactorings as ReadyQ issues:
+
+**Features:**
+- **Proactive structural analysis**: Scans entire codebase or specific directories for modularity issues
+- **Language-agnostic**: Works with any programming language (Python, TypeScript, Go, Java, etc.)
+- **Multiple metrics**: Evaluates files based on LOC, complexity, cohesion, coupling, and structural patterns
+- **Actionable proposals**: Generates specific refactoring plans with effort estimates and priority rankings
+- **ReadyQ integration**: Creates detailed refactoring issues with acceptance criteria and subtasks
+- **Trend tracking**: Saves metrics snapshots to monitor modularity health over time
+- **AI-friendly thresholds**: Optimized to improve AI agent reasoning and reduce hallucinations
+
+**When to use:**
+- Quarterly reviews as codebase grows
+- Before major refactoring initiatives
+- When AI agents struggle with large files (degraded reasoning, hallucinations)
+- When code reviews take too long (cognitive overload from 600+ LOC files)
+- When teams experience merge conflicts due to bottleneck files
+- After adding 50+ commits or significant feature additions
+
+**How it works:**
+1. User specifies scope (entire codebase, directory, or file extensions)
+2. Detects languages and reads project standards
+3. Scans files and calculates metrics (LOC, functions, imports, complexity)
+4. Identifies files exceeding thresholds (production: >400 LOC, tests: >500 LOC)
+5. Performs deep analysis on flagged files (responsibilities, coupling, cohesion)
+6. Generates refactoring proposals with suggested module breakdowns
+7. Prioritizes by impact (Critical/High/Medium based on change frequency)
+8. User selects which refactorings to create as ReadyQ issues
+9. Creates detailed ReadyQ issues with acceptance criteria and subtasks
+10. Saves metrics snapshot for trend analysis
+
+**File size thresholds:**
+- Production code: Warning at 400 LOC, Critical at 600 LOC
+- Test files: Warning at 500 LOC, Critical at 800 LOC
+- Ideal targets: <200 LOC (production), <300 LOC (tests)
+
+**Why modularity matters:**
+- **AI Agent Effectiveness**: Large files consume more context window, reducing reasoning quality and increasing hallucinations
+- **Human Reviewability**: Files >400 LOC cause cognitive overload, making thorough review difficult
+- **Parallel Development**: Large monolithic files become bottlenecks; multiple agents/developers can't work on them simultaneously
+- **Maintainability**: Smaller, focused modules have clearer boundaries and lower risk of unintended side effects
+
+**Trend tracking:**
+Metrics snapshots are saved to `./modularity-reports/{timestamp}.json` for historical comparison. Run periodically to ensure modularity is improving or stable, not degrading.
+
+**Usage:**
+```bash
+/readyq:review-modularity
+# Prompts for scope, then analyzes and proposes refactorings
+# Creates ReadyQ issues for selected refactorings
+```
+
 ### Acceptance Testing Command
 
 The `/readyq:acceptance-test` command validates web applications against ReadyQ acceptance criteria using Playwright MCP:
