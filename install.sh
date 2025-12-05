@@ -769,6 +769,26 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
     fi
 
     # ===========================
+    # Claude Code MCP Servers
+    # ===========================
+
+    print_header "Setting up Claude Code MCP servers"
+
+    # Install Puppeteer MCP server for acceptance testing agent
+    print_info "Installing Puppeteer MCP server for acceptance testing..."
+    if claude mcp list 2>/dev/null | grep -q "puppeteer"; then
+        print_success "Puppeteer MCP server already configured"
+    else
+        if claude mcp add --transport stdio puppeteer -- npx -y @modelcontextprotocol/server-puppeteer 2>/dev/null; then
+            print_success "Puppeteer MCP server installed"
+            print_info "Used by acceptance-tester agent for browser automation"
+        else
+            print_warning "Failed to install Puppeteer MCP server"
+            print_info "You can manually install it later with: claude mcp add --transport stdio puppeteer -- npx -y @modelcontextprotocol/server-puppeteer"
+        fi
+    fi
+
+    # ===========================
     # OpenCode CLI Configuration
     # ===========================
 

@@ -1,4 +1,4 @@
 {
-  "alwaysThinkingEnabled": false,
-  "model": "sonnet"
+  "model": "sonnet",
+  "alwaysThinkingEnabled": false
 }

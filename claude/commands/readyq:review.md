@@ -51,6 +51,28 @@
         <action>Find the build system job for running integration tests and ensure both client and server are running prior to running the integration tests</action>
         <reason>Think whether the integration tests cover acceptance criteria cases</reason>
     </phase>
+    <phase num="6.5" title="Run acceptance testing with Puppeteer" if="web application with URL available">
+        <action>Ask the user if they want to run automated acceptance tests with Puppeteer</action>
+        <choices>
+            <choice id="Yes" shortcut="y" />
+            <choice id="No" shortcut="n" />
+        </choices>
+        <action if="yes">Ask the user for the web application URL to test (e.g., http://localhost:3000, https://staging.example.com)</action>
+        <action if="yes">Launch the acceptance-tester agent using the Task tool with subagent_type="acceptance-tester"</action>
+        <action if="yes">Pass the URL and acceptance criteria from the ReadyQ story to the agent in the prompt parameter using this format:
+
+            url: {user_provided_url}
+
+            Test the following acceptance criteria from ReadyQ story {hashId}:
+            {acceptance_criteria_from_story}
+
+            Additional context:
+            {any_relevant_implementation_details}
+        </action>
+        <action if="yes">Review the acceptance test report returned by the agent</action>
+        <action if="yes">Add any failures or issues found to the list of proposed changes in the next phase</action>
+        <reason>Automated browser testing validates that acceptance criteria work in a real browser environment, catching UI/UX issues that unit and integration tests might miss</reason>
+    </phase>
     <phase num="7" title="Propose changes based on any flagged issues">
         <action>Propose a list of changes to make and why for the user to multi select to bring the changes made up to standards and passing acceptance criteria</action>
         <list>
