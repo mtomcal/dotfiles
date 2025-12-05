@@ -49,7 +49,6 @@ This dotfiles setup supports both **Claude Code** and **OpenCode CLI**:
 - Agents: Custom agents in `claude/agents/`
   - `code-quality-guardian`: Language-agnostic code quality reviewer (TypeScript, JS, Python, Go, Rust, Java, Kotlin)
   - `documentation-updater`: Automatically reviews git diffs and updates relevant documentation files
-  - `acceptance-tester`: Automated acceptance testing using Puppeteer browser automation
 - Settings: `claude/settings.json`
 
 **OpenCode CLI**:
@@ -254,37 +253,67 @@ The `documentation-updater` agent keeps documentation synchronized with code cha
 
 The agent ensures users always have accurate, up-to-date information about the project.
 
-### Acceptance Tester Agent
+### Acceptance Testing Command
 
-The `acceptance-tester` agent validates web applications against acceptance criteria using automated browser testing:
+The `/readyq:acceptance-test` command validates web applications against ReadyQ acceptance criteria using Playwright MCP:
 
 **Features:**
-- **Browser automation**: Uses Puppeteer MCP server for real browser interactions
-- **Comprehensive testing**: Validates UI, forms, navigation flows, and user interactions
+- **Direct Playwright MCP integration**: Uses Playwright tools directly in main conversation (no subagents)
+- **ReadyQ integration**: Pulls acceptance criteria from ReadyQ issues
+- **Browser automation**: Real browser interactions for UI, forms, and navigation testing
+- **Multiple browser contexts**: Support for multiplayer/multi-user testing scenarios
 - **Error detection**: Captures console errors, network issues, and visual bugs
 - **Screenshot capture**: Documents failures with visual evidence
 - **Structured reporting**: Provides detailed test reports with pass/fail status
+- **Fail-fast validation**: Stops immediately if URL is unreachable or Playwright unavailable
 
 **When to use:**
 - After implementing a new feature with UI components
 - Before deploying to staging or production
-- When validating acceptance criteria from requirements
+- When validating acceptance criteria from ReadyQ issues
 - After fixing UI bugs to verify the fix
 - For regression testing of critical user flows
+- **For multiplayer games**: Test combat, interactions between multiple players
+
+**Multiplayer Testing:**
+Playwright MCP's multiple browser context support makes it ideal for testing multiplayer scenarios:
+- Create separate browser contexts for each player
+- Simulate player 1 vs player 2 interactions (e.g., combat)
+- Verify state synchronization between players in real-time
+- Test that actions in one context correctly affect other contexts
+- Each context has isolated cookies, storage, and session state
 
 **How it works:**
-1. Receives target URL and acceptance criteria from conversation context
-2. Plans test scenarios based on acceptance criteria
-3. Uses Puppeteer to navigate, interact, and verify expected outcomes
-4. Monitors browser console for errors and warnings
-5. Captures screenshots of failures or unexpected behavior
-6. Generates structured test report with actionable feedback
+1. Pulls acceptance criteria from ReadyQ issue by hashId
+2. Validates dev server is running at provided URL (fail-fast)
+3. Plans test scenarios based on acceptance criteria
+4. Uses Playwright MCP tools to navigate, interact, and verify outcomes
+5. Creates multiple browser contexts if testing multiplayer scenarios
+6. Monitors browser console for errors and warnings in all contexts
+7. Captures screenshots of failures or unexpected behavior
+8. Generates structured test report with actionable feedback
+9. Optionally logs results back to ReadyQ issue
 
-**Required inputs:**
-- **url**: Web application URL to test (e.g., "http://localhost:3000")
-- **acceptance criteria**: Test scenarios from conversation or requirements
+**Prerequisites:**
+- Playwright MCP server must be configured globally (installed automatically by `./install.sh`)
+- Dev server must be running before executing tests
+- ReadyQ issue must contain acceptance criteria
 
-The agent requires the Puppeteer MCP server to be configured and available.
+**MCP Server Configuration:**
+The Playwright MCP server is installed globally (user scope) by `./install.sh`:
+```bash
+claude mcp add --scope user --transport stdio playwright -- npx -y @playwright/mcp@latest
+```
+
+This makes Playwright available in **all projects**, not just this dotfiles repository.
+
+**Usage:**
+```bash
+/readyq:acceptance-test
+# Prompts for ReadyQ hashId and URL, then runs browser tests
+# Works in any project because Playwright MCP is configured globally
+# Supports multiple browser contexts for multiplayer testing
+```
 
 ### AI Assistant Privacy
 

@@ -774,17 +774,18 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
 
     print_header "Setting up Claude Code MCP servers"
 
-    # Install Puppeteer MCP server for acceptance testing agent
-    print_info "Installing Puppeteer MCP server for acceptance testing..."
-    if claude mcp list 2>/dev/null | grep -q "puppeteer"; then
-        print_success "Puppeteer MCP server already configured"
+    # Install Playwright MCP server globally for acceptance testing
+    print_info "Installing Playwright MCP server globally for acceptance testing..."
+    if claude mcp list 2>/dev/null | grep -q "playwright"; then
+        print_success "Playwright MCP server already configured"
     else
-        if claude mcp add --transport stdio puppeteer -- npx -y @modelcontextprotocol/server-puppeteer 2>/dev/null; then
-            print_success "Puppeteer MCP server installed"
-            print_info "Used by acceptance-tester agent for browser automation"
+        if claude mcp add --scope user --transport stdio playwright -- npx -y @playwright/mcp@latest 2>/dev/null; then
+            print_success "Playwright MCP server installed globally (user scope)"
+            print_info "Available in all projects for /readyq:acceptance-test command"
+            print_info "Supports multiple browser contexts for multiplayer testing"
         else
-            print_warning "Failed to install Puppeteer MCP server"
-            print_info "You can manually install it later with: claude mcp add --transport stdio puppeteer -- npx -y @modelcontextprotocol/server-puppeteer"
+            print_warning "Failed to install Playwright MCP server"
+            print_info "You can manually install it later with: claude mcp add --scope user --transport stdio playwright -- npx -y @playwright/mcp@latest"
         fi
     fi
 
