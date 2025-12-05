@@ -49,6 +49,7 @@ This dotfiles setup supports both **Claude Code** and **OpenCode CLI**:
 - Agents: Custom agents in `claude/agents/`
   - `code-quality-guardian`: Language-agnostic code quality reviewer (TypeScript, JS, Python, Go, Rust, Java, Kotlin)
   - `documentation-updater`: Automatically reviews git diffs and updates relevant documentation files
+  - `acceptance-tester`: Automated acceptance testing using Puppeteer browser automation
 - Settings: `claude/settings.json`
 
 **OpenCode CLI**:
@@ -252,6 +253,38 @@ The `documentation-updater` agent keeps documentation synchronized with code cha
 6. Provides clear rationale linking changes to code
 
 The agent ensures users always have accurate, up-to-date information about the project.
+
+### Acceptance Tester Agent
+
+The `acceptance-tester` agent validates web applications against acceptance criteria using automated browser testing:
+
+**Features:**
+- **Browser automation**: Uses Puppeteer MCP server for real browser interactions
+- **Comprehensive testing**: Validates UI, forms, navigation flows, and user interactions
+- **Error detection**: Captures console errors, network issues, and visual bugs
+- **Screenshot capture**: Documents failures with visual evidence
+- **Structured reporting**: Provides detailed test reports with pass/fail status
+
+**When to use:**
+- After implementing a new feature with UI components
+- Before deploying to staging or production
+- When validating acceptance criteria from requirements
+- After fixing UI bugs to verify the fix
+- For regression testing of critical user flows
+
+**How it works:**
+1. Receives target URL and acceptance criteria from conversation context
+2. Plans test scenarios based on acceptance criteria
+3. Uses Puppeteer to navigate, interact, and verify expected outcomes
+4. Monitors browser console for errors and warnings
+5. Captures screenshots of failures or unexpected behavior
+6. Generates structured test report with actionable feedback
+
+**Required inputs:**
+- **url**: Web application URL to test (e.g., "http://localhost:3000")
+- **acceptance criteria**: Test scenarios from conversation or requirements
+
+The agent requires the Puppeteer MCP server to be configured and available.
 
 ### AI Assistant Privacy
 

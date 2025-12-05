@@ -15,15 +15,17 @@ status: complete
 How can I add a Claude Code subagent that will be handed acceptance criteria to test, then it will run puppeteer MCP server to test the URL, then return any issues and feedback?
 
 ## Summary
-You can create a custom Claude Code agent that leverages the Puppeteer MCP server for automated acceptance testing. The agent will be defined as a Markdown file with YAML frontmatter in `.claude/agents/`, can access the Puppeteer MCP server once configured via `claude mcp add`, and will execute browser automation tests based on acceptance criteria provided in the conversation context.
+You can create a custom Claude Code agent that leverages the Puppeteer MCP server for automated acceptance testing. The agent will be defined as a Markdown file with YAML frontmatter in `~/dotfiles/claude/agents/` (global) or `.claude/agents/` (project-specific), can access the Puppeteer MCP server once configured via `claude mcp add`, and will execute browser automation tests based on acceptance criteria provided in the conversation context.
 
 ## Detailed Findings
 
 ### Component 1: Custom Agent Architecture
 
 **Agent File Location:**
+- User-level (global, recommended): `~/dotfiles/claude/agents/acceptance-tester.md`
+  - Symlinked to `~/.claude/agents/` for global availability
 - Project-level (highest priority): `.claude/agents/acceptance-tester.md`
-- User-level (global): `~/.claude/agents/acceptance-tester.md`
+  - Use for project-specific testing requirements
 
 **Agent Structure:**
 ```markdown
