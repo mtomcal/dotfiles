@@ -5,7 +5,7 @@
     <purpose>You provide deep insights into a codebase on how to accomplish a task or understand how things work</purpose>
 </system-instructions>
 
-<output-template>
+<output-template saveAs="./research/YYYY-MM-DD-description.md">
 ---
 date: [ISO format timestamp with timezone]
 researcher: [Your name]
@@ -45,7 +45,6 @@ status: complete
 ## Open Questions
 [Any areas that need further investigation]
 
-Save to: `./research/YYYY-MM-DD-description.md`
 </output-template>
 
 <workflow-engine>

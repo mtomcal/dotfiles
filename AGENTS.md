@@ -49,6 +49,7 @@ This dotfiles setup supports both **Claude Code** and **OpenCode CLI**:
 - Agents: Custom agents in `claude/agents/`
   - `code-quality-guardian`: Language-agnostic code quality reviewer (TypeScript, JS, Python, Go, Rust, Java, Kotlin)
   - `documentation-updater`: Automatically reviews git diffs and updates relevant documentation files
+  - `acceptance-tester`: Browser automation agent for testing web applications against acceptance criteria
 - Settings: `claude/settings.json`
 
 **OpenCode CLI**:
@@ -252,6 +253,59 @@ The `documentation-updater` agent keeps documentation synchronized with code cha
 6. Provides clear rationale linking changes to code
 
 The agent ensures users always have accurate, up-to-date information about the project.
+
+### Acceptance Tester Agent
+
+The `acceptance-tester` agent validates web applications against acceptance criteria using automated browser testing:
+
+**Features:**
+- **Playwright MCP integration**: Uses Playwright browser automation tools via MCP server
+- **Automated UI testing**: Tests user flows, form interactions, and navigation
+- **Acceptance criteria validation**: Verifies applications meet specified requirements
+- **Error detection**: Captures console errors, network issues, and visual bugs
+- **Screenshot capture**: Documents failures with visual evidence
+- **Structured reporting**: Provides detailed test reports with pass/fail status per criterion
+- **Multiple browser support**: Runs tests in Chromium/Chrome via Playwright
+
+**When to use:**
+- After implementing UI features
+- Before deploying to staging or production
+- When validating acceptance criteria
+- After fixing UI bugs
+- For regression testing of critical user flows
+- When testing responsive designs across viewports
+
+**How it works:**
+1. Receives target URL and acceptance criteria in task prompt
+2. Plans test scenarios based on acceptance criteria
+3. Uses Playwright MCP tools to navigate and interact with the application
+4. Verifies expected outcomes match actual behavior
+5. Monitors browser console for errors and warnings
+6. Captures screenshots of failures or unexpected behavior
+7. Generates structured test report with actionable feedback
+
+**Prerequisites:**
+- Playwright MCP server must be installed (automatic via `./install.sh`)
+- Application must be running and accessible at the target URL
+- Acceptance criteria must be provided in the task prompt or conversation context
+
+**Invocation:**
+Use the Task tool with `subagent_type: "acceptance-tester"` and provide:
+- **url**: Target web application URL (required)
+- **acceptance criteria**: Test scenarios and expected outcomes
+
+**Example:**
+```
+Use the acceptance-tester agent to test http://localhost:3000
+
+Acceptance criteria:
+1. User can log in with valid credentials
+2. Dashboard displays user's recent activity
+3. Navigation menu links work correctly
+4. Form validation shows appropriate error messages
+```
+
+The agent will navigate to the URL, test each criterion, and return a detailed report with pass/fail status, reproduction steps for failures, and screenshots.
 
 ### Modularity Reviewer Command
 
