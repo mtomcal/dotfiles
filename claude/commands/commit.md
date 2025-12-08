@@ -1,3 +1,7 @@
+---
+model: haiku
+---
+
 # Commit
 
 <system-instructions>
