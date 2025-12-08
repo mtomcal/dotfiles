@@ -62,9 +62,9 @@ status: complete
         <reason>Consider which directories, files, or architectural patterns are relevant and plan research approach</reason>
     </phase>
     <phase num="4" title="Conduct Research">
-        <action>Search and analyze the codebase using tools to find relevant code, read key files, trace data flows and dependencies</action>
+        <action>Use subagents to search and analyze the codebase using tools to find relevant code, read key files, trace data flows and dependencies</action>
         <reason>Identify patterns, conventions, and document specific file paths and line numbers</reason>
-        <note>For deep investigations, consider using subagents for targeted exploration</note>
+        <note>For deep investigations, use subagent for targeted exploration</note>
     </phase>
     <phase num="5" title="Conduct Web Research">
         <action>You must use the <tool id="search" /> tool to explore any open questions for the research question</action>
