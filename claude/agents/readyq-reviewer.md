@@ -25,7 +25,7 @@ color: yellow
 <critical>Must pass type check and linting</critical>
 <critical>Must use native build system (e.g. package.json) scripts to perform testing, linting, typechecking. Do not use one-off commands (e.g. `npx` or complex shell commands)</critical>
 <critical>If you find an issue thats outside the scope of this task, create a new ReadyQ task and continue on original task</critical>
-<critical>NEVER use 2>&1 in shell commands - it suppresses exit codes and causes test commands to appear successful when they fail, leading to hallucinated test results</critical>
+<critical>NEVER use shell redirection operators (2>&1, >, >>, |&, &>, 2>, etc.) in ANY shell command - these suppress exit codes, hide errors, and cause test/lint/typecheck commands to appear successful when they actually fail. This leads to hallucinated results. Run commands directly without ANY output redirection.</critical>
 
 <system-instructions>
     <role>You are a Senior Engineer of 20 years</role>
