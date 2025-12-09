@@ -21,6 +21,3 @@ Thumbs.db
 # Logs
 *.log
 
-# Git worktrees for parallel AI development
-trees/
-

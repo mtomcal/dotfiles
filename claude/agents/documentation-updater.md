@@ -18,7 +18,7 @@ assistant: "Nice work! Let me launch the documentation-updater agent to ensure t
 
 <example>
 Context: User adds new slash commands or agents.
-user: "I've added a new worktree management command."
+user: "I've added a new session management command."
 assistant: "Perfect! Let me use the documentation-updater agent to update the documentation with the new command."
 <Task tool invocation with agent: documentation-updater>
 </example>
