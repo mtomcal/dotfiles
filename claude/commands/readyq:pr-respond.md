@@ -37,10 +37,13 @@
     <phase num="2" title="Fetch PR Data">
         <action>Run gh pr view {pr_number} --json title,body,state,author,url to get PR metadata</action>
         <action>Run gh pr diff {pr_number} to get full code changes</action>
-        <action>Run gh api repos/{owner}/{repo}/pulls/{pr_number}/comments --jq '.[] | {id: .id, author: .user.login, body: .body, path: .path, line: .line, created_at: .created_at}' to get inline comments</action>
-        <action>Run gh api repos/{owner}/{repo}/pulls/{pr_number}/reviews --jq '.[] | select(.body != "") | {id: .id, author: .user.login, state: .state, body: .body, created_at: .submitted_at}' to get review comments</action>
-        <action>Run gh api repos/{owner}/{repo}/issues/{pr_number}/comments --jq '.[] | {id: .id, author: .user.login, body: .body, created_at: .created_at}' to get general PR conversation comments</action>
-        <reason>Gather all PR context: metadata, code changes, and all comment threads (inline, review, and conversation)</reason>
+        <action>Fetch inline comments: gh api repos/{owner}/{repo}/pulls/{pr_number}/comments</action>
+        <action>Parse inline comments to extract: id, author (user.login), body, path, line, created_at</action>
+        <action>Fetch review comments: gh api repos/{owner}/{repo}/pulls/{pr_number}/reviews</action>
+        <action>Parse review comments to extract: id, author (user.login), state, body, submitted_at (only if body is not empty)</action>
+        <action>Fetch conversation comments: gh api repos/{owner}/{repo}/issues/{pr_number}/comments</action>
+        <action>Parse conversation comments to extract: id, author (user.login), body, created_at</action>
+        <reason>Gather all PR context: metadata, code changes, and all comment threads. Parse JSON manually to avoid jq escaping issues.</reason>
     </phase>
 
     <phase num="3" title="Identify Unanswered Questions">
@@ -88,13 +91,17 @@ Found {count} unanswered comment(s):
             - Display the response content to user
             - Post to GitHub immediately (no approval needed - you ran this command when ready)
         </action>
+        <action>Determine comment type and reply appropriately:
+            - If replying to inline comment (has comment_id from phase 2): Reply in thread using in_reply_to
+            - If replying to review comment (has comment_id from phase 2): Reply in thread using in_reply_to
+            - Otherwise: Post as general PR comment
+        </action>
         <action>
-            <condition>If comment was inline (has path and line)</condition>
-            <action-if-true>Get latest commit SHA: gh api repos/{owner}/{repo}/pulls/{pr_number}/commits --jq '.[-1].sha'</action-if-true>
-            <action-if-true>Run gh api repos/{owner}/{repo}/pulls/{pr_number}/comments -X POST -f body="claude: {response}" -f commit_id={latest_commit} -f path={path} -F line={line}</action-if-true>
+            <condition>If replying to existing comment (has comment_id)</condition>
+            <action-if-true>Run gh api repos/{owner}/{repo}/pulls/{pr_number}/comments -X POST -f body="claude: {response}" -F in_reply_to={comment_id}</action-if-true>
             <action-if-false>Run gh pr comment {pr_number} --body "claude: {response}"</action-if-false>
         </action>
-        <reason>Post responses directly to PR, prefixed with "claude:" for identification. Responses are posted automatically.</reason>
+        <reason>Reply in the same thread as the original comment using in_reply_to parameter (use -F flag for numeric values). This keeps conversations organized and context clear.</reason>
         <note>All responses prefixed with "claude:" so reviewers know it's an AI response</note>
     </phase>
 

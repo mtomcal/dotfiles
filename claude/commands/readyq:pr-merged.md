@@ -28,9 +28,9 @@
             <action-if-true>Extract owner, repo, and PR number from URL</action-if-true>
             <action-if-false>Ask user for PR URL or PR number</action-if-false>
         </decision>
-        <action>Run <tool id="cli" command="gh pr view {pr_number} --json merged,mergedAt,mergedBy,state" /> to check PR status</action>
+        <action>Run <tool id="cli" command="gh pr view {pr_number} --json state,mergedAt,mergedBy" /> to check PR status</action>
         <decision>
-            <condition>If PR is not merged (merged: false)</condition>
+            <condition>If PR is not merged (mergedAt is null)</condition>
             <action-if-true>Display warning: "PR #{pr_number} is not merged yet (state: {state}). Cannot mark issue as done."</action-if-true>
             <action-if-true>Exit workflow</action-if-true>
             <action-if-false>Proceed to mark issue as done</action-if-false>
