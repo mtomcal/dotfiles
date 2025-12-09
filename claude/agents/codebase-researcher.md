@@ -24,9 +24,7 @@ assistant: "I'll use the codebase-researcher agent to analyze error handling pat
 </example>
 model: sonnet
 color: purple
-tools:
-  - WebSearch
-  - WebFetch
+tools: Read, Write, Edit, Glob, Grep, WebSearch, WebFetch
 ---
 
 # Research Codebase
