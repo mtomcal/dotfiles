@@ -129,6 +129,8 @@ install_package "tmux" "tmux"
 # Note: Neovim is installed later via AppImage (Ubuntu) or brew (macOS)
 install_package "ripgrep" "ripgrep"
 install_package "zsh" "zsh"
+install_package "jq" "jq"
+install_package "gh" "gh"
 
 # Platform-specific packages
 if [ "$OS" == "ubuntu" ]; then

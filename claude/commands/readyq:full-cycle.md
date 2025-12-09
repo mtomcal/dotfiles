@@ -96,15 +96,10 @@
             <action-if-false>Proceed to phase 7</action-if-false>
         </decision>
     </phase>
-    <phase num="7" title="Complete ReadyQ Issue">
+    <phase num="7" title="Log ReadyQ Progress">
         <action>Summarize the full cycle: implementation, reviews performed</action>
-        <action>Ask user whether to move the story to done</action>
-        <choices>
-            <choice id="Yes" shortcut="y" />
-            <choice id="No" shortcut="n" />
-        </choices>
-        <action if="yes">Run <tool id="cli" command="./readyq.py update {hashId} --status done --log {full cycle summary}" /></action>
-        <action if="no">Run <tool id="cli" command="./readyq.py update {hashId} --log {full cycle summary}" /> without status change</action>
+        <action>Run <tool id="cli" command="./readyq.py update {hashId} --log {full cycle summary}" /> to log progress</action>
+        <reason>Keep issue in_progress until PR is merged. Issues should only move to done after merge, not after commit.</reason>
     </phase>
     <phase num="8" title="Commit Phase">
         <action>Run <tool id="cli" command="git add ." /></action>
@@ -131,11 +126,69 @@ Next Steps:
         <action>Run <tool id="cli" command="git commit -m {output}" /></action>
     </phase>
     <phase num="9" title="Push to Remote">
-        <action>Ask user whether to push to remote</action>
+        <action>Run <tool id="cli" command="git branch --show-current" /> to get current branch name</action>
+        <decision>
+            <condition>If current branch is "main" or "master"</condition>
+            <action-if-true>Ask user whether to push to remote</action-if-true>
+            <action-if-false>Automatically push feature branch to remote</action-if-false>
+        </decision>
+        <action if="main-branch">Ask user whether to push to remote</action>
         <choices>
             <choice id="Yes" shortcut="y" />
             <choice id="No" shortcut="n" />
         </choices>
-        <action if="yes">Run <tool id="cli" command="git push" /></action>
+        <action if="main-and-yes">Run <tool id="cli" command="git push" /></action>
+        <action if="feature-branch">Run <tool id="cli" command="git push -u origin HEAD" /> to push and set upstream</action>
+        <reason>Feature branches need to be pushed before PR creation. Main branch requires user confirmation.</reason>
+    </phase>
+    <phase num="10" title="Create Pull Request">
+        <action>Run <tool id="cli" command="git branch --show-current" /> to get current branch name</action>
+        <decision>
+            <condition>If current branch is "main" or "master"</condition>
+            <action-if-true>Skip PR creation (already on main branch)</action-if-true>
+            <action-if-false>Check if PR already exists for this branch</action-if-false>
+        </decision>
+        <action if="feature-branch">Run <tool id="cli" command="./readyq.py show {hashId}" /> to read issue logs</action>
+        <action if="feature-branch">Search logs for "Pull Request:" entry to check if PR already exists</action>
+        <decision>
+            <condition>If PR URL found in logs</condition>
+            <action-if-true>Skip PR creation (PR already exists, push updated it automatically)</action-if-true>
+            <action-if-true>Display message: "PR already exists: {PR_URL}. New commits have been pushed to the existing PR."</action-if-true>
+            <action-if-false>Proceed with PR creation</action-if-false>
+        </decision>
+        <action if="no-existing-pr">Extract ReadyQ issue title, description, and acceptance criteria</action>
+        <action if="no-existing-pr">Extract commit message from phase 8 for PR body</action>
+        <action if="no-existing-pr">Create PR using gh pr create with HEREDOC body template:
+            <template>
+gh pr create \
+  --title "{conventional-commit-topic}: {ReadyQ issue title}" \
+  --body "$(cat &lt;&lt;'EOF'
+## Summary
+{Summary from commit message}
+
+## ReadyQ Issue
+- **HashId**: {hashId}
+- **Title**: {issue title}
+- **Status**: {status}
+
+## Changes
+{Detailed changes from commit message}
+
+## Acceptance Criteria
+{Pulled from ReadyQ issue description}
+
+## Next Steps
+{From commit message next steps}
+
+---
+📋 **ReadyQ Integration**: This PR implements ReadyQ issue {hashId}
+🤖 Review by running `/readyq:pr-respond {hashId}` for AI-assisted review
+EOF
+)"
+            </template>
+        </action>
+        <action if="no-existing-pr">Capture PR URL from gh pr create output (it prints to stdout)</action>
+        <action if="no-existing-pr">Run <tool id="cli" command="./readyq.py update {hashId} --log 'Pull Request: {PR_URL}'" /> to log PR URL back to ReadyQ</action>
+        <reason>Automatically create PR for feature branches on first run. Subsequent runs detect existing PR and just push new commits to update it.</reason>
     </phase>
 </workflow>
