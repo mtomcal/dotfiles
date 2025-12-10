@@ -23,7 +23,31 @@
 
 <template-variable>
     <symbol>{hashId}</symbol>
-    <description>The ReadyQ issue hashId to process through the full cycle</description>
+    <description>The ReadyQ issue hashId to process through the full cycle (required argument)</description>
+    <required>true</required>
+</template-variable>
+
+<template-variable>
+    <symbol>{research}</symbol>
+    <description>Boolean flag to enable/disable codebase research before implementation. Values: "true" or "false". If "true", orchestrator analyzes the ReadyQ issue and determines appropriate research query for Phase 2. If "false", skips directly to Phase 3 (Implementation).</description>
+    <optional>true</optional>
+    <default>false</default>
+</template-variable>
+
+<template-variable>
+    <symbol>{codeReviewPasses}</symbol>
+    <description>Number of code review passes to perform in Phase 4. Set to 0 to skip code review. Default is 2 for thorough review. Higher values provide more verification cycles.</description>
+    <optional>true</optional>
+    <default>2</default>
+    <minimum>0</minimum>
+</template-variable>
+
+<template-variable>
+    <symbol>{testReviewPasses}</symbol>
+    <description>Number of test review passes to perform in Phase 5. Set to 0 to skip test review. Default is 2 for thorough test validation. Higher values provide more verification cycles.</description>
+    <optional>true</optional>
+    <default>2</default>
+    <minimum>0</minimum>
 </template-variable>
 
 <workflow>
@@ -64,19 +88,18 @@ Action required:
     </phase>
     <phase num="1" title="Initial Setup">
         <action>Run <tool id="cli" command="./readyq.py quickstart" /> to learn ReadyQ CLI commands</action>
-        <action>Ask user for the ReadyQ issue hashId to process</action>
         <action>Run <tool id="cli" command="./readyq.py show {hashId}" /> to read the full story</action>
-        <action>Ask user if they want to run codebase research before implementation</action>
-        <choices>
-            <choice id="Yes" shortcut="y" />
-            <choice id="No" shortcut="n" />
-        </choices>
-        <action if="yes">Proceed to phase 2 (Research Phase)</action>
-        <action if="no">Skip to phase 3 (Implementation Phase)</action>
+        <decision>
+            <condition>If {research} parameter is "true"</condition>
+            <action-if-true>Proceed to phase 2 (Research Phase)</action-if-true>
+            <action-if-false>Skip to phase 3 (Implementation Phase)</action-if-false>
+        </decision>
         <action>Confirm with user before proceeding with full cycle</action>
     </phase>
     <phase num="2" title="Research Phase" optional="true">
-        <action>Launch <tool id="subagent" type="codebase-researcher" /> with a research query based on the ReadyQ issue</action>
+        <action>Analyze the ReadyQ issue title, description, and acceptance criteria</action>
+        <action>Formulate a focused research query to understand relevant codebase patterns, architecture, and implementation approaches</action>
+        <action>Launch <tool id="subagent" type="codebase-researcher" /> with the formulated research query</action>
         <action>Wait for subagent to complete - it will return ONLY the path to the research document</action>
         <action>Log the research document path to ReadyQ: <tool id="cli" command="./readyq.py update {hashId} --log 'READ THIS Research document: {research_doc_path}'" /></action>
         <reason>Subagents can read the research document from the path logged in ReadyQ to get better context</reason>
@@ -94,32 +117,40 @@ Action required:
         <loop max="3">Repeat implementation subagent until work is complete or max iterations reached</loop>
     </phase>
     <phase num="4" title="Code Review Phase">
-        <action>Launch <tool id="subagent" type="readyq-reviewer" /> with the hashId (FIRST PASS - MANDATORY)</action>
-        <action>Wait for subagent to complete</action>
-        <action>Run <tool id="cli" command="./readyq.py show {hashId}" /> to read updated logs</action>
-        <action>Launch <tool id="subagent" type="readyq-reviewer" /> with the hashId (SECOND PASS - MANDATORY verification)</action>
-        <action>Wait for subagent to complete</action>
-        <action>Run <tool id="cli" command="./readyq.py show {hashId}" /> to read updated logs</action>
         <decision>
-            <condition>If second code review found and fixed issues</condition>
-            <action-if-true>Launch another readyq-reviewer subagent to verify fixes</action-if-true>
+            <condition>If {codeReviewPasses} is 0</condition>
+            <action-if-true>Skip code review phase entirely - proceed to phase 5</action-if-true>
+            <action-if-false>Perform {codeReviewPasses} code review passes</action-if-false>
+        </decision>
+        <loop count="{codeReviewPasses}">
+            <action>Launch <tool id="subagent" type="readyq-reviewer" /> with the hashId (PASS {current_iteration})</action>
+            <action>Wait for subagent to complete</action>
+            <action>Run <tool id="cli" command="./readyq.py show {hashId}" /> to read updated logs</action>
+        </loop>
+        <decision>
+            <condition>If final code review pass found and fixed issues</condition>
+            <action-if-true>Launch one additional readyq-reviewer subagent to verify fixes</action-if-true>
             <action-if-false>Proceed to phase 5</action-if-false>
         </decision>
-        <loop min="2" max="4">MUST run code review minimum 2x, repeat until no issues found or max iterations reached</loop>
+        <reasoning>Multiple review passes ensure thorough code quality verification. Set to 0 to skip if needed. Additional pass triggered if final pass made changes.</reasoning>
     </phase>
     <phase num="5" title="Test Review Phase">
-        <action>Launch <tool id="subagent" type="readyq-test-reviewer" /> with the hashId (FIRST PASS - MANDATORY)</action>
-        <action>Wait for subagent to complete</action>
-        <action>Run <tool id="cli" command="./readyq.py show {hashId}" /> to read updated logs</action>
-        <action>Launch <tool id="subagent" type="readyq-test-reviewer" /> with the hashId (SECOND PASS - MANDATORY verification)</action>
-        <action>Wait for subagent to complete</action>
-        <action>Run <tool id="cli" command="./readyq.py show {hashId}" /> to read updated logs</action>
         <decision>
-            <condition>If second test review found and fixed issues</condition>
-            <action-if-true>Launch another readyq-test-reviewer subagent to verify fixes</action-if-true>
+            <condition>If {testReviewPasses} is 0</condition>
+            <action-if-true>Skip test review phase entirely - proceed to phase 6</action-if-true>
+            <action-if-false>Perform {testReviewPasses} test review passes</action-if-false>
+        </decision>
+        <loop count="{testReviewPasses}">
+            <action>Launch <tool id="subagent" type="readyq-test-reviewer" /> with the hashId (PASS {current_iteration})</action>
+            <action>Wait for subagent to complete</action>
+            <action>Run <tool id="cli" command="./readyq.py show {hashId}" /> to read updated logs</action>
+        </loop>
+        <decision>
+            <condition>If final test review pass found and fixed issues</condition>
+            <action-if-true>Launch one additional readyq-test-reviewer subagent to verify fixes</action-if-true>
             <action-if-false>Proceed to phase 6</action-if-false>
         </decision>
-        <loop min="2" max="4">MUST run test review minimum 2x, repeat until no issues found or max iterations reached</loop>
+        <reasoning>Multiple test review passes ensure thorough test quality verification. Set to 0 to skip if needed. Additional pass triggered if final pass made changes.</reasoning>
     </phase>
     <phase num="6" title="Final Verification">
         <action>Run typecheck from project build file</action>
