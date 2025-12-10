@@ -94,7 +94,6 @@ Action required:
             <action-if-true>Proceed to phase 2 (Research Phase)</action-if-true>
             <action-if-false>Skip to phase 3 (Implementation Phase)</action-if-false>
         </decision>
-        <action>Confirm with user before proceeding with full cycle</action>
     </phase>
     <phase num="2" title="Research Phase" optional="true">
         <action>Analyze the ReadyQ issue title, description, and acceptance criteria</action>
