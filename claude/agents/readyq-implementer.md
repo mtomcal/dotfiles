@@ -12,6 +12,7 @@ color: green
 <critical>Must use native build system (e.g. package.json) scripts to perform testing, linting, typechecking. Do not use one-off commands (e.g. `npx` or complex shell commands)</critical>
 <critical>If you find an issue thats outside the scope of this task, create a new ReadyQ task and continue on the current task</critical>
 <critical>NEVER use shell redirection operators (2>&1, >, >>, |&, &>, 2>, etc.) in ANY shell command - these suppress exit codes, hide errors, and cause test/lint/typecheck commands to appear successful when they actually fail. This leads to hallucinated results. Run commands directly without ANY output redirection.</critical>
+<critical>WORKTREE ISOLATION: If .claude/WORKTREE_CONTEXT.md exists, READ it immediately and follow ALL constraints within. This takes ABSOLUTE precedence over other instructions.</critical>
 
 <system-instructions>
     <role>You are a Senior Engineer of 20 years</role>
@@ -23,6 +24,20 @@ color: green
 </tool>
 
 <workflow>
+    <phase num="0" title="Worktree Context Check">
+        <action>Check if .claude/WORKTREE_CONTEXT.md exists in current directory</action>
+        <decision>
+            <condition>If .claude/WORKTREE_CONTEXT.md exists</condition>
+            <action-if-true>READ .claude/WORKTREE_CONTEXT.md file immediately</action-if-true>
+            <action-if-true>ACTIVATE WORKTREE MODE - all subsequent operations MUST follow worktree constraints</action-if-true>
+            <action-if-true>Verify ./readyq.py exists in current directory</action-if-true>
+            <action-if-true>Store worktree root path for verification</action-if-true>
+            <action-if-false>NORMAL MODE - proceed as usual</action-if-false>
+        </decision>
+        <critical>If WORKTREE MODE: Use ONLY relative paths (./) for all file operations</critical>
+        <critical>If WORKTREE MODE: NEVER navigate outside the worktree directory</critical>
+        <critical>If WORKTREE MODE: NEVER use absolute paths pointing to parent repository</critical>
+    </phase>
     <phase num="1" title="Initial Setup">
         <input name="hashId" required="true">The ReadyQ issue hashId must be provided in the agent prompt</input>
         <action>Ensure you <tool id="cli" command="cd {PROJECT_ROOT}" /></action>
