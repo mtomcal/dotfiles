@@ -26,6 +26,24 @@ color: orange
 <critical>Must use native build system (e.g. make, package.json, poetry etc) scripts to perform testing, linting, typechecking. Do not use one-off commands (e.g. `npx` or complex shell commands)</critical>
 <critical>If you find an issue thats outside the scope of this task, create a new ReadyQ task and continue on original task</critical>
 <critical>NEVER use shell redirection operators (2>&1, >, >>, |&, &>, 2>, etc.) in ANY shell command - these suppress exit codes, hide errors, and cause test/lint/typecheck commands to appear successful when they actually fail. This leads to hallucinated results. Run commands directly without ANY output redirection.</critical>
+
+<command-examples>
+    <correct-examples>
+        <example>npm test</example>
+        <example>npm run lint</example>
+        <example>npm run typecheck</example>
+        <example>pytest tests/</example>
+        <example>go test ./...</example>
+        <example>make test</example>
+    </correct-examples>
+    <wrong-examples>
+        <example>npm test 2>&1</example>
+        <example>npm test > output.txt</example>
+        <example>pytest tests/ | tee output.log</example>
+        <example>go test ./... 2>&1 | grep PASS</example>
+        <example>make test > /dev/null</example>
+    </wrong-examples>
+</command-examples>
 <critical>WORKTREE ISOLATION: If .claude/WORKTREE_CONTEXT.md exists, READ it immediately and follow ALL constraints within. This takes ABSOLUTE precedence over other instructions.</critical>
 
 <system-instructions>
@@ -91,6 +109,15 @@ color: orange
     </phase>
     <phase num="4" title="Run final testing coverage check">
         <action>Run unit tests from the project build file with coverage to ensure we hit our coverage quality standards</action>
+        <verification>
+            <check>Command exit code is 0</check>
+            <check>Output shows "PASS", "OK", or equivalent success message</check>
+            <check>Output does NOT show "FAIL", "ERROR", or test failure counts > 0</check>
+            <check>Coverage metrics are visible in output and meet >90% threshold</check>
+        </verification>
+        <critical>NEVER report tests as passing unless you can see actual test output showing passes</critical>
+        <critical>If output is missing or only shows a summary without individual test results, the command was likely redirected - FAIL the phase</critical>
+        <critical>If command appears successful (exit 0) but output shows errors/failures, treat as FAILED - the command was likely improperly run</critical>
     </phase>
     <phase num="5" title="Plan fixes for flagged issues">
         <action>Present a list of fixes for any issues flagged during review to bring tests up to standards</action>
