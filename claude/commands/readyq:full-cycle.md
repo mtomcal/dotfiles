@@ -51,20 +51,8 @@
 </template-variable>
 
 <workflow>
-    <phase num="0" title="Worktree Detection and Path Enforcement">
+    <phase num="0" title="Validate Execution Context">
         <action>Run <tool id="cli" command="pwd" /> to get current working directory</action>
-        <action>Run <tool id="cli" command="git rev-parse --show-toplevel" /> to get repository root</action>
-        <action>Check if .claude/WORKTREE_CONTEXT.md exists in current directory</action>
-        <decision>
-            <condition>If WORKTREE_CONTEXT.md exists OR current directory contains "/trees/"</condition>
-            <action-if-true>WORKTREE MODE ACTIVATED</action-if-true>
-            <action-if-true>Read .claude/WORKTREE_CONTEXT.md if it exists to load worktree constraints</action-if-true>
-            <action-if-true>Store worktree root path as WORKTREE_ROOT</action-if-true>
-            <action-if-false>NORMAL MODE - proceed as usual</action-if-false>
-        </decision>
-        <critical>If WORKTREE MODE: ALL subsequent file operations MUST use relative paths (./) or paths verified to be within WORKTREE_ROOT</critical>
-        <critical>If WORKTREE MODE: NEVER use cd to navigate outside WORKTREE_ROOT</critical>
-        <critical>If WORKTREE MODE: NEVER use absolute paths that point to parent repository</critical>
         <action>Verify ./readyq.py exists in current directory</action>
         <decision>
             <condition>If ./readyq.py NOT found</condition>
@@ -78,13 +66,13 @@ Current directory: {pwd output}
 Expected: Directory containing readyq.py
 
 Action required:
-- If in a worktree: cd to trees/{worktree-folder}/
+- If in a worktree: cd to ../{repo-name}-worktrees/{worktree-folder}/
 - If in main repo: cd to repository root
 - Then run this command again
             </error-message>
             <action-if-false>Proceed to Phase 1</action-if-false>
         </decision>
-        <reasoning>Detects worktree environment and enforces strict path constraints to prevent operations on parent repository. Validates execution context before proceeding.</reasoning>
+        <reasoning>Validates execution context is in correct directory. Sibling worktree structure prevents accidental parent repo operations.</reasoning>
     </phase>
     <phase num="1" title="Initial Setup">
         <action>Run <tool id="cli" command="./readyq.py quickstart" /> to learn ReadyQ CLI commands</action>

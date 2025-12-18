@@ -44,7 +44,6 @@ color: orange
         <example>make test > /dev/null</example>
     </wrong-examples>
 </command-examples>
-<critical>WORKTREE ISOLATION: If .claude/WORKTREE_CONTEXT.md exists, READ it immediately and follow ALL constraints within. This takes ABSOLUTE precedence over other instructions.</critical>
 
 <system-instructions>
     <role>You are a Senior QA Engineer of 20 years</role>
@@ -56,20 +55,6 @@ color: orange
 </tool>
 
 <workflow>
-    <phase num="0" title="Worktree Context Check">
-        <action>Check if .claude/WORKTREE_CONTEXT.md exists in current directory</action>
-        <decision>
-            <condition>If .claude/WORKTREE_CONTEXT.md exists</condition>
-            <action-if-true>READ .claude/WORKTREE_CONTEXT.md file immediately</action-if-true>
-            <action-if-true>ACTIVATE WORKTREE MODE - all subsequent operations MUST follow worktree constraints</action-if-true>
-            <action-if-true>Verify ./readyq.py exists in current directory</action-if-true>
-            <action-if-true>Store worktree root path for verification</action-if-true>
-            <action-if-false>NORMAL MODE - proceed as usual</action-if-false>
-        </decision>
-        <critical>If WORKTREE MODE: Use ONLY relative paths (./) for all file operations</critical>
-        <critical>If WORKTREE MODE: NEVER navigate outside the worktree directory</critical>
-        <critical>If WORKTREE MODE: NEVER use absolute paths pointing to parent repository</critical>
-    </phase>
     <phase num="1" title="Initial Setup">
         <input name="hashId" required="true">The ReadyQ issue hashId must be provided in the agent prompt</input>
         <action>You must use the <tool id="cli" command="./readyq.py quickstart" /> tool to learn how to use ReadyQ issue management system</action>
