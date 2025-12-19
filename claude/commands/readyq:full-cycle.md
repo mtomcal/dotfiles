@@ -77,11 +77,30 @@ Action required:
     <phase num="1" title="Initial Setup">
         <action>Run <tool id="cli" command="./readyq.py quickstart" /> to learn ReadyQ CLI commands</action>
         <action>Run <tool id="cli" command="./readyq.py show {hashId}" /> to read the full story</action>
+        <action>Extract the story title from the ReadyQ output</action>
         <decision>
             <condition>If {research} parameter is "true"</condition>
-            <action-if-true>Proceed to phase 2 (Research Phase)</action-if-true>
-            <action-if-false>Skip to phase 3 (Implementation Phase)</action-if-false>
+            <action-if-true>Proceed to phase 1.5 (Branch Setup) then phase 2 (Research Phase)</action-if-true>
+            <action-if-false>Proceed to phase 1.5 (Branch Setup) then skip to phase 3 (Implementation Phase)</action-if-false>
         </decision>
+    </phase>
+    <phase num="1.5" title="Branch Setup">
+        <action>Run <tool id="cli" command="git branch --show-current" /> to get current branch name</action>
+        <action>Generate a branch name from the story title following conventions (feature/, fix/, refactor/, etc.)</action>
+        <examples>
+            - "Add user authentication" → feature/user-authentication
+            - "Fix login error" → fix/login-error
+            - "Refactor API client" → refactor/api-client
+        </examples>
+        <decision>
+            <condition>If current branch name resembles the generated branch name (fuzzy match on key words)</condition>
+            <action-if-true>Continue with current branch - no branch creation needed</action-if-true>
+            <action-if-false>Update main reference and create new branch</action-if-false>
+        </decision>
+        <action if="create-branch">Run <tool id="cli" command="git fetch origin main:main" /> to update local main ref to match remote</action>
+        <reason if="create-branch">Updates the main branch reference without checking it out. This works in worktrees because we're not switching to main, just updating its reference to point to origin/main.</reason>
+        <action if="create-branch">Run <tool id="cli" command="git checkout -b {generated-branch-name} main" /> to create new branch from updated main</action>
+        <reasoning>Ensures new feature branches are based on the latest main. Uses 'git fetch origin main:main' to update main ref without checkout (worktree-safe), then creates branch from main. If already on a matching branch, skips update to avoid disrupting ongoing work.</reasoning>
     </phase>
     <phase num="2" title="Research Phase" optional="true">
         <action>Analyze the ReadyQ issue title, description, and acceptance criteria</action>

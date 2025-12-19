@@ -10,13 +10,8 @@ model: haiku
 </system-instructions>
 
 <template-variable>
-    <symbol>{branch-name}</symbol>
-    <description>Generated branch name based on the work description (e.g., feature/user-authentication, fix/login-error, refactor/api-client)</description>
-</template-variable>
-
-<template-variable>
-    <symbol>{worktree-folder}</symbol>
-    <description>Folder name for the worktree (e.g., feature-user-authentication)</description>
+    <symbol>{worktree-name}</symbol>
+    <description>Name for the worktree folder provided by the user (e.g., "task-abc123", "feature-auth", "review-pr-456")</description>
 </template-variable>
 
 <template-variable>
@@ -40,42 +35,27 @@ model: haiku
         <reasoning>This is a one-time setup for the repository to organize worktrees in a sibling directory. The {repo-name} is dynamically determined in phase 1.</reasoning>
     </phase>
 
-    <phase num="3" title="Ask user for work description">
-        <action>Ask user to describe what they need to work on</action>
+    <phase num="3" title="Ask user for worktree name">
+        <action>Ask user to provide a name for the worktree</action>
         <choices>
-            <choice id="Provide description" shortcut="d" />
+            <choice id="Provide name" shortcut="n" />
         </choices>
-        <reasoning>This description will be used to generate appropriate branch and folder names</reasoning>
+        <reasoning>This name will be used as the worktree folder name. The worktree will be based on the main branch.</reasoning>
+        <examples>
+            - "task-abc123" (for working on a specific task)
+            - "feature-auth" (for developing a feature)
+            - "review-pr-456" (for reviewing a pull request)
+        </examples>
     </phase>
 
-    <phase num="4" title="Generate branch and folder names">
-        <action>Based on the work description, generate:</action>
-        <sub-action>A branch name following conventions (feature/, fix/, refactor/, etc.)</sub-action>
-        <sub-action>A folder name (branch name with slashes replaced by hyphens)</sub-action>
-        <reasoning>
-            Examples:
-            - "Add user authentication" → branch: feature/user-authentication, folder: feature-user-authentication
-            - "Fix login error" → branch: fix/login-error, folder: fix-login-error
-            - "Refactor API client" → branch: refactor/api-client, folder: refactor-api-client
-        </reasoning>
-    </phase>
-
-    <phase num="5" title="Confirm worktree details">
-        <action>Present proposed branch name and worktree folder to user</action>
-        <choices>
-            <choice id="Accept" shortcut="a" />
-            <choice id="Modify" shortcut="m" />
-        </choices>
-    </phase>
-
-    <phase num="6" title="Create worktree">
-        <action>Run <tool id="cli">git worktree add -b {branch-name} ../{repo-name}-worktrees/{worktree-folder}</tool></action>
+    <phase num="4" title="Create worktree">
+        <action>Run <tool id="cli">git worktree add ../{repo-name}-worktrees/{worktree-name} main</tool></action>
         <tool id="cli">terminal command tool</tool>
-        <reasoning>Creates a new worktree with a new branch in the sibling worktrees directory. The {repo-name} is the actual repository name from phase 1.</reasoning>
+        <reasoning>Creates a new worktree based on the main branch in the sibling worktrees directory. The worktree will be in detached HEAD state, allowing independent work without creating a new branch. The {repo-name} is the actual repository name from phase 1.</reasoning>
     </phase>
 
-    <phase num="6.5" title="Verify worktree setup">
-        <action>Change to worktree directory: cd ../{repo-name}-worktrees/{worktree-folder}</action>
+    <phase num="5" title="Verify worktree setup">
+        <action>Change to worktree directory: cd ../{repo-name}-worktrees/{worktree-name}</action>
         <action>Run <tool id="cli">git rev-parse --show-toplevel</tool> to verify it points to worktree</action>
         <action>Run <tool id="cli">test -f ./readyq.py && echo "readyq.py found" || echo "WARNING: readyq.py not found"</tool></action>
         <decision>
@@ -87,14 +67,14 @@ model: haiku
         <reasoning>Validates that the worktree has all necessary files before proceeding. Sibling directory structure prevents AI agents from accidentally navigating into parent repo.</reasoning>
     </phase>
 
-    <phase num="7" title="Detect project type and dependencies">
+    <phase num="6" title="Detect project type and dependencies">
         <action>Check for package.json, requirements.txt, go.mod, Cargo.toml, etc. in the new worktree</action>
         <tool id="cli">terminal command tool (ls, test)</tool>
         <reasoning>Determine what install/build commands are needed</reasoning>
     </phase>
 
-    <phase num="8" title="Install dependencies">
-        <action>Change directory to worktree: cd ../{repo-name}-worktrees/{worktree-folder}</action>
+    <phase num="7" title="Install dependencies">
+        <action>Change directory to worktree: cd ../{repo-name}-worktrees/{worktree-name}</action>
         <action>Run appropriate install command based on detected project type:</action>
         <sub-action>Node.js: npm install or yarn install or pnpm install</sub-action>
         <sub-action>Python: pip install -r requirements.txt or poetry install</sub-action>
@@ -105,20 +85,21 @@ model: haiku
         <reasoning>Ensure the worktree has all dependencies installed and ready to work. The {repo-name} is the actual repository name from phase 1.</reasoning>
     </phase>
 
-    <phase num="9" title="Run build if needed">
+    <phase num="8" title="Run build if needed">
         <condition>Only if a build step is detected (build script in package.json, etc.)</condition>
         <action>Run build command (npm run build, make, etc.)</action>
         <tool id="cli">terminal command tool</tool>
         <reasoning>Some projects require an initial build before development can begin</reasoning>
     </phase>
 
-    <phase num="10" title="Summary">
+    <phase num="9" title="Summary">
         <action>Display summary of created worktree:</action>
         <output>
 Worktree created successfully!
 
-Branch: {branch-name}
-Location: ../{repo-name}-worktrees/{worktree-folder}
+Name: {worktree-name}
+Based on: main branch
+Location: ../{repo-name}-worktrees/{worktree-name}
 Status: Dependencies installed and ready to work
 
 🛡️  WORKTREE ISOLATION
@@ -126,13 +107,13 @@ Status: Dependencies installed and ready to work
 - AI agents working in this worktree cannot accidentally navigate to parent repo
 
 To switch to this worktree:
-    cd ../{repo-name}-worktrees/{worktree-folder}
+    cd ../{repo-name}-worktrees/{worktree-name}
 
 To list all worktrees:
     git worktree list
 
 To remove this worktree when done:
-    git worktree remove ../{repo-name}-worktrees/{worktree-folder}
+    git worktree remove ../{repo-name}-worktrees/{worktree-name}
 
 ⚠️  IMPORTANT: Always run commands from the worktree root directory
    Use relative paths (./readyq.py) not absolute paths
