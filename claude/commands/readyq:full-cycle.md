@@ -50,6 +50,13 @@
     <minimum>0</minimum>
 </template-variable>
 
+<template-variable>
+    <symbol>{createNewBranch}</symbol>
+    <description>Boolean flag to create a new feature branch from main. If "true", creates a new branch based on story title. If "false", uses the current branch as-is. Values: "true" or "false".</description>
+    <optional>true</optional>
+    <default>false</default>
+</template-variable>
+
 <workflow>
     <phase num="0" title="Validate Execution Context">
         <action>Run <tool id="cli" command="pwd" /> to get current working directory</action>
@@ -85,22 +92,21 @@ Action required:
         </decision>
     </phase>
     <phase num="1.5" title="Branch Setup">
-        <action>Run <tool id="cli" command="git branch --show-current" /> to get current branch name</action>
-        <action>Generate a branch name from the story title following conventions (feature/, fix/, refactor/, etc.)</action>
-        <examples>
+        <decision>
+            <condition>If {createNewBranch} parameter is "true"</condition>
+            <action-if-true>Create a new feature branch from main</action-if-true>
+            <action-if-false>Use current branch as-is - skip to next phase</action-if-false>
+        </decision>
+        <action if="create-branch">Generate a branch name from the story title following conventions (feature/, fix/, refactor/, etc.)</action>
+        <examples if="create-branch">
             - "Add user authentication" → feature/user-authentication
             - "Fix login error" → fix/login-error
             - "Refactor API client" → refactor/api-client
         </examples>
-        <decision>
-            <condition>If current branch name resembles the generated branch name (fuzzy match on key words)</condition>
-            <action-if-true>Continue with current branch - no branch creation needed</action-if-true>
-            <action-if-false>Update main reference and create new branch</action-if-false>
-        </decision>
         <action if="create-branch">Run <tool id="cli" command="git fetch origin main:main" /> to update local main ref to match remote</action>
         <reason if="create-branch">Updates the main branch reference without checking it out. This works in worktrees because we're not switching to main, just updating its reference to point to origin/main.</reason>
         <action if="create-branch">Run <tool id="cli" command="git checkout -b {generated-branch-name} main" /> to create new branch from updated main</action>
-        <reasoning>Ensures new feature branches are based on the latest main. Uses 'git fetch origin main:main' to update main ref without checkout (worktree-safe), then creates branch from main. If already on a matching branch, skips update to avoid disrupting ongoing work.</reasoning>
+        <reasoning>When createNewBranch is true, creates a new feature branch based on the latest main. When false (default), uses current branch allowing work to continue on existing branches without disruption.</reasoning>
     </phase>
     <phase num="2" title="Research Phase" optional="true">
         <action>Analyze the ReadyQ issue title, description, and acceptance criteria</action>
