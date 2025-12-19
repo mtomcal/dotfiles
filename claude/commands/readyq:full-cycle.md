@@ -261,6 +261,7 @@ EOF
         </action>
         <action if="no-existing-pr">Capture PR URL from gh pr create output (it prints to stdout)</action>
         <action if="no-existing-pr">Run <tool id="cli" command="./readyq.py update {hashId} --log 'Pull Request: {PR_URL}'" /> to log PR URL back to ReadyQ</action>
-        <reason>Automatically create PR for feature branches on first run. Subsequent runs detect existing PR and just push new commits to update it.</reason>
+        <action if="no-existing-pr">Run <tool id="cli" command="./readyq.py update {hashId} --status done" /> to mark issue as done</action>
+        <reason>Automatically create PR for feature branches on first run. Subsequent runs detect existing PR and just push new commits to update it. Issue is marked done once PR is successfully created.</reason>
     </phase>
 </workflow>
