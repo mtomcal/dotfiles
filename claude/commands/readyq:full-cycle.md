@@ -174,10 +174,11 @@ Action required:
             <action-if-false>Proceed to phase 7</action-if-false>
         </decision>
     </phase>
-    <phase num="7" title="Log ReadyQ Progress">
+    <phase num="7" title="Mark Issue Complete">
         <action>Summarize the full cycle: implementation, reviews performed</action>
         <action>Run <tool id="cli" command="./readyq.py update {hashId} --log {full cycle summary}" /> to log progress</action>
-        <reason>Keep issue in_progress until PR is merged. Issues should only move to done after merge, not after commit.</reason>
+        <action>Run <tool id="cli" command="./readyq.py update {hashId} --status done" /> to mark issue as done</action>
+        <reason>Mark issue as done before commit so the commit is associated with a completed issue. This ensures proper tracking and prevents commits for incomplete work.</reason>
     </phase>
     <phase num="8" title="Commit Phase">
         <action>Run <tool id="cli" command="git add ." /></action>
@@ -267,7 +268,6 @@ EOF
         </action>
         <action if="no-existing-pr">Capture PR URL from gh pr create output (it prints to stdout)</action>
         <action if="no-existing-pr">Run <tool id="cli" command="./readyq.py update {hashId} --log 'Pull Request: {PR_URL}'" /> to log PR URL back to ReadyQ</action>
-        <action if="no-existing-pr">Run <tool id="cli" command="./readyq.py update {hashId} --status done" /> to mark issue as done</action>
-        <reason>Automatically create PR for feature branches on first run. Subsequent runs detect existing PR and just push new commits to update it. Issue is marked done once PR is successfully created.</reason>
+        <reason>Automatically create PR for feature branches on first run. Subsequent runs detect existing PR and just push new commits to update it. Issue was already marked done in Phase 7 before commit.</reason>
     </phase>
 </workflow>
