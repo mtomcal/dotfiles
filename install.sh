@@ -770,6 +770,23 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
         print_info "No settings.json found in dotfiles (skipping)"
     fi
 
+    # Link Claude Code statusline script
+    print_info "Linking Claude Code statusline script..."
+    if [ -L "$HOME/.claude/statusline.sh" ]; then
+        rm "$HOME/.claude/statusline.sh"
+    elif [ -f "$HOME/.claude/statusline.sh" ]; then
+        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+        mv "$HOME/.claude/statusline.sh" "$HOME/.claude/statusline.sh.backup.$TIMESTAMP"
+        print_warning "Backed up existing statusline to statusline.sh.backup.$TIMESTAMP"
+    fi
+
+    if [ -f "$DOTFILES_DIR/claude/statusline.sh" ]; then
+        ln -s "$DOTFILES_DIR/claude/statusline.sh" "$HOME/.claude/statusline.sh"
+        print_success "Claude Code statusline script linked"
+    else
+        print_info "No statusline.sh found in dotfiles (skipping)"
+    fi
+
     # ===========================
     # Claude Code MCP Servers
     # ===========================
