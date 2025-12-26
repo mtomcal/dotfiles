@@ -2,5 +2,9 @@
   "env": {
     "DISABLE_AUTOUPDATER": "1"
   },
-  "alwaysThinkingEnabled": false
+  "alwaysThinkingEnabled": false,
+  "statusLine": {
+    "type": "command",
+    "command": "~/.claude/statusline.sh"
+  }
 }
