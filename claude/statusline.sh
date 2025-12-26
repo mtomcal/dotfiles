@@ -5,6 +5,7 @@
 input=$(cat)
 
 MODEL=$(echo "$input" | jq -r '.model.display_name // "Claude"')
+VERSION=$(echo "$input" | jq -r '.version // ""')
 
 # Get git branch and dirty status
 if git rev-parse --is-inside-work-tree &>/dev/null; then
@@ -97,6 +98,7 @@ if [ "$USAGE" != "null" ] && [ -n "$USAGE" ]; then
 
         # Build output with optional components
         OUTPUT="[$MODEL]"
+        [ -n "$VERSION" ] && OUTPUT+=" v${VERSION}"
         [ -n "$GIT_STATUS" ] && OUTPUT+=" ${GIT_STATUS}"
         OUTPUT+=" ${COLOR}▐${BAR}▌${RESET} ${PERCENT_USED}%"
         [ -n "$DURATION_DISPLAY" ] && OUTPUT+=" ${DURATION_DISPLAY}"
@@ -104,6 +106,7 @@ if [ "$USAGE" != "null" ] && [ -n "$USAGE" ]; then
         echo -e "$OUTPUT"
     else
         OUTPUT="[$MODEL]"
+        [ -n "$VERSION" ] && OUTPUT+=" v${VERSION}"
         [ -n "$GIT_STATUS" ] && OUTPUT+=" ${GIT_STATUS}"
         [ -n "$DURATION_DISPLAY" ] && OUTPUT+=" ${DURATION_DISPLAY}"
         [ -n "$COST_DISPLAY" ] && OUTPUT+=" ${COST_DISPLAY}"
@@ -111,6 +114,7 @@ if [ "$USAGE" != "null" ] && [ -n "$USAGE" ]; then
     fi
 else
     OUTPUT="[$MODEL]"
+    [ -n "$VERSION" ] && OUTPUT+=" v${VERSION}"
     [ -n "$GIT_STATUS" ] && OUTPUT+=" ${GIT_STATUS}"
     [ -n "$DURATION_DISPLAY" ] && OUTPUT+=" ${DURATION_DISPLAY}"
     [ -n "$COST_DISPLAY" ] && OUTPUT+=" ${COST_DISPLAY}"
