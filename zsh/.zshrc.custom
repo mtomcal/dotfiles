@@ -41,10 +41,10 @@ export TERM=xterm-256color
 # Go (Golang) Configuration
 # ===========================
 
-# Add Go binaries to PATH
-export PATH=$PATH:/usr/local/go/bin
-export PATH=$PATH:$HOME/go/bin
-export GOPATH=$HOME/go-workspace
+# Go configuration
+export GOROOT="$HOME/go"
+export GOPATH="$HOME/go-workspace"
+export PATH="$GOPATH/bin:$GOROOT/bin:$PATH"
 
 # ===========================
 # Node Version Manager (fnm)

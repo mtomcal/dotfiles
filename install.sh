@@ -358,13 +358,15 @@ if command -v go &> /dev/null; then
     GO_FULL_VERSION=$(go version)
     print_success "Go verified: $GO_FULL_VERSION"
 
-    # Create GOPATH bin directory
-    mkdir -p "$HOME/go/bin"
+    # Set up Go environment
+    export GOROOT="$HOME/go"
+    export GOPATH="$HOME/go-workspace"
 
-    # Add Go to PATH for this session
-    export PATH=$PATH:/usr/local/go/bin
-    export PATH=$PATH:$HOME/go/bin
-    export GOPATH=$HOME/go
+    # Create GOPATH bin directory
+    mkdir -p "$GOPATH/bin"
+
+    # Add Go to PATH for this session (GOPATH/bin first for user-installed tools)
+    export PATH="$GOPATH/bin:$GOROOT/bin:$PATH"
 else
     print_error "Go installation verification failed"
     exit 1
