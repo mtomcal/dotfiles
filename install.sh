@@ -3,7 +3,7 @@
 # ===========================
 # Dotfiles Installation Script
 # ===========================
-# Automated setup for tmux + neovim + zsh development environment
+# Modular menu-driven installer for development environment
 # Supports: Ubuntu/Debian (apt) and macOS (homebrew)
 
 set -e  # Exit on error
@@ -33,70 +33,77 @@ print_error() {
 }
 
 print_header() {
-    echo -e "${BLUE}[INFO]${NC} $1"
+    echo -e "\n${BLUE}========================================${NC}"
+    echo -e "${BLUE}$1${NC}"
+    echo -e "${BLUE}========================================${NC}\n"
 }
 
 # Get the dotfiles directory
 DOTFILES_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-print_info "Dotfiles directory: $DOTFILES_DIR"
 
-# ===========================
-# Detect OS
-# ===========================
-
-print_info "Detecting operating system..."
-
+# Global variables
 OS=""
 PACKAGE_MANAGER=""
+SELECTED_MODULES=()
+FAILED_MODULES=()
 
-if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-    if command -v apt &> /dev/null; then
-        OS="ubuntu"
-        PACKAGE_MANAGER="apt"
-        print_success "Detected: Ubuntu/Debian Linux"
+# ===========================
+# Core Functions
+# ===========================
+
+detect_os() {
+    print_info "Detecting operating system..."
+
+    if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+        if command -v apt &> /dev/null; then
+            OS="ubuntu"
+            PACKAGE_MANAGER="apt"
+            print_success "Detected: Ubuntu/Debian Linux"
+        else
+            print_error "Linux detected but apt not found. This script requires Ubuntu/Debian."
+            exit 1
+        fi
+    elif [[ "$OSTYPE" == "darwin"* ]]; then
+        OS="macos"
+        PACKAGE_MANAGER="brew"
+        print_success "Detected: macOS"
     else
-        print_error "Linux detected but apt not found. This script requires Ubuntu/Debian."
+        print_error "Unsupported operating system: $OSTYPE"
         exit 1
     fi
-elif [[ "$OSTYPE" == "darwin"* ]]; then
-    OS="macos"
-    PACKAGE_MANAGER="brew"
-    print_success "Detected: macOS"
-else
-    print_error "Unsupported operating system: $OSTYPE"
-    exit 1
-fi
+}
 
-# ===========================
-# Install Package Manager (macOS only)
-# ===========================
+setup_package_manager() {
+    if [ "$OS" == "macos" ]; then
+        if ! command -v brew &> /dev/null; then
+            print_info "Homebrew not found. Installing Homebrew..."
+            /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
-if [ "$OS" == "macos" ]; then
-    if ! command -v brew &> /dev/null; then
-        print_info "Homebrew not found. Installing Homebrew..."
-        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+            # Add Homebrew to PATH (for Apple Silicon Macs)
+            if [[ $(uname -m) == 'arm64' ]]; then
+                echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zprofile
+                eval "$(/opt/homebrew/bin/brew shellenv)"
+            fi
 
-        # Add Homebrew to PATH (for Apple Silicon Macs)
-        if [[ $(uname -m) == 'arm64' ]]; then
-            echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zprofile
-            eval "$(/opt/homebrew/bin/brew shellenv)"
+            print_success "Homebrew installed"
+        else
+            print_success "Homebrew is already installed"
         fi
-
-        print_success "Homebrew installed"
-    else
-        print_success "Homebrew is already installed"
     fi
-fi
+}
 
-# ===========================
-# Install Dependencies
-# ===========================
-
-print_info "Installing system dependencies..."
+update_package_manager() {
+    print_info "Updating package manager..."
+    if [ "$PACKAGE_MANAGER" == "apt" ]; then
+        sudo apt update
+    elif [ "$PACKAGE_MANAGER" == "brew" ]; then
+        brew update
+    fi
+}
 
 install_package() {
     local package=$1
-    local brew_name=${2:-$package}  # Use different name for brew if provided
+    local brew_name=${2:-$package}
 
     if [ "$PACKAGE_MANAGER" == "apt" ]; then
         if ! dpkg -l | grep -q "^ii  $package "; then
@@ -115,58 +122,56 @@ install_package() {
     fi
 }
 
-# Update package lists
-if [ "$PACKAGE_MANAGER" == "apt" ]; then
-    sudo apt update
-elif [ "$PACKAGE_MANAGER" == "brew" ]; then
-    brew update
-fi
-
-# Install packages (package_name apt_name brew_name)
-install_package "git" "git"
-install_package "curl" "curl"
-install_package "tmux" "tmux"
-# Note: Neovim is installed later via AppImage (Ubuntu) or brew (macOS)
-install_package "ripgrep" "ripgrep"
-install_package "zsh" "zsh"
-install_package "jq" "jq"
-install_package "gh" "gh"
-
-# Platform-specific packages
-if [ "$OS" == "ubuntu" ]; then
-    install_package "build-essential"
-    install_package "fd-find"
-    install_package "xclip"
-    install_package "python3-venv"  # Required for Mason to install Python tools
-elif [ "$OS" == "macos" ]; then
-    install_package "gcc" "gcc"
-    install_package "fd" "fd"
-    # macOS uses pbcopy/pbpaste built-in, no xclip needed
-    # macOS Python includes venv by default, no additional package needed
-fi
+version_lt() {
+    [ "$(printf '%s\n' "$1" "$2" | sort -V | head -n1)" != "$2" ]
+}
 
 # ===========================
-# Install Latest Neovim
+# Module Installation Functions
 # ===========================
 
-if [ "$OS" == "ubuntu" ]; then
-    print_info "Checking Neovim version..."
+install_base_tools() {
+    print_header "Installing Base Tools"
 
-    # Check if nvim exists and get version
-    if command -v nvim &> /dev/null; then
-        NVIM_VERSION=$(nvim --version 2>/dev/null | head -n1 | sed 's/.*v\([0-9]*\.[0-9]*\).*/\1/' || echo "0.0")
-    else
-        NVIM_VERSION="0.0"
+    # Install essential packages
+    install_package "git" "git"
+    install_package "curl" "curl"
+    install_package "tmux" "tmux"
+    install_package "ripgrep" "ripgrep"
+    install_package "zsh" "zsh"
+    install_package "jq" "jq"
+    install_package "gh" "gh"
+
+    # Platform-specific packages
+    if [ "$OS" == "ubuntu" ]; then
+        install_package "build-essential"
+        install_package "fd-find"
+        install_package "xclip"
+        install_package "python3-venv"
+    elif [ "$OS" == "macos" ]; then
+        install_package "gcc" "gcc"
+        install_package "fd" "fd"
     fi
 
-    if [[ $(echo "$NVIM_VERSION < 0.10" | bc -l 2>/dev/null || echo "1") -eq 1 ]]; then
-        print_warning "Neovim version is $NVIM_VERSION (recommended: 0.10+)"
-        read -p "Would you like to install latest stable Neovim via AppImage? (y/n) " -n 1 -r
-        echo
-        if [[ $REPLY =~ ^[Yy]$ ]]; then
-            print_info "Installing Neovim via AppImage..."
+    print_success "Base tools installed"
+}
 
-            # Remove any existing apt-installed neovim to avoid conflicts
+install_neovim() {
+    print_header "Installing Neovim"
+
+    if [ "$OS" == "ubuntu" ]; then
+        # Check if nvim exists and get version
+        if command -v nvim &> /dev/null; then
+            NVIM_VERSION=$(nvim --version 2>/dev/null | head -n1 | sed 's/.*v\([0-9]*\.[0-9]*\).*/\1/' || echo "0.0")
+        else
+            NVIM_VERSION="0.0"
+        fi
+
+        if [[ $(echo "$NVIM_VERSION < 0.10" | bc -l 2>/dev/null || echo "1") -eq 1 ]]; then
+            print_warning "Neovim version is $NVIM_VERSION (recommended: 0.10+)"
+            print_info "Installing latest stable Neovim via AppImage..."
+
+            # Remove any existing apt-installed neovim
             if dpkg -l | grep -q "^ii  neovim "; then
                 print_info "Removing apt-installed neovim..."
                 sudo apt remove -y neovim neovim-runtime 2>/dev/null || true
@@ -177,12 +182,11 @@ if [ "$OS" == "ubuntu" ]; then
 
             if [ -z "$LATEST_VERSION" ]; then
                 print_error "Failed to fetch latest Neovim version"
-                exit 1
+                return 1
             fi
 
             print_info "Downloading Neovim $LATEST_VERSION..."
 
-            # Create temp directory
             TMP_DIR=$(mktemp -d)
             cd "$TMP_DIR"
 
@@ -194,16 +198,13 @@ if [ "$OS" == "ubuntu" ]; then
                 APPIMAGE_NAME="nvim-linux-arm64.appimage"
             else
                 print_error "Unsupported architecture: $ARCH"
-                exit 1
+                return 1
             fi
 
-            # Download AppImage
             curl -LO "https://github.com/neovim/neovim/releases/download/${LATEST_VERSION}/${APPIMAGE_NAME}"
-
-            # Make it executable
             chmod +x "$APPIMAGE_NAME"
 
-            # Install to /usr/local/bin (requires sudo) or ~/.local/bin (no sudo)
+            # Install to /usr/local/bin or ~/.local/bin
             if [ -w /usr/local/bin ]; then
                 mv "$APPIMAGE_NAME" /usr/local/bin/nvim
                 print_success "Neovim installed to /usr/local/bin/nvim"
@@ -212,315 +213,51 @@ if [ "$OS" == "ubuntu" ]; then
                 mv "$APPIMAGE_NAME" "$HOME/.local/bin/nvim"
                 print_success "Neovim installed to ~/.local/bin/nvim"
 
-                # Add to PATH if not already there
                 if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
                     print_info "Note: Add ~/.local/bin to your PATH if not already done"
                 fi
             fi
 
-            # Cleanup
             cd - > /dev/null
             rm -rf "$TMP_DIR"
 
-            # Verify installation
             INSTALLED_VERSION=$(nvim --version | head -n1 | sed 's/.*v\([0-9]*\.[0-9]*\.[0-9]*\).*/\1/')
             print_success "Neovim $INSTALLED_VERSION installed successfully"
+        else
+            print_success "Neovim version is $NVIM_VERSION (meets requirements)"
         fi
-    else
-        print_success "Neovim version is $NVIM_VERSION (meets requirements)"
+    elif [ "$OS" == "macos" ]; then
+        print_info "Installing stable Neovim via Homebrew..."
+        if ! brew list neovim &> /dev/null; then
+            brew install neovim
+        else
+            brew upgrade neovim || print_success "Neovim is already up to date"
+        fi
     fi
-elif [ "$OS" == "macos" ]; then
-    print_info "Installing stable Neovim via Homebrew..."
-    if ! brew list neovim &> /dev/null; then
-        brew install neovim
-    else
-        brew upgrade neovim || print_success "Neovim is already up to date"
-    fi
-fi
-
-# ===========================
-# Install Go (Golang)
-# ===========================
-
-print_header "Installing Go"
-
-# Function to compare versions
-version_lt() {
-    [ "$(printf '%s\n' "$1" "$2" | sort -V | head -n1)" != "$2" ]
 }
 
-if [ "$OS" == "macos" ]; then
-    # macOS: Use Homebrew
-    if ! command -v go &> /dev/null; then
-        print_info "Installing Go via Homebrew..."
-        brew install go
-        print_success "Go installed"
-    else
-        GO_VERSION=$(go version | sed 's/.*go\([0-9]*\.[0-9]*\).*/\1/')
-        if version_lt "$GO_VERSION" "1.24"; then
-            print_warning "Go $GO_VERSION detected (recommended: 1.24+)"
-            # Check if Go was installed via Homebrew
-            if brew list go &> /dev/null; then
-                read -p "Upgrade Go via Homebrew? (y/n) " -n 1 -r
-                echo ""
-                if [[ $REPLY =~ ^[Yy]$ ]]; then
-                    brew upgrade go
-                    print_success "Go upgraded"
-                fi
+configure_neovim() {
+    print_header "Configuring Neovim"
+
+    # Check if neovim is installed
+    if ! command -v nvim &> /dev/null; then
+        print_warning "Neovim not found. Installing Neovim first..."
+        install_neovim || return 1
+    fi
+
+    # Handle existing neovim config
+    if [ -d "$HOME/.config/nvim" ]; then
+        if [ -d "$HOME/.config/nvim/.git" ]; then
+            REMOTE_URL=$(cd "$HOME/.config/nvim" && git remote get-url origin 2>/dev/null || echo "")
+
+            if [[ "$REMOTE_URL" == *"nvim-lua/kickstart.nvim"* ]]; then
+                print_info "Updating kickstart.nvim to latest version..."
+                cd "$HOME/.config/nvim"
+                git fetch origin
+                git reset --hard origin/master
+                print_success "Kickstart.nvim updated"
             else
-                # Go exists but not from Homebrew (manual install at /usr/local/go)
-                read -p "Go was not installed via Homebrew. Install Homebrew version? (y/n) " -n 1 -r
-                echo ""
-                if [[ $REPLY =~ ^[Yy]$ ]]; then
-                    print_info "Installing Go via Homebrew (will take precedence in PATH)..."
-                    brew install go
-                    print_success "Go installed via Homebrew"
-                    print_info "Note: Homebrew Go will be used. You can remove /usr/local/go manually if desired."
-                else
-                    print_info "Keeping existing Go $GO_VERSION. Visit https://go.dev/dl/ to upgrade manually."
-                fi
-            fi
-        else
-            print_success "Go $GO_VERSION is already installed"
-        fi
-    fi
-elif [ "$OS" == "ubuntu" ]; then
-    # Ubuntu: Use official binary (apt versions are too old)
-    if ! command -v go &> /dev/null; then
-        print_info "Installing Go (official binary)..."
-
-        # Detect architecture
-        ARCH=$(uname -m)
-        if [ "$ARCH" = "x86_64" ]; then
-            GO_ARCH="amd64"
-        elif [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
-            GO_ARCH="arm64"
-        else
-            print_error "Unsupported architecture: $ARCH"
-            print_info "Please install Go manually from https://go.dev/dl/"
-            exit 1
-        fi
-
-        # Get latest stable version
-        print_info "Fetching latest Go version..."
-        GO_VERSION=$(curl -s https://go.dev/VERSION?m=text | head -1)
-
-        if [ -z "$GO_VERSION" ]; then
-            print_error "Failed to fetch Go version"
-            exit 1
-        fi
-
-        GO_TARBALL="${GO_VERSION}.linux-${GO_ARCH}.tar.gz"
-        GO_URL="https://go.dev/dl/${GO_TARBALL}"
-
-        print_info "Downloading Go ${GO_VERSION}..."
-
-        # Create temp directory
-        TMP_DIR=$(mktemp -d)
-        cd "$TMP_DIR"
-
-        # Download
-        if ! wget -q --show-progress "$GO_URL"; then
-            print_error "Failed to download Go"
-            cd - > /dev/null
-            rm -rf "$TMP_DIR"
-            exit 1
-        fi
-
-        # Remove old installation (if exists)
-        if [ -d "/usr/local/go" ]; then
-            print_info "Removing previous Go installation..."
-            sudo rm -rf /usr/local/go
-        fi
-
-        # Extract new installation
-        print_info "Installing Go to /usr/local/go..."
-        sudo tar -C /usr/local -xzf "$GO_TARBALL"
-
-        # Cleanup
-        cd - > /dev/null
-        rm -rf "$TMP_DIR"
-
-        print_success "Go ${GO_VERSION} installed"
-    else
-        GO_VERSION=$(go version | sed 's/.*go\([0-9]*\.[0-9]*\).*/\1/')
-        if version_lt "$GO_VERSION" "1.24"; then
-            print_warning "Go $GO_VERSION detected (recommended: 1.24+)"
-            print_info "Visit https://go.dev/dl/ to upgrade manually"
-        else
-            print_success "Go $GO_VERSION is already installed"
-        fi
-    fi
-fi
-
-# Verify Go installation
-if command -v go &> /dev/null; then
-    GO_FULL_VERSION=$(go version)
-    print_success "Go verified: $GO_FULL_VERSION"
-
-    # Set up Go environment
-    export GOROOT="$HOME/go"
-    export GOPATH="$HOME/go-workspace"
-
-    # Create GOPATH bin directory
-    mkdir -p "$GOPATH/bin"
-
-    # Add Go to PATH for this session (GOPATH/bin first for user-installed tools)
-    export PATH="$GOPATH/bin:$GOROOT/bin:$PATH"
-else
-    print_error "Go installation verification failed"
-    exit 1
-fi
-
-# Optional: Install govulncheck for security scanning
-read -p "Install govulncheck (Go vulnerability scanner)? (y/n) " -n 1 -r
-echo ""
-if [[ $REPLY =~ ^[Yy]$ ]]; then
-    print_info "Installing govulncheck..."
-    go install golang.org/x/vuln/cmd/govulncheck@latest
-    print_success "govulncheck installed (use: govulncheck ./...)"
-fi
-
-# ===========================
-# Install Oh My Zsh
-# ===========================
-
-if [ ! -d "$HOME/.oh-my-zsh" ]; then
-    print_info "Installing Oh My Zsh..."
-    sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
-    print_success "Oh My Zsh installed"
-else
-    print_success "Oh My Zsh is already installed"
-fi
-
-# Set zsh as default shell if not already
-CURRENT_SHELL=$(basename "$SHELL")
-if [ "$CURRENT_SHELL" != "zsh" ]; then
-    print_info "Current shell is $CURRENT_SHELL, changing to zsh..."
-
-    ZSH_PATH=$(which zsh)
-    if [ -z "$ZSH_PATH" ]; then
-        print_error "zsh not found in PATH"
-        exit 1
-    fi
-
-    if [ "$OS" == "macos" ]; then
-        # macOS uses chsh differently
-        chsh -s "$ZSH_PATH"
-    else
-        # Ubuntu
-        chsh -s "$ZSH_PATH"
-    fi
-
-    print_success "Default shell set to zsh (restart required)"
-else
-    print_success "zsh is already the default shell"
-fi
-
-# ===========================
-# Install fnm (Fast Node Manager)
-# ===========================
-
-if ! command -v fnm &> /dev/null; then
-    print_info "Installing fnm (Fast Node Manager)..."
-
-    # Install fnm using the official installer
-    curl -fsSL https://fnm.vercel.app/install | bash
-
-    # Set up fnm path for this session
-    export PATH="$HOME/.local/share/fnm:$PATH"
-
-    print_success "fnm installed"
-else
-    print_success "fnm is already installed"
-fi
-
-# Install latest LTS Node.js via fnm
-if command -v fnm &> /dev/null; then
-    print_info "Installing Node.js LTS via fnm..."
-
-    # Temporarily enable fnm for this session
-    export PATH="$HOME/.local/share/fnm:$PATH"
-    eval "$(fnm env --use-on-cd --shell bash)"
-
-    # Install and use latest LTS
-    fnm install --lts
-    fnm use lts-latest
-    fnm default lts-latest
-
-    print_success "Node.js LTS installed and set as default"
-
-    # Show installed version
-    NODE_VERSION=$(node --version 2>/dev/null || echo "unknown")
-    print_info "Node.js version: $NODE_VERSION"
-fi
-
-# ===========================
-# Tmux Configuration
-# ===========================
-
-print_info "Setting up tmux configuration..."
-
-# Backup existing tmux config if it exists
-if [ -f "$HOME/.tmux.conf" ] && [ ! -L "$HOME/.tmux.conf" ]; then
-    print_warning "Backing up existing .tmux.conf to .tmux.conf.backup"
-    mv "$HOME/.tmux.conf" "$HOME/.tmux.conf.backup"
-fi
-
-# Create symlink
-if [ -L "$HOME/.tmux.conf" ]; then
-    rm "$HOME/.tmux.conf"
-fi
-
-ln -sf "$DOTFILES_DIR/tmux/.tmux.conf" "$HOME/.tmux.conf"
-print_success "Tmux configuration linked"
-
-# ===========================
-# Zsh Configuration
-# ===========================
-
-print_info "Setting up zsh configuration..."
-
-# Check if custom config is already sourced in .zshrc
-if ! grep -q "source ~/dotfiles/zsh/.zshrc.custom" "$HOME/.zshrc" 2>/dev/null; then
-    print_info "Adding custom configuration to .zshrc..."
-    echo "" >> "$HOME/.zshrc"
-    echo "# Source custom dotfiles configuration" >> "$HOME/.zshrc"
-    echo "if [ -f ~/dotfiles/zsh/.zshrc.custom ]; then" >> "$HOME/.zshrc"
-    echo "    source ~/dotfiles/zsh/.zshrc.custom" >> "$HOME/.zshrc"
-    echo "fi" >> "$HOME/.zshrc"
-    print_success "Custom zsh configuration added"
-else
-    print_success "Custom zsh configuration already sourced"
-fi
-
-# ===========================
-# Neovim Configuration
-# ===========================
-
-print_info "Setting up neovim configuration..."
-
-# Handle existing neovim config
-if [ -d "$HOME/.config/nvim" ]; then
-    # Check if it's a git repo
-    if [ -d "$HOME/.config/nvim/.git" ]; then
-        print_info "Found existing kickstart.nvim installation"
-
-        # Check if it's the official kickstart repo
-        REMOTE_URL=$(cd "$HOME/.config/nvim" && git remote get-url origin 2>/dev/null || echo "")
-
-        if [[ "$REMOTE_URL" == *"nvim-lua/kickstart.nvim"* ]]; then
-            print_info "Updating kickstart.nvim to latest version..."
-            cd "$HOME/.config/nvim"
-            git fetch origin
-            git reset --hard origin/master
-            print_success "Kickstart.nvim updated"
-        else
-            print_warning "Existing nvim config is not official kickstart.nvim"
-            print_warning "Remote: $REMOTE_URL"
-            read -p "Replace with official kickstart.nvim? (y/n) " -n 1 -r
-            echo
-            if [[ $REPLY =~ ^[Yy]$ ]]; then
+                print_warning "Existing nvim config is not official kickstart.nvim"
                 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
                 mv "$HOME/.config/nvim" "$HOME/.config/nvim.backup.$TIMESTAMP"
                 print_success "Backed up to ~/.config/nvim.backup.$TIMESTAMP"
@@ -528,15 +265,8 @@ if [ -d "$HOME/.config/nvim" ]; then
                 print_info "Cloning official kickstart.nvim..."
                 git clone https://github.com/nvim-lua/kickstart.nvim.git "$HOME/.config/nvim"
                 print_success "Official kickstart.nvim cloned"
-            else
-                print_warning "Keeping existing config - skipping kickstart setup"
             fi
-        fi
-    else
-        print_warning "Non-git neovim config exists at ~/.config/nvim"
-        read -p "Backup and replace with kickstart.nvim? (y/n) " -n 1 -r
-        echo
-        if [[ $REPLY =~ ^[Yy]$ ]]; then
+        else
             TIMESTAMP=$(date +%Y%m%d_%H%M%S)
             mv "$HOME/.config/nvim" "$HOME/.config/nvim.backup.$TIMESTAMP"
             print_success "Backed up to ~/.config/nvim.backup.$TIMESTAMP"
@@ -545,20 +275,19 @@ if [ -d "$HOME/.config/nvim" ]; then
             git clone https://github.com/nvim-lua/kickstart.nvim.git "$HOME/.config/nvim"
             print_success "Official kickstart.nvim cloned"
         fi
+    else
+        print_info "Cloning official kickstart.nvim..."
+        mkdir -p "$HOME/.config"
+        git clone https://github.com/nvim-lua/kickstart.nvim.git "$HOME/.config/nvim"
+        print_success "Official kickstart.nvim cloned"
     fi
-else
-    print_info "Cloning official kickstart.nvim..."
-    mkdir -p "$HOME/.config"
-    git clone https://github.com/nvim-lua/kickstart.nvim.git "$HOME/.config/nvim"
-    print_success "Official kickstart.nvim cloned"
-fi
 
-# Create custom config directory in dotfiles if it doesn't exist
-mkdir -p "$DOTFILES_DIR/nvim/custom/plugins"
+    # Create custom config directory
+    mkdir -p "$DOTFILES_DIR/nvim/custom/plugins"
 
-# Create a placeholder README in custom directory
-if [ ! -f "$DOTFILES_DIR/nvim/custom/README.md" ]; then
-    cat > "$DOTFILES_DIR/nvim/custom/README.md" << 'EOF'
+    # Create placeholder README if it doesn't exist
+    if [ ! -f "$DOTFILES_DIR/nvim/custom/README.md" ]; then
+        cat > "$DOTFILES_DIR/nvim/custom/README.md" << 'EOF'
 # Custom Neovim Configuration
 
 This directory contains your personal neovim customizations that layer on top of kickstart.nvim.
@@ -592,405 +321,906 @@ return {
 
 You can add custom keymaps in `init.lua` or create separate module files.
 EOF
-fi
-
-# Create symlink for custom configs
-mkdir -p "$HOME/.config/nvim/lua"
-
-if [ -L "$HOME/.config/nvim/lua/custom" ]; then
-    rm "$HOME/.config/nvim/lua/custom"
-elif [ -d "$HOME/.config/nvim/lua/custom" ]; then
-    print_warning "Backing up existing custom config..."
-    TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-    mv "$HOME/.config/nvim/lua/custom" "$HOME/.config/nvim/lua/custom.backup.$TIMESTAMP"
-fi
-
-ln -sf "$DOTFILES_DIR/nvim/custom" "$HOME/.config/nvim/lua/custom"
-print_success "Custom neovim config linked"
-
-# Enable custom plugins in kickstart.nvim init.lua
-print_info "Enabling custom plugin loading in kickstart.nvim..."
-if [ -f "$HOME/.config/nvim/init.lua" ]; then
-    # Check if the import line is commented out
-    if grep -q "^  -- { import = 'custom.plugins' }," "$HOME/.config/nvim/init.lua"; then
-        # Uncomment the import line using sed (handle macOS vs Linux differences)
-        if [ "$OS" == "macos" ]; then
-            sed -i '' "s/^  -- { import = 'custom\.plugins' },/  { import = 'custom.plugins' },/" "$HOME/.config/nvim/init.lua"
-        else
-            sed -i "s/^  -- { import = 'custom\.plugins' },/  { import = 'custom.plugins' },/" "$HOME/.config/nvim/init.lua"
-        fi
-        print_success "Custom plugin loading enabled"
-    elif grep -q "^  { import = 'custom.plugins' }," "$HOME/.config/nvim/init.lua"; then
-        print_success "Custom plugin loading already enabled"
-    else
-        print_warning "Could not find custom.plugins import line in init.lua"
     fi
-else
-    print_warning "init.lua not found at ~/.config/nvim/init.lua"
-fi
 
-# Only clean cache on fresh installation (not when updating dotfiles)
-if [ ! -d "$HOME/.local/share/nvim/lazy" ]; then
-    print_info "Fresh installation detected - cleaning neovim cache..."
-    rm -rf "$HOME/.local/share/nvim"
-    rm -rf "$HOME/.local/state/nvim"
-    rm -rf "$HOME/.cache/nvim"
-else
-    print_info "Existing neovim installation detected - preserving Mason packages and cache"
-    # Only clean the cache, preserve data (Mason packages)
-    rm -rf "$HOME/.cache/nvim"
-fi
+    # Create symlink for custom configs
+    mkdir -p "$HOME/.config/nvim/lua"
 
-# Install neovim plugins
-print_info "Installing neovim plugins (this may take a minute)..."
-if nvim --headless "+Lazy! sync" +qa 2>/dev/null; then
-    print_success "Neovim plugins installed"
-else
-    print_warning "Neovim plugin installation encountered an issue"
-    print_info "This is often a one-time issue. Plugins will install when you first launch nvim"
-    print_info "You can manually install plugins later by running: nvim --headless '+Lazy! sync' +qa"
-fi
+    if [ -L "$HOME/.config/nvim/lua/custom" ]; then
+        rm "$HOME/.config/nvim/lua/custom"
+    elif [ -d "$HOME/.config/nvim/lua/custom" ]; then
+        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+        mv "$HOME/.config/nvim/lua/custom" "$HOME/.config/nvim/lua/custom.backup.$TIMESTAMP"
+        print_warning "Backed up existing custom config"
+    fi
 
-# Update treesitter parsers to match current Neovim version
-# This prevents "Parser could not be created" errors after Neovim upgrades
-print_info "Updating treesitter parsers..."
-if nvim --headless "+TSUpdateSync" +qa 2>/dev/null; then
-    print_success "Treesitter parsers updated"
-else
-    print_warning "Treesitter parser update encountered an issue"
-    print_info "You can manually update parsers later by running: nvim -c 'TSUpdate' or :TSUpdate in nvim"
-fi
+    ln -sf "$DOTFILES_DIR/nvim/custom" "$HOME/.config/nvim/lua/custom"
+    print_success "Custom neovim config linked"
 
-# Install Mason packages for development
-print_info "Installing Mason packages..."
+    # Enable custom plugins in kickstart.nvim
+    if [ -f "$HOME/.config/nvim/init.lua" ]; then
+        if grep -q "^  -- { import = 'custom\.plugins' }," "$HOME/.config/nvim/init.lua"; then
+            if [ "$OS" == "macos" ]; then
+                sed -i '' "s/^  -- { import = 'custom\.plugins' },/  { import = 'custom.plugins' },/" "$HOME/.config/nvim/init.lua"
+            else
+                sed -i "s/^  -- { import = 'custom\.plugins' },/  { import = 'custom.plugins' },/" "$HOME/.config/nvim/init.lua"
+            fi
+            print_success "Custom plugin loading enabled"
+        elif grep -q "^  { import = 'custom\.plugins' }," "$HOME/.config/nvim/init.lua"; then
+            print_success "Custom plugin loading already enabled"
+        fi
+    fi
 
-# Build package list based on available tools
-MASON_PACKAGES="stylua"  # Lua formatter (always installed)
+    # Clean cache on fresh installation
+    if [ ! -d "$HOME/.local/share/nvim/lazy" ]; then
+        print_info "Fresh installation detected - cleaning neovim cache..."
+        rm -rf "$HOME/.local/share/nvim"
+        rm -rf "$HOME/.local/state/nvim"
+        rm -rf "$HOME/.cache/nvim"
+    else
+        print_info "Preserving existing Mason packages and cache"
+        rm -rf "$HOME/.cache/nvim"
+    fi
 
-# Python tools
-MASON_PACKAGES="$MASON_PACKAGES ruff pyright"
+    # Install plugins
+    print_info "Installing neovim plugins..."
+    if nvim --headless "+Lazy! sync" +qa 2>/dev/null; then
+        print_success "Neovim plugins installed"
+    else
+        print_warning "Plugin installation may require manual intervention"
+        print_info "Run: nvim --headless '+Lazy! sync' +qa"
+    fi
 
-# Go tools (only if Go is installed)
-if command -v go &> /dev/null; then
-    MASON_PACKAGES="$MASON_PACKAGES gopls delve gofumpt goimports"
-    print_info "Go detected - including Go development tools"
-else
-    print_warning "Go not found - skipping Go tools"
-fi
+    # Update treesitter parsers
+    print_info "Updating treesitter parsers..."
+    if nvim --headless "+TSUpdateSync" +qa 2>/dev/null; then
+        print_success "Treesitter parsers updated"
+    else
+        print_warning "Treesitter parser update encountered an issue"
+    fi
 
-print_info "Installing Mason packages: $MASON_PACKAGES"
+    # Install Mason packages (base language support)
+    print_info "Installing Mason packages..."
+    MASON_PACKAGES="stylua ruff pyright"
 
-if nvim --headless "+MasonInstall $MASON_PACKAGES" +qa 2>/dev/null; then
-    print_success "Mason packages installed"
-else
-    print_warning "Mason package installation encountered an issue"
-    print_info "You can manually install Mason packages later by running: :Mason in nvim"
-fi
+    if nvim --headless "+MasonInstall $MASON_PACKAGES" +qa 2>/dev/null; then
+        print_success "Mason packages installed"
+    else
+        print_warning "Mason packages may require manual installation"
+        print_info "Run: :Mason in nvim"
+    fi
 
-# ===========================
-# AI Coding Agents (Optional)
-# ===========================
+    # Note about Go tools
+    if command -v go &> /dev/null; then
+        print_info "Go detected - use 'golang_full' module to install Go LSP tools"
+    fi
+}
 
-print_header "AI Coding Agents Setup"
-echo ""
-read -p "Install AI coding agents? (y/n) " -n 1 -r
-echo ""
+install_golang() {
+    print_header "Installing Go"
 
-if [[ $REPLY =~ ^[Yy]$ ]]; then
-    # ===========================
-    # Claude Code Configuration
-    # ===========================
+    if [ "$OS" == "macos" ]; then
+        if ! command -v go &> /dev/null; then
+            print_info "Installing Go via Homebrew..."
+            brew install go
+            print_success "Go installed"
+        else
+            GO_VERSION=$(go version | sed 's/.*go\([0-9]*\.[0-9]*\).*/\1/')
+            if version_lt "$GO_VERSION" "1.24"; then
+                print_warning "Go $GO_VERSION detected (recommended: 1.24+)"
+                if brew list go &> /dev/null; then
+                    print_info "Upgrading Go via Homebrew..."
+                    brew upgrade go
+                    print_success "Go upgraded"
+                else
+                    print_info "Installing Go via Homebrew..."
+                    brew install go
+                    print_success "Go installed"
+                fi
+            else
+                print_success "Go $GO_VERSION is already installed"
+            fi
+        fi
+    elif [ "$OS" == "ubuntu" ]; then
+        if ! command -v go &> /dev/null; then
+            print_info "Installing Go (official binary)..."
 
-    print_header "Setting up Claude Code"
+            ARCH=$(uname -m)
+            if [ "$ARCH" = "x86_64" ]; then
+                GO_ARCH="amd64"
+            elif [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
+                GO_ARCH="arm64"
+            else
+                print_error "Unsupported architecture: $ARCH"
+                return 1
+            fi
 
-    # Install Claude Code if not already installed
+            GO_VERSION=$(curl -s https://go.dev/VERSION?m=text | head -1)
+            if [ -z "$GO_VERSION" ]; then
+                print_error "Failed to fetch Go version"
+                return 1
+            fi
+
+            GO_TARBALL="${GO_VERSION}.linux-${GO_ARCH}.tar.gz"
+            GO_URL="https://go.dev/dl/${GO_TARBALL}"
+
+            print_info "Downloading Go ${GO_VERSION}..."
+            TMP_DIR=$(mktemp -d)
+            cd "$TMP_DIR"
+
+            if ! wget -q --show-progress "$GO_URL"; then
+                print_error "Failed to download Go"
+                cd - > /dev/null
+                rm -rf "$TMP_DIR"
+                return 1
+            fi
+
+            if [ -d "/usr/local/go" ]; then
+                print_info "Removing previous Go installation..."
+                sudo rm -rf /usr/local/go
+            fi
+
+            print_info "Installing Go to /usr/local/go..."
+            sudo tar -C /usr/local -xzf "$GO_TARBALL"
+
+            cd - > /dev/null
+            rm -rf "$TMP_DIR"
+
+            print_success "Go ${GO_VERSION} installed"
+        else
+            GO_VERSION=$(go version | sed 's/.*go\([0-9]*\.[0-9]*\).*/\1/')
+            if version_lt "$GO_VERSION" "1.24"; then
+                print_warning "Go $GO_VERSION detected (recommended: 1.24+)"
+            else
+                print_success "Go $GO_VERSION is already installed"
+            fi
+        fi
+    fi
+
+    # Verify installation
+    if command -v go &> /dev/null; then
+        GO_FULL_VERSION=$(go version)
+        print_success "Go verified: $GO_FULL_VERSION"
+
+        export GOROOT="$HOME/go"
+        export GOPATH="$HOME/go-workspace"
+        mkdir -p "$GOPATH/bin"
+        export PATH="$GOPATH/bin:$GOROOT/bin:$PATH"
+    fi
+}
+
+install_golang_full() {
+    print_header "Installing Go Development Environment"
+
+    # Install Go toolchain
+    if ! install_golang; then
+        return 1
+    fi
+
+    # Install govulncheck security scanner
+    if command -v go &> /dev/null; then
+        print_info "Installing govulncheck (Go vulnerability scanner)..."
+        if go install golang.org/x/vuln/cmd/govulncheck@latest; then
+            print_success "govulncheck installed"
+        else
+            print_warning "Failed to install govulncheck"
+        fi
+
+        # Install Go development tools if neovim is installed
+        if command -v nvim &> /dev/null; then
+            print_info "Installing Go LSP and tools for Neovim..."
+
+            # Check if Mason packages can be installed
+            MASON_GO_PACKAGES="gopls delve gofumpt goimports"
+
+            if nvim --headless "+MasonInstall $MASON_GO_PACKAGES" +qa 2>/dev/null; then
+                print_success "Go development tools installed via Mason"
+            else
+                print_warning "Go tools may require manual installation via :Mason"
+            fi
+        else
+            print_info "Neovim not found - skipping Go LSP tools"
+            print_info "Install neovim first, then run: nvim -c 'MasonInstall gopls delve gofumpt goimports'"
+        fi
+    fi
+}
+
+install_nodejs() {
+    print_header "Installing Node.js"
+
+    if ! command -v fnm &> /dev/null; then
+        print_info "Installing fnm (Fast Node Manager)..."
+        curl -fsSL https://fnm.vercel.app/install | bash
+        export PATH="$HOME/.local/share/fnm:$PATH"
+        print_success "fnm installed"
+    else
+        print_success "fnm is already installed"
+    fi
+
+    if command -v fnm &> /dev/null; then
+        print_info "Installing Node.js LTS via fnm..."
+        export PATH="$HOME/.local/share/fnm:$PATH"
+        eval "$(fnm env --use-on-cd --shell bash)"
+
+        fnm install --lts
+        fnm use lts-latest
+        fnm default lts-latest
+
+        NODE_VERSION=$(node --version 2>/dev/null || echo "unknown")
+        print_success "Node.js $NODE_VERSION installed"
+    fi
+}
+
+install_zsh() {
+    print_header "Installing Oh My Zsh"
+
+    # Check if zsh is installed
+    if ! command -v zsh &> /dev/null; then
+        print_warning "Zsh not found. Installing base tools first..."
+        install_base_tools || return 1
+    fi
+
+    if [ ! -d "$HOME/.oh-my-zsh" ]; then
+        print_info "Installing Oh My Zsh..."
+        sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+        print_success "Oh My Zsh installed"
+    else
+        print_success "Oh My Zsh is already installed"
+    fi
+
+    # Set zsh as default shell
+    CURRENT_SHELL=$(basename "$SHELL")
+    if [ "$CURRENT_SHELL" != "zsh" ]; then
+        print_info "Setting zsh as default shell..."
+        ZSH_PATH=$(which zsh)
+        chsh -s "$ZSH_PATH"
+        print_success "Default shell set to zsh (restart required)"
+    else
+        print_success "zsh is already the default shell"
+    fi
+}
+
+configure_tmux() {
+    print_header "Configuring Tmux"
+
+    # Check if tmux is installed
+    if ! command -v tmux &> /dev/null; then
+        print_warning "Tmux not found. Installing base tools first..."
+        install_base_tools || return 1
+    fi
+
+    # Backup and link config
+    if [ -f "$HOME/.tmux.conf" ] && [ ! -L "$HOME/.tmux.conf" ]; then
+        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+        mv "$HOME/.tmux.conf" "$HOME/.tmux.conf.backup.$TIMESTAMP"
+        print_warning "Backed up existing .tmux.conf"
+    fi
+
+    if [ -L "$HOME/.tmux.conf" ]; then
+        rm "$HOME/.tmux.conf"
+    fi
+
+    ln -sf "$DOTFILES_DIR/tmux/.tmux.conf" "$HOME/.tmux.conf"
+    print_success "Tmux configuration linked"
+}
+
+configure_zsh() {
+    print_header "Configuring Zsh"
+
+    # Check if zsh is installed
+    if ! command -v zsh &> /dev/null; then
+        print_warning "Zsh not found. Installing base tools first..."
+        install_base_tools || return 1
+    fi
+
+    # Add custom config to .zshrc
+    if ! grep -q "source ~/dotfiles/zsh/.zshrc.custom" "$HOME/.zshrc" 2>/dev/null; then
+        print_info "Adding custom configuration to .zshrc..."
+        echo "" >> "$HOME/.zshrc"
+        echo "# Source custom dotfiles configuration" >> "$HOME/.zshrc"
+        echo "if [ -f ~/dotfiles/zsh/.zshrc.custom ]; then" >> "$HOME/.zshrc"
+        echo "    source ~/dotfiles/zsh/.zshrc.custom" >> "$HOME/.zshrc"
+        echo "fi" >> "$HOME/.zshrc"
+        print_success "Custom zsh configuration added"
+    else
+        print_success "Custom zsh configuration already sourced"
+    fi
+}
+
+install_claude() {
+    print_header "Installing Claude Code"
+
     if ! command -v claude &> /dev/null; then
         print_info "Installing Claude Code CLI..."
         curl -fsSL https://claude.ai/install.sh | bash
-
-        # Add Claude Code to PATH for this session
         export PATH="$HOME/.local/bin:$PATH"
-
         print_success "Claude Code CLI installed"
     else
         print_success "Claude Code CLI is already installed"
     fi
 
-    # Create .claude directory if it doesn't exist
-    if [ ! -d "$HOME/.claude" ]; then
-        print_info "Creating ~/.claude directory..."
-        mkdir -p "$HOME/.claude"
-        print_success "Created ~/.claude directory"
-    fi
+    mkdir -p "$HOME/.claude"
 
-    # Link Claude Code commands
-    print_info "Linking Claude Code commands..."
+    # Link commands
     if [ -L "$HOME/.claude/commands" ]; then
         rm "$HOME/.claude/commands"
     elif [ -d "$HOME/.claude/commands" ]; then
         TIMESTAMP=$(date +%Y%m%d_%H%M%S)
         mv "$HOME/.claude/commands" "$HOME/.claude/commands.backup.$TIMESTAMP"
-        print_warning "Backed up existing commands to commands.backup.$TIMESTAMP"
     fi
-
     ln -s "$DOTFILES_DIR/claude/commands" "$HOME/.claude/commands"
-    print_success "Claude Code commands linked"
 
-    # Note about authentication
-    print_info "Note: Run 'claude auth login' to configure Claude Code authentication when ready"
-
-    # Link Claude Code agents
-    print_info "Linking Claude Code agents..."
+    # Link agents
     if [ -L "$HOME/.claude/agents" ]; then
         rm "$HOME/.claude/agents"
     elif [ -d "$HOME/.claude/agents" ]; then
         TIMESTAMP=$(date +%Y%m%d_%H%M%S)
         mv "$HOME/.claude/agents" "$HOME/.claude/agents.backup.$TIMESTAMP"
-        print_warning "Backed up existing agents to agents.backup.$TIMESTAMP"
     fi
-
     ln -s "$DOTFILES_DIR/claude/agents" "$HOME/.claude/agents"
-    print_success "Claude Code agents linked"
 
-    # Link Claude Code settings
-    print_info "Linking Claude Code settings..."
+    # Link settings
     if [ -f "$HOME/.claude/settings.json" ] && [ ! -L "$HOME/.claude/settings.json" ]; then
         TIMESTAMP=$(date +%Y%m%d_%H%M%S)
         mv "$HOME/.claude/settings.json" "$HOME/.claude/settings.json.backup.$TIMESTAMP"
-        print_warning "Backed up existing settings to settings.json.backup.$TIMESTAMP"
     fi
-
-    # Remove existing symlink if it exists
     if [ -L "$HOME/.claude/settings.json" ]; then
         rm "$HOME/.claude/settings.json"
     fi
-
     if [ -f "$DOTFILES_DIR/claude/settings.json" ]; then
         ln -s "$DOTFILES_DIR/claude/settings.json" "$HOME/.claude/settings.json"
-        print_success "Claude Code settings linked"
-    else
-        print_info "No settings.json found in dotfiles (skipping)"
     fi
 
-    # Link Claude Code statusline script
-    print_info "Linking Claude Code statusline script..."
+    # Link statusline
     if [ -L "$HOME/.claude/statusline.sh" ]; then
         rm "$HOME/.claude/statusline.sh"
     elif [ -f "$HOME/.claude/statusline.sh" ]; then
         TIMESTAMP=$(date +%Y%m%d_%H%M%S)
         mv "$HOME/.claude/statusline.sh" "$HOME/.claude/statusline.sh.backup.$TIMESTAMP"
-        print_warning "Backed up existing statusline to statusline.sh.backup.$TIMESTAMP"
     fi
-
     if [ -f "$DOTFILES_DIR/claude/statusline.sh" ]; then
         ln -s "$DOTFILES_DIR/claude/statusline.sh" "$HOME/.claude/statusline.sh"
-        print_success "Claude Code statusline script linked"
-    else
-        print_info "No statusline.sh found in dotfiles (skipping)"
     fi
 
-    # ===========================
-    # Claude Code MCP Servers
-    # ===========================
+    print_success "Claude Code configured"
+    print_info "Run 'claude auth login' to authenticate"
 
-    print_header "Setting up Claude Code MCP servers"
-
-    # Install Playwright MCP server globally for acceptance testing
-    print_info "Installing Playwright MCP server globally for acceptance testing..."
+    # Install MCP servers
+    print_info "Installing Playwright MCP server..."
     if claude mcp list 2>/dev/null | grep -q "playwright"; then
         print_success "Playwright MCP server already configured"
     else
         if claude mcp add --scope user --transport stdio playwright -- npx -y @playwright/mcp@latest 2>/dev/null; then
-            print_success "Playwright MCP server installed globally (user scope)"
-            print_info "Available in all projects for /readyq:acceptance-test command"
-            print_info "Supports multiple browser contexts for multiplayer testing"
+            print_success "Playwright MCP server installed"
         else
             print_warning "Failed to install Playwright MCP server"
-            print_info "You can manually install it later with: claude mcp add --scope user --transport stdio playwright -- npx -y @playwright/mcp@latest"
         fi
     fi
+}
 
-    # ===========================
-    # OpenCode CLI Configuration
-    # ===========================
+install_opencode() {
+    print_header "Installing OpenCode"
 
-    print_header "Setting up OpenCode CLI"
-
-    # Install OpenCode if not already installed
     if ! command -v opencode &> /dev/null; then
         print_info "Installing OpenCode CLI..."
         curl -fsSL https://opencode.ai/install | bash
-
-        # Add OpenCode to PATH for this session
         export PATH="$HOME/.local/bin:$PATH"
-
         print_success "OpenCode CLI installed"
     else
         print_success "OpenCode CLI is already installed"
     fi
 
-    # Create .config/opencode directory if it doesn't exist
-    if [ ! -d "$HOME/.config/opencode" ]; then
-        print_info "Creating ~/.config/opencode directory..."
-        mkdir -p "$HOME/.config/opencode"
-        print_success "Created ~/.config/opencode directory"
-    fi
+    mkdir -p "$HOME/.config/opencode"
 
-    # Link OpenCode commands
-    print_info "Linking OpenCode commands..."
+    # Link commands
     if [ -L "$HOME/.config/opencode/command" ]; then
         rm "$HOME/.config/opencode/command"
     elif [ -d "$HOME/.config/opencode/command" ]; then
         TIMESTAMP=$(date +%Y%m%d_%H%M%S)
         mv "$HOME/.config/opencode/command" "$HOME/.config/opencode/command.backup.$TIMESTAMP"
-        print_warning "Backed up existing commands to command.backup.$TIMESTAMP"
     fi
-
     ln -s "$DOTFILES_DIR/opencode/commands" "$HOME/.config/opencode/command"
-    print_success "OpenCode commands linked"
 
-    # Link shared AGENTS.md
-    print_info "Linking shared AGENTS.md for OpenCode..."
+    # Link AGENTS.md
     if [ -f "$HOME/.config/opencode/AGENTS.md" ] && [ ! -L "$HOME/.config/opencode/AGENTS.md" ]; then
         TIMESTAMP=$(date +%Y%m%d_%H%M%S)
         mv "$HOME/.config/opencode/AGENTS.md" "$HOME/.config/opencode/AGENTS.md.backup.$TIMESTAMP"
-        print_warning "Backed up existing AGENTS.md to AGENTS.md.backup.$TIMESTAMP"
     fi
-
     if [ -L "$HOME/.config/opencode/AGENTS.md" ]; then
         rm "$HOME/.config/opencode/AGENTS.md"
     fi
-
     ln -s "$DOTFILES_DIR/AGENTS.md" "$HOME/.config/opencode/AGENTS.md"
-    print_success "Shared AGENTS.md linked"
 
-    # Note about authentication
-    print_info "Note: Run 'opencode auth login' to configure API keys when ready"
-
-    # ===========================
-    # OpenCode Configuration Management
-    # ===========================
-
-    print_header "Setting up OpenCode configuration"
-
-    # Link standard opencode.json configuration
-    print_info "Linking OpenCode configuration..."
+    # Link config
     if [ -f "$HOME/.config/opencode/opencode.json" ] && [ ! -L "$HOME/.config/opencode/opencode.json" ]; then
         TIMESTAMP=$(date +%Y%m%d_%H%M%S)
         mv "$HOME/.config/opencode/opencode.json" "$HOME/.config/opencode/opencode.json.backup.$TIMESTAMP"
-        print_warning "Backed up existing opencode.json to opencode.json.backup.$TIMESTAMP"
     fi
-
     if [ -L "$HOME/.config/opencode/opencode.json" ]; then
         rm "$HOME/.config/opencode/opencode.json"
     fi
-
     if [ -f "$DOTFILES_DIR/opencode/opencode.json" ]; then
         ln -s "$DOTFILES_DIR/opencode/opencode.json" "$HOME/.config/opencode/opencode.json"
-        print_success "OpenCode configuration linked"
-    else
-        print_info "No opencode.json found in dotfiles (skipping configuration linking)"
     fi
 
-else
-    print_info "Skipping AI coding agents installation."
-fi
-
-
-# ===========================
-# Git Configuration (Optional)
-# ===========================
-
-print_info "Checking git configuration..."
-
-if [ -z "$(git config --global user.name)" ]; then
-    print_warning "Git user.name not set"
-    read -p "Enter your git name (or press Enter to skip): " GIT_NAME
-    if [ -n "$GIT_NAME" ]; then
-        git config --global user.name "$GIT_NAME"
-    fi
-fi
-
-if [ -z "$(git config --global user.email)" ]; then
-    print_warning "Git user.email not set"
-    read -p "Enter your git email (or press Enter to skip): " GIT_EMAIL
-    if [ -n "$GIT_EMAIL" ]; then
-        git config --global user.email "$GIT_EMAIL"
-    fi
-fi
+    print_success "OpenCode configured"
+    print_info "Run 'opencode auth login' to authenticate"
+}
 
 # ===========================
-# Platform-Specific Notes
+# Dependency Resolution
 # ===========================
 
-PLATFORM_NOTES=""
-if [ "$OS" == "macos" ]; then
-    PLATFORM_NOTES="
-${BLUE}[INFO]${NC} macOS-specific notes:
-  - Clipboard uses pbcopy/pbpaste (built-in)
-  - If using iTerm2, enable true color support in preferences
-  - Homebrew packages will auto-update with 'brew upgrade'
-"
-elif [ "$OS" == "ubuntu" ]; then
-    PLATFORM_NOTES="
-${BLUE}[INFO]${NC} Ubuntu-specific notes:
-  - xclip is used for clipboard support
-  - Update kickstart: cd ~/.config/nvim && git pull
-  - Tmux auto-starts on SSH connections
-"
-fi
+resolve_dependencies() {
+    local modules=("$@")
+    local resolved=()
+
+    # Add each module and its dependencies
+    for module in "${modules[@]}"; do
+        case "$module" in
+            "nvim_config")
+                # Neovim config needs git and neovim
+                if ! command -v git &> /dev/null; then
+                    print_warning "Adding git (required by neovim config)"
+                    resolved+=("base_tools")
+                fi
+                if ! command -v nvim &> /dev/null; then
+                    print_warning "Adding neovim (required by neovim config)"
+                    resolved+=("neovim")
+                fi
+                resolved+=("nvim_config")
+                ;;
+            "zsh_ohmyzsh")
+                # Oh My Zsh needs zsh and git
+                if ! command -v zsh &> /dev/null; then
+                    print_warning "Adding zsh (required by Oh My Zsh)"
+                    resolved+=("base_tools")
+                fi
+                if ! command -v git &> /dev/null; then
+                    print_warning "Adding git (required by Oh My Zsh)"
+                    resolved+=("base_tools")
+                fi
+                resolved+=("zsh_ohmyzsh")
+                ;;
+            "tmux_config")
+                # Tmux config needs tmux
+                if ! command -v tmux &> /dev/null; then
+                    print_warning "Adding tmux (required by tmux config)"
+                    resolved+=("base_tools")
+                fi
+                resolved+=("tmux_config")
+                ;;
+            "zsh_config")
+                # Zsh config needs zsh
+                if ! command -v zsh &> /dev/null; then
+                    print_warning "Adding zsh (required by zsh config)"
+                    resolved+=("base_tools")
+                fi
+                resolved+=("zsh_config")
+                ;;
+            "claude"|"opencode")
+                # AI agents need curl
+                if ! command -v curl &> /dev/null; then
+                    print_warning "Adding curl (required by AI agents)"
+                    resolved+=("base_tools")
+                fi
+                resolved+=("$module")
+                ;;
+            *)
+                resolved+=("$module")
+                ;;
+        esac
+    done
+
+    # Remove duplicates while preserving order
+    printf '%s\n' "${resolved[@]}" | awk '!seen[$0]++'
+}
 
 # ===========================
-# Completion
+# Menu System
 # ===========================
 
-echo ""
-echo "=========================================="
-print_success "Dotfiles installation complete!"
-echo "=========================================="
-echo ""
-print_info "What was installed:"
-echo "  ✓ Tmux with vim-style bindings"
-echo "  ✓ Neovim with official kickstart.nvim"
-echo "  ✓ Custom config directory (~/dotfiles/nvim/custom)"
-echo "  ✓ Zsh with Oh My Zsh"
-echo "  ✓ Go 1.24+ (Golang)"
-echo "  ✓ fnm (Fast Node Manager) + Node.js LTS"
-echo "  ✓ Claude Code custom commands and agents"
-echo "  ✓ OpenCode CLI with custom commands"
-echo "  ✓ All required dependencies"
-echo ""
-print_info "Next steps:"
-echo "  1. Restart your shell or run: source ~/.zshrc"
-echo "  2. Start tmux: tmux"
-echo "  3. Launch neovim: nvim"
-echo ""
-print_info "Customizing neovim:"
-echo "  - Add custom plugins in: ~/dotfiles/nvim/custom/plugins/"
-echo "  - Add custom config in: ~/dotfiles/nvim/custom/init.lua"
-echo "  - Your customizations are tracked in your dotfiles repo"
-echo "  - Update kickstart anytime: cd ~/.config/nvim && git pull"
-echo ""
-print_info "Quick reference:"
-echo "  - Tmux prefix: Ctrl-a"
-echo "  - Split panes: Ctrl-a | (vertical) or Ctrl-a - (horizontal)"
-echo "  - Navigate panes: Ctrl-a h/j/k/l"
-echo "  - Tmux aliases: t, ta, tn, tl, tk, td"
-echo ""
-print_info "AI Coding Assistants:"
-echo "  - Claude Code: Custom commands in ~/.claude/commands and agents in ~/.claude/agents (auth: claude auth login)"
-echo "  - OpenCode CLI: Run 'opencode' to start (auth: opencode auth login)"
-echo ""
-print_info "AI Command Helper:"
-echo "  - ai-commands setup: Add command instructions to any project's AGENTS.md"
-echo "  - ai-commands get <name>: Get command prompt (for AI agents without slash commands)"
-echo "  - ai-commands list: Show all available commands"
-echo "  - Works with Claude Code custom agents and any tool that can run bash"
+show_profile_menu() {
+    print_header "Dotfiles Installation"
 
-if [ -n "$PLATFORM_NOTES" ]; then
+    echo "Select installation profile:"
     echo ""
-    echo -e "$PLATFORM_NOTES"
-fi
+    echo "  1) Full Installation"
+    echo "     Everything: Neovim, Tmux, Zsh, Go, Node.js, AI agents"
+    echo ""
+    echo "  2) Minimal (editors only)"
+    echo "     Neovim + config, Tmux + config"
+    echo ""
+    echo "  3) Work Profile"
+    echo "     Neovim, Tmux, OpenCode (no personal tools)"
+    echo ""
+    echo "  4) Custom (pick components)"
+    echo "     Interactive component selection"
+    echo ""
+    echo "  0) Exit"
+    echo ""
 
-echo ""
-print_success "Happy coding!"
+    read -p "Enter choice [0-4]: " choice
+
+    case $choice in
+        1)
+            SELECTED_MODULES=(base_tools neovim nvim_config tmux_config zsh_ohmyzsh zsh_config golang_full nodejs claude opencode)
+            ;;
+        2)
+            SELECTED_MODULES=(base_tools neovim nvim_config tmux_config)
+            ;;
+        3)
+            SELECTED_MODULES=(base_tools neovim nvim_config tmux_config opencode)
+            ;;
+        4)
+            show_custom_menu
+            return
+            ;;
+        0)
+            print_info "Installation cancelled"
+            exit 0
+            ;;
+        *)
+            print_error "Invalid choice"
+            show_profile_menu
+            return
+            ;;
+    esac
+}
+
+show_custom_menu() {
+    print_header "Custom Component Selection"
+
+    declare -A selections
+    local options=(
+        "base_tools:Base Tools (git, curl, tmux, zsh, etc.)"
+        "neovim:Neovim 0.10+"
+        "nvim_config:Neovim Configuration (kickstart + custom)"
+        "tmux_config:Tmux Configuration"
+        "zsh_ohmyzsh:Zsh + Oh My Zsh"
+        "zsh_config:Zsh Custom Configuration"
+        "golang_full:Go Development (toolchain + LSP + tools)"
+        "nodejs:Node.js LTS (fnm)"
+        "claude:Claude Code CLI"
+        "opencode:OpenCode CLI"
+    )
+
+    # Initialize all as unselected
+    for opt in "${options[@]}"; do
+        key="${opt%%:*}"
+        selections[$key]=0
+    done
+
+    while true; do
+        clear
+        print_header "Select Components"
+
+        echo "Current selections:"
+        for opt in "${options[@]}"; do
+            key="${opt%%:*}"
+            desc="${opt#*:}"
+            if [ "${selections[$key]}" == "1" ]; then
+                echo "  [X] $desc"
+            else
+                echo "  [ ] $desc"
+            fi
+        done
+
+        echo ""
+        echo "Options:"
+        local i=1
+        for opt in "${options[@]}"; do
+            desc="${opt#*:}"
+            echo "  $i) $desc"
+            ((i++))
+        done
+        echo "  11) Toggle All"
+        echo "  12) Done"
+        echo ""
+
+        read -p "Enter number to toggle (or 12 when done): " choice
+
+        if [ "$choice" == "12" ]; then
+            break
+        elif [ "$choice" == "11" ]; then
+            # Toggle all
+            local all_selected=1
+            for key in "${!selections[@]}"; do
+                if [ "${selections[$key]}" == "0" ]; then
+                    all_selected=0
+                    break
+                fi
+            done
+
+            for key in "${!selections[@]}"; do
+                if [ "$all_selected" == "1" ]; then
+                    selections[$key]=0
+                else
+                    selections[$key]=1
+                fi
+            done
+        elif [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le "${#options[@]}" ]; then
+            # Toggle individual selection
+            local idx=$((choice - 1))
+            local opt="${options[$idx]}"
+            local key="${opt%%:*}"
+            if [ "${selections[$key]}" == "1" ]; then
+                selections[$key]=0
+            else
+                selections[$key]=1
+            fi
+        else
+            print_error "Invalid choice"
+            sleep 1
+        fi
+    done
+
+    # Build selected modules array
+    SELECTED_MODULES=()
+    for opt in "${options[@]}"; do
+        key="${opt%%:*}"
+        if [ "${selections[$key]}" == "1" ]; then
+            SELECTED_MODULES+=("$key")
+        fi
+    done
+}
+
+show_installation_summary() {
+    print_header "Installation Summary"
+
+    if [ ${#SELECTED_MODULES[@]} -eq 0 ]; then
+        print_warning "No modules selected"
+        return 1
+    fi
+
+    echo "The following components will be installed:"
+    for module in "${SELECTED_MODULES[@]}"; do
+        case "$module" in
+            "base_tools") echo "  • Base Tools (git, curl, tmux, zsh, etc.)" ;;
+            "neovim") echo "  • Neovim 0.10+" ;;
+            "nvim_config") echo "  • Neovim Configuration (kickstart + custom)" ;;
+            "tmux_config") echo "  • Tmux Configuration" ;;
+            "zsh_ohmyzsh") echo "  • Zsh + Oh My Zsh" ;;
+            "zsh_config") echo "  • Zsh Custom Configuration" ;;
+            "golang") echo "  • Go 1.24+ Toolchain (basic)" ;;
+            "golang_full") echo "  • Go Development (toolchain + LSP + tools + govulncheck)" ;;
+            "nodejs") echo "  • Node.js LTS (fnm)" ;;
+            "claude") echo "  • Claude Code CLI" ;;
+            "opencode") echo "  • OpenCode CLI" ;;
+        esac
+    done
+
+    echo ""
+    read -p "Proceed with installation? (y/n) " -n 1 -r
+    echo ""
+
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        print_info "Installation cancelled"
+        return 1
+    fi
+
+    return 0
+}
+
+# ===========================
+# Module Execution
+# ===========================
+
+execute_modules() {
+    local modules=("$@")
+
+    for module in "${modules[@]}"; do
+        case "$module" in
+            "base_tools")
+                if ! install_base_tools; then
+                    FAILED_MODULES+=("base_tools")
+                fi
+                ;;
+            "neovim")
+                if ! install_neovim; then
+                    FAILED_MODULES+=("neovim")
+                fi
+                ;;
+            "nvim_config")
+                if ! configure_neovim; then
+                    FAILED_MODULES+=("nvim_config")
+                fi
+                ;;
+            "tmux_config")
+                if ! configure_tmux; then
+                    FAILED_MODULES+=("tmux_config")
+                fi
+                ;;
+            "zsh_ohmyzsh")
+                if ! install_zsh; then
+                    FAILED_MODULES+=("zsh_ohmyzsh")
+                fi
+                ;;
+            "zsh_config")
+                if ! configure_zsh; then
+                    FAILED_MODULES+=("zsh_config")
+                fi
+                ;;
+            "golang")
+                if ! install_golang; then
+                    FAILED_MODULES+=("golang")
+                fi
+                ;;
+            "golang_full")
+                if ! install_golang_full; then
+                    FAILED_MODULES+=("golang_full")
+                fi
+                ;;
+            "nodejs")
+                if ! install_nodejs; then
+                    FAILED_MODULES+=("nodejs")
+                fi
+                ;;
+            "claude")
+                if ! install_claude; then
+                    FAILED_MODULES+=("claude")
+                fi
+                ;;
+            "opencode")
+                if ! install_opencode; then
+                    FAILED_MODULES+=("opencode")
+                fi
+                ;;
+        esac
+    done
+}
+
+# ===========================
+# Command Line Arguments
+# ===========================
+
+parse_arguments() {
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --modules)
+                IFS=',' read -ra SELECTED_MODULES <<< "$2"
+                shift 2
+                ;;
+            --profile)
+                case $2 in
+                    full)
+                        SELECTED_MODULES=(base_tools neovim nvim_config tmux_config zsh_ohmyzsh zsh_config golang_full nodejs claude opencode)
+                        ;;
+                    minimal)
+                        SELECTED_MODULES=(base_tools neovim nvim_config tmux_config)
+                        ;;
+                    work)
+                        SELECTED_MODULES=(base_tools neovim nvim_config tmux_config opencode)
+                        ;;
+                    *)
+                        print_error "Unknown profile: $2"
+                        exit 1
+                        ;;
+                esac
+                shift 2
+                ;;
+            --help)
+                show_help
+                exit 0
+                ;;
+            *)
+                print_error "Unknown option: $1"
+                show_help
+                exit 1
+                ;;
+        esac
+    done
+}
+
+show_help() {
+    cat << EOF
+Dotfiles Installation Script
+
+Usage: $0 [OPTIONS]
+
+Options:
+  --profile PROFILE    Install predefined profile (full, minimal, work)
+  --modules MODULES    Comma-separated list of modules to install
+  --help              Show this help message
+
+Profiles:
+  full                Everything (includes Go development environment)
+  minimal             Editors only (Neovim + Tmux)
+  work                Work setup (Neovim, Tmux, OpenCode - no Go)
+
+Modules:
+  base_tools          Base tools (git, curl, tmux, zsh, etc.)
+  neovim              Neovim 0.10+
+  nvim_config         Neovim configuration (kickstart + custom)
+  tmux_config         Tmux configuration
+  zsh_ohmyzsh         Zsh + Oh My Zsh
+  zsh_config          Zsh custom configuration
+  golang              Go 1.24+ toolchain only
+  golang_full         Go development (toolchain + LSP + tools + govulncheck)
+  nodejs              Node.js LTS (fnm)
+  claude              Claude Code CLI + MCP servers
+  opencode            OpenCode CLI
+
+Examples:
+  $0                                       # Interactive menu
+  $0 --profile full                        # Install everything
+  $0 --profile minimal                     # Minimal installation
+  $0 --profile work                        # Work profile (no Go)
+  $0 --modules neovim,nvim_config,tmux     # Custom modules
+  $0 --modules golang_full,neovim          # Go dev environment
+
+EOF
+}
+
+# ===========================
+# Main Installation Flow
+# ===========================
+
+main() {
+    # Parse command line arguments first (for --help)
+    parse_arguments "$@"
+
+    print_header "Dotfiles Installation Script"
+    print_info "Dotfiles directory: $DOTFILES_DIR"
+
+    # Core setup (always required)
+    detect_os
+    setup_package_manager
+    update_package_manager
+
+    # If no modules selected, show interactive menu
+    if [ ${#SELECTED_MODULES[@]} -eq 0 ]; then
+        show_profile_menu
+    fi
+
+    # Resolve dependencies
+    print_info "Resolving dependencies..."
+    SELECTED_MODULES=($(resolve_dependencies "${SELECTED_MODULES[@]}"))
+
+    # Show summary and confirm
+    if ! show_installation_summary; then
+        exit 0
+    fi
+
+    # Execute installation
+    print_header "Starting Installation"
+    execute_modules "${SELECTED_MODULES[@]}"
+
+    # Show completion summary
+    print_header "Installation Complete"
+
+    if [ ${#FAILED_MODULES[@]} -gt 0 ]; then
+        print_warning "Some modules failed to install:"
+        for module in "${FAILED_MODULES[@]}"; do
+            echo "  ✗ $module"
+        done
+        echo ""
+    fi
+
+    print_success "Successfully installed modules:"
+    for module in "${SELECTED_MODULES[@]}"; do
+        if [[ ! " ${FAILED_MODULES[@]} " =~ " ${module} " ]]; then
+            echo "  ✓ $module"
+        fi
+    done
+
+    echo ""
+    print_info "Next steps:"
+    echo "  1. Restart your shell or run: source ~/.zshrc"
+    echo "  2. Start tmux: tmux"
+    echo "  3. Launch neovim: nvim"
+    echo ""
+    print_info "For AI agents:"
+    echo "  • Claude Code: claude auth login"
+    echo "  • OpenCode: opencode auth login"
+    echo ""
+    print_success "Happy coding!"
+
+    # Return non-zero if any modules failed
+    if [ ${#FAILED_MODULES[@]} -gt 0 ]; then
+        exit 1
+    fi
+}
+
+# Run main function
+main "$@"

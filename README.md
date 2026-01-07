@@ -29,16 +29,61 @@ cd ~/dotfiles
 ./install.sh
 ```
 
-The install script will:
-- Detect your OS (Ubuntu or macOS)
-- Install required dependencies (tmux, neovim, zsh, etc.)
-- Set up Oh My Zsh
-- Clone official kickstart.nvim
-- Link configuration files
-- Install Go (Golang) 1.24+ with architecture detection
-- Install neovim plugins with language support (Python, Go, Lua)
-- Install AI coding tools (Claude Code, OpenCode CLI)
-- Configure code-quality-guardian and documentation-updater agents
+The installer provides a **menu-driven interface** with multiple installation profiles:
+
+**Interactive Mode** (default):
+- Choose from preset profiles: Full or Minimal
+- Or customize by selecting specific components
+
+**Preset Profiles**:
+
+| Profile | Includes | Best For |
+|---------|----------|----------|
+| **Full** | Everything (Neovim, Tmux, Zsh, Go dev, Node.js, AI agents) | Complete development setup |
+| **Minimal** | Neovim + Tmux configs only | Quick editor setup |
+
+**Non-Interactive Mode** (command-line flags):
+```bash
+# Install everything (includes Go development environment)
+./install.sh --profile full
+
+# Minimal installation (editors only)
+./install.sh --profile minimal
+
+# Custom module selection
+./install.sh --modules neovim,nvim_config,tmux_config
+
+# Go development environment
+./install.sh --modules golang_full,neovim,nvim_config
+
+# View all options
+./install.sh --help
+```
+
+**Available Modules**:
+- `base_tools` - Git, curl, tmux, zsh, ripgrep, jq, gh
+- `neovim` - Neovim 0.10+ (AppImage on Ubuntu, Homebrew on macOS)
+- `nvim_config` - Kickstart.nvim + custom plugins
+- `tmux_config` - Tmux configuration with vim bindings
+- `zsh_ohmyzsh` - Zsh + Oh My Zsh installation
+- `zsh_config` - Custom zsh configuration
+- `golang` - Go 1.24+ toolchain only (basic)
+- `golang_full` - Complete Go development environment:
+  - Go 1.24+ toolchain
+  - gopls (LSP server)
+  - delve (debugger)
+  - gofumpt (formatter)
+  - goimports (import manager)
+  - govulncheck (security scanner)
+- `nodejs` - Node.js LTS via fnm
+- `claude` - Claude Code CLI + MCP servers
+- `opencode` - OpenCode CLI
+
+**Features**:
+- Automatic dependency resolution
+- Idempotent (safe to run multiple times)
+- Handles partial failures gracefully
+- Cross-platform (Ubuntu/Debian and macOS)
 
 ### Post-Installation
 
