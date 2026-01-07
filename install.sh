@@ -892,35 +892,6 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
         print_info "No opencode.json found in dotfiles (skipping configuration linking)"
     fi
 
-    # ===========================
-    # GitHub Copilot CLI Configuration
-    # ===========================
-
-    print_header "Setting up GitHub Copilot CLI"
-
-    # Check Node.js version requirement (v22 or higher)
-    if command -v node &> /dev/null; then
-        NODE_MAJOR_VERSION=$(node --version | cut -d'.' -f1 | sed 's/v//')
-        if [ "$NODE_MAJOR_VERSION" -ge 22 ]; then
-            # Install GitHub Copilot CLI if not already installed
-            if ! command -v copilot &> /dev/null; then
-                print_info "Installing GitHub Copilot CLI..."
-                npm install -g @github/copilot
-                print_success "GitHub Copilot CLI installed"
-            else
-                print_success "GitHub Copilot CLI is already installed"
-            fi
-        else
-            print_warning "Node.js v22+ required for GitHub Copilot CLI (current: v$NODE_MAJOR_VERSION)"
-            print_info "Skipping GitHub Copilot CLI installation. Run 'fnm install 22 && fnm use 22' to upgrade."
-        fi
-    else
-        print_warning "Node.js not found - skipping GitHub Copilot CLI installation"
-    fi
-
-    # Note about authentication
-    print_info "Note: Run 'copilot' and use '/login' command to authenticate with GitHub"
-    print_info "      Requires active GitHub Copilot subscription"
 else
     print_info "Skipping AI coding agents installation."
 fi
@@ -1009,13 +980,12 @@ echo ""
 print_info "AI Coding Assistants:"
 echo "  - Claude Code: Custom commands in ~/.claude/commands and agents in ~/.claude/agents (auth: claude auth login)"
 echo "  - OpenCode CLI: Run 'opencode' to start (auth: opencode auth login)"
-echo "  - GitHub Copilot CLI: Run 'copilot' then use '/login' to authenticate"
 echo ""
 print_info "AI Command Helper:"
 echo "  - ai-commands setup: Add command instructions to any project's AGENTS.md"
 echo "  - ai-commands get <name>: Get command prompt (for AI agents without slash commands)"
 echo "  - ai-commands list: Show all available commands"
-echo "  - Works with Copilot CLI, Claude Code custom agents, and any tool that can run bash"
+echo "  - Works with Claude Code custom agents and any tool that can run bash"
 
 if [ -n "$PLATFORM_NOTES" ]; then
     echo ""

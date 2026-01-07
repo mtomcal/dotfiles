@@ -17,7 +17,7 @@ The primary entry point is `./install.sh`, which:
 - Installs Go (Golang) 1.24+ with architecture detection (x86_64/arm64)
 - Installs fnm (Fast Node Manager) and Node.js LTS
 - Links AI coding assistant configurations (Claude Code, OpenCode)
-- Installs OpenCode CLI and optionally GitHub Copilot CLI
+- Installs OpenCode CLI
 - Sets up Mason LSP/formatter packages (Python, Go, Lua)
 
 **Key behavior**: The script is idempotent and safe to re-run for updates.

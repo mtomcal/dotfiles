@@ -7,7 +7,7 @@ Personal development environment configuration for tmux, neovim, and zsh.
 - **Tmux**: Vim-style navigation and keybindings with optimized settings for neovim
 - **Neovim**: Official [kickstart.nvim](https://github.com/nvim-lua/kickstart.nvim) base with custom plugin layer
 - **Zsh**: Oh My Zsh with custom aliases and tmux integration
-- **AI Coding Tools**: Claude Code, OpenCode CLI, and GitHub Copilot CLI with custom commands and agents
+- **AI Coding Tools**: Claude Code and OpenCode CLI with custom commands and agents
 - **Code Quality**: Language-agnostic code-quality-guardian agent for automated reviews
 - **Language Support**:
   - **Python**: Pyright LSP + Ruff linting/formatting with Poetry auto-detection
@@ -37,7 +37,7 @@ The install script will:
 - Link configuration files
 - Install Go (Golang) 1.24+ with architecture detection
 - Install neovim plugins with language support (Python, Go, Lua)
-- Install AI coding tools (Claude Code, OpenCode CLI, GitHub Copilot CLI)
+- Install AI coding tools (Claude Code, OpenCode CLI)
 - Configure code-quality-guardian and documentation-updater agents
 
 ### Post-Installation
@@ -382,41 +382,6 @@ opencode auth login
 ```bash
 opencode  # Start interactive session
 ```
-
-#### GitHub Copilot CLI
-
-Terminal-based GitHub Copilot powered by AI. Requires Node.js v22+.
-
-**Requirements**:
-- Active GitHub Copilot subscription
-- Node.js v22 or higher
-
-**Authentication**:
-```bash
-copilot             # Start interactive session
-# Then use /login   # Authenticate with GitHub
-```
-
-Alternatively, set a GitHub Personal Access Token with "Copilot Requests" permission:
-```bash
-export GH_TOKEN=your_token_here
-```
-
-**Usage**:
-```bash
-copilot                                    # Start interactive mode
-copilot -p "explain this code"             # Non-interactive prompt
-copilot --continue                         # Resume last session
-copilot --model gpt-5                      # Use specific model
-```
-
-**Features**:
-- Natural language terminal commands
-- Code explanation and debugging
-- Integration with GitHub workflows
-- Powered by Claude Sonnet 4.5 by default
-- Session management and resumption
-- Custom agents and MCP server support
 
 ## Platform-Specific Notes
 
