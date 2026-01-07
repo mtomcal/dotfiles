@@ -1,3 +1,7 @@
+---
+description: Research codebase for deep insights on task implementation and understanding
+---
+
 # Research Codebase
 
 <system-instructions>

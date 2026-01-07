@@ -1,7 +1,6 @@
 ---
 name: acceptance-tester
-description: Use this agent to validate acceptance criteria by testing a web application URL. The agent uses Playwright MCP server to automate browser testing and returns detailed feedback on any issues found. REQUIRED ARGUMENT - url: The web application URL to test (e.g., "http://localhost:3000" or "https://staging.example.com"). The acceptance criteria should be provided in the conversation context.
-model: sonnet
+description: Use this agent to validate acceptance criteria by testing a web application URL. The agent uses Playwright MCP server to automate browser testing and returns detailed feedback on any issues found. REQUIRED ARGUMENT - url (web application URL to test). The acceptance criteria should be provided in the conversation context.
 color: green
 permissionMode: default
 tools:

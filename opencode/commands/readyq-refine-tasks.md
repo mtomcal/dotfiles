@@ -1,3 +1,7 @@
+---
+description: Compare epic requirements to ReadyQ tasks and update with learnings from completed work
+---
+
 # ReadyQ Refine Tasks
 
 <system-instructions>

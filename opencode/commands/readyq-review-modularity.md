@@ -1,3 +1,7 @@
+---
+description: Proactive architectural review to identify and refactor large monolithic files
+---
+
 # ReadyQ Modularity Review
 
 <critical>This is a proactive architectural review, not a blocking task review</critical>

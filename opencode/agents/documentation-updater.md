@@ -1,33 +1,6 @@
 ---
 name: documentation-updater
-description: Use this agent after completing features, refactors, or significant changes to automatically review git diffs and update relevant documentation files (README.md, AGENTS.md, etc.). This agent ensures documentation stays synchronized with code changes.
-
-<example>
-Context: User just completed adding a new feature.
-user: "I've finished implementing the tmux auto-naming feature."
-assistant: "Great! Let me use the documentation-updater agent to check if any documentation needs to be updated to reflect these changes."
-<Task tool invocation with agent: documentation-updater>
-</example>
-
-<example>
-Context: User refactored configuration structure.
-user: "I've refactored the install script to support new package managers."
-assistant: "Nice work! Let me launch the documentation-updater agent to ensure the README and AGENTS.md reflect the new installation process."
-<Task tool invocation with agent: documentation-updater>
-</example>
-
-<example>
-Context: User adds new slash commands or agents.
-user: "I've added a new session management command."
-assistant: "Perfect! Let me use the documentation-updater agent to update the documentation with the new command."
-<Task tool invocation with agent: documentation-updater>
-</example>
-
-Do NOT use this agent for:
-- Trivial changes that don't affect user-facing behavior
-- Work in progress that isn't finalized
-- Changes that are purely internal with no documentation impact
-model: sonnet
+description: Use this agent after completing features, refactors, or significant changes to automatically review git diffs and update relevant documentation files (README.md, AGENTS.md, etc.). Ensures documentation stays synchronized with code changes. Do NOT use for trivial changes, work in progress, or purely internal changes with no documentation impact.
 color: green
 ---
 

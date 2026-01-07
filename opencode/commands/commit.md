@@ -1,3 +1,7 @@
+---
+description: Create git commit with detailed message for AI memory and human transparency
+---
+
 # Commit
 
 <system-instructions>

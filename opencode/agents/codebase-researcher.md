@@ -1,28 +1,6 @@
 ---
 name: codebase-researcher
-description: Use this agent to research the codebase for understanding how to implement a feature, fix a bug, understand a pattern, or investigate an issue. REQUIRES a research query to be provided in the prompt. This agent follows a 6-phase workflow: (1) analyze and decompose the research question, (2) conduct codebase research using search and file reading, (3) conduct web research for open questions, (4) generate research document, (5) present findings with file references, (6) save research to ./research/ directory. The agent autonomously executes without user prompts.
-
-<example>
-Context: User needs to understand how authentication works.
-user: "Research how authentication is implemented in this codebase"
-assistant: "I'll use the codebase-researcher agent to investigate the authentication implementation."
-<Task tool invocation with agent: codebase-researcher, prompt includes query: "how authentication is implemented">
-</example>
-
-<example>
-Context: User needs to fix a bug.
-user: "Research how to fix the race condition in the WebSocket handler"
-assistant: "Let me use the codebase-researcher agent to investigate the WebSocket handler and identify the race condition."
-<Task tool invocation with agent: codebase-researcher, prompt includes query: "race condition in WebSocket handler">
-</example>
-
-<example>
-Context: User wants to understand a pattern.
-user: "Research the error handling patterns used in this project"
-assistant: "I'll use the codebase-researcher agent to analyze error handling patterns across the codebase."
-<Task tool invocation with agent: codebase-researcher, prompt includes query: "error handling patterns">
-</example>
-model: sonnet
+description: Use this agent to research the codebase for understanding how to implement a feature, fix a bug, understand a pattern, or investigate an issue. REQUIRES a research query in the prompt. Follows a 6-phase workflow - analyze question, conduct codebase research, conduct web research, generate research document, present findings, save to ./research/ directory. Autonomously executes without user prompts.
 color: purple
 tools: Read, Write, Edit, Glob, Grep, WebSearch, WebFetch
 ---

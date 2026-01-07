@@ -1,3 +1,7 @@
+---
+description: Orchestrate full ReadyQ development cycle - research, implementation, code review, test review, and commit
+---
+
 # ReadyQ Full Cycle
 
 <critical>Must follow a test driven development workflow to achieve >90% coverage on all metrics</critical>

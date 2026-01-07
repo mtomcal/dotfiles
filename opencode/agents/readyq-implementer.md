@@ -1,7 +1,6 @@
 ---
 name: readyq-implementer
-description: Use this agent to implement a specific ReadyQ issue using test-driven development. REQUIRES a hashId to be provided in the prompt. This agent follows a streamlined 8-phase workflow: (1) read the specified story and move to in_progress, (2) read last commit for context, (3) plan changes and log to ReadyQ, (4) implement with TDD achieving >90% coverage, (5) run typecheck/linting, (6) verify test coverage, (7) run integration tests, (8) summarize changes to ReadyQ. The agent autonomously executes without user prompts.\n\n<example>\nContext: User wants to implement a specific task.\nuser: "Implement ReadyQ task abc123"\nassistant: "I'll use the readyq-implementer agent to implement task abc123 following TDD methodology."\n<Task tool invocation with agent: readyq-implementer, prompt includes hashId: abc123>\n</example>\n\n<example>\nContext: User selected a task from the backlog.\nuser: "Work on task def456"\nassistant: "Let me use the readyq-implementer agent to implement task def456 with full test coverage."\n<Task tool invocation with agent: readyq-implementer, prompt includes hashId: def456>\n</example>
-model: sonnet
+description: Use this agent to implement a specific ReadyQ issue using test-driven development. REQUIRES a hashId in the prompt. Follows an 8-phase workflow - read story and move to in_progress, read last commit, plan changes and log to ReadyQ, implement with TDD achieving >90% coverage, run typecheck/linting, verify coverage, run integration tests, summarize to ReadyQ. Autonomously executes without user prompts.
 color: green
 ---
 

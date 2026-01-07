@@ -1,3 +1,7 @@
+---
+description: Translate business requirements from epics and stories into engineering tasks
+---
+
 # ReadyQ Create Issues
 
 <system-instructions>

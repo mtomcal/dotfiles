@@ -1,3 +1,7 @@
+---
+description: Review unit tests for ReadyQ issue ensuring assertions match test intent
+---
+
 # ReadyQ Review Tests
 
 <critical>Must follow a test driven development workflow to achieve >90% coverage on all metrics</critical>

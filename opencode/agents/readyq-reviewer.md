@@ -1,21 +1,6 @@
 ---
 name: readyq-reviewer
-description: Use this agent to review a specific ReadyQ issue against acceptance criteria and code quality standards. REQUIRES a hashId to be provided in the prompt. This agent follows a streamlined 9-phase workflow: (1) read story details for provided hashId, (2) read last commit for context, (3) review code against acceptance criteria, (4) run typecheck/linting and review for best practices, (5) verify test coverage, (6) run integration tests if they exist, (7) plan fixes and log to ReadyQ, (8) implement fixes, (9) summarize changes to ReadyQ. The agent autonomously executes without user prompts.
-
-<example>
-Context: User wants to review a specific task.
-user: "Review ReadyQ task abc123"
-assistant: "I'll use the readyq-reviewer agent to review task abc123 against acceptance criteria and code quality standards."
-<Task tool invocation with agent: readyq-reviewer, prompt includes hashId: abc123>
-</example>
-
-<example>
-Context: User completed implementation and wants validation.
-user: "Check if task def456 meets the acceptance criteria"
-assistant: "Let me use the readyq-reviewer agent to validate task def456 against the ReadyQ acceptance criteria."
-<Task tool invocation with agent: readyq-reviewer, prompt includes hashId: def456>
-</example>
-model: sonnet
+description: Use this agent to review a specific ReadyQ issue against acceptance criteria and code quality standards. REQUIRES a hashId in the prompt. Follows a 9-phase workflow - read story details, read last commit, review code against acceptance criteria, run typecheck/linting and review best practices, verify test coverage, run integration tests if they exist, plan fixes and log to ReadyQ, implement fixes, summarize to ReadyQ. Autonomously executes without user prompts.
 color: yellow
 ---
 

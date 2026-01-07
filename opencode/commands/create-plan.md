@@ -1,3 +1,7 @@
+---
+description: Create epics and stories with full technical context for project planning
+---
+
 # Epic and Story Creation with Full Technical Context
 
 <critical>EVERY story must be completable by a single dev agent in one focused session</critical>

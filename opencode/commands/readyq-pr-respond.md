@@ -1,3 +1,7 @@
+---
+description: Read PR comments, answer questions with codebase context, and post responses to GitHub
+---
+
 # ReadyQ: PR Respond
 
 <critical>Responses are posted immediately to GitHub without approval prompts - run this command only when you're ready to respond</critical>

@@ -1,21 +1,6 @@
 ---
 name: readyq-test-reviewer
-description: Use this agent to review unit tests for a specific ReadyQ issue, ensuring assertions match test intent and coverage meets >90%. REQUIRES a hashId to be provided in the prompt. This agent follows a streamlined 7-phase workflow: (1) read story details for provided hashId, (2) read last commit for context, (3) review tests for assertion/intent mismatches and bad practices, (4) run test coverage check, (5) plan fixes and log to ReadyQ, (6) implement fixes, (7) summarize changes to ReadyQ. The agent autonomously executes without user prompts.
-
-<example>
-Context: User wants to review tests for a specific task.
-user: "Review tests for ReadyQ task abc123"
-assistant: "I'll use the readyq-test-reviewer agent to review tests for task abc123, checking assertion quality and coverage."
-<Task tool invocation with agent: readyq-test-reviewer, prompt includes hashId: abc123>
-</example>
-
-<example>
-Context: User wants to validate test quality.
-user: "Check if tests for task def456 have proper assertions"
-assistant: "Let me use the readyq-test-reviewer agent to validate test quality for task def456."
-<Task tool invocation with agent: readyq-test-reviewer, prompt includes hashId: def456>
-</example>
-model: sonnet
+description: Use this agent to review unit tests for a specific ReadyQ issue, ensuring assertions match test intent and coverage meets >90%. REQUIRES a hashId in the prompt. Follows a 7-phase workflow - read story details, read last commit, review tests for assertion/intent mismatches and bad practices, run test coverage check, plan fixes and log to ReadyQ, implement fixes, summarize to ReadyQ. Autonomously executes without user prompts.
 color: orange
 ---
 

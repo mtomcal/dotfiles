@@ -1,3 +1,7 @@
+---
+description: Run browser-based acceptance testing for ReadyQ issues using Playwright MCP
+---
+
 # ReadyQ Acceptance Test
 
 <critical>This command runs browser-based acceptance testing using Playwright MCP directly (no subagents)</critical>

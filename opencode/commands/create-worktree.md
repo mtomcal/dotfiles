@@ -1,5 +1,5 @@
 ---
-model: haiku
+description: Create git worktree for parallel development work with automated setup and build steps
 ---
 
 # Create Worktree

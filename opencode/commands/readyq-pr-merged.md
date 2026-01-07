@@ -1,3 +1,7 @@
+---
+description: Mark ReadyQ issues as done after their PRs are successfully merged
+---
+
 # ReadyQ: PR Merged
 
 <critical>NEVER use shell redirection operators (2>&1, >, >>, |&, &>, 2>, etc.) in ANY shell command - these suppress exit codes, hide errors, and cause commands to appear successful when they fail.</critical>
