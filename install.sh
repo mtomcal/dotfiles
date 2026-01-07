@@ -349,6 +349,17 @@ EOF
         elif grep -q "^  { import = 'custom\.plugins' }," "$HOME/.config/nvim/init.lua"; then
             print_success "Custom plugin loading already enabled"
         fi
+
+        # Fix nvim-treesitter.configs deprecated API (nvim-treesitter changed from .configs to root module)
+        if grep -q "main = 'nvim-treesitter\.configs'" "$HOME/.config/nvim/init.lua"; then
+            print_info "Fixing nvim-treesitter.configs deprecated API..."
+            if [ "$OS" == "macos" ]; then
+                sed -i '' "s/main = 'nvim-treesitter\.configs'/main = 'nvim-treesitter'/" "$HOME/.config/nvim/init.lua"
+            else
+                sed -i "s/main = 'nvim-treesitter\.configs'/main = 'nvim-treesitter'/" "$HOME/.config/nvim/init.lua"
+            fi
+            print_success "Fixed nvim-treesitter API compatibility"
+        fi
     fi
 
     # Clean cache on fresh installation
