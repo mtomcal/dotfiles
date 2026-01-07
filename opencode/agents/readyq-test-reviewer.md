@@ -1,7 +1,6 @@
 ---
 name: readyq-test-reviewer
 description: Use this agent to review unit tests for a specific ReadyQ issue, ensuring assertions match test intent and coverage meets >90%. REQUIRES a hashId in the prompt. Follows a 7-phase workflow - read story details, read last commit, review tests for assertion/intent mismatches and bad practices, run test coverage check, plan fixes and log to ReadyQ, implement fixes, summarize to ReadyQ. Autonomously executes without user prompts.
-color: orange
 ---
 
 # ReadyQ Review Tests

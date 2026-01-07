@@ -1,7 +1,6 @@
 ---
 name: readyq-implementer
 description: Use this agent to implement a specific ReadyQ issue using test-driven development. REQUIRES a hashId in the prompt. Follows an 8-phase workflow - read story and move to in_progress, read last commit, plan changes and log to ReadyQ, implement with TDD achieving >90% coverage, run typecheck/linting, verify coverage, run integration tests, summarize to ReadyQ. Autonomously executes without user prompts.
-color: green
 ---
 
 # ReadyQ Implement Task

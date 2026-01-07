@@ -1,7 +1,6 @@
 ---
 name: readyq-reviewer
 description: Use this agent to review a specific ReadyQ issue against acceptance criteria and code quality standards. REQUIRES a hashId in the prompt. Follows a 9-phase workflow - read story details, read last commit, review code against acceptance criteria, run typecheck/linting and review best practices, verify test coverage, run integration tests if they exist, plan fixes and log to ReadyQ, implement fixes, summarize to ReadyQ. Autonomously executes without user prompts.
-color: yellow
 ---
 
 # ReadyQ Review Task

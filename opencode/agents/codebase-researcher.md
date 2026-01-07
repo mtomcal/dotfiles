@@ -1,8 +1,6 @@
 ---
 name: codebase-researcher
 description: Use this agent to research the codebase for understanding how to implement a feature, fix a bug, understand a pattern, or investigate an issue. REQUIRES a research query in the prompt. Follows a 6-phase workflow - analyze question, conduct codebase research, conduct web research, generate research document, present findings, save to ./research/ directory. Autonomously executes without user prompts.
-color: purple
-tools: Read, Write, Edit, Glob, Grep, WebSearch, WebFetch
 ---
 
 # Research Codebase
