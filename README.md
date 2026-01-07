@@ -62,11 +62,9 @@ dotfiles/
 ├── install.sh              # Installation script (Ubuntu + macOS)
 ├── README.md              # This file
 ├── AGENTS.md              # Shared AI agent instructions
-├── bin/
-│   └── ai-commands        # Universal AI command helper
 ├── claude/
 │   ├── agents/            # Custom AI agents (code-quality-guardian, documentation-updater)
-│   ├── commands/          # Claude Code slash commands (9 commands)
+│   ├── commands/          # Claude Code slash commands (18 commands)
 │   ├── settings.json      # Claude Code settings
 │   └── README.md          # Claude Code documentation
 ├── opencode/
@@ -419,51 +417,6 @@ copilot --model gpt-5                      # Use specific model
 - Powered by Claude Sonnet 4.5 by default
 - Session management and resumption
 - Custom agents and MCP server support
-
-#### AI Command Helper (`ai-commands`)
-
-**Universal command access** for AI tools that don't support custom slash commands.
-
-**Purpose**: Makes your Claude Code custom commands available to **any** AI agent that can execute bash commands (like GitHub Copilot CLI).
-
-**Setup in any project**:
-```bash
-cd ~/my-project
-ai-commands setup           # Adds instructions to AGENTS.md
-```
-
-**What it does**: Adds instructions to `AGENTS.md` that tell AI agents how to retrieve command prompts using bash.
-
-**AI agents can then**:
-```bash
-ai-commands get save-session        # Returns full save-session prompt
-ai-commands get create-plan         # Returns full create-plan prompt
-ai-commands list                    # Lists all available commands
-```
-
-**Usage example with Copilot CLI**:
-```bash
-copilot
-# User: "save the session"
-# Copilot reads AGENTS.md, sees instruction
-# Copilot runs: ai-commands get save-session
-# Copilot receives full prompt and executes workflow
-```
-
-**Available commands**:
-- `save-session` - Create detailed conversation summaries
-- `create-plan` - Interactive implementation planning
-- `implement-plan` - Execute approved technical plans
-- `research-codebase` - Comprehensive codebase research
-- `validate-plan` - Validate plan execution
-
-**Benefits**:
-- Single source of truth - commands only in `~/dotfiles/claude/commands/`
-- Works with Copilot CLI, Claude Code custom agents, and any AI that can run bash
-- Commands auto-update when dotfiles change
-- No content duplication across projects
-
-**Adding new commands**: Create `.md` files in `~/dotfiles/claude/commands/` and they're automatically available.
 
 ## Platform-Specific Notes
 

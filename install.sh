@@ -927,30 +927,6 @@ fi
 
 
 # ===========================
-# AI Command Helper Script
-# ===========================
-
-print_header "Setting up AI command helper script"
-
-# Create .local/bin directory if it doesn't exist
-mkdir -p "$HOME/.local/bin"
-
-# Link ai-commands script to PATH
-if [ -L "$HOME/.local/bin/ai-commands" ]; then
-    rm "$HOME/.local/bin/ai-commands"
-fi
-
-ln -sf "$DOTFILES_DIR/bin/ai-commands" "$HOME/.local/bin/ai-commands"
-
-# Make script executable
-chmod +x "$DOTFILES_DIR/bin/ai-commands"
-
-print_success "AI command helper script installed"
-print_info "  - ai-commands setup: Add command instructions to project AGENTS.md"
-print_info "  - ai-commands get <name>: Retrieve command prompt content"
-print_info "  - ai-commands list: Show all available commands"
-
-# ===========================
 # Git Configuration (Optional)
 # ===========================
 
