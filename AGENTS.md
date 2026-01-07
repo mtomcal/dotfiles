@@ -98,6 +98,18 @@ This design allows updating kickstart.nvim independently (`cd ~/.config/nvim && 
 
 Vim-style navigation keybindings throughout (h/j/k/l for panes, H/J/K/L for resizing).
 
+**Nested tmux session support**:
+- **F12 toggle**: Press F12 to switch between outer and inner session control
+  - When toggled to inner mode, status bar dims (darker background) as visual indicator
+  - All outer tmux keybindings are disabled, commands go directly to inner session
+  - Press F12 again to toggle back to outer session control
+- **Double prefix**: Use `Ctrl-a Ctrl-a` to send prefix to inner session
+  - Example: `Ctrl-a Ctrl-a c` creates a new window in the inner session
+- **Use case**: Essential for tmux orchestration systems that manage Claude Code sessions via nested tmux
+  - Outer session: Human tmux windows for general development
+  - Inner session: Orchestrator managing AI agent sessions
+  - F12 toggle provides clear visual indication of which session you're controlling
+
 ### Platform-Specific Handling
 
 The install script contains OS detection logic (install.sh:48-68):

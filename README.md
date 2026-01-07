@@ -106,6 +106,7 @@ dotfiles/
 - `Ctrl-a d` - Detach from session
 - `Ctrl-a r` - Reload tmux config
 - `Ctrl-a [` - Enter copy mode (use vim keys)
+- `F12` - Toggle nested tmux session control (see Nested Sessions below)
 
 **Aliases** (in zsh):
 - `t` - Start tmux
@@ -124,6 +125,42 @@ dotfiles/
 - Auto tmux on SSH login (Ubuntu)
 - Automatic window naming with folder name and current process
 - Adjacent window creation for parallel development workflows
+- Nested tmux session support for orchestration systems
+
+**Nested Sessions**:
+
+Perfect for managing tmux orchestration systems (like Claude Code session managers) within your existing tmux workflow.
+
+*Two methods available:*
+
+1. **F12 Toggle** (Recommended)
+   - Press `F12` to toggle between outer and inner session control
+   - Visual indicator: Status bar dims when controlling inner session
+   - Press `F12` again to toggle back to outer session
+
+2. **Double Prefix**
+   - Use `Ctrl-a Ctrl-a` followed by your command
+   - Example: `Ctrl-a Ctrl-a c` creates a new window in the inner session
+
+*Example workflow:*
+```bash
+# In your outer tmux session (human windows)
+tmux new-window -n orchestrator
+
+# Inside that window, start nested tmux for orchestration
+tmux new-session -s claude-orchestrator
+
+# Now press F12 to control the inner session
+# Status bar will dim to show you're in "inner mode"
+# All commands now go to the orchestrator session
+
+# Press F12 again to return control to outer session
+```
+
+*Use cases:*
+- Outer session: Your human development windows
+- Inner session: Automated orchestration managing AI agent sessions
+- Clear visual separation prevents accidentally controlling the wrong session
 
 ### Neovim
 
