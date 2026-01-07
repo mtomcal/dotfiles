@@ -721,6 +721,15 @@ install_opencode() {
     fi
     ln -s "$DOTFILES_DIR/opencode/commands" "$HOME/.config/opencode/command"
 
+    # Link agents
+    if [ -L "$HOME/.config/opencode/agent" ]; then
+        rm "$HOME/.config/opencode/agent"
+    elif [ -d "$HOME/.config/opencode/agent" ]; then
+        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+        mv "$HOME/.config/opencode/agent" "$HOME/.config/opencode/agent.backup.$TIMESTAMP"
+    fi
+    ln -s "$DOTFILES_DIR/opencode/agents" "$HOME/.config/opencode/agent"
+
     # Link AGENTS.md
     if [ -f "$HOME/.config/opencode/AGENTS.md" ] && [ ! -L "$HOME/.config/opencode/AGENTS.md" ]; then
         TIMESTAMP=$(date +%Y%m%d_%H%M%S)

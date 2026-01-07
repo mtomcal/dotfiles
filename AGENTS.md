@@ -31,11 +31,15 @@ The primary entry point is `./install.sh`, which:
 **Symlink structure**:
 - `~/.tmux.conf` → `~/dotfiles/tmux/.tmux.conf`
 - `~/.config/nvim/lua/custom/` → `~/dotfiles/nvim/custom/`
-- `~/.claude/commands` → `~/dotfiles/claude/commands`
-- `~/.claude/agents` → `~/dotfiles/claude/agents`
-- `~/.claude/settings.json` → `~/dotfiles/claude/settings.json`
-- `~/.config/opencode/command/` → `~/dotfiles/opencode/commands/`
-- `~/.config/opencode/AGENTS.md` → `~/dotfiles/AGENTS.md` (this file)
+- **Claude Code**:
+  - `~/.claude/commands` → `~/dotfiles/claude/commands`
+  - `~/.claude/agents` → `~/dotfiles/claude/agents`
+  - `~/.claude/settings.json` → `~/dotfiles/claude/settings.json`
+- **OpenCode CLI**:
+  - `~/.config/opencode/command/` → `~/dotfiles/opencode/commands/`
+  - `~/.config/opencode/agent/` → `~/dotfiles/opencode/agents/`
+  - `~/.config/opencode/opencode.json` → `~/dotfiles/opencode/opencode.json`
+  - `~/.config/opencode/AGENTS.md` → `~/dotfiles/AGENTS.md` (this file)
 - Custom zsh config sourced in `~/.zshrc` (not symlinked)
 
 ### AI Coding Assistants
@@ -53,21 +57,43 @@ This dotfiles setup supports both **Claude Code** and **OpenCode CLI**:
 
 **OpenCode CLI**:
 - Configuration: `opencode/` directory
-- Commands: Optimized commands in `opencode/commands/`
+- Commands: Custom commands in `opencode/commands/` (uses hyphens: `/create-plan`)
+- Agents: Custom agents in `opencode/agents/` (mirrored from Claude agents)
+  - `code-quality-guardian`: Language-agnostic code quality reviewer
+  - `documentation-updater`: Automatically reviews git diffs and updates relevant documentation files
+  - `acceptance-tester`: Browser automation agent for testing web applications against acceptance criteria
+  - `codebase-researcher`: Research agent for understanding codebases
+  - `readyq-implementer`: TDD-based implementation agent for ReadyQ issues
+  - `readyq-reviewer`: Code review agent for ReadyQ issues
+  - `readyq-test-reviewer`: Test review agent for ReadyQ issues
 - Standard config: `opencode/opencode.json` (symlinked globally)
 - Project template: `opencode/opencode.project.json` (for project-specific overrides)
 - Shared instructions: This AGENTS.md file
 - Uses Build/Plan mode switching
 
 **Shared Commands**:
-Both tools have access to:
-- `/save-session` - Create conversation summaries
-- `/create-plan` or `/create_plan` - Interactive implementation planning
-- `/implement-plan` or `/implement_plan` - Execute approved plans
-- `/research-codebase` or `/research_codebase` - Comprehensive codebase research
-- `/validate-plan` or `/validate_plan` - Verify plan execution
+Both tools have access to the same functionality with naming differences:
+- **Session Management**: `/save-session` (OpenCode only)
+- **Planning**: `/create-plan` (OpenCode) or `/create_plan` (Claude)
+- **Implementation**: `/implement-plan` (OpenCode) or `/implement_plan` (Claude)
+- **Research**: `/research-codebase` (OpenCode) or `/research_codebase` (Claude)
+- **Validation**: `/validate-plan` (OpenCode) or `/validate_plan` (Claude)
+- **Git Workflows**: `/create-worktree`, `/handoff`, `/commit`
+- **ReadyQ Integration**:
+  - `/readyq-create-tasks` (OpenCode) or `/readyq:create-tasks` (Claude)
+  - `/readyq-refine-tasks` (OpenCode) or `/readyq:refine-tasks` (Claude)
+  - `/readyq-implement-task` (OpenCode) or `/readyq:implement-task` (Claude)
+  - `/readyq-review` (OpenCode) or `/readyq:review` (Claude)
+  - `/readyq-review-tests` (OpenCode) or `/readyq:review-tests` (Claude)
+  - `/readyq-review-modularity` (OpenCode) or `/readyq:review-modularity` (Claude)
+  - `/readyq-acceptance-test` (OpenCode) or `/readyq:acceptance-test` (Claude)
+  - `/readyq-full-cycle` (OpenCode) or `/readyq:full-cycle` (Claude)
+  - `/readyq-pr-respond` (OpenCode) or `/readyq:pr-respond` (Claude)
+  - `/readyq-pr-merged` (OpenCode) or `/readyq:pr-merged` (Claude)
 
-These commands use similar approaches but are optimized for each tool's specific features.
+**Naming Convention**: OpenCode uses hyphens (`-`) for namespacing, Claude Code uses colons (`:`) for namespacing and underscores (`_`) for word separation.
+
+These commands provide identical functionality but are optimized for each tool's specific features and syntax.
 
 ### Neovim Configuration
 
