@@ -79,7 +79,7 @@ Both tools have access to the same functionality with naming differences:
 - **Research**: `/research-codebase` (OpenCode) or `/research_codebase` (Claude)
 - **Validation**: `/validate-plan` (OpenCode) or `/validate_plan` (Claude)
 - **Git Workflows**: `/create-worktree`, `/handoff`, `/commit`
-- **ReadyQ Integration**:
+- **ReadyQ Integration** (Python-based issue tracker):
   - `/readyq-create-tasks` (OpenCode) or `/readyq:create-tasks` (Claude)
   - `/readyq-refine-tasks` (OpenCode) or `/readyq:refine-tasks` (Claude)
   - `/readyq-implement-task` (OpenCode) or `/readyq:implement-task` (Claude)
@@ -90,10 +90,54 @@ Both tools have access to the same functionality with naming differences:
   - `/readyq-full-cycle` (OpenCode) or `/readyq:full-cycle` (Claude)
   - `/readyq-pr-respond` (OpenCode) or `/readyq:pr-respond` (Claude)
   - `/readyq-pr-merged` (OpenCode) or `/readyq:pr-merged` (Claude)
+- **Beads Integration** (Go-based distributed issue tracker):
+  - `/beads-create-tasks` (OpenCode) or `/beads:create-tasks` (Claude)
+  - `/beads-refine-tasks` (OpenCode) or `/beads:refine-tasks` (Claude)
+  - `/beads-implement-task` (OpenCode) or `/beads:implement-task` (Claude)
+  - `/beads-review` (OpenCode) or `/beads:review` (Claude)
+  - `/beads-review-tests` (OpenCode) or `/beads:review-tests` (Claude)
+  - `/beads-review-modularity` (OpenCode) or `/beads:review-modularity` (Claude)
+  - `/beads-acceptance-test` (OpenCode) or `/beads:acceptance-test` (Claude)
+  - `/beads-full-cycle` (OpenCode) or `/beads:full-cycle` (Claude)
+  - `/beads-pr-respond` (OpenCode) or `/beads:pr-respond` (Claude)
+  - `/beads-pr-merged` (OpenCode) or `/beads:pr-merged` (Claude)
 
 **Naming Convention**: OpenCode uses hyphens (`-`) for namespacing, Claude Code uses colons (`:`) for namespacing and underscores (`_`) for word separation.
 
 These commands provide identical functionality but are optimized for each tool's specific features and syntax.
+
+#### Choosing Between ReadyQ and Beads
+
+Both issue trackers provide the same workflow commands, but differ in architecture:
+
+**ReadyQ** (Python-based, single-file script):
+- Simple Python script in repo root
+- Zero setup (just run `./readyq.py`)
+- Single JSON file storage
+- Best for: Solo developers, simple projects, quick prototyping
+- Trade-off: Manual git operations, no auto-sync
+
+**Beads** (Go-based, distributed):
+- Git-backed JSONL storage + SQLite cache
+- Requires `bd init` per project
+- Background daemon with auto-sync (30s debounce)
+- First-class dependency graph (`bd dep` commands)
+- Hash-based IDs (e.g., `bd-a1b2`) to prevent merge conflicts
+- Best for: Teams, distributed workflows, multi-agent collaboration
+- Trade-off: More complex setup, requires `bd sync` to flush changes immediately
+
+**Installation**:
+- ReadyQ: No installation needed (Python script in repo)
+- Beads: Install via `install.sh` (Homebrew → install script fallback)
+
+**Quick Start**:
+- ReadyQ: `./readyq.py quickstart`
+- Beads: `bd quickstart` (full guide) or `bd prime` (AI-optimized workflow context)
+
+**Choose ReadyQ if**: You want zero setup and simple single-developer workflow
+**Choose Beads if**: You need distributed collaboration, auto-sync, or first-class dependency management
+
+**Note**: These are mutually exclusive - choose one issue tracker per project.
 
 ### Neovim Configuration
 

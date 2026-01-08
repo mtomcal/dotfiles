@@ -767,6 +767,55 @@ install_opencode() {
     print_info "Run 'opencode auth login' to authenticate"
 }
 
+install_beads() {
+    print_header "Installing Beads (bd CLI)"
+
+    # Method 1: Homebrew (preferred)
+    if command -v brew &> /dev/null; then
+        if ! brew list bd &> /dev/null 2>&1; then
+            print_info "Installing bd via Homebrew..."
+            if brew tap steveyegge/beads && brew install bd; then
+                print_success "Beads installed via Homebrew"
+            else
+                print_warning "Homebrew installation failed, trying install script..."
+                # Fall through to install script method
+            fi
+        else
+            print_success "Beads is already installed via Homebrew"
+        fi
+    fi
+
+    # Method 2: Install script (fallback or primary if Homebrew not available)
+    if ! command -v bd &> /dev/null; then
+        if command -v curl &> /dev/null; then
+            print_info "Installing bd via install script..."
+            if curl -fsSL https://raw.githubusercontent.com/steveyegge/beads/main/scripts/install.sh | bash; then
+                # Ensure PATH includes common installation locations
+                export PATH="$HOME/.local/bin:$HOME/go/bin:/usr/local/bin:$PATH"
+                print_success "Beads installed via install script"
+            else
+                print_error "Install script failed"
+                return 1
+            fi
+        else
+            print_error "Neither Homebrew nor curl available for Beads installation"
+            return 1
+        fi
+    fi
+
+    # Verify installation
+    if command -v bd &> /dev/null; then
+        BD_VERSION=$(bd version 2>/dev/null || echo "unknown")
+        print_success "Beads verified: $BD_VERSION"
+        print_info "Run 'bd init' in your project directory to initialize beads"
+        print_info "Run 'bd quickstart' or 'bd prime' to learn the workflow"
+    else
+        print_error "Beads installation verification failed"
+        print_warning "You may need to restart your shell or update your PATH"
+        return 1
+    fi
+}
+
 # ===========================
 # Dependency Resolution
 # ===========================
@@ -864,13 +913,13 @@ show_profile_menu() {
 
     case $choice in
         1)
-            SELECTED_MODULES=(base_tools neovim nvim_config tmux_config zsh_ohmyzsh zsh_config golang_full nodejs claude opencode)
+            SELECTED_MODULES=(base_tools neovim nvim_config tmux_config zsh_ohmyzsh zsh_config golang_full nodejs claude opencode beads)
             ;;
         2)
             SELECTED_MODULES=(base_tools neovim nvim_config tmux_config)
             ;;
         3)
-            SELECTED_MODULES=(base_tools neovim nvim_config tmux_config opencode)
+            SELECTED_MODULES=(base_tools neovim nvim_config tmux_config opencode beads)
             ;;
         4)
             show_custom_menu
@@ -903,6 +952,7 @@ show_custom_menu() {
         "nodejs:Node.js LTS (fnm)"
         "claude:Claude Code CLI"
         "opencode:OpenCode CLI"
+        "beads:Beads (bd CLI) - Issue Tracker"
     )
 
     # Initialize all as unselected
@@ -934,15 +984,15 @@ show_custom_menu() {
             echo "  $i) $desc"
             ((i++))
         done
-        echo "  11) Toggle All"
-        echo "  12) Done"
+        echo "  12) Toggle All"
+        echo "  13) Done"
         echo ""
 
-        read -p "Enter number to toggle (or 12 when done): " choice
+        read -p "Enter number to toggle (or 13 when done): " choice
 
-        if [ "$choice" == "12" ]; then
+        if [ "$choice" == "13" ]; then
             break
-        elif [ "$choice" == "11" ]; then
+        elif [ "$choice" == "12" ]; then
             # Toggle all
             local all_selected=1
             for key in "${!selections[@]}"; do
@@ -1084,6 +1134,11 @@ execute_modules() {
             "opencode")
                 if ! install_opencode; then
                     FAILED_MODULES+=("opencode")
+                fi
+                ;;
+            "beads")
+                if ! install_beads; then
+                    FAILED_MODULES+=("beads")
                 fi
                 ;;
         esac
