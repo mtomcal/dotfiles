@@ -107,9 +107,43 @@ Then run this command again.
         <decision>
             <condition>If .beads/ already exists</condition>
             <action-if-true>Skip initialization, report "Beads already initialized"</action-if-true>
-            <action-if-false>Initialize Beads</action-if-false>
+            <action-if-false>Initialize Beads with user mode preference</action-if-false>
         </decision>
-        <action if="not-initialized">Run <tool id="cli" command="bd init" /> to initialize Beads</action>
+        <action if="not-initialized">Ask user which Beads mode to use:</action>
+        <choices if="not-initialized">
+            <choice id="No daemon mode (Recommended)" shortcut="n">
+                <description>Manual sync with `bd sync` after changes</description>
+                <pros>
+                    - Full control over when changes are committed to git
+                    - No background processes consuming resources
+                    - Explicit sync points make it clear when data is persisted
+                    - Better for CI/CD pipelines and scripted workflows
+                    - Simpler mental model - you decide when to sync
+                </pros>
+                <cons>
+                    - Must remember to run `bd sync` after making changes
+                    - Changes not visible to collaborators until synced
+                </cons>
+                <command>bd init --no-daemon</command>
+            </choice>
+            <choice id="Daemon mode" shortcut="d">
+                <description>Background auto-sync every 30 seconds</description>
+                <pros>
+                    - Automatic synchronization without manual intervention
+                    - Changes visible to collaborators quickly
+                    - No need to remember to sync
+                </pros>
+                <cons>
+                    - Background process runs continuously
+                    - Branch switches happen automatically (may be unexpected)
+                    - Less control over sync timing
+                    - May cause unexpected git state changes during development
+                    - Harder to debug sync issues
+                </cons>
+                <command>bd init</command>
+            </choice>
+        </choices>
+        <action if="not-initialized">Run the selected init command</action>
         <action if="not-initialized">Run <tool id="cli" command="bd prime" /> to verify setup</action>
         <action>Report Beads status to user</action>
     </phase>
