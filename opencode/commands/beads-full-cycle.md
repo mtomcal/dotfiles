@@ -176,13 +176,7 @@ Action required:
             <action-if-false>Proceed to phase 7</action-if-false>
         </decision>
     </phase>
-    <phase num="7" title="Mark Issue Complete">
-        <action>Summarize the full cycle: implementation, reviews performed</action>
-        <action>Run <tool id="cli" command="bd close {id} --reason {full cycle summary}" /> to mark issue as done</action>
-        <action>Sync to git: <tool id="cli" command="bd sync" /></action>
-        <reason>Mark issue as done before commit so the commit is associated with a completed issue. This ensures proper tracking and prevents commits for incomplete work.</reason>
-    </phase>
-    <phase num="8" title="Commit Phase">
+    <phase num="7" title="Commit Phase">
         <action>Run <tool id="cli" command="git add ." /></action>
         <action>Run <tool id="cli" command="git diff --staged" /></action>
         <reason>Analyze the diff to create a detailed commit message</reason>
@@ -206,7 +200,7 @@ Next Steps:
         </output-template>
         <action>Run <tool id="cli" command="git commit -m {output}" /></action>
     </phase>
-    <phase num="9" title="Push to Remote">
+    <phase num="8" title="Push to Remote">
         <action>Run <tool id="cli" command="git branch --show-current" /> to get current branch name</action>
         <decision>
             <condition>If current branch is "main" or "master"</condition>
@@ -222,7 +216,7 @@ Next Steps:
         <action if="feature-branch">Run <tool id="cli" command="git push -u origin HEAD" /> to push and set upstream</action>
         <reason>Feature branches need to be pushed before PR creation. Main branch requires user confirmation.</reason>
     </phase>
-    <phase num="10" title="Create Pull Request">
+    <phase num="9" title="Create Pull Request">
         <action>Run <tool id="cli" command="git branch --show-current" /> to get current branch name</action>
         <decision>
             <condition>If current branch is "main" or "master"</condition>
@@ -238,7 +232,7 @@ Next Steps:
             <action-if-false>Proceed with PR creation</action-if-false>
         </decision>
         <action if="no-existing-pr">Extract Beads issue title, description, and acceptance criteria</action>
-        <action if="no-existing-pr">Extract commit message from phase 8 for PR body</action>
+        <action if="no-existing-pr">Extract commit message from phase 7 for PR body</action>
         <action if="no-existing-pr">Create PR using gh pr create with HEREDOC body template:
             <template>
 gh pr create \
@@ -271,6 +265,6 @@ EOF
         <action if="no-existing-pr">Capture PR URL from gh pr create output (it prints to stdout)</action>
         <action if="no-existing-pr">Run <tool id="cli" command="bd update {id} --notes 'Pull Request: {PR_URL}'" /> to log PR URL back to Beads</action>
         <action if="no-existing-pr">Sync to git: <tool id="cli" command="bd sync" /></action>
-        <reason>Automatically create PR for feature branches on first run. Subsequent runs detect existing PR and just push new commits to update it. Issue was already marked done in Phase 7 before commit.</reason>
+        <reason>Automatically create PR for feature branches on first run. Subsequent runs detect existing PR and just push new commits to update it.</reason>
     </phase>
 </workflow>
