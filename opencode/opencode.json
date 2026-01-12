@@ -7,8 +7,8 @@
       "enabled": true
     }
   },
-  "model": "glm/glm-4-6-coding-plan",
-  "small_model": "opencode-zen/grok-code-fast-1",
+  "model": "opencode/grok-code",
+  "small_model": "opencode/grok-code",
   "permission": {
     "edit": "allow",
     "bash": "allow",
