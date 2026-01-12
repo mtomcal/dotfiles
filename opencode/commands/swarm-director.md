@@ -125,6 +125,17 @@ swarm spawn \
 | {name} | {id}  | {running/stopped} | {from logs} |
         </output-template>
         <decision>
+            <condition>If any workers appear stuck (no progress, waiting, or confused)</condition>
+            <action-if-true>Use <tool id="cli" command="swarm send {name} '{message}'" /> to nudge or correct the worker</action-if-true>
+            <examples>
+                <example>swarm send {name} "Continue with the implementation, you're on the right track"</example>
+                <example>swarm send {name} "Focus on the failing test first, then fix the code"</example>
+                <example>swarm send {name} "Skip the flaky test and proceed to commit"</example>
+                <example>swarm send {name} "The API endpoint is at /api/v2/users, not /api/users"</example>
+            </examples>
+            <reason>Workers may get stuck in loops, wait unnecessarily, or make incorrect assumptions. A timely nudge can unblock them without killing and respawning.</reason>
+        </decision>
+        <decision>
             <condition>If any workers stopped</condition>
             <action-if-true>Check if work completed (issue closed, PR created) or needs rescue</action-if-true>
         </decision>
