@@ -120,12 +120,15 @@ Action required:
         <action>Proceed to phase 3</action>
     </phase>
     <phase num="3" title="Implementation Phase">
-        <note>NOTE: Beads does not have dedicated implementer subagents yet. Use readyq-implementer as fallback and manually sync Beads afterward.</note>
-        <action>Perform manual implementation following TDD best practices</action>
-        <action>Update Beads issue with progress notes during implementation</action>
-        <action>Run <tool id="cli" command="bd update {id} --notes {implementation progress summary}" /></action>
-        <action>After implementation complete, sync to git: <tool id="cli" command="bd sync" /></action>
-        <action>Proceed to phase 4</action>
+        <action>Launch <tool id="subagent" type="beads-implementer" /> with the id</action>
+        <action>Wait for subagent to complete</action>
+        <action>Run <tool id="cli" command="bd show {id}" /> to read updated logs</action>
+        <decision>
+            <condition>If implementation logs indicate incomplete work or blockers</condition>
+            <action-if-true>Launch another beads-implementer subagent to continue OR if blockers STOP WORKFLOW</action-if-true>
+            <action-if-false>Proceed to phase 4</action-if-false>
+        </decision>
+        <loop max="3">Repeat implementation subagent until work is complete or max iterations reached</loop>
     </phase>
     <phase num="4" title="Code Review Phase">
         <decision>
@@ -133,13 +136,17 @@ Action required:
             <action-if-true>Skip code review phase entirely - proceed to phase 5</action-if-true>
             <action-if-false>Perform {codeReviewPasses} code review passes</action-if-false>
         </decision>
-        <note>NOTE: Beads does not have dedicated code reviewer subagents yet. Perform manual code review.</note>
-        <action>Review code against acceptance criteria and best practices</action>
-        <action>Run typecheck and linter from project build file</action>
-        <action>Run unit tests with coverage</action>
-        <action>Update Beads with review findings: <tool id="cli" command="bd update {id} --notes {review findings}" /></action>
-        <action>Sync to git: <tool id="cli" command="bd sync" /></action>
-        <action>Proceed to phase 5</action>
+        <loop count="{codeReviewPasses}">
+            <action>Launch <tool id="subagent" type="beads-reviewer" /> with the id (PASS {current_iteration})</action>
+            <action>Wait for subagent to complete</action>
+            <action>Run <tool id="cli" command="bd show {id}" /> to read updated logs</action>
+        </loop>
+        <decision>
+            <condition>If final code review pass found and fixed issues</condition>
+            <action-if-true>Launch one additional beads-reviewer subagent to verify fixes</action-if-true>
+            <action-if-false>Proceed to phase 5</action-if-false>
+        </decision>
+        <reasoning>Multiple review passes ensure thorough code quality verification. Set to 0 to skip if needed. Additional pass triggered if final pass made changes.</reasoning>
     </phase>
     <phase num="5" title="Test Review Phase">
         <decision>
@@ -147,12 +154,17 @@ Action required:
             <action-if-true>Skip test review phase entirely - proceed to phase 6</action-if-true>
             <action-if-false>Perform {testReviewPasses} test review passes</action-if-false>
         </decision>
-        <note>NOTE: Beads does not have dedicated test reviewer subagents yet. Perform manual test review.</note>
-        <action>Review tests for assertion quality and coverage</action>
-        <action>Verify coverage meets >90% threshold</action>
-        <action>Update Beads with test review findings: <tool id="cli" command="bd update {id} --notes {test review findings}" /></action>
-        <action>Sync to git: <tool id="cli" command="bd sync" /></action>
-        <action>Proceed to phase 6</action>
+        <loop count="{testReviewPasses}">
+            <action>Launch <tool id="subagent" type="beads-test-reviewer" /> with the id (PASS {current_iteration})</action>
+            <action>Wait for subagent to complete</action>
+            <action>Run <tool id="cli" command="bd show {id}" /> to read updated logs</action>
+        </loop>
+        <decision>
+            <condition>If final test review pass found and fixed issues</condition>
+            <action-if-true>Launch one additional beads-test-reviewer subagent to verify fixes</action-if-true>
+            <action-if-false>Proceed to phase 6</action-if-false>
+        </decision>
+        <reasoning>Multiple test review passes ensure thorough test quality verification. Set to 0 to skip if needed. Additional pass triggered if final pass made changes.</reasoning>
     </phase>
     <phase num="6" title="Final Verification">
         <action>Run typecheck from project build file</action>
