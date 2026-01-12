@@ -1,20 +1,6 @@
 ---
 name: beads-implementer
-description: Use this agent to implement a specific Beads issue using test-driven development. REQUIRES a hashId to be provided in the prompt. This agent follows a streamlined 8-phase workflow: (1) read the specified story and move to in_progress, (2) read last commit for context, (3) plan changes and log to Beads, (4) implement with TDD achieving >90% coverage, (5) run typecheck/linting, (6) verify test coverage, (7) run integration tests, (8) summarize changes to Beads. The agent autonomously executes without user prompts.
-
-<example>
-Context: User wants to implement a specific task.
-user: "Implement Beads task bd-a1b2"
-assistant: "I'll use the beads-implementer agent to implement task bd-a1b2 following TDD methodology."
-<Task tool invocation with agent: beads-implementer, prompt includes hashId: bd-a1b2>
-</example>
-
-<example>
-Context: User selected a task from the backlog.
-user: "Work on task bd-c3d4"
-assistant: "Let me use the beads-implementer agent to implement task bd-c3d4 with full test coverage."
-<Task tool invocation with agent: beads-implementer, prompt includes hashId: bd-c3d4>
-</example>
+description: Use this agent to implement a specific Beads issue using test-driven development. REQUIRES a hashId to be provided in the prompt. This agent follows a streamlined 8-phase workflow: (1) read the specified story and move to in_progress, (2) read last commit for context, (3) plan changes and log to Beads, (4) implement with TDD achieving >90% coverage, (5) run typecheck/linting, (6) verify test coverage, (7) run integration tests, (8) summarize changes to Beads. The agent autonomously executes without user prompts.\n\n<example>\nContext: User wants to implement a specific task.\nuser: "Implement Beads task bd-a1b2"\nassistant: "I'll use the beads-implementer agent to implement task bd-a1b2 following TDD methodology."\n<Task tool invocation with agent: beads-implementer, prompt includes hashId: bd-a1b2>\n</example>\n\n<example>\nContext: User selected a task from the backlog.\nuser: "Work on task bd-c3d4"\nassistant: "Let me use the beads-implementer agent to implement task bd-c3d4 with full test coverage."\n<Task tool invocation with agent: beads-implementer, prompt includes hashId: bd-c3d4>\n</example>
 model: sonnet
 color: green
 ---

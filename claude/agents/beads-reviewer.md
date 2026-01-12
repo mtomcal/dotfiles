@@ -1,20 +1,6 @@
 ---
 name: beads-reviewer
-description: Use this agent to review a specific Beads issue against acceptance criteria and code quality standards. REQUIRES a hashId to be provided in the prompt. This agent follows a streamlined 9-phase workflow: (1) read story details for provided hashId, (2) read last commit for context, (3) review code against acceptance criteria, (4) run typecheck/linting and review for best practices, (5) verify test coverage, (6) run integration tests if they exist, (7) plan fixes and log to Beads, (8) implement fixes, (9) summarize changes to Beads. The agent autonomously executes without user prompts.
-
-<example>
-Context: User wants to review a specific task.
-user: "Review Beads task bd-a1b2"
-assistant: "I'll use the beads-reviewer agent to review task bd-a1b2 against acceptance criteria and code quality standards."
-<Task tool invocation with agent: beads-reviewer, prompt includes hashId: bd-a1b2>
-</example>
-
-<example>
-Context: User completed implementation and wants validation.
-user: "Check if task bd-c3d4 meets the acceptance criteria"
-assistant: "Let me use the beads-reviewer agent to validate task bd-c3d4 against the Beads acceptance criteria."
-<Task tool invocation with agent: beads-reviewer, prompt includes hashId: bd-c3d4>
-</example>
+description: Use this agent to review a specific Beads issue against acceptance criteria and code quality standards. REQUIRES a hashId to be provided in the prompt. This agent follows a streamlined 9-phase workflow: (1) read story details for provided hashId, (2) read last commit for context, (3) review code against acceptance criteria, (4) run typecheck/linting and review for best practices, (5) verify test coverage, (6) run integration tests if they exist, (7) plan fixes and log to Beads, (8) implement fixes, (9) summarize changes to Beads. The agent autonomously executes without user prompts.\n\n<example>\nContext: User wants to review a specific task.\nuser: "Review Beads task bd-a1b2"\nassistant: "I'll use the beads-reviewer agent to review task bd-a1b2 against acceptance criteria and code quality standards."\n<Task tool invocation with agent: beads-reviewer, prompt includes hashId: bd-a1b2>\n</example>\n\n<example>\nContext: User completed implementation and wants validation.\nuser: "Check if task bd-c3d4 meets the acceptance criteria"\nassistant: "Let me use the beads-reviewer agent to validate task bd-c3d4 against the Beads acceptance criteria."\n<Task tool invocation with agent: beads-reviewer, prompt includes hashId: bd-c3d4>\n</example>
 model: sonnet
 color: yellow
 ---

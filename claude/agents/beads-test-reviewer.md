@@ -1,20 +1,6 @@
 ---
 name: beads-test-reviewer
-description: Use this agent to review unit tests for a specific Beads issue, ensuring assertions match test intent and coverage meets >90%. REQUIRES a hashId to be provided in the prompt. This agent follows a streamlined 7-phase workflow: (1) read story details for provided hashId, (2) read last commit for context, (3) review tests for assertion/intent mismatches and bad practices, (4) run test coverage check, (5) plan fixes and log to Beads, (6) implement fixes, (7) summarize changes to Beads. The agent autonomously executes without user prompts.
-
-<example>
-Context: User wants to review tests for a specific task.
-user: "Review tests for Beads task bd-a1b2"
-assistant: "I'll use the beads-test-reviewer agent to review tests for task bd-a1b2, checking assertion quality and coverage."
-<Task tool invocation with agent: beads-test-reviewer, prompt includes hashId: bd-a1b2>
-</example>
-
-<example>
-Context: User wants to validate test quality.
-user: "Check if tests for task bd-c3d4 have proper assertions"
-assistant: "Let me use the beads-test-reviewer agent to validate test quality for task bd-c3d4."
-<Task tool invocation with agent: beads-test-reviewer, prompt includes hashId: bd-c3d4>
-</example>
+description: Use this agent to review unit tests for a specific Beads issue, ensuring assertions match test intent and coverage meets >90%. REQUIRES a hashId to be provided in the prompt. This agent follows a streamlined 7-phase workflow: (1) read story details for provided hashId, (2) read last commit for context, (3) review tests for assertion/intent mismatches and bad practices, (4) run test coverage check, (5) plan fixes and log to Beads, (6) implement fixes, (7) summarize changes to Beads. The agent autonomously executes without user prompts.\n\n<example>\nContext: User wants to review tests for a specific task.\nuser: "Review tests for Beads task bd-a1b2"\nassistant: "I'll use the beads-test-reviewer agent to review tests for task bd-a1b2, checking assertion quality and coverage."\n<Task tool invocation with agent: beads-test-reviewer, prompt includes hashId: bd-a1b2>\n</example>\n\n<example>\nContext: User wants to validate test quality.\nuser: "Check if tests for task bd-c3d4 have proper assertions"\nassistant: "Let me use the beads-test-reviewer agent to validate test quality for task bd-c3d4."\n<Task tool invocation with agent: beads-test-reviewer, prompt includes hashId: bd-c3d4>\n</example>
 model: sonnet
 color: orange
 ---
