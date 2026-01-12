@@ -767,6 +767,45 @@ install_opencode() {
     print_info "Run 'opencode auth login' to authenticate"
 }
 
+install_swarm() {
+    print_header "Installing Swarm (AI Agent Process Manager)"
+
+    if command -v swarm &> /dev/null; then
+        print_success "Swarm is already installed"
+        return 0
+    fi
+
+    # Swarm requires Python 3.10+
+    if ! command -v python3 &> /dev/null; then
+        print_error "Python 3 is required for Swarm"
+        return 1
+    fi
+
+    PYTHON_VERSION=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
+    if version_lt "$PYTHON_VERSION" "3.10"; then
+        print_error "Python 3.10+ is required for Swarm (found $PYTHON_VERSION)"
+        return 1
+    fi
+
+    print_info "Installing Swarm via install script..."
+    if curl -fsSL https://raw.githubusercontent.com/mtomcal/swarm/main/setup.sh | sh; then
+        export PATH="$HOME/.local/bin:$PATH"
+        print_success "Swarm installed"
+    else
+        print_error "Failed to install Swarm"
+        return 1
+    fi
+
+    # Verify installation
+    if command -v swarm &> /dev/null; then
+        print_success "Swarm verified and ready"
+        print_info "Usage: swarm spawn --name worker1 --tmux --worktree -- claude"
+    else
+        print_warning "Swarm installed but not in PATH"
+        print_info "Add ~/.local/bin to your PATH"
+    fi
+}
+
 install_beads() {
     print_header "Installing Beads (bd CLI)"
 
@@ -913,13 +952,13 @@ show_profile_menu() {
 
     case $choice in
         1)
-            SELECTED_MODULES=(base_tools neovim nvim_config tmux_config zsh_ohmyzsh zsh_config golang_full nodejs claude opencode beads)
+            SELECTED_MODULES=(base_tools neovim nvim_config tmux_config zsh_ohmyzsh zsh_config golang_full nodejs claude opencode beads swarm)
             ;;
         2)
             SELECTED_MODULES=(base_tools neovim nvim_config tmux_config)
             ;;
         3)
-            SELECTED_MODULES=(base_tools neovim nvim_config tmux_config opencode beads)
+            SELECTED_MODULES=(base_tools neovim nvim_config tmux_config opencode beads swarm)
             ;;
         4)
             show_custom_menu
@@ -953,6 +992,7 @@ show_custom_menu() {
         "claude:Claude Code CLI"
         "opencode:OpenCode CLI"
         "beads:Beads (bd CLI) - Issue Tracker"
+        "swarm:Swarm - AI Agent Process Manager"
     )
 
     # Initialize all as unselected
@@ -984,15 +1024,15 @@ show_custom_menu() {
             echo "  $i) $desc"
             ((i++))
         done
-        echo "  12) Toggle All"
-        echo "  13) Done"
+        echo "  13) Toggle All"
+        echo "  14) Done"
         echo ""
 
-        read -p "Enter number to toggle (or 13 when done): " choice
+        read -p "Enter number to toggle (or 14 when done): " choice
 
-        if [ "$choice" == "13" ]; then
+        if [ "$choice" == "14" ]; then
             break
-        elif [ "$choice" == "12" ]; then
+        elif [ "$choice" == "13" ]; then
             # Toggle all
             local all_selected=1
             for key in "${!selections[@]}"; do
@@ -1057,6 +1097,8 @@ show_installation_summary() {
             "nodejs") echo "  • Node.js LTS (fnm)" ;;
             "claude") echo "  • Claude Code CLI" ;;
             "opencode") echo "  • OpenCode CLI" ;;
+            "beads") echo "  • Beads (bd CLI) - Issue Tracker" ;;
+            "swarm") echo "  • Swarm - AI Agent Process Manager" ;;
         esac
     done
 
@@ -1141,6 +1183,11 @@ execute_modules() {
                     FAILED_MODULES+=("beads")
                 fi
                 ;;
+            "swarm")
+                if ! install_swarm; then
+                    FAILED_MODULES+=("swarm")
+                fi
+                ;;
         esac
     done
 }
@@ -1215,6 +1262,8 @@ Modules:
   nodejs              Node.js LTS (fnm)
   claude              Claude Code CLI + MCP servers
   opencode            OpenCode CLI
+  beads               Beads (bd CLI) - Issue tracker
+  swarm               Swarm - AI agent process manager
 
 Examples:
   $0                                       # Interactive menu

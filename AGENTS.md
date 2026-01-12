@@ -18,6 +18,8 @@ The primary entry point is `./install.sh`, which:
 - Installs fnm (Fast Node Manager) and Node.js LTS
 - Links AI coding assistant configurations (Claude Code, OpenCode)
 - Installs OpenCode CLI
+- Installs Beads (bd CLI) for distributed issue tracking
+- Installs Swarm for parallel AI agent orchestration
 - Sets up Mason LSP/formatter packages (Python, Go, Lua)
 
 **Key behavior**: The script is idempotent and safe to re-run for updates.
@@ -79,6 +81,8 @@ Both tools have access to the same functionality with naming differences:
 - **Research**: `/research-codebase` (OpenCode) or `/research_codebase` (Claude)
 - **Validation**: `/validate-plan` (OpenCode) or `/validate_plan` (Claude)
 - **Git Workflows**: `/create-worktree`, `/handoff`, `/commit`
+- **Swarm Orchestration**: `/swarm-director` (OpenCode) or `/swarm:director` (Claude)
+- **Project Bootstrap**: `/bootstrap-project` - Initialize Beads + Swarm, migrate from ReadyQ
 - **ReadyQ Integration** (Python-based issue tracker):
   - `/readyq-create-tasks` (OpenCode) or `/readyq:create-tasks` (Claude)
   - `/readyq-refine-tasks` (OpenCode) or `/readyq:refine-tasks` (Claude)
@@ -138,6 +142,95 @@ Both issue trackers provide the same workflow commands, but differ in architectu
 **Choose Beads if**: You need distributed collaboration, auto-sync, or first-class dependency management
 
 **Note**: These are mutually exclusive - choose one issue tracker per project.
+
+### Swarm - AI Agent Process Manager
+
+Swarm is a Python-based process manager for spawning, tracking, and controlling multiple AI agent CLI instances in parallel.
+
+**Key Features**:
+- **Process lifecycle management**: Spawn, monitor, send messages, and kill workers
+- **Git worktree isolation**: Each worker operates in its own directory on a dedicated branch
+- **Tmux integration**: Workers run in tmux sessions for easy attachment and monitoring
+- **Readiness detection**: Wait for agents to be ready before sending tasks
+
+**Installation**:
+```bash
+# Via install.sh (automatic)
+./install.sh --modules swarm
+
+# Or manually
+curl -fsSL https://raw.githubusercontent.com/mtomcal/swarm/main/setup.sh | sh
+```
+
+**Requirements**:
+- Python 3.10+
+- tmux (for tmux mode)
+- git (for worktree isolation)
+
+**Basic Usage**:
+```bash
+# Spawn a worker with tmux and worktree isolation
+swarm spawn --name agent1 --tmux --worktree -- claude
+
+# Send a task to a worker
+swarm send agent1 "Fix the auth bug"
+
+# Attach to a worker's tmux session
+swarm attach agent1
+
+# List all workers
+swarm ls
+
+# View worker logs
+swarm logs agent1
+
+# Kill a worker
+swarm kill agent1
+
+# Clean up stopped workers
+swarm clean --all
+```
+
+**Integration with Beads**:
+Swarm integrates with Beads for parallel task execution. The `/swarm:director` command orchestrates this workflow:
+1. Select issues from the Beads backlog
+2. Spawn parallel workers in isolated worktrees
+3. Monitor worker progress
+4. Rescue incomplete workers
+5. Verify PRs are created
+6. Clean up merged worktrees
+
+**Use Case**: Run multiple AI agents simultaneously on independent tasks, each in its own git branch, without merge conflicts or interference.
+
+### Project Bootstrap Command
+
+The `/bootstrap-project` command sets up a project for AI-assisted development with Beads and Swarm:
+
+**Features**:
+- Detects existing project configuration (Beads, ReadyQ, CLAUDE.md, AGENTS.md)
+- Initializes Beads if not present
+- Migrates ReadyQ issues to Beads (optional)
+- Updates or creates CLAUDE.md/AGENTS.md with workflow documentation
+- Configures .gitignore for Swarm
+
+**Usage**:
+```bash
+# Auto-detect and configure
+/bootstrap-project
+
+# Force migration from ReadyQ
+/bootstrap-project migrate=true
+
+# Specify which agent file to update
+/bootstrap-project agentFile=CLAUDE.md
+```
+
+**Migration from ReadyQ**:
+When ReadyQ is detected, the command offers to migrate existing issues:
+- Preserves issue titles, descriptions, and priorities
+- Converts status (pending→backlog, in_progress→in_progress, done→closed)
+- Recreates blocker dependencies using `bd dep add`
+- Original ReadyQ files are preserved for verification
 
 ### Neovim Configuration
 
