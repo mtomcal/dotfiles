@@ -93,7 +93,7 @@ swarm spawn \
   --worktree \
   --ready-wait \
   --tag beads \
-  -- claude --dangerously-skip-permissions \
+  -- claude --dangerously-skip-permissions --model sonnet \
   "/beads:full-cycle id={issue-id} research={research} codeReviewPasses={codeReviewPasses} testReviewPasses={testReviewPasses} createNewBranch=true"
         </command-template>
         <action>After all workers spawned, run `swarm ls` to confirm</action>
