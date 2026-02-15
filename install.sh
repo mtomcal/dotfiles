@@ -767,94 +767,6 @@ install_opencode() {
     print_info "Run 'opencode auth login' to authenticate"
 }
 
-install_swarm() {
-    print_header "Installing Swarm (AI Agent Process Manager)"
-
-    if command -v swarm &> /dev/null; then
-        print_success "Swarm is already installed"
-        return 0
-    fi
-
-    # Swarm requires Python 3.10+
-    if ! command -v python3 &> /dev/null; then
-        print_error "Python 3 is required for Swarm"
-        return 1
-    fi
-
-    PYTHON_VERSION=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
-    if version_lt "$PYTHON_VERSION" "3.10"; then
-        print_error "Python 3.10+ is required for Swarm (found $PYTHON_VERSION)"
-        return 1
-    fi
-
-    print_info "Installing Swarm via install script..."
-    if curl -fsSL https://raw.githubusercontent.com/mtomcal/swarm/main/setup.sh | sh; then
-        export PATH="$HOME/.local/bin:$PATH"
-        print_success "Swarm installed"
-    else
-        print_error "Failed to install Swarm"
-        return 1
-    fi
-
-    # Verify installation
-    if command -v swarm &> /dev/null; then
-        print_success "Swarm verified and ready"
-        print_info "Usage: swarm spawn --name worker1 --tmux --worktree -- claude"
-    else
-        print_warning "Swarm installed but not in PATH"
-        print_info "Add ~/.local/bin to your PATH"
-    fi
-}
-
-install_beads() {
-    print_header "Installing Beads (bd CLI)"
-
-    # Method 1: Homebrew (preferred)
-    if command -v brew &> /dev/null; then
-        if ! brew list bd &> /dev/null 2>&1; then
-            print_info "Installing bd via Homebrew..."
-            if brew tap steveyegge/beads && brew install bd; then
-                print_success "Beads installed via Homebrew"
-            else
-                print_warning "Homebrew installation failed, trying install script..."
-                # Fall through to install script method
-            fi
-        else
-            print_success "Beads is already installed via Homebrew"
-        fi
-    fi
-
-    # Method 2: Install script (fallback or primary if Homebrew not available)
-    if ! command -v bd &> /dev/null; then
-        if command -v curl &> /dev/null; then
-            print_info "Installing bd via install script..."
-            if curl -fsSL https://raw.githubusercontent.com/steveyegge/beads/main/scripts/install.sh | bash; then
-                # Ensure PATH includes common installation locations
-                export PATH="$HOME/.local/bin:$HOME/go/bin:/usr/local/bin:$PATH"
-                print_success "Beads installed via install script"
-            else
-                print_error "Install script failed"
-                return 1
-            fi
-        else
-            print_error "Neither Homebrew nor curl available for Beads installation"
-            return 1
-        fi
-    fi
-
-    # Verify installation
-    if command -v bd &> /dev/null; then
-        BD_VERSION=$(bd version 2>/dev/null || echo "unknown")
-        print_success "Beads verified: $BD_VERSION"
-        print_info "Run 'bd init' in your project directory to initialize beads"
-        print_info "Run 'bd quickstart' or 'bd prime' to learn the workflow"
-    else
-        print_error "Beads installation verification failed"
-        print_warning "You may need to restart your shell or update your PATH"
-        return 1
-    fi
-}
-
 # ===========================
 # Dependency Resolution
 # ===========================
@@ -952,13 +864,13 @@ show_profile_menu() {
 
     case $choice in
         1)
-            SELECTED_MODULES=(base_tools neovim nvim_config tmux_config zsh_ohmyzsh zsh_config golang_full nodejs claude opencode beads swarm)
+            SELECTED_MODULES=(base_tools neovim nvim_config tmux_config zsh_ohmyzsh zsh_config golang_full nodejs claude opencode)
             ;;
         2)
             SELECTED_MODULES=(base_tools neovim nvim_config tmux_config)
             ;;
         3)
-            SELECTED_MODULES=(base_tools neovim nvim_config tmux_config opencode beads swarm)
+            SELECTED_MODULES=(base_tools neovim nvim_config tmux_config opencode)
             ;;
         4)
             show_custom_menu
@@ -991,8 +903,6 @@ show_custom_menu() {
         "nodejs:Node.js LTS (fnm)"
         "claude:Claude Code CLI"
         "opencode:OpenCode CLI"
-        "beads:Beads (bd CLI) - Issue Tracker"
-        "swarm:Swarm - AI Agent Process Manager"
     )
 
     # Initialize all as unselected
@@ -1024,15 +934,15 @@ show_custom_menu() {
             echo "  $i) $desc"
             ((i++))
         done
-        echo "  13) Toggle All"
-        echo "  14) Done"
+        echo "  11) Toggle All"
+        echo "  12) Done"
         echo ""
 
-        read -p "Enter number to toggle (or 14 when done): " choice
+        read -p "Enter number to toggle (or 12 when done): " choice
 
-        if [ "$choice" == "14" ]; then
+        if [ "$choice" == "12" ]; then
             break
-        elif [ "$choice" == "13" ]; then
+        elif [ "$choice" == "11" ]; then
             # Toggle all
             local all_selected=1
             for key in "${!selections[@]}"; do
@@ -1097,8 +1007,6 @@ show_installation_summary() {
             "nodejs") echo "  • Node.js LTS (fnm)" ;;
             "claude") echo "  • Claude Code CLI" ;;
             "opencode") echo "  • OpenCode CLI" ;;
-            "beads") echo "  • Beads (bd CLI) - Issue Tracker" ;;
-            "swarm") echo "  • Swarm - AI Agent Process Manager" ;;
         esac
     done
 
@@ -1178,16 +1086,6 @@ execute_modules() {
                     FAILED_MODULES+=("opencode")
                 fi
                 ;;
-            "beads")
-                if ! install_beads; then
-                    FAILED_MODULES+=("beads")
-                fi
-                ;;
-            "swarm")
-                if ! install_swarm; then
-                    FAILED_MODULES+=("swarm")
-                fi
-                ;;
         esac
     done
 }
@@ -1262,8 +1160,6 @@ Modules:
   nodejs              Node.js LTS (fnm)
   claude              Claude Code CLI + MCP servers
   opencode            OpenCode CLI
-  beads               Beads (bd CLI) - Issue tracker
-  swarm               Swarm - AI agent process manager
 
 Examples:
   $0                                       # Interactive menu
