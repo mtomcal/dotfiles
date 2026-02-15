@@ -7,8 +7,7 @@ Personal development environment configuration for tmux, neovim, and zsh.
 - **Tmux**: Vim-style navigation and keybindings with optimized settings for neovim
 - **Neovim**: Official [kickstart.nvim](https://github.com/nvim-lua/kickstart.nvim) base with custom plugin layer
 - **Zsh**: Oh My Zsh with custom aliases and tmux integration
-- **AI Coding Tools**: Claude Code and OpenCode CLI with custom commands and agents
-- **Code Quality**: Language-agnostic code-quality-guardian agent for automated reviews
+- **AI Coding Tools**: Claude Code and OpenCode CLI with custom commands
 - **Language Support**:
   - **Python**: Pyright LSP + Ruff linting/formatting with Poetry auto-detection
   - **Go (Golang)**: Full toolchain (gopls, delve debugger, gofumpt, goimports) with testing and debugging support
@@ -78,6 +77,8 @@ The installer provides a **menu-driven interface** with multiple installation pr
 - `nodejs` - Node.js LTS via fnm
 - `claude` - Claude Code CLI + MCP servers
 - `opencode` - OpenCode CLI
+- `beads` - Beads (bd CLI) - distributed issue tracker
+- `swarm` - Swarm - AI agent process manager
 
 **Features**:
 - Automatic dependency resolution
@@ -108,12 +109,14 @@ dotfiles/
 ├── README.md              # This file
 ├── AGENTS.md              # Shared AI agent instructions
 ├── claude/
-│   ├── agents/            # Custom AI agents (code-quality-guardian, documentation-updater)
-│   ├── commands/          # Claude Code slash commands (18 commands)
+│   ├── agents/            # Custom AI agents (available for future use)
+│   ├── commands/          # Claude Code slash commands
+│   │   └── ralph.md      # Agentic loop job runner
 │   ├── settings.json      # Claude Code settings
 │   └── README.md          # Claude Code documentation
 ├── opencode/
-│   ├── commands/          # OpenCode CLI slash commands (9 commands)
+│   ├── commands/          # OpenCode CLI commands (available for future use)
+│   ├── agents/            # OpenCode CLI agents (available for future use)
 │   └── README.md          # OpenCode documentation
 ├── docs/
 │   └── PYTHON_DEVELOPMENT.md  # Python development guide
@@ -369,11 +372,11 @@ Complete Go development toolchain with debugging and testing support.
 
 ### AI Coding Tools
 
-Three AI coding assistants are configured with custom workflows:
+Two AI coding assistants are configured:
 
 #### Claude Code
 
-**Custom slash commands** and **AI agents** for enhanced development workflows. See [claude/README.md](claude/README.md) for details.
+Custom `/ralph` skill for running agentic loop jobs. See [claude/README.md](claude/README.md) for details.
 
 **Authentication**:
 ```bash
@@ -381,37 +384,11 @@ claude auth login
 ```
 
 **Available Commands**:
-- `/save-session` - Create detailed session summaries
-- `/create_plan` - Interactive implementation planning
-- `/implement_plan` - Execute approved technical plans
-- `/research_codebase` - Comprehensive codebase research
-- `/validate_plan` - Validate plan execution
-
-**AI Agents**:
-- **code-quality-guardian** - Language-agnostic code reviewer
-  - Automatically invoked after completing features, bug fixes, or refactors
-  - Supports TypeScript, JavaScript, Python, Go, Rust, Java, Kotlin
-  - Reviews tests, security, maintainability, and architecture
-  - Provides actionable feedback with priority levels
-- **documentation-updater** - Automated documentation synchronization
-  - Analyzes git diffs and updates relevant documentation files
-  - Keeps README.md, AGENTS.md, and other docs in sync with code changes
-  - Provides specific before/after proposals with rationale
-  - Maintains documentation consistency and accuracy
-
-**Adding Custom Commands**:
-
-Create a new markdown file in `~/dotfiles/claude/commands/`:
-
-```bash
-nvim ~/dotfiles/claude/commands/my-command.md
-```
-
-The command will be available as `/my-command` in Claude Code.
+- `/ralph` - Configure and launch `loop.sh` agentic loop jobs (PROMPT.md + IMPLEMENTATION_PLAN.md + ORCHESTRATOR.md)
 
 #### OpenCode CLI
 
-Multi-model AI coding assistant with shared custom commands. See [opencode/README.md](opencode/README.md) for details.
+Multi-model AI coding assistant with terminal TUI. See [opencode/README.md](opencode/README.md) for details.
 
 **Authentication**:
 ```bash
@@ -419,13 +396,23 @@ opencode auth login
 ```
 
 **Features**:
-- Shares the same custom slash commands as Claude Code
-- Uses the shared `AGENTS.md` for agent instructions
-- Supports multiple AI models
+- Plan/Build mode switching
+- OpenRouter free model support
+- Shared project context via AGENTS.md
 
 **Usage**:
 ```bash
 opencode  # Start interactive session
+```
+
+**Adding Custom Commands** (either tool):
+
+```bash
+# Claude Code
+nvim ~/dotfiles/claude/commands/my-command.md
+
+# OpenCode
+nvim ~/dotfiles/opencode/commands/my-command.md
 ```
 
 ## Platform-Specific Notes
@@ -611,7 +598,3 @@ Should point to `~/dotfiles/nvim/custom`
 ## License
 
 MIT
-
----
-
-**Happy coding!** 🚀

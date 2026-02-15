@@ -1,17 +1,13 @@
 # OpenCode CLI Configuration
 
-Custom commands and configuration for [OpenCode CLI](https://opencode.ai).
+Custom configuration for [OpenCode CLI](https://opencode.ai).
 
 ## Structure
 
 ```
 opencode/
-├── commands/                    # Custom commands
-│   ├── save-session.md         # Save conversation summaries
-│   ├── create-plan.md          # Create implementation plans
-│   ├── implement-plan.md       # Execute implementation plans
-│   ├── research-codebase.md    # Comprehensive codebase research
-│   └── validate-plan.md        # Validate plan execution
+├── commands/                    # Custom commands (empty - available for future use)
+├── agents/                      # Custom agents (empty - available for future use)
 ├── opencode.json               # Standard global configuration
 ├── opencode.project.json       # Project-level configuration template
 └── .gitignore                 # Prevents committing sensitive data
@@ -27,7 +23,7 @@ The standard global configuration is version-controlled and symlinked to `~/.con
 
 - **Theme**: Default to OpenCode theme
 - **UI Settings**: Scroll speed and acceleration
-- **Model Configuration**: OpenRouter free models (Gemini 2.0 Pro, Gemini 2.0 Flash Lite, Llama 3.3 70B, DeepSeek R1)
+- **Model Configuration**: OpenRouter free models
 - **Provider Setup**: OpenRouter custom provider configuration
 - **Tool Permissions**: Allow edit/bash/webfetch, ask for doom_loop
 - **Auto-updates**: Notify on updates
@@ -49,8 +45,9 @@ The install script automatically:
 2. **Creates config directory** at `~/.config/opencode/`
 3. **Links global config** `~/.config/opencode/opencode.json` → `~/dotfiles/opencode/opencode.json`
 4. **Links commands** `~/.config/opencode/command/` → `~/dotfiles/opencode/commands/`
-5. **Links instructions** `~/.config/opencode/AGENTS.md` → `~/dotfiles/AGENTS.md`
-6. **Backs up existing configs** with timestamps before linking
+5. **Links agents** `~/.config/opencode/agent/` → `~/dotfiles/opencode/agents/`
+6. **Links instructions** `~/.config/opencode/AGENTS.md` → `~/dotfiles/AGENTS.md`
+7. **Backs up existing configs** with timestamps before linking
 
 ### OpenRouter Free Models Setup
 
@@ -85,59 +82,15 @@ Global config (symlinked) ← Project config (optional)
 └── commands/ (shared) ← project commands (if any)
 ```
 
-## Commands
-
-### `/save-session`
-Creates detailed session summaries and saves them to `./sessions/` directory.
-
-**Usage**: `/save-session [optional timestamp]`
-
-### `/create-plan`
-Interactive planning command that:
-- Uses Plan mode for strategic thinking
-- Researches the codebase thoroughly
-- Creates detailed implementation plans
-- Saves plans to project-appropriate location
-
-**Usage**:
-- `/create-plan` - Interactive mode
-- `/create-plan @ticket.md` - With file reference
-
-### `/implement-plan`
-Executes approved technical plans:
-- Uses Build mode for implementation
-- Reads and validates plan files
-- Implements changes phase by phase
-- Tracks progress with checkboxes
-
-**Usage**: `/implement-plan @path/to/plan.md`
-
-### `/research-codebase`
-Conducts comprehensive codebase research:
-- Searches and analyzes code
-- Documents findings with file references
-- Generates detailed research documents
-
-**Usage**:
-- `/research-codebase` - Interactive mode
-- `/research-codebase @context.md` - With context file
-
-### `/validate-plan`
-Validates implementation plan execution:
-- Checks completion status
-- Runs automated verification
-- Generates validation reports
-
-**Usage**: `/validate-plan @path/to/plan.md`
-
 ## Installation
 
 The install script will automatically:
 1. Install OpenCode CLI via official installer
 2. Create `~/.config/opencode/` directory
 3. Symlink `~/.config/opencode/command/` → `~/dotfiles/opencode/commands/`
-4. Symlink `~/.config/opencode/AGENTS.md` → `~/dotfiles/AGENTS.md`
-5. Preserve existing credentials and configuration
+4. Symlink `~/.config/opencode/agent/` → `~/dotfiles/opencode/agents/`
+5. Symlink `~/.config/opencode/AGENTS.md` → `~/dotfiles/AGENTS.md`
+6. Preserve existing credentials and configuration
 
 ## Authentication
 
@@ -161,7 +114,6 @@ Credentials are stored in `~/.local/share/opencode/auth.json`.
 Create a new markdown file in `commands/`:
 
 ```bash
-# Create new command
 nvim ~/dotfiles/opencode/commands/my-command.md
 ```
 
@@ -208,19 +160,6 @@ For privacy and security, the following are excluded from version control:
 
 These files remain in your local `~/.config/opencode/` or `~/.local/share/opencode/` directories but are not synced to dotfiles.
 
-## Comparison with Claude Code
-
-| Feature | Claude Code | OpenCode CLI |
-|---------|-------------|--------------|
-| Interface | Web/Desktop | Terminal TUI |
-| Mode switching | N/A | Plan/Build modes |
-| Commands | Slash commands | Custom commands |
-| File references | Direct paths | @ mentions |
-| Agent system | Task agents | Plan/Build agents + subagents |
-| Configuration | `~/.claude/` | `~/.config/opencode/` |
-
-Both tools share the same custom commands with optimized implementations for each platform.
-
 ## Shell Aliases
 
 Convenient aliases are available after sourcing `.zshrc`:
@@ -243,24 +182,6 @@ Invoke subagents directly:
 ```
 @general search for authentication functions
 ```
-
-### Plan/Build Mode Optimization
-Commands are optimized for each mode:
-- `/create-plan` runs in Plan mode for strategic thinking
-- `/implement-plan` runs in Build mode for execution
-- `/research-codebase` uses Build mode with full tool access
-
-## Tips
-
-1. **Use Plan mode first**: Switch to Plan mode when designing solutions
-2. **Build mode for execution**: Use Build mode when implementing changes
-3. **@ references**: Always use @ to reference files for better context
-4. **Subagents**: Leverage subagents for specialized tasks
-5. **Command arguments**: Pass arguments with `$ARGUMENTS` in command templates
-
-## Credits
-
-The custom commands are based on techniques from [Advanced Context Engineering for Coding Agents](https://github.com/humanlayer/advanced-context-engineering-for-coding-agents/blob/main/ace-fca.md) and optimized for OpenCode's Plan/Build mode architecture.
 
 ## Learn More
 

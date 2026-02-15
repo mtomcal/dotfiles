@@ -50,98 +50,37 @@ This dotfiles setup supports both **Claude Code** and **OpenCode CLI**:
 
 **Claude Code**:
 - Configuration: `claude/` directory
-- Commands: Custom slash commands in `claude/commands/`
-- Agents: Custom agents in `claude/agents/`
-  - `code-quality-guardian`: Language-agnostic code quality reviewer (TypeScript, JS, Python, Go, Rust, Java, Kotlin)
-  - `documentation-updater`: Automatically reviews git diffs and updates relevant documentation files
-  - `acceptance-tester`: Browser automation agent for testing web applications against acceptance criteria
+- Commands: `/ralph` — configure and launch `loop.sh` agentic loop jobs
+- Agents: `claude/agents/` (available for custom agents)
 - Settings: `claude/settings.json`
 
 **OpenCode CLI**:
 - Configuration: `opencode/` directory
-- Commands: Custom commands in `opencode/commands/` (uses hyphens: `/create-plan`)
-- Agents: Custom agents in `opencode/agents/` (mirrored from Claude agents)
-  - `code-quality-guardian`: Language-agnostic code quality reviewer
-  - `documentation-updater`: Automatically reviews git diffs and updates relevant documentation files
-  - `acceptance-tester`: Browser automation agent for testing web applications against acceptance criteria
-  - `codebase-researcher`: Research agent for understanding codebases
-  - `readyq-implementer`: TDD-based implementation agent for ReadyQ issues
-  - `readyq-reviewer`: Code review agent for ReadyQ issues
-  - `readyq-test-reviewer`: Test review agent for ReadyQ issues
+- Commands: `opencode/commands/` (available for custom commands)
+- Agents: `opencode/agents/` (available for custom agents)
 - Standard config: `opencode/opencode.json` (symlinked globally)
 - Project template: `opencode/opencode.project.json` (for project-specific overrides)
 - Shared instructions: This AGENTS.md file
 - Uses Build/Plan mode switching
 
-**Shared Commands**:
-Both tools have access to the same functionality with naming differences:
-- **Session Management**: `/save-session` (OpenCode only)
-- **Planning**: `/create-plan` (OpenCode) or `/create_plan` (Claude)
-- **Implementation**: `/implement-plan` (OpenCode) or `/implement_plan` (Claude)
-- **Research**: `/research-codebase` (OpenCode) or `/research_codebase` (Claude)
-- **Validation**: `/validate-plan` (OpenCode) or `/validate_plan` (Claude)
-- **Git Workflows**: `/create-worktree`, `/handoff`, `/commit`
-- **Swarm Orchestration**: `/swarm-director` (OpenCode) or `/swarm:director` (Claude)
-- **Project Bootstrap**: `/bootstrap-project` - Initialize Beads + Swarm, migrate from ReadyQ
-- **ReadyQ Integration** (Python-based issue tracker):
-  - `/readyq-create-tasks` (OpenCode) or `/readyq:create-tasks` (Claude)
-  - `/readyq-refine-tasks` (OpenCode) or `/readyq:refine-tasks` (Claude)
-  - `/readyq-implement-task` (OpenCode) or `/readyq:implement-task` (Claude)
-  - `/readyq-review` (OpenCode) or `/readyq:review` (Claude)
-  - `/readyq-review-tests` (OpenCode) or `/readyq:review-tests` (Claude)
-  - `/readyq-review-modularity` (OpenCode) or `/readyq:review-modularity` (Claude)
-  - `/readyq-acceptance-test` (OpenCode) or `/readyq:acceptance-test` (Claude)
-  - `/readyq-full-cycle` (OpenCode) or `/readyq:full-cycle` (Claude)
-  - `/readyq-pr-respond` (OpenCode) or `/readyq:pr-respond` (Claude)
-  - `/readyq-pr-merged` (OpenCode) or `/readyq:pr-merged` (Claude)
-- **Beads Integration** (Go-based distributed issue tracker):
-  - `/beads-create-tasks` (OpenCode) or `/beads:create-tasks` (Claude)
-  - `/beads-refine-tasks` (OpenCode) or `/beads:refine-tasks` (Claude)
-  - `/beads-implement-task` (OpenCode) or `/beads:implement-task` (Claude)
-  - `/beads-review` (OpenCode) or `/beads:review` (Claude)
-  - `/beads-review-tests` (OpenCode) or `/beads:review-tests` (Claude)
-  - `/beads-review-modularity` (OpenCode) or `/beads:review-modularity` (Claude)
-  - `/beads-acceptance-test` (OpenCode) or `/beads:acceptance-test` (Claude)
-  - `/beads-full-cycle` (OpenCode) or `/beads:full-cycle` (Claude)
-  - `/beads-pr-respond` (OpenCode) or `/beads:pr-respond` (Claude)
-  - `/beads-pr-merged` (OpenCode) or `/beads:pr-merged` (Claude)
+### Ralph — Agentic Loop Job Runner (Claude Code)
 
-**Naming Convention**: OpenCode uses hyphens (`-`) for namespacing, Claude Code uses colons (`:`) for namespacing and underscores (`_`) for word separation.
+The `/ralph` command configures and launches a `loop.sh` agentic loop job. It walks through setting up three files:
 
-These commands provide identical functionality but are optimized for each tool's specific features and syntax.
+- **PROMPT.md** — concise task instructions the worker reads every iteration (kept small, <20 lines)
+- **IMPLEMENTATION_PLAN.md** — heavy reference with change context, task order, progress checklist, and process rules
+- **ORCHESTRATOR.md** — monitoring playbook for a human or second Claude session
 
-#### Choosing Between ReadyQ and Beads
+The worker loop runs Claude Code repeatedly against the prompt file until output contains `/done` or the iteration limit is hit. An optional orchestrator monitors progress and writes course corrections into the prompt file between iterations.
 
-Both issue trackers provide the same workflow commands, but differ in architecture:
+**Launch:**
+```bash
+# Bare metal
+./loop.sh 25 PROMPT.md
 
-**ReadyQ** (Python-based, single-file script):
-- Simple Python script in repo root
-- Zero setup (just run `./readyq.py`)
-- Single JSON file storage
-- Best for: Solo developers, simple projects, quick prototyping
-- Trade-off: Manual git operations, no auto-sync
-
-**Beads** (Go-based, distributed):
-- Git-backed JSONL storage + SQLite cache
-- Requires `bd init` per project
-- Background daemon with auto-sync (30s debounce)
-- First-class dependency graph (`bd dep` commands)
-- Hash-based IDs (e.g., `bd-a1b2`) to prevent merge conflicts
-- Best for: Teams, distributed workflows, multi-agent collaboration
-- Trade-off: More complex setup, requires `bd sync` to flush changes immediately
-
-**Installation**:
-- ReadyQ: No installation needed (Python script in repo)
-- Beads: Install via `install.sh` (Homebrew → install script fallback)
-
-**Quick Start**:
-- ReadyQ: `./readyq.py quickstart`
-- Beads: `bd quickstart` (full guide) or `bd prime` (AI-optimized workflow context)
-
-**Choose ReadyQ if**: You want zero setup and simple single-developer workflow
-**Choose Beads if**: You need distributed collaboration, auto-sync, or first-class dependency management
-
-**Note**: These are mutually exclusive - choose one issue tracker per project.
+# Docker sandbox
+SANDBOX=1 ./loop.sh 25 PROMPT.md
+```
 
 ### Swarm - AI Agent Process Manager
 
@@ -191,46 +130,7 @@ swarm kill agent1
 swarm clean --all
 ```
 
-**Integration with Beads**:
-Swarm integrates with Beads for parallel task execution. The `/swarm:director` command orchestrates this workflow:
-1. Select issues from the Beads backlog
-2. Spawn parallel workers in isolated worktrees
-3. Monitor worker progress
-4. Rescue incomplete workers
-5. Verify PRs are created
-6. Clean up merged worktrees
-
 **Use Case**: Run multiple AI agents simultaneously on independent tasks, each in its own git branch, without merge conflicts or interference.
-
-### Project Bootstrap Command
-
-The `/bootstrap-project` command sets up a project for AI-assisted development with Beads and Swarm:
-
-**Features**:
-- Detects existing project configuration (Beads, ReadyQ, CLAUDE.md, AGENTS.md)
-- Initializes Beads if not present
-- Migrates ReadyQ issues to Beads (optional)
-- Updates or creates CLAUDE.md/AGENTS.md with workflow documentation
-- Configures .gitignore for Swarm
-
-**Usage**:
-```bash
-# Auto-detect and configure
-/bootstrap-project
-
-# Force migration from ReadyQ
-/bootstrap-project migrate=true
-
-# Specify which agent file to update
-/bootstrap-project agentFile=CLAUDE.md
-```
-
-**Migration from ReadyQ**:
-When ReadyQ is detected, the command offers to migrate existing issues:
-- Preserves issue titles, descriptions, and priorities
-- Converts status (pending→backlog, in_progress→in_progress, done→closed)
-- Recreates blocker dependencies using `bd dep add`
-- Original ReadyQ files are preserved for verification
 
 ### Neovim Configuration
 
@@ -375,228 +275,6 @@ Two plugins work together for comprehensive git workflows:
 - Integrates with diffview for visual diffs
 - Interactive rebasing, staging, and committing
 
-### Code Quality Guardian Agent
-
-The `code-quality-guardian` agent provides automated code reviews for completed work:
-
-**Features:**
-- **Language-agnostic**: Supports TypeScript, JavaScript, Python, Go, Rust, Java, Kotlin
-- **Automatic language detection**: Examines file extensions and project config
-- **Comprehensive review**: Tests, maintainability, security, modularity, complexity
-- **Actionable feedback**: Specific file locations, line numbers, and remediation steps
-
-**When to use:**
-- After completing a feature implementation
-- After fixing a bug
-- After refactoring code
-- When marking a task as complete (e.g., `./readyq.py update <id> --status done`)
-
-**How it works:**
-1. Detects project language(s) from files and configuration
-2. Checks for project-specific standards (CLAUDE.md, AGENTS.md)
-3. Reviews tests, code quality, security, and architecture
-4. Provides structured feedback with priority levels (Critical/Important/Minor)
-5. Gives verdict: Approved, Approved with changes, or Needs revision
-
-The agent automatically invokes when you complete significant work units.
-
-### Documentation Updater Agent
-
-The `documentation-updater` agent keeps documentation synchronized with code changes:
-
-**Features:**
-- **Git diff analysis**: Examines recent code changes to identify documentation impacts
-- **Multi-file support**: Updates README.md, AGENTS.md, CHANGELOG.md, and other documentation
-- **Smart detection**: Identifies new features, configuration changes, workflow modifications
-- **Specific proposals**: Provides exact before/after content with rationale
-- **Maintains consistency**: Preserves documentation tone, style, and structure
-
-**When to use:**
-- After completing a new feature
-- After modifying configuration files or workflows
-- After adding new commands, agents, or tools
-- After refactoring that affects user-facing behavior
-- Before creating a pull request or release
-
-**How it works:**
-1. Analyzes git diff to understand code changes
-2. Reads existing documentation to understand structure
-3. Identifies sections that need updates
-4. Proposes specific changes with before/after content
-5. Prioritizes updates (critical vs. optional)
-6. Provides clear rationale linking changes to code
-
-The agent ensures users always have accurate, up-to-date information about the project.
-
-### Acceptance Tester Agent
-
-The `acceptance-tester` agent validates web applications against acceptance criteria using automated browser testing:
-
-**Features:**
-- **Playwright MCP integration**: Uses Playwright browser automation tools via MCP server
-- **Automated UI testing**: Tests user flows, form interactions, and navigation
-- **Acceptance criteria validation**: Verifies applications meet specified requirements
-- **Error detection**: Captures console errors, network issues, and visual bugs
-- **Screenshot capture**: Documents failures with visual evidence
-- **Structured reporting**: Provides detailed test reports with pass/fail status per criterion
-- **Multiple browser support**: Runs tests in Chromium/Chrome via Playwright
-
-**When to use:**
-- After implementing UI features
-- Before deploying to staging or production
-- When validating acceptance criteria
-- After fixing UI bugs
-- For regression testing of critical user flows
-- When testing responsive designs across viewports
-
-**How it works:**
-1. Receives target URL and acceptance criteria in task prompt
-2. Plans test scenarios based on acceptance criteria
-3. Uses Playwright MCP tools to navigate and interact with the application
-4. Verifies expected outcomes match actual behavior
-5. Monitors browser console for errors and warnings
-6. Captures screenshots of failures or unexpected behavior
-7. Generates structured test report with actionable feedback
-
-**Prerequisites:**
-- Playwright MCP server must be installed (automatic via `./install.sh`)
-- Application must be running and accessible at the target URL
-- Acceptance criteria must be provided in the task prompt or conversation context
-
-**Invocation:**
-Use the Task tool with `subagent_type: "acceptance-tester"` and provide:
-- **url**: Target web application URL (required)
-- **acceptance criteria**: Test scenarios and expected outcomes
-
-**Example:**
-```
-Use the acceptance-tester agent to test http://localhost:3000
-
-Acceptance criteria:
-1. User can log in with valid credentials
-2. Dashboard displays user's recent activity
-3. Navigation menu links work correctly
-4. Form validation shows appropriate error messages
-```
-
-The agent will navigate to the URL, test each criterion, and return a detailed report with pass/fail status, reproduction steps for failures, and screenshots.
-
-### Modularity Reviewer Command
-
-The `/readyq:review-modularity` command proactively analyzes codebases for large monolithic files and proposes refactorings as ReadyQ issues:
-
-**Features:**
-- **Proactive structural analysis**: Scans entire codebase or specific directories for modularity issues
-- **Language-agnostic**: Works with any programming language (Python, TypeScript, Go, Java, etc.)
-- **Multiple metrics**: Evaluates files based on LOC, complexity, cohesion, coupling, and structural patterns
-- **Actionable proposals**: Generates specific refactoring plans with effort estimates and priority rankings
-- **ReadyQ integration**: Creates detailed refactoring issues with acceptance criteria and subtasks
-- **Trend tracking**: Saves metrics snapshots to monitor modularity health over time
-- **AI-friendly thresholds**: Optimized to improve AI agent reasoning and reduce hallucinations
-
-**When to use:**
-- Quarterly reviews as codebase grows
-- Before major refactoring initiatives
-- When AI agents struggle with large files (degraded reasoning, hallucinations)
-- When code reviews take too long (cognitive overload from 600+ LOC files)
-- When teams experience merge conflicts due to bottleneck files
-- After adding 50+ commits or significant feature additions
-
-**How it works:**
-1. User specifies scope (entire codebase, directory, or file extensions)
-2. Detects languages and reads project standards
-3. Scans files and calculates metrics (LOC, functions, imports, complexity)
-4. Identifies files exceeding thresholds (production: >400 LOC, tests: >500 LOC)
-5. Performs deep analysis on flagged files (responsibilities, coupling, cohesion)
-6. Generates refactoring proposals with suggested module breakdowns
-7. Prioritizes by impact (Critical/High/Medium based on change frequency)
-8. User selects which refactorings to create as ReadyQ issues
-9. Creates detailed ReadyQ issues with acceptance criteria and subtasks
-10. Saves metrics snapshot for trend analysis
-
-**File size thresholds:**
-- Production code: Warning at 400 LOC, Critical at 600 LOC
-- Test files: Warning at 500 LOC, Critical at 800 LOC
-- Ideal targets: <200 LOC (production), <300 LOC (tests)
-
-**Why modularity matters:**
-- **AI Agent Effectiveness**: Large files consume more context window, reducing reasoning quality and increasing hallucinations
-- **Human Reviewability**: Files >400 LOC cause cognitive overload, making thorough review difficult
-- **Parallel Development**: Large monolithic files become bottlenecks; multiple agents/developers can't work on them simultaneously
-- **Maintainability**: Smaller, focused modules have clearer boundaries and lower risk of unintended side effects
-
-**Trend tracking:**
-Metrics snapshots are saved to `./modularity-reports/{timestamp}.json` for historical comparison. Run periodically to ensure modularity is improving or stable, not degrading.
-
-**Usage:**
-```bash
-/readyq:review-modularity
-# Prompts for scope, then analyzes and proposes refactorings
-# Creates ReadyQ issues for selected refactorings
-```
-
-### Acceptance Testing Command
-
-The `/readyq:acceptance-test` command validates web applications against ReadyQ acceptance criteria using Playwright MCP:
-
-**Features:**
-- **Direct Playwright MCP integration**: Uses Playwright tools directly in main conversation (no subagents)
-- **ReadyQ integration**: Pulls acceptance criteria from ReadyQ issues
-- **Browser automation**: Real browser interactions for UI, forms, and navigation testing
-- **Multiple browser contexts**: Support for multiplayer/multi-user testing scenarios
-- **Error detection**: Captures console errors, network issues, and visual bugs
-- **Screenshot capture**: Documents failures with visual evidence
-- **Structured reporting**: Provides detailed test reports with pass/fail status
-- **Fail-fast validation**: Stops immediately if URL is unreachable or Playwright unavailable
-
-**When to use:**
-- After implementing a new feature with UI components
-- Before deploying to staging or production
-- When validating acceptance criteria from ReadyQ issues
-- After fixing UI bugs to verify the fix
-- For regression testing of critical user flows
-- **For multiplayer games**: Test combat, interactions between multiple players
-
-**Multiplayer Testing:**
-Playwright MCP's multiple browser context support makes it ideal for testing multiplayer scenarios:
-- Create separate browser contexts for each player
-- Simulate player 1 vs player 2 interactions (e.g., combat)
-- Verify state synchronization between players in real-time
-- Test that actions in one context correctly affect other contexts
-- Each context has isolated cookies, storage, and session state
-
-**How it works:**
-1. Pulls acceptance criteria from ReadyQ issue by hashId
-2. Validates dev server is running at provided URL (fail-fast)
-3. Plans test scenarios based on acceptance criteria
-4. Uses Playwright MCP tools to navigate, interact, and verify outcomes
-5. Creates multiple browser contexts if testing multiplayer scenarios
-6. Monitors browser console for errors and warnings in all contexts
-7. Captures screenshots of failures or unexpected behavior
-8. Generates structured test report with actionable feedback
-9. Optionally logs results back to ReadyQ issue
-
-**Prerequisites:**
-- Playwright MCP server must be configured globally (installed automatically by `./install.sh`)
-- Dev server must be running before executing tests
-- ReadyQ issue must contain acceptance criteria
-
-**MCP Server Configuration:**
-The Playwright MCP server is installed globally (user scope) by `./install.sh`:
-```bash
-claude mcp add --scope user --transport stdio playwright -- npx -y @playwright/mcp@latest
-```
-
-This makes Playwright available in **all projects**, not just this dotfiles repository.
-
-**Usage:**
-```bash
-/readyq:acceptance-test
-# Prompts for ReadyQ hashId and URL, then runs browser tests
-# Works in any project because Playwright MCP is configured globally
-# Supports multiple browser contexts for multiplayer testing
-```
-
 ### AI Assistant Privacy
 
 The `.gitignore` files in `claude/` and `opencode/` exclude sensitive files (credentials, history, project data) while tracking commands, agents, and settings. When modifying configs, never commit:
@@ -623,15 +301,11 @@ Shell aliases are available for common operations:
 - `oc` or `opencode` - Launch OpenCode CLI
 - Tmux aliases: `t`, `ta`, `tn`, `tl`, `tk`, `td`
 
-## Session Summaries
-
-Session summaries are stored in `./sessions/` (project-specific, gitignored). Use `/save-session` to create detailed conversation summaries for future reference.
-
 ## Working with Multiple AI Assistants
 
 This setup allows seamless switching between Claude Code and OpenCode:
 - Both tools share the same project context via this AGENTS.md file
-- Commands are adapted to each tool's strengths
-- OpenCode leverages Plan/Build modes for different workflows
-- Claude Code uses its agent system for parallel task execution
+- Claude Code has the `/ralph` agentic loop command for long-running automated tasks
+- OpenCode provides a terminal TUI with Plan/Build mode switching
+- Both tools support custom commands and agents via their respective directories
 - Choose the tool based on your needs - both have full context

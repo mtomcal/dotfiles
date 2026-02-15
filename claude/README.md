@@ -6,71 +6,47 @@ Custom commands and settings for [Claude Code](https://claude.com/claude-code).
 
 ```
 claude/
-├── agents/                # Custom AI agents
-│   └── code-quality-guardian.md  # Language-agnostic code reviewer
-├── commands/              # Custom slash commands
-│   ├── save-session.md   # Save conversation summaries
-│   ├── create_plan.md    # Create implementation plans
-│   ├── implement_plan.md # Execute implementation plans
-│   ├── research_codebase.md # Comprehensive codebase research
-│   └── validate_plan.md  # Validate plan execution
+├── commands/              # Custom slash commands (skills)
+│   └── ralph.md          # Configure & launch loop.sh agent jobs
+├── agents/                # Custom AI agents (empty - available for future use)
 ├── settings.json         # Claude Code settings
+├── statusline.sh         # Custom status line script
 └── .gitignore           # Prevents committing sensitive data
 ```
 
-## Agents
-
-### `code-quality-guardian`
-
-Language-agnostic code quality reviewer that provides automated reviews after completing features, bug fixes, or refactors.
-
-**Supported Languages**:
-- TypeScript, JavaScript, Python, Go, Rust, Java, Kotlin
-
-**Features**:
-- Automatic language detection from files and project config
-- Comprehensive reviews: tests, maintainability, security, modularity, complexity
-- Language-specific tooling awareness (ESLint, mypy, clippy, gofmt, etc.)
-- Actionable feedback with priority levels (Critical/Important/Minor)
-- Structured output with verdict (Approved/Needs Changes/Needs Revision)
-
-**When it runs**:
-- Automatically invoked after completing significant work units
-- After marking tasks as complete
-- When explicitly requested
-
-The agent adapts its review criteria to the detected language ecosystem.
-
 ## Commands
 
-### Planning & Research
+### `/ralph`
 
-#### `/save-session`
-Creates detailed session summaries and saves them to `./sessions/` directory.
+Configures and launches a `loop.sh` agentic loop job. Ralph runs Claude Code in a loop via `loop.sh`, where each iteration reads a prompt file fresh, does work, and repeats until output contains `/done` or the iteration limit is hit.
 
-#### `/create_plan`
-Interactive planning command that:
-- Researches the codebase thoroughly
-- Creates detailed implementation plans
-- Saves plans to `thoughts/shared/plans/`
+**What it sets up:**
 
-#### `/implement_plan`
-Executes approved technical plans:
-- Reads and validates plan files
-- Implements changes phase by phase
-- Tracks progress with checkboxes
+- **PROMPT.md** — concise task instructions the worker reads every iteration
+- **IMPLEMENTATION_PLAN.md** — heavy reference with change context, task order, progress checklist, and process rules
+- **ORCHESTRATOR.md** — monitoring playbook for a human or second Claude session that auto-checks progress every 5 minutes
 
-#### `/research_codebase`
-Conducts comprehensive codebase research:
-- Spawns parallel research agents
-- Generates detailed research documents
-- Saves to `thoughts/shared/research/`
+**Configuration options:**
+- Task description (what should the worker accomplish)
+- Bare metal or Docker sandbox execution
+- Max iterations (default 25, 0 = unlimited)
+- Prompt file name (default PROMPT.md)
 
-#### `/validate_plan`
-Validates implementation plan execution:
-- Checks completion status
-- Runs automated verification
-- Generates validation reports
+**Launch:**
+```bash
+# Bare metal
+./loop.sh 25 PROMPT.md
+
+# Docker sandbox
+SANDBOX=1 ./loop.sh 25 PROMPT.md
+```
+
+**Notes:**
+- `loop.sh` must already exist in the project root
+- Auth: ANTHROPIC_API_KEY > CLAUDE_CODE_OAUTH_TOKEN > ~/.claude/.credentials.json
+- OAuth tokens expire after ~8h; API keys are more reliable for long sessions
+- Logs go to `.loop-logs/iteration-{N}.log`
+- Worker uses `--dangerously-skip-permissions` and `--model opus`
 
 ## Installation
 
@@ -79,14 +55,15 @@ The install script will automatically:
 2. Symlink `~/.claude/commands` → `~/dotfiles/claude/commands`
 3. Symlink `~/.claude/agents` → `~/dotfiles/claude/agents`
 4. Symlink `~/.claude/settings.json` → `~/dotfiles/claude/settings.json`
-5. Preserve existing credentials and history
+5. Symlink `~/.claude/statusline.sh` → `~/dotfiles/claude/statusline.sh`
+6. Install Playwright MCP server (global scope)
+7. Preserve existing credentials and history
 
 ## Adding Custom Commands
 
 Create a new markdown file in `commands/`:
 
 ```bash
-# Create new command
 nvim ~/dotfiles/claude/commands/my-command.md
 ```
 
@@ -105,9 +82,3 @@ For privacy and security, the following are excluded from version control:
 - Session data, file history, and generated caches
 
 These files remain in your local `~/.claude/` directory but are not synced to dotfiles.
-
-## Credits
-
-The custom commands (`/create_plan`, `/implement_plan`, `/research_codebase`, `/validate_plan`) are based on techniques from Dexter Horthy's article on [Advanced Context Engineering for Coding Agents](https://github.com/humanlayer/advanced-context-engineering-for-coding-agents/blob/main/ace-fca.md).
-
-The `/save-session` command is a custom implementation for tracking conversation history.
