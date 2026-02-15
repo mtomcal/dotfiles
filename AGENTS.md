@@ -69,7 +69,7 @@ The `/ralph` command configures and launches a `loop.sh` agentic loop job. It wa
 - **IMPLEMENTATION_PLAN.md** — heavy reference with change context, task order, progress checklist, and process rules
 - **ORCHESTRATOR.md** — monitoring playbook for a human or second Claude session
 
-The worker loop runs Claude Code repeatedly against the prompt file until output contains `/done` or the iteration limit is hit. An optional orchestrator monitors progress and writes course corrections into the prompt file between iterations.
+The worker loop runs Claude Code repeatedly against the prompt file until output contains `/done` or the iteration limit is hit. An optional orchestrator monitors progress and writes course corrections into the prompt file between iterations. Supports **git worktrees** for running multiple ralph jobs in parallel without collision — each job gets an isolated worktree in a sibling directory (`{repo-name}-worktrees/`).
 
 **Launch:**
 ```bash

@@ -21,6 +21,22 @@ Ask the user (use AskUserQuestion tool):
 2. **Bare metal or Docker sandbox?** — Sandbox adds resource limits and isolation.
 3. **Max iterations?** — Default 25, 0 = unlimited.
 4. **Prompt file name?** — Default PROMPT.md.
+5. **Run in a git worktree?** — Give the work a short name (e.g. `auth-refactor`). This creates an isolated worktree so multiple ralph jobs can run in parallel without collision. Leave blank to run in the current directory.
+
+### Step 1.5: Create Worktree (if user provided a name)
+
+If the user provided a worktree name, create an isolated worktree:
+
+1. Detect the repo root (`git rev-parse --show-toplevel`) and repo name (basename of repo root)
+2. Slugify the work name: lowercase, replace spaces/special chars with hyphens, strip leading/trailing hyphens
+3. Compute the worktrees directory as a **sibling** to the repo root: `{repo-root}/../{repo-name}-worktrees/` (e.g. if repo is at `~/projects/myapp`, worktrees go to `~/projects/myapp-worktrees/`)
+4. Create the worktrees directory if it doesn't exist: `mkdir -p {worktrees-dir}`
+5. Run `git worktree add {worktrees-dir}/{slugified-name} -b ralph/{slugified-name}` to create the worktree with a new branch based on current HEAD
+6. Copy `loop.sh` into the worktree if it exists in the repo root (worker needs it)
+7. Tell the user the worktree was created and that they should `cd` into it (or launch loop.sh from that path)
+8. Write all subsequent files (PROMPT.md, IMPLEMENTATION_PLAN.md, ORCHESTRATOR.md) into the worktree directory
+
+If the user left the worktree name blank, proceed as before (no worktree, all files written to current directory).
 
 ### Step 2: Write PROMPT.md
 
@@ -46,6 +62,7 @@ Key rules:
 - Keep it under 20 lines
 - Each iteration reads this fresh, so it must be self-contained
 - The orchestrator appends `CORRECTION: {message}` lines to the IMPORTANT section
+- **Worktree cleanup rule:** When running in a worktree, add this line to the IMPORTANT section: `When outputting /done, first delete PROMPT.md, IMPLEMENTATION_PLAN.md, and ORCHESTRATOR.md, then commit the deletion with message "chore: clean up ralph job files", then merge this branch into main with "git checkout main && git merge ralph/{name}", then output /done. This prevents merge conflicts and lands the work on main automatically.`
 
 ### Step 3: Write IMPLEMENTATION_PLAN.md
 
@@ -91,6 +108,16 @@ Create the monitoring playbook with these sections:
 **Recent commits:** {list}
 ```
 
+**Post-Job Cleanup (worktree mode only):**
+
+When the job is running in a worktree, add this section to the orchestrator playbook:
+
+- After the worker outputs `/done`, verify the job files (PROMPT.md, IMPLEMENTATION_PLAN.md, ORCHESTRATOR.md) were deleted and the deletion was committed
+- If not, manually delete them and commit: `rm PROMPT.md IMPLEMENTATION_PLAN.md ORCHESTRATOR.md && git add -A && git commit -m "chore: clean up ralph job files"`
+- Verify the branch was merged to main. If not, merge it: `git checkout main && git merge ralph/{name}`
+- From the main repo, remove the worktree: `git worktree remove ../{repo-name}-worktrees/{name}`
+- Delete the branch: `git branch -d ralph/{name}`
+
 **When to Intervene vs Let It Run:**
 - **Let it run:** steady progress, reasonable diff sizes, correct commit pattern
 - **Write a correction:** wrong files edited, rewrites instead of targeted edits, stuck 2+ iterations, skipping items, not committing
@@ -107,6 +134,8 @@ Orchestrator: ORCHESTRATOR.md
 Mode:         {bare | sandbox}
 Iterations:   {N | unlimited}
 Resources:    {memory/cpu/pids if sandbox}
+Worktree:     {path | "none (running in current directory)"}
+Branch:       {ralph/{slugified-name} | "(current branch)"}
 
 Launch (sandbox):
   SANDBOX=1 ./loop.sh {iterations} {prompt_file}
@@ -115,6 +144,17 @@ Launch (bare):
   ./loop.sh {iterations} {prompt_file}
 
 Orchestrator auto-checks every 5 min (blocking sleep).
+```
+
+When running in a worktree, also show:
+```
+Worktree launch:
+  cd ../{repo-name}-worktrees/{name} && ./loop.sh {iterations} {prompt_file}
+
+Cleanup (after job completes):
+  git checkout main && git merge ralph/{name}   # if not already merged
+  git worktree remove ../{repo-name}-worktrees/{name}
+  git branch -d ralph/{name}
 ```
 
 ## Important Notes
