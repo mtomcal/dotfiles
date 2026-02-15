@@ -77,8 +77,6 @@ The installer provides a **menu-driven interface** with multiple installation pr
 - `nodejs` - Node.js LTS via fnm
 - `claude` - Claude Code CLI + MCP servers
 - `opencode` - OpenCode CLI
-- `beads` - Beads (bd CLI) - distributed issue tracker
-- `swarm` - Swarm - AI agent process manager
 
 **Features**:
 - Automatic dependency resolution

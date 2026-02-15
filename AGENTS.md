@@ -18,8 +18,6 @@ The primary entry point is `./install.sh`, which:
 - Installs fnm (Fast Node Manager) and Node.js LTS
 - Links AI coding assistant configurations (Claude Code, OpenCode)
 - Installs OpenCode CLI
-- Installs Beads (bd CLI) for distributed issue tracking
-- Installs Swarm for parallel AI agent orchestration
 - Sets up Mason LSP/formatter packages (Python, Go, Lua)
 
 **Key behavior**: The script is idempotent and safe to re-run for updates.
@@ -81,56 +79,6 @@ The worker loop runs Claude Code repeatedly against the prompt file until output
 # Docker sandbox
 SANDBOX=1 ./loop.sh 25 PROMPT.md
 ```
-
-### Swarm - AI Agent Process Manager
-
-Swarm is a Python-based process manager for spawning, tracking, and controlling multiple AI agent CLI instances in parallel.
-
-**Key Features**:
-- **Process lifecycle management**: Spawn, monitor, send messages, and kill workers
-- **Git worktree isolation**: Each worker operates in its own directory on a dedicated branch
-- **Tmux integration**: Workers run in tmux sessions for easy attachment and monitoring
-- **Readiness detection**: Wait for agents to be ready before sending tasks
-
-**Installation**:
-```bash
-# Via install.sh (automatic)
-./install.sh --modules swarm
-
-# Or manually
-curl -fsSL https://raw.githubusercontent.com/mtomcal/swarm/main/setup.sh | sh
-```
-
-**Requirements**:
-- Python 3.10+
-- tmux (for tmux mode)
-- git (for worktree isolation)
-
-**Basic Usage**:
-```bash
-# Spawn a worker with tmux and worktree isolation
-swarm spawn --name agent1 --tmux --worktree -- claude
-
-# Send a task to a worker
-swarm send agent1 "Fix the auth bug"
-
-# Attach to a worker's tmux session
-swarm attach agent1
-
-# List all workers
-swarm ls
-
-# View worker logs
-swarm logs agent1
-
-# Kill a worker
-swarm kill agent1
-
-# Clean up stopped workers
-swarm clean --all
-```
-
-**Use Case**: Run multiple AI agents simultaneously on independent tasks, each in its own git branch, without merge conflicts or interference.
 
 ### Neovim Configuration
 

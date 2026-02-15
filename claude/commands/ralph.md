@@ -40,6 +40,7 @@ output `/done` when {completion criteria}.
 ```
 
 Key rules:
+- ONE checklist item per iteration — worker does one item, commits, then stops. The loop restarts fresh for the next one.
 - NO progress tracking in PROMPT.md — that lives in the plan file
 - NO discoveries section in PROMPT.md — worker updates the plan file directly
 - Keep it under 20 lines
