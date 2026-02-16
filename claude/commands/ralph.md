@@ -76,7 +76,7 @@ claude-director
 
 If the user doesn't have the alias, tell them to add it to their shell config:
 ```
-alias claude-director='claude --allowedTools "Read" "Grep" "Glob" "Bash(git log *)" "Bash(git diff *)" "Bash(docker stats *)" "Bash(sleep *)" "Bash(cat .loop-logs/*)" "Bash(ls .loop-logs/*)" "Edit(PROMPT.md)"'
+alias claude-director='claude --allowedTools "Read" "Grep" "Glob" "Bash(git log *)" "Bash(git diff *)" "Bash(docker stats *)" "Bash(docker ps *)" "Bash(docker kill *)" "Bash(./loop.sh *)" "Bash(ps *)" "Bash(kill *)" "Bash(sleep *)" "Bash(cat .loop-logs/*)" "Bash(ls .loop-logs/*)" "Edit(PROMPT.md)"'
 ```
 
 The orchestrator auto-checks on a blocking 5-minute interval (`sleep 300` between cycles).
@@ -85,7 +85,10 @@ The orchestrator auto-checks on a blocking 5-minute interval (`sleep 300` betwee
 - `Read` — read any file
 - `Grep` / `Glob` — search files
 - `Bash(git log *)` / `Bash(git diff *)` — inspect git history and diffs
-- `Bash(docker stats *)` — check container resources
+- `Bash(./loop.sh *)` — launch or restart the worker loop
+- `Bash(ps *)` / `Bash(kill *)` — check if loop is running, kill if stuck
+- `Bash(docker stats *)` / `Bash(docker ps *)` — check container resources and status
+- `Bash(docker kill *)` — kill a stuck sandbox container
 - `Bash(sleep *)` — wait between check cycles
 - `Bash(cat .loop-logs/*)` / `Bash(ls .loop-logs/*)` — read iteration logs
 - `Edit(PROMPT.md)` — write course corrections (the ONLY file you can edit)
