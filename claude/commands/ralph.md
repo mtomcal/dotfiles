@@ -21,22 +21,6 @@ Ask the user (use AskUserQuestion tool):
 2. **Bare metal or Docker sandbox?** — Sandbox adds resource limits and isolation.
 3. **Max iterations?** — Default 25, 0 = unlimited.
 4. **Prompt file name?** — Default PROMPT.md.
-5. **Run in a git worktree?** — Give the work a short name (e.g. `auth-refactor`). This creates an isolated worktree so multiple ralph jobs can run in parallel without collision. Leave blank to run in the current directory.
-
-### Step 1.5: Create Worktree (if user provided a name)
-
-If the user provided a worktree name, create an isolated worktree:
-
-1. Detect the repo root (`git rev-parse --show-toplevel`) and repo name (basename of repo root)
-2. Slugify the work name: lowercase, replace spaces/special chars with hyphens, strip leading/trailing hyphens
-3. Compute the worktrees directory as a **sibling** to the repo root: `{repo-root}/../{repo-name}-worktrees/` (e.g. if repo is at `~/projects/myapp`, worktrees go to `~/projects/myapp-worktrees/`)
-4. Create the worktrees directory if it doesn't exist: `mkdir -p {worktrees-dir}`
-5. Run `git worktree add {worktrees-dir}/{slugified-name} -b ralph/{slugified-name}` to create the worktree with a new branch based on current HEAD
-6. Copy `loop.sh` into the worktree if it exists in the repo root (worker needs it)
-7. Tell the user the worktree was created and that they should `cd` into it (or launch loop.sh from that path)
-8. Write all subsequent files (PROMPT.md, IMPLEMENTATION_PLAN.md, ORCHESTRATOR.md) into the worktree directory
-
-If the user left the worktree name blank, proceed as before (no worktree, all files written to current directory).
 
 ### Step 2: Write PROMPT.md
 
@@ -63,9 +47,6 @@ Key rules:
 - Keep it under 20 lines
 - Each iteration reads this fresh, so it must be self-contained
 - The orchestrator appends `CORRECTION: {message}` lines to the IMPORTANT section
-- **Worktree rules:** When running in a worktree, add these lines to the IMPORTANT section:
-  - `You are operating in a git worktree. Do NOT run destructive git commands (git init, git clean -f, git checkout main, git reset --hard, git branch -D). Only commit, push, and branch-local operations.`
-  - `After committing, push to the remote with "git push -u origin ralph/{name}" every iteration.`
 
 ### Step 3: Write IMPLEMENTATION_PLAN.md
 
@@ -95,7 +76,7 @@ Create the monitoring playbook with these sections:
 3. **Latest Log** — Read most recent `.loop-logs/iteration-*.log`. Look for errors, drift
 4. **Diff Size** — `git diff --stat HEAD~1`. Red flag: 200+ lines in one file = rewrite
 5. **Discoveries** — Check if worker added new rows to the plan's context table. If a discovery affects completed items, write a correction
-6. **Container Resources** — `docker stats --no-stream` filtered to `ralph-{job-name}-*` container. Red flags: memory >80% of limit (OOM risk), PIDs near cap, CPU pegged
+6. **Container Resources** — `docker stats --no-stream` filtered to sandbox container. Red flags: memory >80% of limit (OOM risk), PIDs near cap, CPU pegged
 7. **Spot Check** — Read one recently-committed file. Verify quality.
 
 **Course Corrections** — Append `CORRECTION: {what's wrong and what to do}` to PROMPT.md's IMPORTANT section. Worker picks it up next iteration.
@@ -110,15 +91,6 @@ Create the monitoring playbook with these sections:
 **Container:** {MEM usage/limit, CPU%, PIDs} or "bare mode"
 **Recent commits:** {list}
 ```
-
-**Post-Job Completion (worktree mode only):**
-
-When the job is running in a worktree, add this section to the orchestrator playbook:
-
-- After the worker outputs `/done`, verify the branch was pushed to the remote
-- If not, push it: `git push -u origin ralph/{name}`
-- The worktree, branch, and job files (PROMPT.md, IMPLEMENTATION_PLAN.md, ORCHESTRATOR.md) are left intact for manual review
-- The user will merge and clean up the worktree manually
 
 **When to Intervene vs Let It Run:**
 - **Let it run:** steady progress, reasonable diff sizes, correct commit pattern
@@ -136,26 +108,14 @@ Orchestrator: ORCHESTRATOR.md
 Mode:         {bare | sandbox}
 Iterations:   {N | unlimited}
 Resources:    {memory/cpu/pids if sandbox}
-Worktree:     {path | "none (running in current directory)"}
-Branch:       {ralph/{slugified-name} | "(current branch)"}
 
 Launch (sandbox):
-  SANDBOX=1 JOB_NAME={slugified-name} ./loop.sh {iterations} {prompt_file}
+  SANDBOX=1 ./loop.sh {iterations} {prompt_file}
 
 Launch (bare):
-  JOB_NAME={slugified-name} ./loop.sh {iterations} {prompt_file}
+  ./loop.sh {iterations} {prompt_file}
 
 Orchestrator auto-checks every 5 min (blocking sleep).
-```
-
-When running in a worktree, also show:
-```
-Worktree launch:
-  cd ../{repo-name}-worktrees/{name} && JOB_NAME={slugified-name} ./loop.sh {iterations} {prompt_file}
-
-Manual cleanup (after reviewing and merging):
-  git worktree remove ../{repo-name}-worktrees/{name}
-  git branch -d ralph/{name}
 ```
 
 ## Important Notes
@@ -187,7 +147,7 @@ If the project doesn't have `loop.sh`, offer to create one using this template. 
 #   PIDS_LIMIT=512         # Container PID cap (default: 512)
 #   SANDBOX_IMAGE=project-sandbox  # Docker image name
 #   SANDBOX_NETWORK=sandbox-net    # Docker network name
-#   JOB_NAME=auth-refactor         # Job name for container naming (default: basename of cwd)
+#   JOB_NAME=my-task               # Job name for container identification (default: basename of cwd)
 
 MAX_ITERATIONS=${1:-0}
 PROMPT_FILE=${2:-PROMPT.md}
@@ -197,18 +157,6 @@ CURRENT_BRANCH=$(git branch --show-current)
 LOG_DIR=".loop-logs"
 DONE_PATTERN="/done"
 SANDBOX=${SANDBOX:-0}
-
-# --- Worktree detection ---
-# In a worktree, .git is a file (not a dir) containing "gitdir: /path/to/main/.git/worktrees/{name}"
-# Docker needs the parent repo's .git dir mounted so the worktree's git pointer resolves.
-WORKTREE_GIT_MOUNT=""
-if [ -f .git ]; then
-    PARENT_GIT_DIR=$(git rev-parse --git-common-dir 2>/dev/null)
-    if [ -n "$PARENT_GIT_DIR" ]; then
-        PARENT_GIT_DIR=$(cd "$PARENT_GIT_DIR" && pwd)  # resolve to absolute path
-        WORKTREE_GIT_MOUNT="-v ${PARENT_GIT_DIR}:${PARENT_GIT_DIR}"
-    fi
-fi
 
 mkdir -p "$LOG_DIR"
 
@@ -305,7 +253,6 @@ run_claude_sandboxed() {
         --pids-limit="${PIDS_LIMIT:-512}" \
         --network="${SANDBOX_NETWORK:-sandbox-net}" \
         -v "$(pwd):/workspace" \
-        $WORKTREE_GIT_MOUNT \
         -v "$CLAUDE_SETTINGS:/home/loopuser/.claude/settings.json:ro" \
         -v "$HOME/.claude/projects:/home/loopuser/.claude/projects" \
         -e ANTHROPIC_API_KEY \
@@ -328,7 +275,6 @@ run_claude_sandboxed() {
 
 # --- Banner ---
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "Job:    $JOB_NAME"
 echo "Prompt: $PROMPT_FILE"
 echo "Branch: $CURRENT_BRANCH"
 echo "Logs:   $LOG_DIR/"
