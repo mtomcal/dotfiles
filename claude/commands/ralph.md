@@ -36,11 +36,12 @@ check the course corrections section FIRST every iteration — follow any active
 {constraint: what files CANNOT be edited}
 {update instruction: tell worker to update the plan file when done / when discovering new things}
 {commit convention if applicable}
-commit your work at the end of every iteration.
+commit your work at the end of every iteration. Use git author: `git commit --author="{user's git name} <{user's git email}>"`.
 output `/done` when {completion criteria}.
 ```
 
 Key rules:
+- Before writing PROMPT.md, detect the user's git identity with `git config user.name` and `git config user.email`. Bake the `--author` flag into the commit instruction so the worker always commits as the user, not as Claude.
 - ONE checklist item per iteration — worker does one item, commits, then stops. The loop restarts fresh for the next one.
 - NO progress tracking in PROMPT.md — that lives in the plan file
 - NO discoveries section in PROMPT.md — worker updates the plan file directly
