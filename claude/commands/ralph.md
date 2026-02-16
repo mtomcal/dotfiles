@@ -198,6 +198,18 @@ LOG_DIR=".loop-logs"
 DONE_PATTERN="/done"
 SANDBOX=${SANDBOX:-0}
 
+# --- Worktree detection ---
+# In a worktree, .git is a file (not a dir) containing "gitdir: /path/to/main/.git/worktrees/{name}"
+# Docker needs the parent repo's .git dir mounted so the worktree's git pointer resolves.
+WORKTREE_GIT_MOUNT=""
+if [ -f .git ]; then
+    PARENT_GIT_DIR=$(git rev-parse --git-common-dir 2>/dev/null)
+    if [ -n "$PARENT_GIT_DIR" ]; then
+        PARENT_GIT_DIR=$(cd "$PARENT_GIT_DIR" && pwd)  # resolve to absolute path
+        WORKTREE_GIT_MOUNT="-v ${PARENT_GIT_DIR}:${PARENT_GIT_DIR}"
+    fi
+fi
+
 mkdir -p "$LOG_DIR"
 
 # --- Sandbox auto-build ---
@@ -293,6 +305,7 @@ run_claude_sandboxed() {
         --pids-limit="${PIDS_LIMIT:-512}" \
         --network="${SANDBOX_NETWORK:-sandbox-net}" \
         -v "$(pwd):/workspace" \
+        $WORKTREE_GIT_MOUNT \
         -v "$CLAUDE_SETTINGS:/home/loopuser/.claude/settings.json:ro" \
         -v "$HOME/.claude/projects:/home/loopuser/.claude/projects" \
         -e ANTHROPIC_API_KEY \
