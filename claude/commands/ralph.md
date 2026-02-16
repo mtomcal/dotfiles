@@ -63,7 +63,9 @@ Key rules:
 - Keep it under 20 lines
 - Each iteration reads this fresh, so it must be self-contained
 - The orchestrator appends `CORRECTION: {message}` lines to the IMPORTANT section
-- **Worktree push rule:** When running in a worktree, add this line to the IMPORTANT section: `After committing, push to the remote with "git push -u origin ralph/{name}" every iteration.`
+- **Worktree rules:** When running in a worktree, add these lines to the IMPORTANT section:
+  - `You are operating in a git worktree. Do NOT run destructive git commands (git init, git clean -f, git checkout main, git reset --hard, git branch -D). Only commit, push, and branch-local operations.`
+  - `After committing, push to the remote with "git push -u origin ralph/{name}" every iteration.`
 
 ### Step 3: Write IMPLEMENTATION_PLAN.md
 
