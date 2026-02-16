@@ -62,7 +62,7 @@ Key rules:
 - Keep it under 20 lines
 - Each iteration reads this fresh, so it must be self-contained
 - The orchestrator appends `CORRECTION: {message}` lines to the IMPORTANT section
-- **Worktree cleanup rule:** When running in a worktree, add this line to the IMPORTANT section: `When outputting /done, first delete PROMPT.md, IMPLEMENTATION_PLAN.md, and ORCHESTRATOR.md, then commit the deletion with message "chore: clean up ralph job files", then merge this branch into main with "git checkout main && git merge ralph/{name}", then output /done. This prevents merge conflicts and lands the work on main automatically.`
+- **Worktree completion rule:** When running in a worktree, add this line to the IMPORTANT section: `When outputting /done, first push this branch to the remote with "git push -u origin ralph/{name}", then output /done.`
 
 ### Step 3: Write IMPLEMENTATION_PLAN.md
 
@@ -108,15 +108,14 @@ Create the monitoring playbook with these sections:
 **Recent commits:** {list}
 ```
 
-**Post-Job Cleanup (worktree mode only):**
+**Post-Job Completion (worktree mode only):**
 
 When the job is running in a worktree, add this section to the orchestrator playbook:
 
-- After the worker outputs `/done`, verify the job files (PROMPT.md, IMPLEMENTATION_PLAN.md, ORCHESTRATOR.md) were deleted and the deletion was committed
-- If not, manually delete them and commit: `rm PROMPT.md IMPLEMENTATION_PLAN.md ORCHESTRATOR.md && git add -A && git commit -m "chore: clean up ralph job files"`
-- Verify the branch was merged to main. If not, merge it: `git checkout main && git merge ralph/{name}`
-- From the main repo, remove the worktree: `git worktree remove ../{repo-name}-worktrees/{name}`
-- Delete the branch: `git branch -d ralph/{name}`
+- After the worker outputs `/done`, verify the branch was pushed to the remote
+- If not, push it: `git push -u origin ralph/{name}`
+- The worktree, branch, and job files (PROMPT.md, IMPLEMENTATION_PLAN.md, ORCHESTRATOR.md) are left intact for manual review
+- The user will merge and clean up the worktree manually
 
 **When to Intervene vs Let It Run:**
 - **Let it run:** steady progress, reasonable diff sizes, correct commit pattern
@@ -151,8 +150,7 @@ When running in a worktree, also show:
 Worktree launch:
   cd ../{repo-name}-worktrees/{name} && JOB_NAME={slugified-name} ./loop.sh {iterations} {prompt_file}
 
-Cleanup (after job completes):
-  git checkout main && git merge ralph/{name}   # if not already merged
+Manual cleanup (after reviewing and merging):
   git worktree remove ../{repo-name}-worktrees/{name}
   git branch -d ralph/{name}
 ```
