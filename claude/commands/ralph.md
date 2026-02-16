@@ -68,7 +68,22 @@ This is the heavy reference file. Include these sections:
 
 Create the monitoring playbook with these sections:
 
-**How to Run** — Launch command with `SANDBOX=1` env var for Docker mode, or bare. The orchestrator launches the loop in the background from its own Claude session and auto-checks on a blocking 5-minute interval (`sleep 300` between cycles).
+**How to Run** — The orchestrator runs interactively with a restricted tool allowlist. Include the exact launch command:
+
+```
+claude --allowedTools "Read" "Grep" "Glob" "Bash(git log *)" "Bash(git diff *)" "Bash(docker stats *)" "Bash(sleep *)" "Bash(cat .loop-logs/*)" "Bash(ls .loop-logs/*)" "Edit(PROMPT.md)"
+```
+
+The orchestrator auto-checks on a blocking 5-minute interval (`sleep 300` between cycles).
+
+**Allowed Tools** — You can ONLY use these tools. Do not attempt anything outside this list:
+- `Read` — read any file
+- `Grep` / `Glob` — search files
+- `Bash(git log *)` / `Bash(git diff *)` — inspect git history and diffs
+- `Bash(docker stats *)` — check container resources
+- `Bash(sleep *)` — wait between check cycles
+- `Bash(cat .loop-logs/*)` / `Bash(ls .loop-logs/*)` — read iteration logs
+- `Edit(PROMPT.md)` — write course corrections (the ONLY file you can edit)
 
 **What to Check** — 7 checks:
 1. **Progress** — Read plan file, count `[x]` vs `[ ]`
