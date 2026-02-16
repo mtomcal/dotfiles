@@ -68,10 +68,15 @@ This is the heavy reference file. Include these sections:
 
 Create the monitoring playbook with these sections:
 
-**How to Run** — The orchestrator runs interactively with a restricted tool allowlist. Include the exact launch command:
+**How to Run** — The orchestrator runs interactively with a restricted tool allowlist via the `claude-director` alias. Include this in the playbook:
 
 ```
-claude --allowedTools "Read" "Grep" "Glob" "Bash(git log *)" "Bash(git diff *)" "Bash(docker stats *)" "Bash(sleep *)" "Bash(cat .loop-logs/*)" "Bash(ls .loop-logs/*)" "Edit(PROMPT.md)"
+claude-director
+```
+
+If the user doesn't have the alias, tell them to add it to their shell config:
+```
+alias claude-director='claude --allowedTools "Read" "Grep" "Glob" "Bash(git log *)" "Bash(git diff *)" "Bash(docker stats *)" "Bash(sleep *)" "Bash(cat .loop-logs/*)" "Bash(ls .loop-logs/*)" "Edit(PROMPT.md)"'
 ```
 
 The orchestrator auto-checks on a blocking 5-minute interval (`sleep 300` between cycles).
@@ -129,6 +134,9 @@ Launch (sandbox):
 
 Launch (bare):
   ./loop.sh {iterations} {prompt_file}
+
+Orchestrator:
+  claude-director
 
 Orchestrator auto-checks every 5 min (blocking sleep).
 ```
