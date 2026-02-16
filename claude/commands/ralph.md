@@ -52,6 +52,7 @@ check the course corrections section FIRST every iteration — follow any active
 {constraint: what files CANNOT be edited}
 {update instruction: tell worker to update the plan file when done / when discovering new things}
 {commit convention if applicable}
+commit your work at the end of every iteration.
 output `/done` when {completion criteria}.
 ```
 
@@ -62,7 +63,7 @@ Key rules:
 - Keep it under 20 lines
 - Each iteration reads this fresh, so it must be self-contained
 - The orchestrator appends `CORRECTION: {message}` lines to the IMPORTANT section
-- **Worktree completion rule:** When running in a worktree, add this line to the IMPORTANT section: `When outputting /done, first push this branch to the remote with "git push -u origin ralph/{name}", then output /done.`
+- **Worktree push rule:** When running in a worktree, add this line to the IMPORTANT section: `After committing, push to the remote with "git push -u origin ralph/{name}" every iteration.`
 
 ### Step 3: Write IMPLEMENTATION_PLAN.md
 
