@@ -92,7 +92,7 @@ Create the monitoring playbook with these sections:
 3. **Latest Log** — Read most recent `.loop-logs/iteration-*.log`. Look for errors, drift
 4. **Diff Size** — `git diff --stat HEAD~1`. Red flag: 200+ lines in one file = rewrite
 5. **Discoveries** — Check if worker added new rows to the plan's context table. If a discovery affects completed items, write a correction
-6. **Container Resources** — `docker stats --no-stream` filtered to sandbox container. Red flags: memory >80% of limit (OOM risk), PIDs near cap, CPU pegged
+6. **Container Resources** — `docker stats --no-stream` filtered to `ralph-{job-name}-*` container. Red flags: memory >80% of limit (OOM risk), PIDs near cap, CPU pegged
 7. **Spot Check** — Read one recently-committed file. Verify quality.
 
 **Course Corrections** — Append `CORRECTION: {what's wrong and what to do}` to PROMPT.md's IMPORTANT section. Worker picks it up next iteration.
@@ -138,10 +138,10 @@ Worktree:     {path | "none (running in current directory)"}
 Branch:       {ralph/{slugified-name} | "(current branch)"}
 
 Launch (sandbox):
-  SANDBOX=1 ./loop.sh {iterations} {prompt_file}
+  SANDBOX=1 JOB_NAME={slugified-name} ./loop.sh {iterations} {prompt_file}
 
 Launch (bare):
-  ./loop.sh {iterations} {prompt_file}
+  JOB_NAME={slugified-name} ./loop.sh {iterations} {prompt_file}
 
 Orchestrator auto-checks every 5 min (blocking sleep).
 ```
@@ -149,7 +149,7 @@ Orchestrator auto-checks every 5 min (blocking sleep).
 When running in a worktree, also show:
 ```
 Worktree launch:
-  cd ../{repo-name}-worktrees/{name} && ./loop.sh {iterations} {prompt_file}
+  cd ../{repo-name}-worktrees/{name} && JOB_NAME={slugified-name} ./loop.sh {iterations} {prompt_file}
 
 Cleanup (after job completes):
   git checkout main && git merge ralph/{name}   # if not already merged
@@ -186,9 +186,11 @@ If the project doesn't have `loop.sh`, offer to create one using this template. 
 #   PIDS_LIMIT=512         # Container PID cap (default: 512)
 #   SANDBOX_IMAGE=project-sandbox  # Docker image name
 #   SANDBOX_NETWORK=sandbox-net    # Docker network name
+#   JOB_NAME=auth-refactor         # Job name for container naming (default: basename of cwd)
 
 MAX_ITERATIONS=${1:-0}
 PROMPT_FILE=${2:-PROMPT.md}
+JOB_NAME=${JOB_NAME:-$(basename "$(pwd)")}
 ITERATION=0
 CURRENT_BRANCH=$(git branch --show-current)
 LOG_DIR=".loop-logs"
@@ -283,7 +285,7 @@ run_claude_sandboxed() {
     [ -t 0 ] && TTY_FLAG="-it"
 
     docker run --rm $TTY_FLAG \
-        --name "sandbox-loop-$$-$ITERATION" \
+        --name "ralph-${JOB_NAME}-${ITERATION}" \
         --memory="${MEMORY_LIMIT:-8g}" \
         --memory-swap="${MEMORY_LIMIT:-8g}" \
         --cpus="${CPU_LIMIT:-4}" \
@@ -312,6 +314,7 @@ run_claude_sandboxed() {
 
 # --- Banner ---
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "Job:    $JOB_NAME"
 echo "Prompt: $PROMPT_FILE"
 echo "Branch: $CURRENT_BRANCH"
 echo "Logs:   $LOG_DIR/"
