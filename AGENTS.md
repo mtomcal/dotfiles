@@ -44,12 +44,12 @@ The primary entry point is `./install.sh`, which:
 
 ### AI Coding Assistants
 
-This dotfiles setup supports both **Claude Code** and **OpenCode CLI**:
+This dotfiles setup supports both **Claude Code** and **OpenCode CLI**, with **Playwright CLI** (`playwright-cli`) available for browser automation:
 
 **Claude Code**:
 - Configuration: `claude/` directory
 - Commands: `/ralph` — configure and launch `loop.sh` agentic loop jobs
-- Agents: `claude/agents/` (available for custom agents)
+- Agents: `claude/agents/` — includes `test-quality-verifier` for post-implementation test quality checks and `playwright-visual-qa` for browser-based Visual QA via Playwright CLI
 - Settings: `claude/settings.json`
 
 **OpenCode CLI**:

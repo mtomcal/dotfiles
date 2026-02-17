@@ -562,6 +562,38 @@ install_nodejs() {
     fi
 }
 
+install_playwright() {
+    print_header "Installing Playwright CLI"
+
+    # Requires npm (Node.js)
+    if ! command -v npm &> /dev/null; then
+        print_error "npm not found. Install Node.js first (nodejs module)."
+        return 1
+    fi
+
+    if command -v playwright-cli &> /dev/null; then
+        print_success "Playwright CLI is already installed"
+    else
+        print_info "Installing Playwright CLI globally..."
+        if npm install -g @playwright/cli@latest; then
+            print_success "Playwright CLI installed"
+        else
+            print_warning "Failed to install Playwright CLI"
+            return 1
+        fi
+    fi
+
+    # Install skills integration
+    if command -v playwright-cli &> /dev/null; then
+        print_info "Setting up Playwright CLI skills..."
+        if playwright-cli install --skills 2>/dev/null; then
+            print_success "Playwright CLI skills installed"
+        else
+            print_warning "Failed to install Playwright CLI skills"
+        fi
+    fi
+}
+
 install_zsh() {
     print_header "Installing Oh My Zsh"
 
@@ -696,16 +728,11 @@ install_claude() {
     print_success "Claude Code configured"
     print_info "Run 'claude auth login' to authenticate"
 
-    # Install MCP servers
-    print_info "Installing Playwright MCP server..."
+    # Remove legacy Playwright MCP server if present
     if claude mcp list 2>/dev/null | grep -q "playwright"; then
-        print_success "Playwright MCP server already configured"
-    else
-        if claude mcp add --scope user --transport stdio playwright -- npx -y @playwright/mcp@latest 2>/dev/null; then
-            print_success "Playwright MCP server installed"
-        else
-            print_warning "Failed to install Playwright MCP server"
-        fi
+        print_info "Removing legacy Playwright MCP server..."
+        claude mcp remove playwright 2>/dev/null || true
+        print_success "Playwright MCP server removed"
     fi
 }
 
@@ -826,6 +853,14 @@ resolve_dependencies() {
                 fi
                 resolved+=("$module")
                 ;;
+            "playwright")
+                # Playwright CLI needs npm (Node.js)
+                if ! command -v npm &> /dev/null; then
+                    print_warning "Adding Node.js (required by Playwright CLI)"
+                    resolved+=("nodejs")
+                fi
+                resolved+=("playwright")
+                ;;
             *)
                 resolved+=("$module")
                 ;;
@@ -864,7 +899,7 @@ show_profile_menu() {
 
     case $choice in
         1)
-            SELECTED_MODULES=(base_tools neovim nvim_config tmux_config zsh_ohmyzsh zsh_config golang_full nodejs claude opencode)
+            SELECTED_MODULES=(base_tools neovim nvim_config tmux_config zsh_ohmyzsh zsh_config golang_full nodejs claude playwright opencode)
             ;;
         2)
             SELECTED_MODULES=(base_tools neovim nvim_config tmux_config)
@@ -903,6 +938,7 @@ show_custom_menu() {
         "nodejs:Node.js LTS (fnm)"
         "claude:Claude Code CLI"
         "opencode:OpenCode CLI"
+        "playwright:Playwright CLI (browser automation)"
     )
 
     # Initialize all as unselected
@@ -934,15 +970,15 @@ show_custom_menu() {
             echo "  $i) $desc"
             ((i++))
         done
-        echo "  11) Toggle All"
-        echo "  12) Done"
+        echo "  12) Toggle All"
+        echo "  13) Done"
         echo ""
 
-        read -p "Enter number to toggle (or 12 when done): " choice
+        read -p "Enter number to toggle (or 13 when done): " choice
 
-        if [ "$choice" == "12" ]; then
+        if [ "$choice" == "13" ]; then
             break
-        elif [ "$choice" == "11" ]; then
+        elif [ "$choice" == "12" ]; then
             # Toggle all
             local all_selected=1
             for key in "${!selections[@]}"; do
@@ -1007,6 +1043,7 @@ show_installation_summary() {
             "nodejs") echo "  • Node.js LTS (fnm)" ;;
             "claude") echo "  • Claude Code CLI" ;;
             "opencode") echo "  • OpenCode CLI" ;;
+            "playwright") echo "  • Playwright CLI (browser automation)" ;;
         esac
     done
 
@@ -1086,6 +1123,11 @@ execute_modules() {
                     FAILED_MODULES+=("opencode")
                 fi
                 ;;
+            "playwright")
+                if ! install_playwright; then
+                    FAILED_MODULES+=("playwright")
+                fi
+                ;;
         esac
     done
 }
@@ -1104,7 +1146,7 @@ parse_arguments() {
             --profile)
                 case $2 in
                     full)
-                        SELECTED_MODULES=(base_tools neovim nvim_config tmux_config zsh_ohmyzsh zsh_config golang_full nodejs claude opencode)
+                        SELECTED_MODULES=(base_tools neovim nvim_config tmux_config zsh_ohmyzsh zsh_config golang_full nodejs claude playwright opencode)
                         ;;
                     minimal)
                         SELECTED_MODULES=(base_tools neovim nvim_config tmux_config)
@@ -1158,8 +1200,9 @@ Modules:
   golang              Go 1.24+ toolchain only
   golang_full         Go development (toolchain + LSP + tools + govulncheck)
   nodejs              Node.js LTS (fnm)
-  claude              Claude Code CLI + MCP servers
+  claude              Claude Code CLI
   opencode            OpenCode CLI
+  playwright          Playwright CLI (browser automation)
 
 Examples:
   $0                                       # Interactive menu

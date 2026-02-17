@@ -8,7 +8,8 @@ Custom commands and settings for [Claude Code](https://claude.com/claude-code).
 claude/
 ├── commands/              # Custom slash commands (skills)
 │   └── ralph.md          # Configure & launch loop.sh agent jobs
-├── agents/                # Custom AI agents (empty - available for future use)
+├── agents/                # Custom AI agents
+│   └── playwright-visual-qa.md  # Visual QA via Playwright CLI
 ├── settings.json         # Claude Code settings
 ├── statusline.sh         # Custom status line script
 └── .gitignore           # Prevents committing sensitive data
@@ -56,8 +57,10 @@ The install script will automatically:
 3. Symlink `~/.claude/agents` → `~/dotfiles/claude/agents`
 4. Symlink `~/.claude/settings.json` → `~/dotfiles/claude/settings.json`
 5. Symlink `~/.claude/statusline.sh` → `~/dotfiles/claude/statusline.sh`
-6. Install Playwright MCP server (global scope)
+6. Remove legacy Playwright MCP server if present
 7. Preserve existing credentials and history
+
+**Note**: Playwright CLI is now a separate install module (`./install.sh --modules playwright`).
 
 ## Adding Custom Commands
 
