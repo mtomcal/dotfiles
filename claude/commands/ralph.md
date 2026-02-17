@@ -35,6 +35,7 @@ check the course corrections section FIRST every iteration — follow any active
 {constraint: what files CAN be edited}
 {constraint: what files CANNOT be edited}
 {update instruction: tell worker to update the plan file when done / when discovering new things}
+after implementing, use the test-quality-verifier agent to check test quality. Fix any issues it finds before committing.
 {commit convention if applicable}
 commit your work at the end of every iteration. Use git author: `git commit --author="{user's git name} <{user's git email}>"`.
 output `/done` when {completion criteria}.
@@ -154,6 +155,7 @@ Orchestrator auto-checks every 5 min (blocking sleep).
 - Worker uses `--dangerously-skip-permissions` and `--model opus`
 - The done pattern is `/done` — worker must output this exact string when finished
 - The worker updates the plan file (progress, discoveries) — the orchestrator NEVER edits the plan, only PROMPT.md
+- The worker should use the `test-quality-verifier` agent (via Task tool) after implementation and before committing each iteration. This agent detects vague assertions, checks coverage, and adds tests if needed.
 
 ## Reference: loop.sh
 
