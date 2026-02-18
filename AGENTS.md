@@ -41,8 +41,9 @@ The primary entry point is `./install.sh`, which:
   - `~/.claude/agents` → `~/dotfiles/claude/agents`
   - `~/.claude/settings.json` → `~/dotfiles/claude/settings.json`
 - **OpenCode CLI**:
-  - `~/.config/opencode/command/` → `~/dotfiles/opencode/commands/`
-  - `~/.config/opencode/agent/` → `~/dotfiles/opencode/agents/`
+  - `~/.config/opencode/commands/` → `~/dotfiles/opencode/commands/`
+  - `~/.config/opencode/agents/` → `~/dotfiles/opencode/agents/`
+  - `~/.config/opencode/skills/` → `~/dotfiles/opencode/skills/`
   - `~/.config/opencode/opencode.json` → `~/dotfiles/opencode/opencode.json`
   - `~/.config/opencode/AGENTS.md` → `~/dotfiles/AGENTS.md` (this file)
 - Custom zsh config sourced in `~/.zshrc` (not symlinked)
@@ -65,14 +66,15 @@ This dotfiles setup supports **Codex CLI**, **Claude Code**, and **OpenCode CLI*
 
 **OpenCode CLI**:
 - Configuration: `opencode/` directory
-- Commands: `opencode/commands/` (available for custom commands)
-- Agents: `opencode/agents/` (available for custom agents)
+- Commands: `opencode/commands/` (includes `/ralph`)
+- Agents: `opencode/agents/` (includes `test-quality-verifier`, `playwright-visual-qa`)
+- Skills: `opencode/skills/` (one-to-one mirrors for `ralph`, `test-quality-verifier`, `playwright-visual-qa`)
 - Standard config: `opencode/opencode.json` (symlinked globally)
 - Project template: `opencode/opencode.project.json` (for project-specific overrides)
 - Shared instructions: This AGENTS.md file
 - Uses Build/Plan mode switching
 
-### Ralph — Agentic Loop Job Runner (Claude Code)
+### Ralph — Agentic Loop Job Runner (Claude Code / OpenCode)
 
 The `/ralph` command configures and launches a `loop.sh` agentic loop job. It walks through setting up three files:
 
@@ -175,7 +177,7 @@ Update the install script's dependency installation section (install.sh:114-138)
 - **Zsh**: Edit `zsh/.zshrc.custom`, reload with `source ~/.zshrc`
 - **Neovim**: Add plugins in `nvim/custom/plugins/`, restart neovim (lazy.nvim auto-installs)
 - **Claude Code**: Add markdown files to `claude/commands/`, they become slash commands
-- **OpenCode**: Add markdown files to `opencode/commands/`, they become custom commands
+- **OpenCode**: Add markdown files to `opencode/commands/`, `opencode/agents/`, or `opencode/skills/` for custom workflows
 
 ### Language-Specific Development
 
@@ -266,7 +268,7 @@ Shell aliases are available for common operations:
 
 This setup allows seamless switching between Claude Code and OpenCode:
 - Both tools share the same project context via this AGENTS.md file
-- Claude Code has the `/ralph` agentic loop command for long-running automated tasks
+- Both tools have `/ralph` plus matching test/visual QA agent workflows
 - OpenCode provides a terminal TUI with Plan/Build mode switching
-- Both tools support custom commands and agents via their respective directories
+- Both tools support custom commands, agents, and skills via their respective directories
 - Choose the tool based on your needs - both have full context

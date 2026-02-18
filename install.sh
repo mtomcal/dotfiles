@@ -799,23 +799,47 @@ install_opencode() {
 
     mkdir -p "$HOME/.config/opencode"
 
-    # Link commands
+    # Clean up legacy singular paths used by older OpenCode releases
     if [ -L "$HOME/.config/opencode/command" ]; then
         rm "$HOME/.config/opencode/command"
     elif [ -d "$HOME/.config/opencode/command" ]; then
         TIMESTAMP=$(date +%Y%m%d_%H%M%S)
         mv "$HOME/.config/opencode/command" "$HOME/.config/opencode/command.backup.$TIMESTAMP"
     fi
-    ln -s "$DOTFILES_DIR/opencode/commands" "$HOME/.config/opencode/command"
 
-    # Link agents
     if [ -L "$HOME/.config/opencode/agent" ]; then
         rm "$HOME/.config/opencode/agent"
     elif [ -d "$HOME/.config/opencode/agent" ]; then
         TIMESTAMP=$(date +%Y%m%d_%H%M%S)
         mv "$HOME/.config/opencode/agent" "$HOME/.config/opencode/agent.backup.$TIMESTAMP"
     fi
-    ln -s "$DOTFILES_DIR/opencode/agents" "$HOME/.config/opencode/agent"
+
+    # Link commands
+    if [ -L "$HOME/.config/opencode/commands" ]; then
+        rm "$HOME/.config/opencode/commands"
+    elif [ -d "$HOME/.config/opencode/commands" ]; then
+        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+        mv "$HOME/.config/opencode/commands" "$HOME/.config/opencode/commands.backup.$TIMESTAMP"
+    fi
+    ln -s "$DOTFILES_DIR/opencode/commands" "$HOME/.config/opencode/commands"
+
+    # Link agents
+    if [ -L "$HOME/.config/opencode/agents" ]; then
+        rm "$HOME/.config/opencode/agents"
+    elif [ -d "$HOME/.config/opencode/agents" ]; then
+        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+        mv "$HOME/.config/opencode/agents" "$HOME/.config/opencode/agents.backup.$TIMESTAMP"
+    fi
+    ln -s "$DOTFILES_DIR/opencode/agents" "$HOME/.config/opencode/agents"
+
+    # Link skills
+    if [ -L "$HOME/.config/opencode/skills" ]; then
+        rm "$HOME/.config/opencode/skills"
+    elif [ -d "$HOME/.config/opencode/skills" ]; then
+        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+        mv "$HOME/.config/opencode/skills" "$HOME/.config/opencode/skills.backup.$TIMESTAMP"
+    fi
+    ln -s "$DOTFILES_DIR/opencode/skills" "$HOME/.config/opencode/skills"
 
     # Link AGENTS.md
     if [ -f "$HOME/.config/opencode/AGENTS.md" ] && [ ! -L "$HOME/.config/opencode/AGENTS.md" ]; then
