@@ -46,6 +46,7 @@ OS=""
 PACKAGE_MANAGER=""
 SELECTED_MODULES=()
 FAILED_MODULES=()
+CODEX_CONFIG_TEMPLATE_MODE="preserve"
 
 # ===========================
 # Core Functions
@@ -870,16 +871,25 @@ install_codex() {
     mkdir -p "$HOME/.codex"
     mkdir -p "$HOME/.agents"
 
-    # Link config.toml
-    if [ -f "$HOME/.codex/config.toml" ] && [ ! -L "$HOME/.codex/config.toml" ]; then
-        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-        mv "$HOME/.codex/config.toml" "$HOME/.codex/config.toml.backup.$TIMESTAMP"
-    fi
-    if [ -L "$HOME/.codex/config.toml" ]; then
-        rm "$HOME/.codex/config.toml"
-    fi
+    # Seed config.toml (copy, not symlink).
+    # Codex writes machine/project-specific values here, which should stay local.
     if [ -f "$DOTFILES_DIR/codex/config.toml" ]; then
-        ln -s "$DOTFILES_DIR/codex/config.toml" "$HOME/.codex/config.toml"
+        if [ -L "$HOME/.codex/config.toml" ]; then
+            print_info "Converting ~/.codex/config.toml symlink to local file..."
+            rm "$HOME/.codex/config.toml"
+            cp "$DOTFILES_DIR/codex/config.toml" "$HOME/.codex/config.toml"
+            print_success "Created local ~/.codex/config.toml from dotfiles template"
+        elif [ "$CODEX_CONFIG_TEMPLATE_MODE" == "overwrite" ] && [ -f "$HOME/.codex/config.toml" ]; then
+            TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+            mv "$HOME/.codex/config.toml" "$HOME/.codex/config.toml.backup.$TIMESTAMP"
+            cp "$DOTFILES_DIR/codex/config.toml" "$HOME/.codex/config.toml"
+            print_success "Overwrote ~/.codex/config.toml from template (backup: config.toml.backup.$TIMESTAMP)"
+        elif [ ! -f "$HOME/.codex/config.toml" ]; then
+            cp "$DOTFILES_DIR/codex/config.toml" "$HOME/.codex/config.toml"
+            print_success "Created ~/.codex/config.toml from dotfiles template"
+        else
+            print_success "Keeping existing ~/.codex/config.toml (local runtime config)"
+        fi
     fi
 
     # Link agents directory
@@ -1302,6 +1312,18 @@ parse_arguments() {
                 show_help
                 exit 0
                 ;;
+            --codex-config-template)
+                case $2 in
+                    preserve|overwrite)
+                        CODEX_CONFIG_TEMPLATE_MODE="$2"
+                        ;;
+                    *)
+                        print_error "Unknown value for --codex-config-template: $2 (use preserve or overwrite)"
+                        exit 1
+                        ;;
+                esac
+                shift 2
+                ;;
             *)
                 print_error "Unknown option: $1"
                 show_help
@@ -1320,6 +1342,8 @@ Usage: $0 [OPTIONS]
 Options:
   --profile PROFILE    Install predefined profile (full, minimal, work)
   --modules MODULES    Comma-separated list of modules to install
+  --codex-config-template MODE
+                       Codex config behavior: preserve (default) or overwrite
   --help              Show this help message
 
 Profiles:
@@ -1349,6 +1373,7 @@ Examples:
   $0 --profile work                        # Work profile (no Go)
   $0 --modules neovim,nvim_config,tmux_config  # Custom modules
   $0 --modules golang_full,neovim          # Go dev environment
+  $0 --modules codex --codex-config-template overwrite  # Refresh ~/.codex/config.toml
 
 EOF
 }

@@ -13,7 +13,7 @@ The primary entry point is `./install.sh`, which:
 - Installs dependencies (tmux, neovim 0.10+, zsh, ripgrep, fd, build tools)
 - Sets up Oh My Zsh framework
 - Clones official kickstart.nvim to `~/.config/nvim`
-- Creates symlinks for configurations
+- Creates symlinks for configurations (and seeds local Codex config from template)
 - Installs Go (Golang) 1.24+ with architecture detection (x86_64/arm64)
 - Installs fnm (Fast Node Manager) and Node.js LTS
 - Links AI coding assistant configurations (Codex CLI, Claude Code, OpenCode)
@@ -32,7 +32,7 @@ The primary entry point is `./install.sh`, which:
 - `~/.tmux.conf` → `~/dotfiles/tmux/.tmux.conf`
 - `~/.config/nvim/lua/custom/` → `~/dotfiles/nvim/custom/`
 - **Codex CLI**:
-  - `~/.codex/config.toml` → `~/dotfiles/codex/config.toml`
+  - `~/.codex/config.toml` ← copied from `~/dotfiles/codex/config.toml` template
   - `~/.codex/agents/` → `~/dotfiles/codex/agents/`
   - `~/.codex/AGENTS.md` → `~/dotfiles/codex/AGENTS.md` (optional global instructions)
   - `~/.agents/skills/` → `~/dotfiles/codex/skills/`
@@ -55,7 +55,7 @@ This dotfiles setup supports **Codex CLI**, **Claude Code**, and **OpenCode CLI*
 - Configuration: `codex/` directory
 - Skills: `codex/skills/` (symlinked to `~/.agents/skills/`)
 - Agent roles: `codex/agents/` (symlinked to `~/.codex/agents/`)
-- Global config: `codex/config.toml` (symlinked to `~/.codex/config.toml`)
+- Global config template: `codex/config.toml` (copied to local `~/.codex/config.toml`)
 
 **Claude Code**:
 - Configuration: `claude/` directory

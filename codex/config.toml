@@ -1,3 +1,6 @@
+# Template copied to ~/.codex/config.toml by install.sh.
+# Keep machine/project-specific keys local there (for example `personality` and `[projects.*]`).
+
 [features]
 multi_agent = true
 apps = true
@@ -16,4 +19,3 @@ config_file = "agents/playwright_visual_qa.toml"
 # Optional: mark specific repos as trusted (paths are machine-specific).
 # [projects."/absolute/path/to/repo"]
 # trust_level = "trusted"
-

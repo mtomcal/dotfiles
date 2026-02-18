@@ -114,7 +114,7 @@ dotfiles/
 ├── codex/
 │   ├── agents/            # Codex agent role configs (~/.codex/agents)
 │   ├── skills/            # Codex skills (~/.agents/skills)
-│   ├── config.toml        # Codex global config (~/.codex/config.toml)
+│   ├── config.toml        # Codex config template (copied to ~/.codex/config.toml)
 │   └── README.md          # Codex documentation
 ├── claude/
 │   ├── agents/            # Custom AI agents (available for future use)
