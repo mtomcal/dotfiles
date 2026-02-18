@@ -8,6 +8,7 @@
 # Preferred editor for local and remote sessions
 export EDITOR='nvim'
 export VISUAL='nvim'
+export PATH="$HOME/.local/bin:$PATH"
 
 # ===========================
 # Tmux + Neovim Configuration
@@ -30,6 +31,10 @@ fi
 # Neovim aliases
 alias vim='nvim'
 alias vi='nvim'
+
+# Prevent typing a directory name from implicitly changing directories.
+# This ensures mistyped/missing commands don't unexpectedly `cd` into folders.
+unsetopt AUTO_CD
 
 # AI Coding Assistant aliases
 alias oc='opencode'
@@ -56,4 +61,6 @@ FNM_PATH="$HOME/.local/share/fnm"
 if [ -d "$FNM_PATH" ]; then
   export PATH="$FNM_PATH:$PATH"
   eval "$(fnm env --use-on-cd --shell zsh)"
+  # Keep user-local npm binaries (for example Codex) ahead of fnm-managed globals.
+  export PATH="$HOME/.local/bin:$PATH"
 fi

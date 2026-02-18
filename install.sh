@@ -798,18 +798,26 @@ install_codex() {
     print_header "Installing Codex CLI"
 
     # Codex is distributed as an npm package.
-    if ! command -v codex &> /dev/null; then
-        if ! command -v npm &> /dev/null; then
-            print_warning "npm not found. Installing Node.js first..."
-            install_nodejs || return 1
-        fi
-
-        print_info "Installing Codex CLI via npm..."
-        npm install -g @openai/codex
-        print_success "Codex CLI installed"
-    else
-        print_success "Codex CLI is already installed"
+    # Install to ~/.local so it is shared across fnm Node versions.
+    if ! command -v npm &> /dev/null; then
+        print_warning "npm not found. Installing Node.js first..."
+        install_nodejs || return 1
     fi
+
+    mkdir -p "$HOME/.local/bin"
+    print_info "Installing/updating Codex CLI via npm into ~/.local..."
+    npm install -g --prefix "$HOME/.local" @openai/codex@latest
+
+    if [ ! -x "$HOME/.local/bin/codex" ]; then
+        print_error "Codex CLI install failed: ~/.local/bin/codex not found"
+        return 1
+    fi
+
+    if command -v codex &> /dev/null && [ "$(command -v codex)" != "$HOME/.local/bin/codex" ]; then
+        print_warning "Another codex binary is earlier in PATH: $(command -v codex)"
+        print_info "Ensure ~/.local/bin is first in PATH to use the shared Codex install"
+    fi
+    print_success "Codex CLI installed/updated at ~/.local/bin/codex"
 
     mkdir -p "$HOME/.codex"
     mkdir -p "$HOME/.agents"
