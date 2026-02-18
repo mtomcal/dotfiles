@@ -7,7 +7,7 @@ Personal development environment configuration for tmux, neovim, and zsh.
 - **Tmux**: Vim-style navigation and keybindings with optimized settings for neovim
 - **Neovim**: Official [kickstart.nvim](https://github.com/nvim-lua/kickstart.nvim) base with custom plugin layer
 - **Zsh**: Oh My Zsh with custom aliases and tmux integration
-- **AI Coding Tools**: Claude Code and OpenCode CLI with custom commands
+- **AI Coding Tools**: Codex CLI, Claude Code, and OpenCode CLI with shared instructions
 - **Language Support**:
   - **Python**: Pyright LSP + Ruff linting/formatting with Poetry auto-detection
   - **Go (Golang)**: Full toolchain (gopls, delve debugger, gofumpt, goimports) with testing and debugging support
@@ -31,7 +31,7 @@ cd ~/dotfiles
 The installer provides a **menu-driven interface** with multiple installation profiles:
 
 **Interactive Mode** (default):
-- Choose from preset profiles: Full or Minimal
+- Choose from preset profiles: Full, Minimal, or Work
 - Or customize by selecting specific components
 
 **Preset Profiles**:
@@ -40,6 +40,7 @@ The installer provides a **menu-driven interface** with multiple installation pr
 |---------|----------|----------|
 | **Full** | Everything (Neovim, Tmux, Zsh, Go dev, Node.js, AI agents) | Complete development setup |
 | **Minimal** | Neovim + Tmux configs only | Quick editor setup |
+| **Work** | Neovim, Tmux, OpenCode (no personal tools) | Work machines |
 
 **Non-Interactive Mode** (command-line flags):
 ```bash
@@ -48,6 +49,9 @@ The installer provides a **menu-driven interface** with multiple installation pr
 
 # Minimal installation (editors only)
 ./install.sh --profile minimal
+
+# Work profile
+./install.sh --profile work
 
 # Custom module selection
 ./install.sh --modules neovim,nvim_config,tmux_config
@@ -75,6 +79,7 @@ The installer provides a **menu-driven interface** with multiple installation pr
   - goimports (import manager)
   - govulncheck (security scanner)
 - `nodejs` - Node.js LTS via fnm
+- `codex` - Codex CLI + skills + agent roles
 - `claude` - Claude Code CLI + MCP servers
 - `opencode` - OpenCode CLI
 
@@ -106,6 +111,11 @@ dotfiles/
 ├── install.sh              # Installation script (Ubuntu + macOS)
 ├── README.md              # This file
 ├── AGENTS.md              # Shared AI agent instructions
+├── codex/
+│   ├── agents/            # Codex agent role configs (~/.codex/agents)
+│   ├── skills/            # Codex skills (~/.agents/skills)
+│   ├── config.toml        # Codex global config (~/.codex/config.toml)
+│   └── README.md          # Codex documentation
 ├── claude/
 │   ├── agents/            # Custom AI agents (available for future use)
 │   ├── commands/          # Claude Code slash commands
@@ -370,7 +380,16 @@ Complete Go development toolchain with debugging and testing support.
 
 ### AI Coding Tools
 
-Two AI coding assistants are configured:
+Three AI coding assistants are configured:
+
+#### Codex CLI
+
+Codex CLI is configured via `codex/` (skills + agent roles). See `codex/README.md`.
+
+**Authentication**:
+```bash
+codex login
+```
 
 #### Claude Code
 
@@ -403,9 +422,12 @@ opencode auth login
 opencode  # Start interactive session
 ```
 
-**Adding Custom Commands** (either tool):
+**Adding Custom Commands / Skills**:
 
 ```bash
+# Codex (skills)
+ls ~/dotfiles/codex/skills
+
 # Claude Code
 nvim ~/dotfiles/claude/commands/my-command.md
 

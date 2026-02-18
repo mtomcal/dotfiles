@@ -1,0 +1,22 @@
+# Codex CLI - exclude sensitive and local data
+
+# Authentication and credentials
+auth.json
+
+# Local session data and history
+history.jsonl
+sessions/
+log/
+tmp/
+shell_snapshots/
+models_cache.json
+version.json
+.personality_migration
+
+# Per-machine config (optional pattern)
+config.local.toml
+*.local.toml
+
+# Logs
+*.log
+

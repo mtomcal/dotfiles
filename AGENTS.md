@@ -16,8 +16,8 @@ The primary entry point is `./install.sh`, which:
 - Creates symlinks for configurations
 - Installs Go (Golang) 1.24+ with architecture detection (x86_64/arm64)
 - Installs fnm (Fast Node Manager) and Node.js LTS
-- Links AI coding assistant configurations (Claude Code, OpenCode)
-- Installs OpenCode CLI
+- Links AI coding assistant configurations (Codex CLI, Claude Code, OpenCode)
+- Installs Codex CLI and OpenCode CLI
 - Sets up Mason LSP/formatter packages (Python, Go, Lua)
 
 **Key behavior**: The script is idempotent and safe to re-run for updates.
@@ -31,6 +31,11 @@ The primary entry point is `./install.sh`, which:
 **Symlink structure**:
 - `~/.tmux.conf` → `~/dotfiles/tmux/.tmux.conf`
 - `~/.config/nvim/lua/custom/` → `~/dotfiles/nvim/custom/`
+- **Codex CLI**:
+  - `~/.codex/config.toml` → `~/dotfiles/codex/config.toml`
+  - `~/.codex/agents/` → `~/dotfiles/codex/agents/`
+  - `~/.codex/AGENTS.md` → `~/dotfiles/codex/AGENTS.md` (optional global instructions)
+  - `~/.agents/skills/` → `~/dotfiles/codex/skills/`
 - **Claude Code**:
   - `~/.claude/commands` → `~/dotfiles/claude/commands`
   - `~/.claude/agents` → `~/dotfiles/claude/agents`
@@ -44,7 +49,13 @@ The primary entry point is `./install.sh`, which:
 
 ### AI Coding Assistants
 
-This dotfiles setup supports both **Claude Code** and **OpenCode CLI**, with **Playwright CLI** (`playwright-cli`) available for browser automation:
+This dotfiles setup supports **Codex CLI**, **Claude Code**, and **OpenCode CLI**, with **Playwright CLI** (`playwright-cli`) available for browser automation:
+
+**Codex CLI**:
+- Configuration: `codex/` directory
+- Skills: `codex/skills/` (symlinked to `~/.agents/skills/`)
+- Agent roles: `codex/agents/` (symlinked to `~/.codex/agents/`)
+- Global config: `codex/config.toml` (symlinked to `~/.codex/config.toml`)
 
 **Claude Code**:
 - Configuration: `claude/` directory
@@ -229,6 +240,8 @@ The `.gitignore` files in `claude/` and `opencode/` exclude sensitive files (cre
 - `.credentials.json` or `auth.json`
 - `history.jsonl`
 - Project-specific data
+
+Codex CLI stores sensitive/runtime data under `~/.codex/` (for example `auth.json`, `history.jsonl`, `sessions/`). Keep those local and out of git.
 
 ### Zsh Shell Change Detection
 

@@ -794,6 +794,72 @@ install_opencode() {
     print_info "Run 'opencode auth login' to authenticate"
 }
 
+install_codex() {
+    print_header "Installing Codex CLI"
+
+    # Codex is distributed as an npm package.
+    if ! command -v codex &> /dev/null; then
+        if ! command -v npm &> /dev/null; then
+            print_warning "npm not found. Installing Node.js first..."
+            install_nodejs || return 1
+        fi
+
+        print_info "Installing Codex CLI via npm..."
+        npm install -g @openai/codex
+        print_success "Codex CLI installed"
+    else
+        print_success "Codex CLI is already installed"
+    fi
+
+    mkdir -p "$HOME/.codex"
+    mkdir -p "$HOME/.agents"
+
+    # Link config.toml
+    if [ -f "$HOME/.codex/config.toml" ] && [ ! -L "$HOME/.codex/config.toml" ]; then
+        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+        mv "$HOME/.codex/config.toml" "$HOME/.codex/config.toml.backup.$TIMESTAMP"
+    fi
+    if [ -L "$HOME/.codex/config.toml" ]; then
+        rm "$HOME/.codex/config.toml"
+    fi
+    if [ -f "$DOTFILES_DIR/codex/config.toml" ]; then
+        ln -s "$DOTFILES_DIR/codex/config.toml" "$HOME/.codex/config.toml"
+    fi
+
+    # Link agents directory
+    if [ -L "$HOME/.codex/agents" ]; then
+        rm "$HOME/.codex/agents"
+    elif [ -d "$HOME/.codex/agents" ]; then
+        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+        mv "$HOME/.codex/agents" "$HOME/.codex/agents.backup.$TIMESTAMP"
+    fi
+    ln -s "$DOTFILES_DIR/codex/agents" "$HOME/.codex/agents"
+
+    # Link global AGENTS.md (optional)
+    if [ -f "$DOTFILES_DIR/codex/AGENTS.md" ]; then
+        if [ -f "$HOME/.codex/AGENTS.md" ] && [ ! -L "$HOME/.codex/AGENTS.md" ]; then
+            TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+            mv "$HOME/.codex/AGENTS.md" "$HOME/.codex/AGENTS.md.backup.$TIMESTAMP"
+        fi
+        if [ -L "$HOME/.codex/AGENTS.md" ]; then
+            rm "$HOME/.codex/AGENTS.md"
+        fi
+        ln -s "$DOTFILES_DIR/codex/AGENTS.md" "$HOME/.codex/AGENTS.md"
+    fi
+
+    # Link user skills directory
+    if [ -L "$HOME/.agents/skills" ]; then
+        rm "$HOME/.agents/skills"
+    elif [ -e "$HOME/.agents/skills" ]; then
+        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+        mv "$HOME/.agents/skills" "$HOME/.agents/skills.backup.$TIMESTAMP"
+    fi
+    ln -s "$DOTFILES_DIR/codex/skills" "$HOME/.agents/skills"
+
+    print_success "Codex configured"
+    print_info "Run 'codex login' to authenticate"
+}
+
 # ===========================
 # Dependency Resolution
 # ===========================
@@ -853,6 +919,14 @@ resolve_dependencies() {
                 fi
                 resolved+=("$module")
                 ;;
+            "codex")
+                # Codex CLI install uses npm
+                if ! command -v npm &> /dev/null; then
+                    print_warning "Adding Node.js (required by Codex CLI)"
+                    resolved+=("nodejs")
+                fi
+                resolved+=("codex")
+                ;;
             "playwright")
                 # Playwright CLI needs npm (Node.js)
                 if ! command -v npm &> /dev/null; then
@@ -899,7 +973,7 @@ show_profile_menu() {
 
     case $choice in
         1)
-            SELECTED_MODULES=(base_tools neovim nvim_config tmux_config zsh_ohmyzsh zsh_config golang_full nodejs claude playwright opencode)
+            SELECTED_MODULES=(base_tools neovim nvim_config tmux_config zsh_ohmyzsh zsh_config golang_full nodejs codex claude playwright opencode)
             ;;
         2)
             SELECTED_MODULES=(base_tools neovim nvim_config tmux_config)
@@ -936,6 +1010,7 @@ show_custom_menu() {
         "zsh_config:Zsh Custom Configuration"
         "golang_full:Go Development (toolchain + LSP + tools)"
         "nodejs:Node.js LTS (fnm)"
+        "codex:Codex CLI"
         "claude:Claude Code CLI"
         "opencode:OpenCode CLI"
         "playwright:Playwright CLI (browser automation)"
@@ -970,15 +1045,15 @@ show_custom_menu() {
             echo "  $i) $desc"
             ((i++))
         done
-        echo "  12) Toggle All"
-        echo "  13) Done"
+        echo "  13) Toggle All"
+        echo "  14) Done"
         echo ""
 
-        read -p "Enter number to toggle (or 13 when done): " choice
+        read -p "Enter number to toggle (or 14 when done): " choice
 
-        if [ "$choice" == "13" ]; then
+        if [ "$choice" == "14" ]; then
             break
-        elif [ "$choice" == "12" ]; then
+        elif [ "$choice" == "13" ]; then
             # Toggle all
             local all_selected=1
             for key in "${!selections[@]}"; do
@@ -1041,6 +1116,7 @@ show_installation_summary() {
             "golang") echo "  • Go 1.24+ Toolchain (basic)" ;;
             "golang_full") echo "  • Go Development (toolchain + LSP + tools + govulncheck)" ;;
             "nodejs") echo "  • Node.js LTS (fnm)" ;;
+            "codex") echo "  • Codex CLI" ;;
             "claude") echo "  • Claude Code CLI" ;;
             "opencode") echo "  • OpenCode CLI" ;;
             "playwright") echo "  • Playwright CLI (browser automation)" ;;
@@ -1113,6 +1189,11 @@ execute_modules() {
                     FAILED_MODULES+=("nodejs")
                 fi
                 ;;
+            "codex")
+                if ! install_codex; then
+                    FAILED_MODULES+=("codex")
+                fi
+                ;;
             "claude")
                 if ! install_claude; then
                     FAILED_MODULES+=("claude")
@@ -1146,7 +1227,7 @@ parse_arguments() {
             --profile)
                 case $2 in
                     full)
-                        SELECTED_MODULES=(base_tools neovim nvim_config tmux_config zsh_ohmyzsh zsh_config golang_full nodejs claude playwright opencode)
+                        SELECTED_MODULES=(base_tools neovim nvim_config tmux_config zsh_ohmyzsh zsh_config golang_full nodejs codex claude playwright opencode)
                         ;;
                     minimal)
                         SELECTED_MODULES=(base_tools neovim nvim_config tmux_config)
@@ -1200,6 +1281,7 @@ Modules:
   golang              Go 1.24+ toolchain only
   golang_full         Go development (toolchain + LSP + tools + govulncheck)
   nodejs              Node.js LTS (fnm)
+  codex               Codex CLI
   claude              Claude Code CLI
   opencode            OpenCode CLI
   playwright          Playwright CLI (browser automation)
@@ -1209,7 +1291,7 @@ Examples:
   $0 --profile full                        # Install everything
   $0 --profile minimal                     # Minimal installation
   $0 --profile work                        # Work profile (no Go)
-  $0 --modules neovim,nvim_config,tmux     # Custom modules
+  $0 --modules neovim,nvim_config,tmux_config  # Custom modules
   $0 --modules golang_full,neovim          # Go dev environment
 
 EOF
@@ -1274,6 +1356,7 @@ main() {
     echo "  3. Launch neovim: nvim"
     echo ""
     print_info "For AI agents:"
+    echo "  • Codex: codex login"
     echo "  • Claude Code: claude auth login"
     echo "  • OpenCode: opencode auth login"
     echo ""
