@@ -126,6 +126,42 @@ version_lt() {
     [ "$(printf '%s\n' "$1" "$2" | sort -V | head -n1)" != "$2" ]
 }
 
+cleanup_dirty_lazy_plugins() {
+    local lazy_dir="$HOME/.local/share/nvim/lazy"
+    local plugin_dir
+    local plugin_name
+    local dirty_count=0
+    local entry_word="entries"
+
+    if [ ! -d "$lazy_dir" ]; then
+        return 0
+    fi
+
+    print_info "Checking lazy.nvim plugin cache for local changes..."
+
+    for plugin_dir in "$lazy_dir"/*; do
+        [ -d "$plugin_dir" ] || continue
+        [ -d "$plugin_dir/.git" ] || continue
+
+        if [ -n "$(git -C "$plugin_dir" status --porcelain --untracked-files=normal 2>/dev/null)" ]; then
+            plugin_name=$(basename "$plugin_dir")
+            print_warning "Removing dirty plugin cache: $plugin_name"
+            rm -rf "$plugin_dir"
+            dirty_count=$((dirty_count + 1))
+        fi
+    done
+
+    if [ "$dirty_count" -eq 1 ]; then
+        entry_word="entry"
+    fi
+
+    if [ "$dirty_count" -gt 0 ]; then
+        print_info "Removed $dirty_count dirty lazy.nvim cache $entry_word"
+    else
+        print_success "No dirty lazy.nvim plugin cache found"
+    fi
+}
+
 # ===========================
 # Module Installation Functions
 # ===========================
@@ -375,11 +411,23 @@ EOF
 
     # Install plugins
     print_info "Installing neovim plugins..."
-    if nvim --headless "+Lazy! sync" +qa 2>/dev/null; then
+    if LAZY_SYNC_OUTPUT=$(nvim --headless "+Lazy! sync" +qa 2>&1); then
         print_success "Neovim plugins installed"
     else
-        print_warning "Plugin installation may require manual intervention"
-        print_info "Run: nvim --headless '+Lazy! sync' +qa"
+        if echo "$LAZY_SYNC_OUTPUT" | grep -q "You have local changes in"; then
+            print_warning "Detected dirty lazy.nvim plugin cache; cleaning and retrying once..."
+            cleanup_dirty_lazy_plugins
+
+            if nvim --headless "+Lazy! sync" +qa 2>/dev/null; then
+                print_success "Neovim plugins installed after cleaning plugin cache"
+            else
+                print_warning "Plugin installation still failed after cache cleanup"
+                print_info "Run: nvim --headless '+Lazy! sync' +qa"
+            fi
+        else
+            print_warning "Plugin installation may require manual intervention"
+            print_info "Run: nvim --headless '+Lazy! sync' +qa"
+        fi
     fi
 
     # Update treesitter parsers

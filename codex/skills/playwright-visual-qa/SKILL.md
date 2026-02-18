@@ -1,6 +1,6 @@
 ---
 name: playwright-visual-qa
-description: Perform browser-based visual QA via playwright-cli: screenshots, a11y snapshot, console and network checks. Pairs well with @playwright_visual_qa.
+description: "Perform browser-based visual QA via playwright-cli: screenshots, a11y snapshot, console and network checks. Pairs well with @playwright_visual_qa."
 metadata:
   short-description: Visual QA with Playwright CLI
 ---
