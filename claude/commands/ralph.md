@@ -15,12 +15,15 @@ The system has three files with distinct responsibilities:
 
 ### Step 1: Gather Configuration
 
+Before asking questions, check for existing Docker Compose files in the project (`docker-compose.yml`, `docker-compose.*.yml`, `compose.yml`, `compose.*.yml`). If found, read them to understand what services the project uses (databases, caches, message queues, etc.). Use this to pre-populate the services question — suggest the services you found rather than making the user list them.
+
 Ask the user (use AskUserQuestion tool):
 
 1. **What should the worker accomplish?** — The task description. Be specific about what success looks like.
 2. **Bare metal or Docker sandbox?** — Sandbox adds resource limits and isolation.
 3. **Max iterations?** — Default 25, 0 = unlimited.
 4. **Prompt file name?** — Default PROMPT.md.
+5. **Does the worker need backing services?** (sandbox only) — e.g., PostgreSQL, Redis, Elasticsearch. If you found services in an existing compose file, show what you found and ask if the worker needs them. These run as pre-launched containers on `sandbox-net` that the worker connects to by hostname.
 
 ### Step 2: Write PROMPT.md
 
@@ -133,6 +136,11 @@ Orchestrator: ORCHESTRATOR.md
 Mode:         {bare | sandbox}
 Iterations:   {N | unlimited}
 Resources:    {memory/cpu/pids if sandbox}
+Services:     {list of services or "none"}
+
+Start services (if any):
+  setup-sandbox-network
+  docker compose -f docker-compose.services.yml up -d --wait
 
 Launch (sandbox):
   SANDBOX=1 ./loop.sh {iterations} {prompt_file}
@@ -142,6 +150,10 @@ Launch (bare):
 
 Orchestrator:
   claude-director
+
+Stop services + teardown:
+  docker compose -f docker-compose.services.yml down -v
+  teardown-sandbox-network
 
 Orchestrator auto-checks every 5 min (blocking sleep).
 ```
@@ -157,9 +169,238 @@ Orchestrator auto-checks every 5 min (blocking sleep).
 - The worker updates the plan file (progress, discoveries) — the orchestrator NEVER edits the plan, only PROMPT.md
 - The worker should use the `test-quality-verifier` agent (via Task tool) after implementation and before committing each iteration. This agent detects vague assertions, checks coverage, and adds tests if needed.
 
+### Parallel Ralphs (multiple sandbox jobs)
+
+When running multiple ralphs in sandbox mode simultaneously (e.g., separate backend and frontend workers), each project **must use its own Docker image**. The `SANDBOX_IMAGE` defaults to `${JOB_NAME}-sandbox` (derived from the directory basename), so parallel ralphs in different directories automatically get unique images and containers with no collisions.
+
+- Container names: `ralph-{JOB_NAME}-{ITERATION}` (e.g., `ralph-my-backend-1`, `ralph-my-frontend-1`)
+- Image names: `{JOB_NAME}-sandbox` (e.g., `my-backend-sandbox`, `my-frontend-sandbox`)
+- All ralphs can share the same `sandbox-net` Docker network — no conflict there
+- Each project's `Dockerfile.sandbox` should install only the dependencies that project needs (e.g., Python/uv for backend, just Node for frontend)
+
+### Backing Services (sandbox mode)
+
+When a worker needs databases or other services (PostgreSQL, Redis, etc.), run them as **pre-launched containers on `sandbox-net`** before starting the loop. The worker connects by hostname — no Docker access inside the worker container.
+
+**Step 1: Create a `docker-compose.services.yml`** in the project root. Example:
+
+```yaml
+services:
+  postgres:
+    image: postgres:16
+    networks:
+      - sandbox-net
+    environment:
+      POSTGRES_USER: dev
+      POSTGRES_PASSWORD: dev
+      POSTGRES_DB: app
+    # healthcheck so compose --wait works
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dev"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    networks:
+      - sandbox-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+networks:
+  sandbox-net:
+    external: true
+```
+
+**Step 2: Start services before the loop:**
+```bash
+setup-sandbox-network  # create network + firewall rules
+docker compose -f docker-compose.services.yml up -d --wait
+```
+
+**Step 3: Tell the worker how to connect.** Add connection details to PROMPT.md's IMPORTANT section:
+```
+services are running on sandbox-net — connect using container hostnames:
+  PostgreSQL: postgres://dev:dev@postgres:5432/app
+  Redis: redis://redis:6379
+```
+
+**Step 4: Tear down after the loop:**
+```bash
+docker compose -f docker-compose.services.yml down -v
+teardown-sandbox-network
+```
+
+Key points:
+- Services must use the `sandbox-net` network (created by `setup-sandbox-network`)
+- The worker container is already on `sandbox-net`, so hostnames resolve automatically via Docker DNS
+- Use `--wait` with compose to block until healthchecks pass
+- The orchestrator can monitor services with `docker ps` and `docker stats` (already in its allowed tools)
+- Add `-v` to `down` to remove volumes (clean state), omit to persist data between runs
+
+When configuring, generate the compose file tailored to the user's requested services and versions. Include healthchecks for each service.
+
+### Sandbox Network & Firewall Rules
+
+By default, sandbox containers only connect to the `sandbox-net` Docker network — they have **no outbound internet access**. This is intentional: the sandbox isolates the worker from the outside world.
+
+The user has two helper scripts at `~/.local/bin/` that manage the sandbox network and firewall. If these scripts are missing, offer to recreate them from the templates below.
+
+**Usage:**
+```bash
+setup-sandbox-network    # Create network + allowlist firewall rules
+teardown-sandbox-network # Remove rules + network
+```
+
+The setup script:
+- Creates the `sandbox-net` Docker network with subnet `172.30.0.0/24`
+- Resolves IPs for required services (Anthropic API, Statsig, Sentry, GitHub)
+- Adds iptables rules to `DOCKER-USER`: allow DNS, Anthropic API, GitHub (SSH+HTTPS), Statsig, Sentry — reject everything else
+- Is idempotent (flushes old rules before applying)
+
+Tell the user to run `setup-sandbox-network` before their first sandbox launch, and `teardown-sandbox-network` when done.
+
+#### Reference: setup-sandbox-network
+
+```bash
+#!/bin/bash
+set -euo pipefail
+
+NETWORK_NAME="sandbox-net"
+SUBNET="172.30.0.0/24"
+
+# --- Create network (idempotent) ---
+if ! docker network inspect "$NETWORK_NAME" &>/dev/null; then
+    docker network create --driver bridge --subnet "$SUBNET" "$NETWORK_NAME"
+    echo "Created network: $NETWORK_NAME ($SUBNET)"
+else
+    echo "Network $NETWORK_NAME already exists"
+fi
+
+# --- Resolve required domains ---
+resolve() {
+    dig +short "$1" | grep -E '^[0-9]' | head -5
+}
+
+ANTHROPIC_IPS=$(resolve api.anthropic.com)
+STATSIG_ANTHROPIC_IPS=$(resolve statsig.anthropic.com)
+STATSIG_IPS=$(resolve statsig.com)
+SENTRY_IPS=$(resolve sentry.io)
+NPM_IPS=$(resolve registry.npmjs.org)
+PYPI_IPS=$(resolve pypi.org)
+PYPI_FILES_IPS=$(resolve files.pythonhosted.org)
+GO_PROXY_IPS=$(resolve proxy.golang.org)
+GO_SUM_IPS=$(resolve sum.golang.org)
+
+# GitHub IP ranges from their API
+GITHUB_META=$(curl -s https://api.github.com/meta)
+# Filter to IPv4 only — iptables can't handle IPv6 (use ip6tables for that)
+GITHUB_GIT_CIDRS=$(echo "$GITHUB_META" | jq -r '.git[] | select(contains(":") | not)' 2>/dev/null)
+GITHUB_WEB_CIDRS=$(echo "$GITHUB_META" | jq -r '.web[] | select(contains(":") | not)' 2>/dev/null)
+GITHUB_API_CIDRS=$(echo "$GITHUB_META" | jq -r '.api[] | select(contains(":") | not)' 2>/dev/null)
+
+# --- Flush existing sandbox rules ---
+sudo iptables -S DOCKER-USER 2>/dev/null | grep "172.30.0.0/24" | while read -r rule; do
+    # shellcheck disable=SC2086
+    sudo iptables ${rule/-A/-D}
+done || true
+
+# --- Default deny for sandbox subnet ---
+sudo iptables -A DOCKER-USER -s "$SUBNET" -j REJECT --reject-with icmp-port-unreachable
+
+# --- Allow DNS (udp/53, tcp/53) ---
+sudo iptables -I DOCKER-USER -s "$SUBNET" -p udp --dport 53 -j ACCEPT
+sudo iptables -I DOCKER-USER -s "$SUBNET" -p tcp --dport 53 -j ACCEPT
+
+# --- Allow established/related connections ---
+sudo iptables -I DOCKER-USER -s "$SUBNET" -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+
+# --- Allow Anthropic API (HTTPS) ---
+for ip in $ANTHROPIC_IPS; do
+    sudo iptables -I DOCKER-USER -s "$SUBNET" -d "$ip" -p tcp --dport 443 -j ACCEPT
+done
+
+# --- Allow Statsig (telemetry, required for online status) ---
+for ip in $STATSIG_ANTHROPIC_IPS $STATSIG_IPS; do
+    sudo iptables -I DOCKER-USER -s "$SUBNET" -d "$ip" -p tcp --dport 443 -j ACCEPT
+done
+
+# --- Allow Sentry (error reporting, degraded without) ---
+for ip in $SENTRY_IPS; do
+    sudo iptables -I DOCKER-USER -s "$SUBNET" -d "$ip" -p tcp --dport 443 -j ACCEPT
+done
+
+# --- Allow npm registry (HTTPS) ---
+for ip in $NPM_IPS; do
+    sudo iptables -I DOCKER-USER -s "$SUBNET" -d "$ip" -p tcp --dport 443 -j ACCEPT
+done
+
+# --- Allow PyPI (HTTPS) ---
+for ip in $PYPI_IPS $PYPI_FILES_IPS; do
+    sudo iptables -I DOCKER-USER -s "$SUBNET" -d "$ip" -p tcp --dport 443 -j ACCEPT
+done
+
+# --- Allow Go modules (HTTPS) ---
+for ip in $GO_PROXY_IPS $GO_SUM_IPS; do
+    sudo iptables -I DOCKER-USER -s "$SUBNET" -d "$ip" -p tcp --dport 443 -j ACCEPT
+done
+
+# --- Allow GitHub (SSH for git push, HTTPS for API) ---
+for cidr in $GITHUB_GIT_CIDRS; do
+    sudo iptables -I DOCKER-USER -s "$SUBNET" -d "$cidr" -p tcp --dport 22 -j ACCEPT
+done
+for cidr in $GITHUB_WEB_CIDRS $GITHUB_API_CIDRS; do
+    sudo iptables -I DOCKER-USER -s "$SUBNET" -d "$cidr" -p tcp --dport 443 -j ACCEPT
+done
+
+# --- Summary ---
+echo ""
+echo "Sandbox network rules applied for $SUBNET"
+echo "Allowed destinations:"
+echo "  - api.anthropic.com:443 ($ANTHROPIC_IPS)"
+echo "  - statsig.anthropic.com:443"
+echo "  - statsig.com:443"
+echo "  - sentry.io:443"
+echo "  - registry.npmjs.org:443 (npm)"
+echo "  - pypi.org:443 + files.pythonhosted.org:443 (pip/uv)"
+echo "  - proxy.golang.org:443 + sum.golang.org:443 (go modules)"
+echo "  - github.com:22 (git SSH)"
+echo "  - github.com:443 (API)"
+echo "  - DNS (udp+tcp/53)"
+echo ""
+echo "Everything else from $SUBNET is REJECTED"
+```
+
+#### Reference: teardown-sandbox-network
+
+```bash
+#!/bin/bash
+set -euo pipefail
+
+SUBNET="172.30.0.0/24"
+NETWORK_NAME="sandbox-net"
+
+# Remove iptables rules
+sudo iptables -S DOCKER-USER 2>/dev/null | grep "172.30.0.0/24" | while read -r rule; do
+    # shellcheck disable=SC2086
+    sudo iptables ${rule/-A/-D}
+done || true
+echo "Removed iptables rules for $SUBNET"
+
+# Remove network
+if docker network inspect "$NETWORK_NAME" &>/dev/null; then
+    docker network rm "$NETWORK_NAME"
+    echo "Removed network: $NETWORK_NAME"
+fi
+```
+
 ## Reference: loop.sh
 
-If the project doesn't have `loop.sh`, offer to create one using this template. Adapt the `SANDBOX_IMAGE` default to the project name.
+If the project doesn't have `loop.sh`, offer to create one using this template. The `SANDBOX_IMAGE` automatically derives from the directory name (`{JOB_NAME}-sandbox`), so parallel ralphs in different directories never collide.
 
 ```bash
 #!/bin/bash
@@ -174,7 +415,7 @@ If the project doesn't have `loop.sh`, offer to create one using this template. 
 #   MEMORY_LIMIT=8g        # Container memory cap (default: 8g)
 #   CPU_LIMIT=4            # Container CPU cap (default: 4)
 #   PIDS_LIMIT=512         # Container PID cap (default: 512)
-#   SANDBOX_IMAGE=project-sandbox  # Docker image name
+#   SANDBOX_IMAGE=my-sandbox       # Docker image name (default: {JOB_NAME}-sandbox)
 #   SANDBOX_NETWORK=sandbox-net    # Docker network name
 #   JOB_NAME=my-task               # Job name for container identification (default: basename of cwd)
 
@@ -191,7 +432,7 @@ mkdir -p "$LOG_DIR"
 
 # --- Sandbox auto-build ---
 if [ "$SANDBOX" = "1" ]; then
-    IMAGE="${SANDBOX_IMAGE:-project-sandbox}"
+    IMAGE="${SANDBOX_IMAGE:-${JOB_NAME}-sandbox}"
     if ! docker image inspect "$IMAGE" &>/dev/null; then
         echo "Sandbox image '$IMAGE' not found — building..."
         docker build \
@@ -271,16 +512,16 @@ run_claude_sandboxed() {
     local CLAUDE_SETTINGS
     CLAUDE_SETTINGS=$(readlink -f "$HOME/.claude/settings.json" 2>/dev/null || echo "$HOME/.claude/settings.json")
 
-    local TTY_FLAG=""
-    [ -t 0 ] && TTY_FLAG="-it"
+    local CONTAINER_NAME="ralph-${JOB_NAME}-${ITERATION}"
+    local NETWORK="${SANDBOX_NETWORK:-sandbox-net}"
 
-    docker run --rm $TTY_FLAG \
-        --name "ralph-${JOB_NAME}-${ITERATION}" \
+    docker create --rm \
+        --name "$CONTAINER_NAME" \
         --memory="${MEMORY_LIMIT:-8g}" \
         --memory-swap="${MEMORY_LIMIT:-8g}" \
         --cpus="${CPU_LIMIT:-4}" \
         --pids-limit="${PIDS_LIMIT:-512}" \
-        --network="${SANDBOX_NETWORK:-sandbox-net}" \
+        --network="$NETWORK" \
         -v "$(pwd):/workspace" \
         -v "$CLAUDE_SETTINGS:/home/loopuser/.claude/settings.json:ro" \
         -v "$HOME/.claude/projects:/home/loopuser/.claude/projects" \
@@ -289,12 +530,15 @@ run_claude_sandboxed() {
         -e DISABLE_AUTOUPDATER=1 \
         -e "GH_TOKEN=$GH_TOKEN" \
         -w /workspace \
-        "${SANDBOX_IMAGE:-project-sandbox}" \
+        "${SANDBOX_IMAGE:-${JOB_NAME}-sandbox}" \
         sh -c "claude -p \
             --dangerously-skip-permissions \
             --output-format=stream-json \
             --model opus \
             --verbose < /workspace/$prompt_file 2>&1" \
+        > /dev/null
+
+    docker start -a "$CONTAINER_NAME" \
         | tee "$iter_log.raw" \
         | jq -jr '
             (.event.delta.text // empty),
@@ -311,7 +555,7 @@ echo "Logs:   $LOG_DIR/"
 echo "Done:   when output contains '$DONE_PATTERN'"
 if [ "$SANDBOX" = "1" ]; then
     echo "Mode:   SANDBOX (Docker)"
-    echo "  Image:   ${SANDBOX_IMAGE:-project-sandbox}"
+    echo "  Image:   ${SANDBOX_IMAGE:-${JOB_NAME}-sandbox}"
     echo "  Network: ${SANDBOX_NETWORK:-sandbox-net}"
     echo "  Memory:  ${MEMORY_LIMIT:-8g}"
     echo "  CPUs:    ${CPU_LIMIT:-4}"

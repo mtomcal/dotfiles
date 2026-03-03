@@ -9,6 +9,5 @@
   },
   "alwaysThinkingEnabled": false,
   "skipDangerousModePermissionPrompt": true,
-  "effortLevel": "medium",
-  "model": "sonnet"
+  "effortLevel": "medium"
 }
