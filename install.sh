@@ -644,7 +644,7 @@ install_playwright() {
 }
 
 install_tui_tools() {
-    print_header "Installing TUI Tools (lazygit, yazi)"
+    print_header "Installing TUI Tools (lazygit, yazi, zoxide)"
 
     # --- lazygit ---
     if command -v lazygit &> /dev/null; then
@@ -707,6 +707,20 @@ install_tui_tools() {
         elif [ "$OS" == "macos" ]; then
             brew install yazi
             print_success "yazi installed via brew"
+        fi
+    fi
+
+    # --- zoxide ---
+    if command -v zoxide &> /dev/null; then
+        print_success "zoxide is already installed"
+    else
+        print_info "Installing zoxide..."
+        if [ "$OS" == "ubuntu" ]; then
+            curl -sSfL https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | sh
+            print_success "zoxide installed"
+        elif [ "$OS" == "macos" ]; then
+            brew install zoxide
+            print_success "zoxide installed via brew"
         fi
     fi
 
@@ -1209,7 +1223,7 @@ show_custom_menu() {
         "codex:Codex CLI"
         "claude:Claude Code CLI"
         "opencode:OpenCode CLI"
-        "tui_tools:TUI Tools (lazygit, yazi)"
+        "tui_tools:TUI Tools (lazygit, yazi, zoxide)"
         "playwright:Playwright CLI (browser automation)"
     )
 
@@ -1316,7 +1330,7 @@ show_installation_summary() {
             "codex") echo "  • Codex CLI" ;;
             "claude") echo "  • Claude Code CLI" ;;
             "opencode") echo "  • OpenCode CLI" ;;
-            "tui_tools") echo "  • TUI Tools (lazygit, yazi)" ;;
+            "tui_tools") echo "  • TUI Tools (lazygit, yazi, zoxide)" ;;
             "playwright") echo "  • Playwright CLI (browser automation)" ;;
         esac
     done
@@ -1499,7 +1513,7 @@ Modules:
   golang_full         Go development (toolchain + LSP + tools + govulncheck)
   nodejs              Node.js LTS (fnm)
   codex               Codex CLI
-  tui_tools           TUI tools (lazygit, yazi)
+  tui_tools           TUI tools (lazygit, yazi, zoxide)
   claude              Claude Code CLI
   opencode            OpenCode CLI
   playwright          Playwright CLI (browser automation)

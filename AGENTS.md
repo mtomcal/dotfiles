@@ -14,7 +14,7 @@ The primary entry point is `./install.sh`, which:
 - Sets up Oh My Zsh framework
 - Clones official kickstart.nvim to `~/.config/nvim`
 - Creates symlinks for configurations (and seeds local Codex config from template)
-- Installs TUI tools (lazygit, yazi) with config symlinks
+- Installs TUI tools (lazygit, yazi, zoxide) with config symlinks
 - Installs Go (Golang) 1.24+ with architecture detection (x86_64/arm64)
 - Installs fnm (Fast Node Manager) and Node.js LTS
 - Links AI coding assistant configurations (Codex CLI, Claude Code, OpenCode)
@@ -265,6 +265,7 @@ Recent addition (commit b41aca0) checks if zsh is already the default shell to a
 Shell aliases are available for common operations:
 - `lg` - Launch lazygit
 - `y` - Launch yazi file manager
+- `z` - zoxide smart cd (e.g. `z dotfiles` jumps to ~/dotfiles)
 - `claude` - Launch Claude Code
 - `oc` or `opencode` - Launch OpenCode CLI
 - Tmux aliases: `t`, `ta`, `tn`, `tl`, `tk`, `td`

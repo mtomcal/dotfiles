@@ -60,6 +60,11 @@ export PATH="$GOPATH/bin:$GOROOT/bin:$PATH"
 # Node Version Manager (fnm)
 # ===========================
 
+# zoxide (smart cd)
+if command -v zoxide &> /dev/null; then
+  eval "$(zoxide init zsh)"
+fi
+
 # fnm (Fast Node Manager)
 FNM_PATH="$HOME/.local/share/fnm"
 if [ -d "$FNM_PATH" ]; then
