@@ -1,4 +1,24 @@
-# Yazi theme configuration
+# Yazi theme configuration — SSH-friendly ASCII icons (no Nerd Fonts)
 # https://yazi-rs.github.io/docs/configuration/theme/
-#
-# Uses defaults. Add overrides here as needed.
+
+# Remove Nerd Font separators from status bar
+[status]
+sep_left  = { open = "[", close = "]" }
+sep_right = { open = "[", close = "]" }
+
+# Replace all Nerd Font glyphs with ASCII-friendly icons
+[icon]
+globs = []
+dirs  = []
+files = []
+exts  = []
+
+prepend_conds = [
+  { if = "hidden & dir",    text = "." },
+  { if = "link",            text = "@" },
+  { if = "dir",             text = "/" },
+  { if = "exec",            text = "*" },
+  { if = "!(dir | link)",   text = " " },
+]
+
+conds = []
