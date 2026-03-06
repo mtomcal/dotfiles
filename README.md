@@ -7,6 +7,7 @@ Personal development environment configuration for tmux, neovim, and zsh.
 - **Tmux**: Vim-style navigation and keybindings with optimized settings for neovim
 - **Neovim**: Official [kickstart.nvim](https://github.com/nvim-lua/kickstart.nvim) base with custom plugin layer
 - **Zsh**: Oh My Zsh with custom aliases and tmux integration
+- **TUI Tools**: lazygit, yazi file manager, zoxide smart directory jumping
 - **AI Coding Tools**: Codex CLI, Claude Code, and OpenCode CLI with shared instructions
 - **Language Support**:
   - **Python**: Pyright LSP + Ruff linting/formatting with Poetry auto-detection
@@ -15,6 +16,8 @@ Personal development environment configuration for tmux, neovim, and zsh.
 - **Node.js**: fnm (Fast Node Manager) with auto-version switching
 - **Git Integration**: diffview and neogit for comprehensive code review workflows
 - **Cross-platform**: Supports both Ubuntu/Debian (apt) and macOS (Homebrew)
+
+**Quick Reference**: See [docs/QUICK_REFERENCE.md](docs/QUICK_REFERENCE.md) for cheat sheets for every tool.
 
 ## Quick Start
 
@@ -38,9 +41,9 @@ The installer provides a **menu-driven interface** with multiple installation pr
 
 | Profile | Includes | Best For |
 |---------|----------|----------|
-| **Full** | Everything (Neovim, Tmux, Zsh, Go dev, Node.js, AI agents) | Complete development setup |
+| **Full** | Everything (Neovim, Tmux, Zsh, Go dev, Node.js, TUI tools, AI agents) | Complete development setup |
 | **Minimal** | Neovim + Tmux configs only | Quick editor setup |
-| **Work** | Neovim, Tmux, OpenCode (no personal tools) | Work machines |
+| **Work** | Neovim, Tmux, TUI tools, OpenCode (no personal tools) | Work machines |
 
 **Non-Interactive Mode** (command-line flags):
 ```bash
@@ -79,6 +82,7 @@ The installer provides a **menu-driven interface** with multiple installation pr
   - goimports (import manager)
   - govulncheck (security scanner)
 - `nodejs` - Node.js LTS via fnm
+- `tui_tools` - TUI tools (lazygit, yazi, zoxide)
 - `codex` - Codex CLI + skills + agent roles
 - `claude` - Claude Code CLI + MCP servers
 - `opencode` - OpenCode CLI
@@ -126,7 +130,14 @@ dotfiles/
 │   ├── commands/          # OpenCode CLI commands (available for future use)
 │   ├── agents/            # OpenCode CLI agents (available for future use)
 │   └── README.md          # OpenCode documentation
+├── lazygit/
+│   └── config.yml             # lazygit configuration
+├── yazi/
+│   ├── yazi.toml              # Yazi general settings
+│   ├── keymap.toml            # Vim keybindings + quick jumps
+│   └── theme.toml             # ASCII-friendly icons (no Nerd Fonts)
 ├── docs/
+│   ├── QUICK_REFERENCE.md     # Cheat sheets for all tools
 │   └── PYTHON_DEVELOPMENT.md  # Python development guide
 ├── tmux/
 │   └── .tmux.conf         # Tmux configuration
@@ -296,8 +307,10 @@ vim.keymap.set('n', '<leader>x', '<cmd>MyCommand<CR>', { desc = 'My custom comma
 - fnm (Fast Node Manager) integration
 
 **Aliases**:
-- `vim` → `nvim`
-- `vi` → `nvim`
+- `vim`, `vi` → `nvim`
+- `lg` → `lazygit`
+- `y` → `yazi`
+- `oc` → `opencode`, `cx` → `codex`
 - All tmux aliases listed above
 
 ### Node.js (fnm)
@@ -377,6 +390,52 @@ Complete Go development toolchain with debugging and testing support.
 - macOS: Via Homebrew (automatic)
 - Ubuntu: Official binary with architecture detection (amd64/arm64)
 - Version check: Ensures Go 1.24+ is installed
+
+### TUI Tools
+
+Terminal UI tools for file management, git, and navigation.
+
+#### Lazygit
+
+A terminal UI for git commands. Launch with `lg`.
+
+**Quick start**:
+- `Space` on files to stage/unstage
+- `c` to commit
+- `P` to push, `p` to pull
+- `?` for full keybinding reference
+- Opens files in neovim (`e` key)
+
+**Config**: `~/dotfiles/lazygit/config.yml` (auto-fetch enabled, neovim as editor)
+
+#### Yazi (File Manager)
+
+Blazing-fast terminal file manager with vim keybindings. Launch with `y`.
+
+**Navigation**: `h/j/k/l` to navigate, `Enter` to open, `/` to search.
+
+**File operations**: `y` yank, `x` cut, `p` paste, `r` rename, `a` new file, `A` new directory.
+
+**Quick jumps** (custom): `gh` home, `gd` dotfiles, `gp` projects, `gt` /tmp.
+
+**Fuzzy directory jump**: Press `z` inside yazi to use zoxide.
+
+**Config**: `~/dotfiles/yazi/` (SSH-friendly ASCII icons, no Nerd Fonts required)
+
+#### Zoxide (Smart cd)
+
+Tracks your most-visited directories and jumps to them with partial matches.
+
+```bash
+z dot          # Jumps to ~/dotfiles
+z proj         # Jumps to ~/projects
+z src comp     # Best match containing both "src" and "comp"
+zi             # Interactive selection with fzf
+```
+
+Also integrates with yazi (`z` key).
+
+See [docs/QUICK_REFERENCE.md](docs/QUICK_REFERENCE.md) for comprehensive cheat sheets.
 
 ### AI Coding Tools
 
