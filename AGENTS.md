@@ -14,6 +14,7 @@ The primary entry point is `./install.sh`, which:
 - Sets up Oh My Zsh framework
 - Clones official kickstart.nvim to `~/.config/nvim`
 - Creates symlinks for configurations (and seeds local Codex config from template)
+- Installs TUI tools (lazygit, yazi) with config symlinks
 - Installs Go (Golang) 1.24+ with architecture detection (x86_64/arm64)
 - Installs fnm (Fast Node Manager) and Node.js LTS
 - Links AI coding assistant configurations (Codex CLI, Claude Code, OpenCode)
@@ -31,6 +32,8 @@ The primary entry point is `./install.sh`, which:
 **Symlink structure**:
 - `~/.tmux.conf` → `~/dotfiles/tmux/.tmux.conf`
 - `~/.config/nvim/lua/custom/` → `~/dotfiles/nvim/custom/`
+- **lazygit**: `~/.config/lazygit/config.yml` → `~/dotfiles/lazygit/config.yml`
+- **yazi**: `~/.config/yazi/{yazi,keymap,theme}.toml` → `~/dotfiles/yazi/*.toml`
 - **Codex CLI**:
   - `~/.codex/config.toml` ← copied from `~/dotfiles/codex/config.toml` template
   - `~/.codex/agents/` → `~/dotfiles/codex/agents/`
@@ -260,6 +263,8 @@ Recent addition (commit b41aca0) checks if zsh is already the default shell to a
 ## Command Line Aliases
 
 Shell aliases are available for common operations:
+- `lg` - Launch lazygit
+- `y` - Launch yazi file manager
 - `claude` - Launch Claude Code
 - `oc` or `opencode` - Launch OpenCode CLI
 - Tmux aliases: `t`, `ta`, `tn`, `tl`, `tk`, `td`

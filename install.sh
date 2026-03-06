@@ -643,6 +643,112 @@ install_playwright() {
     fi
 }
 
+install_tui_tools() {
+    print_header "Installing TUI Tools (lazygit, yazi)"
+
+    # --- lazygit ---
+    if command -v lazygit &> /dev/null; then
+        print_success "lazygit is already installed"
+    else
+        print_info "Installing lazygit..."
+        if [ "$OS" == "ubuntu" ]; then
+            LAZYGIT_VERSION=$(curl -s "https://api.github.com/repos/jesseduffield/lazygit/releases/latest" | grep -Po '"tag_name": "v\K[^"]*')
+            if [ -z "$LAZYGIT_VERSION" ]; then
+                print_error "Failed to fetch lazygit version"
+            else
+                ARCH=$(uname -m)
+                case "$ARCH" in
+                    x86_64) LG_ARCH="Linux_x86_64" ;;
+                    aarch64|arm64) LG_ARCH="Linux_arm64" ;;
+                    *) print_error "Unsupported architecture: $ARCH"; LG_ARCH="" ;;
+                esac
+
+                if [ -n "$LG_ARCH" ]; then
+                    TMP_DIR=$(mktemp -d)
+                    curl -Lo "$TMP_DIR/lazygit.tar.gz" "https://github.com/jesseduffield/lazygit/releases/latest/download/lazygit_${LAZYGIT_VERSION}_${LG_ARCH}.tar.gz"
+                    tar -xzf "$TMP_DIR/lazygit.tar.gz" -C "$TMP_DIR"
+                    sudo install "$TMP_DIR/lazygit" /usr/local/bin/lazygit
+                    rm -rf "$TMP_DIR"
+                    print_success "lazygit ${LAZYGIT_VERSION} installed"
+                fi
+            fi
+        elif [ "$OS" == "macos" ]; then
+            brew install lazygit
+            print_success "lazygit installed via brew"
+        fi
+    fi
+
+    # --- yazi ---
+    if command -v yazi &> /dev/null; then
+        print_success "yazi is already installed"
+    else
+        print_info "Installing yazi..."
+        if [ "$OS" == "ubuntu" ]; then
+            YAZI_VERSION=$(curl -s "https://api.github.com/repos/sxyazi/yazi/releases/latest" | grep -Po '"tag_name": "v\K[^"]*')
+            if [ -z "$YAZI_VERSION" ]; then
+                print_error "Failed to fetch yazi version"
+            else
+                ARCH=$(uname -m)
+                case "$ARCH" in
+                    x86_64) YZ_ARCH="x86_64-unknown-linux-gnu" ;;
+                    aarch64|arm64) YZ_ARCH="aarch64-unknown-linux-gnu" ;;
+                    *) print_error "Unsupported architecture: $ARCH"; YZ_ARCH="" ;;
+                esac
+
+                if [ -n "$YZ_ARCH" ]; then
+                    TMP_DIR=$(mktemp -d)
+                    curl -Lo "$TMP_DIR/yazi.zip" "https://github.com/sxyazi/yazi/releases/latest/download/yazi-${YZ_ARCH}.zip"
+                    unzip -q "$TMP_DIR/yazi.zip" -d "$TMP_DIR"
+                    sudo install "$TMP_DIR/yazi-${YZ_ARCH}/yazi" /usr/local/bin/yazi
+                    rm -rf "$TMP_DIR"
+                    print_success "yazi ${YAZI_VERSION} installed"
+                fi
+            fi
+        elif [ "$OS" == "macos" ]; then
+            brew install yazi
+            print_success "yazi installed via brew"
+        fi
+    fi
+
+    # --- Config symlinks ---
+
+    # lazygit config
+    if [ "$OS" == "macos" ]; then
+        LAZYGIT_CONFIG_DIR="$HOME/Library/Application Support/lazygit"
+    else
+        LAZYGIT_CONFIG_DIR="$HOME/.config/lazygit"
+    fi
+    mkdir -p "$LAZYGIT_CONFIG_DIR"
+
+    if [ -f "$LAZYGIT_CONFIG_DIR/config.yml" ] && [ ! -L "$LAZYGIT_CONFIG_DIR/config.yml" ]; then
+        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+        mv "$LAZYGIT_CONFIG_DIR/config.yml" "$LAZYGIT_CONFIG_DIR/config.yml.backup.$TIMESTAMP"
+    fi
+    if [ -L "$LAZYGIT_CONFIG_DIR/config.yml" ]; then
+        rm "$LAZYGIT_CONFIG_DIR/config.yml"
+    fi
+    ln -s "$DOTFILES_DIR/lazygit/config.yml" "$LAZYGIT_CONFIG_DIR/config.yml"
+    print_success "lazygit config linked"
+
+    # yazi config
+    YAZI_CONFIG_DIR="$HOME/.config/yazi"
+    mkdir -p "$YAZI_CONFIG_DIR"
+
+    for yazi_file in yazi.toml keymap.toml theme.toml; do
+        if [ -f "$YAZI_CONFIG_DIR/$yazi_file" ] && [ ! -L "$YAZI_CONFIG_DIR/$yazi_file" ]; then
+            TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+            mv "$YAZI_CONFIG_DIR/$yazi_file" "$YAZI_CONFIG_DIR/$yazi_file.backup.$TIMESTAMP"
+        fi
+        if [ -L "$YAZI_CONFIG_DIR/$yazi_file" ]; then
+            rm "$YAZI_CONFIG_DIR/$yazi_file"
+        fi
+        if [ -f "$DOTFILES_DIR/yazi/$yazi_file" ]; then
+            ln -s "$DOTFILES_DIR/yazi/$yazi_file" "$YAZI_CONFIG_DIR/$yazi_file"
+        fi
+    done
+    print_success "yazi config linked"
+}
+
 install_zsh() {
     print_header "Installing Oh My Zsh"
 
@@ -1051,7 +1157,7 @@ show_profile_menu() {
     echo "     Neovim + config, Tmux + config"
     echo ""
     echo "  3) Work Profile"
-    echo "     Neovim, Tmux, OpenCode (no personal tools)"
+    echo "     Neovim, Tmux, TUI tools, OpenCode (no personal tools)"
     echo ""
     echo "  4) Custom (pick components)"
     echo "     Interactive component selection"
@@ -1063,13 +1169,13 @@ show_profile_menu() {
 
     case $choice in
         1)
-            SELECTED_MODULES=(base_tools neovim nvim_config tmux_config zsh_ohmyzsh zsh_config golang_full nodejs codex claude playwright opencode)
+            SELECTED_MODULES=(base_tools neovim nvim_config tmux_config zsh_ohmyzsh zsh_config golang_full nodejs tui_tools codex claude playwright opencode)
             ;;
         2)
             SELECTED_MODULES=(base_tools neovim nvim_config tmux_config)
             ;;
         3)
-            SELECTED_MODULES=(base_tools neovim nvim_config tmux_config opencode)
+            SELECTED_MODULES=(base_tools neovim nvim_config tmux_config tui_tools opencode)
             ;;
         4)
             show_custom_menu
@@ -1103,6 +1209,7 @@ show_custom_menu() {
         "codex:Codex CLI"
         "claude:Claude Code CLI"
         "opencode:OpenCode CLI"
+        "tui_tools:TUI Tools (lazygit, yazi)"
         "playwright:Playwright CLI (browser automation)"
     )
 
@@ -1135,15 +1242,15 @@ show_custom_menu() {
             echo "  $i) $desc"
             ((i++))
         done
-        echo "  13) Toggle All"
-        echo "  14) Done"
+        echo "  14) Toggle All"
+        echo "  15) Done"
         echo ""
 
-        read -p "Enter number to toggle (or 14 when done): " choice
+        read -p "Enter number to toggle (or 15 when done): " choice
 
-        if [ "$choice" == "14" ]; then
+        if [ "$choice" == "15" ]; then
             break
-        elif [ "$choice" == "13" ]; then
+        elif [ "$choice" == "14" ]; then
             # Toggle all
             local all_selected=1
             for key in "${!selections[@]}"; do
@@ -1209,6 +1316,7 @@ show_installation_summary() {
             "codex") echo "  • Codex CLI" ;;
             "claude") echo "  • Claude Code CLI" ;;
             "opencode") echo "  • OpenCode CLI" ;;
+            "tui_tools") echo "  • TUI Tools (lazygit, yazi)" ;;
             "playwright") echo "  • Playwright CLI (browser automation)" ;;
         esac
     done
@@ -1294,6 +1402,11 @@ execute_modules() {
                     FAILED_MODULES+=("opencode")
                 fi
                 ;;
+            "tui_tools")
+                if ! install_tui_tools; then
+                    FAILED_MODULES+=("tui_tools")
+                fi
+                ;;
             "playwright")
                 if ! install_playwright; then
                     FAILED_MODULES+=("playwright")
@@ -1317,13 +1430,13 @@ parse_arguments() {
             --profile)
                 case $2 in
                     full)
-                        SELECTED_MODULES=(base_tools neovim nvim_config tmux_config zsh_ohmyzsh zsh_config golang_full nodejs codex claude playwright opencode)
+                        SELECTED_MODULES=(base_tools neovim nvim_config tmux_config zsh_ohmyzsh zsh_config golang_full nodejs tui_tools codex claude playwright opencode)
                         ;;
                     minimal)
                         SELECTED_MODULES=(base_tools neovim nvim_config tmux_config)
                         ;;
                     work)
-                        SELECTED_MODULES=(base_tools neovim nvim_config tmux_config opencode)
+                        SELECTED_MODULES=(base_tools neovim nvim_config tmux_config tui_tools opencode)
                         ;;
                     *)
                         print_error "Unknown profile: $2"
@@ -1386,6 +1499,7 @@ Modules:
   golang_full         Go development (toolchain + LSP + tools + govulncheck)
   nodejs              Node.js LTS (fnm)
   codex               Codex CLI
+  tui_tools           TUI tools (lazygit, yazi)
   claude              Claude Code CLI
   opencode            OpenCode CLI
   playwright          Playwright CLI (browser automation)

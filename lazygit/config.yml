@@ -1,0 +1,17 @@
+# lazygit configuration
+# https://github.com/jesseduffield/lazygit/blob/master/docs/Config.md
+
+gui:
+  showIcons: true
+
+git:
+  paging:
+    colorArg: always
+    pager: ""
+  # Auto-fetch every 60 seconds
+  autoFetch: true
+  autoRefresh: true
+
+os:
+  # Open files in neovim
+  editPreset: "nvim"

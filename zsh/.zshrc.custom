@@ -36,6 +36,10 @@ alias vi='nvim'
 # This ensures mistyped/missing commands don't unexpectedly `cd` into folders.
 unsetopt AUTO_CD
 
+# TUI tool aliases
+alias lg='lazygit'
+alias y='yazi'
+
 # AI Coding Assistant aliases
 alias oc='opencode'
 alias cx='codex'

@@ -1,0 +1,18 @@
+# Yazi keymap configuration — vim-centric additions
+# https://yazi-rs.github.io/docs/configuration/keymap/
+#
+# Default keybindings already include hjkl navigation, yank/paste/delete,
+# visual mode (v), marks, and most vim motions. This file adds convenience
+# shortcuts on top of the defaults using prepend_keymap (higher priority).
+
+[manager]
+prepend_keymap = [
+  # Quick directory jumps
+  { on = ["g", "h"], run = "cd ~",             desc = "Go to home" },
+  { on = ["g", "d"], run = "cd ~/dotfiles",    desc = "Go to dotfiles" },
+  { on = ["g", "p"], run = "cd ~/projects",    desc = "Go to projects" },
+  { on = ["g", "t"], run = "cd /tmp",          desc = "Go to /tmp" },
+
+  # Open in neovim
+  { on = ["e"],      run = "open --with nvim",  desc = "Edit in Neovim" },
+]

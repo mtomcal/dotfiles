@@ -1,0 +1,17 @@
+# Yazi file manager configuration
+# https://yazi-rs.github.io/docs/configuration/yazi/
+
+[manager]
+# Show hidden files by default
+show_hidden = true
+
+# Sort directories first
+sort_dir_first = true
+
+# Natural sort order (1, 2, 10 instead of 1, 10, 2)
+sort_by = "natural"
+
+[preview]
+# Max preview width/height
+max_width = 600
+max_height = 900
