@@ -9,5 +9,10 @@
   },
   "alwaysThinkingEnabled": false,
   "skipDangerousModePermissionPrompt": true,
-  "effortLevel": "medium"
+  "mcpServers": {
+    "playwright": {
+      "command": "npx",
+      "args": ["@playwright/mcp@latest"]
+    }
+  }
 }

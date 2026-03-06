@@ -3,7 +3,6 @@
 
 gui:
   showIcons: true
-
 git:
   pagers:
     - colorArg: always
@@ -11,7 +10,6 @@ git:
   # Auto-fetch every 60 seconds
   autoFetch: true
   autoRefresh: true
-
 os:
   # Open files in neovim
   editPreset: "nvim"
