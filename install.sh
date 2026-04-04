@@ -188,6 +188,7 @@ install_base_tools() {
     elif [ "$OS" == "macos" ]; then
         install_package "gcc" "gcc"
         install_package "fd" "fd"
+        install_package "tree-sitter-cli" "tree-sitter-cli"  # CLI split from tree-sitter library in 0.26+
     fi
 
     print_success "Base tools installed"
@@ -537,15 +538,28 @@ install_golang() {
         fi
     fi
 
+    # Clear any inherited GOROOT that could poison the go binary
+    unset GOROOT
+
+    # On macOS, ensure Homebrew's go is first on PATH
+    if [ "$OS" == "macos" ]; then
+        BREW_GO_BIN="$(brew --prefix go 2>/dev/null)/bin"
+        if [[ -d "$BREW_GO_BIN" ]]; then
+            export PATH="$BREW_GO_BIN:$PATH"
+        fi
+    fi
+
     # Verify installation
     if command -v go &> /dev/null; then
         GO_FULL_VERSION=$(go version)
         print_success "Go verified: $GO_FULL_VERSION"
 
-        export GOROOT="$HOME/go"
         export GOPATH="$HOME/go-workspace"
         mkdir -p "$GOPATH/bin"
-        export PATH="$GOPATH/bin:$GOROOT/bin:$PATH"
+        if [ "$OS" == "ubuntu" ] && [[ -d "/usr/local/go/bin" ]]; then
+            export PATH="/usr/local/go/bin:$PATH"
+        fi
+        export PATH="$GOPATH/bin:$PATH"
     fi
 }
 
@@ -560,7 +574,9 @@ install_golang_full() {
     # Install govulncheck security scanner
     if command -v go &> /dev/null; then
         print_info "Installing govulncheck (Go vulnerability scanner)..."
-        if go install golang.org/x/vuln/cmd/govulncheck@latest; then
+        # Clear build cache to avoid stale toolchain version mismatches after upgrades
+        go clean -cache
+        if GOTOOLCHAIN=local go install golang.org/x/vuln/cmd/govulncheck@latest; then
             print_success "govulncheck installed"
         else
             print_warning "Failed to install govulncheck"
