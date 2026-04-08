@@ -8,7 +8,7 @@ Personal development environment configuration for tmux, neovim, and zsh.
 - **Neovim**: Official [kickstart.nvim](https://github.com/nvim-lua/kickstart.nvim) base with custom plugin layer
 - **Zsh**: Oh My Zsh with custom aliases and tmux integration
 - **TUI Tools**: lazygit, yazi file manager, zoxide smart directory jumping
-- **AI Coding Tools**: Codex CLI, Claude Code, and OpenCode CLI with shared instructions
+- **AI Coding Tools**: Codex CLI, Claude Code, OpenCode CLI, and Gemini CLI with shared instructions
 - **Language Support**:
   - **Python**: Pyright LSP + Ruff linting/formatting with Poetry auto-detection
   - **Go (Golang)**: Full toolchain (gopls, delve debugger, gofumpt, goimports) with testing and debugging support
@@ -86,6 +86,7 @@ The installer provides a **menu-driven interface** with multiple installation pr
 - `codex` - Codex CLI + skills + agent roles
 - `claude` - Claude Code CLI + MCP servers
 - `opencode` - OpenCode CLI
+- `gemini` - Gemini CLI (Google's open-source AI agent)
 
 **Features**:
 - Automatic dependency resolution
@@ -130,6 +131,12 @@ dotfiles/
 │   ├── commands/          # OpenCode CLI commands (available for future use)
 │   ├── agents/            # OpenCode CLI agents (available for future use)
 │   └── README.md          # OpenCode documentation
+├── gemini/
+│   ├── commands/          # Gemini CLI custom slash commands (TOML)
+│   ├── agents/            # Gemini CLI user-level subagents (Markdown)
+│   ├── skills/            # Gemini CLI user skills
+│   ├── settings.json      # Gemini CLI settings (~/.gemini/settings.json)
+│   └── README.md          # Gemini CLI documentation
 ├── lazygit/
 │   └── config.yml             # lazygit configuration
 ├── yazi/
@@ -310,7 +317,7 @@ vim.keymap.set('n', '<leader>x', '<cmd>MyCommand<CR>', { desc = 'My custom comma
 - `vim`, `vi` → `nvim`
 - `lg` → `lazygit`
 - `y` → `yazi`
-- `oc` → `opencode`, `cx` → `codex`
+- `oc` → `opencode`, `cx` → `codex`, `gm` → `gemini`
 - All tmux aliases listed above
 
 ### Node.js (fnm)
@@ -439,7 +446,7 @@ See [docs/QUICK_REFERENCE.md](docs/QUICK_REFERENCE.md) for comprehensive cheat s
 
 ### AI Coding Tools
 
-Three AI coding assistants are configured:
+Four AI coding assistants are configured:
 
 #### Codex CLI
 
@@ -481,6 +488,28 @@ opencode auth login
 opencode  # Start interactive session
 ```
 
+#### Gemini CLI
+
+[Google's open-source AI agent](https://github.com/google-gemini/gemini-cli) for the terminal,
+backed by Gemini models with a generous free tier (60 req/min, 1000 req/day with a personal
+Google account). See [gemini/README.md](gemini/README.md) for details.
+
+**Authentication**:
+```bash
+gemini  # First launch prompts for Google account / API key
+```
+
+**Features**:
+- Custom slash commands (TOML) in `~/.gemini/commands/`
+- User-level subagents in `~/.gemini/agents/`
+- User-level skills in `~/.gemini/skills/`
+- MCP server support via `~/.gemini/settings.json`
+
+**Usage**:
+```bash
+gemini  # or `gm`
+```
+
 **Adding Custom Commands / Skills**:
 
 ```bash
@@ -492,6 +521,9 @@ nvim ~/dotfiles/claude/commands/my-command.md
 
 # OpenCode
 nvim ~/dotfiles/opencode/commands/my-command.md
+
+# Gemini CLI (TOML)
+nvim ~/dotfiles/gemini/commands/my-command.toml
 ```
 
 ## Platform-Specific Notes

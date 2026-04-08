@@ -18,7 +18,7 @@ The primary entry point is `./install.sh`, which:
 - Installs Go (Golang) 1.24+ with architecture detection (x86_64/arm64)
 - Installs fnm (Fast Node Manager) and Node.js LTS
 - Links AI coding assistant configurations (Codex CLI, Claude Code, OpenCode)
-- Installs Codex CLI and OpenCode CLI
+- Installs Codex CLI, OpenCode CLI, and Gemini CLI
 - Sets up Mason LSP/formatter packages (Python, Go, Lua)
 
 **Key behavior**: The script is idempotent and safe to re-run for updates.
@@ -49,11 +49,16 @@ The primary entry point is `./install.sh`, which:
   - `~/.config/opencode/skills/` → `~/dotfiles/opencode/skills/`
   - `~/.config/opencode/opencode.json` → `~/dotfiles/opencode/opencode.json`
   - `~/.config/opencode/AGENTS.md` → `~/dotfiles/AGENTS.md` (this file)
+- **Gemini CLI**:
+  - `~/.gemini/settings.json` → `~/dotfiles/gemini/settings.json`
+  - `~/.gemini/commands/` → `~/dotfiles/gemini/commands/`
+  - `~/.gemini/agents/` → `~/dotfiles/gemini/agents/`
+  - `~/.gemini/skills/` → `~/dotfiles/gemini/skills/`
 - Custom zsh config sourced in `~/.zshrc` (not symlinked)
 
 ### AI Coding Assistants
 
-This dotfiles setup supports **Codex CLI**, **Claude Code**, and **OpenCode CLI**, with **Playwright CLI** (`playwright-cli`) available for browser automation:
+This dotfiles setup supports **Codex CLI**, **Claude Code**, **OpenCode CLI**, and **Gemini CLI**, with **Playwright CLI** (`playwright-cli`) available for browser automation:
 
 **Codex CLI**:
 - Configuration: `codex/` directory
@@ -77,6 +82,16 @@ This dotfiles setup supports **Codex CLI**, **Claude Code**, and **OpenCode CLI*
 - Shared instructions: This AGENTS.md file
 - Uses Build/Plan mode switching
 - **Local-models only**: Frontier models are accessed via vendor harnesses (Claude Code, Codex). OpenCode is configured exclusively for local MLX models served by vllm-mlx (primary) or LM Studio (fallback). No cloud providers are configured.
+
+**Gemini CLI**:
+- Configuration: `gemini/` directory (symlinked into `~/.gemini/`)
+- Settings: `gemini/settings.json` → `~/.gemini/settings.json`
+- Custom slash commands (TOML): `gemini/commands/` → `~/.gemini/commands/`
+- User subagents (Markdown): `gemini/agents/` → `~/.gemini/agents/`
+- User skills: `gemini/skills/` → `~/.gemini/skills/`
+- Installed via `npm install -g --prefix ~/.local @google/gemini-cli@latest` (same `~/.local` prefix as Codex so it survives `fnm` Node version switches)
+- Reference clone: `~/Code/gemini-cli` (upstream repo for docs and source spelunking)
+- Authenticate by running `gemini` — first launch prompts for Google account / API key
 
 #### Local Model Backends
 
@@ -304,6 +319,7 @@ Shell aliases are available for common operations:
 - `z` - zoxide smart cd (e.g. `z dotfiles` jumps to ~/dotfiles)
 - `claude` - Launch Claude Code
 - `oc` or `opencode` - Launch OpenCode CLI
+- `gm` or `gemini` - Launch Gemini CLI
 - Tmux aliases: `t`, `ta`, `tn`, `tl`, `tk`, `td`
 
 ## Working with Multiple AI Assistants

@@ -1083,6 +1083,78 @@ install_codex() {
     print_info "Run 'codex login' to authenticate"
 }
 
+install_gemini() {
+    print_header "Installing Gemini CLI"
+
+    # Gemini CLI is distributed as an npm package.
+    # Install to ~/.local so it is shared across fnm Node versions
+    # (same pattern as Codex CLI).
+    if ! command -v npm &> /dev/null; then
+        print_warning "npm not found. Installing Node.js first..."
+        install_nodejs || return 1
+    fi
+
+    mkdir -p "$HOME/.local/bin"
+    print_info "Installing/updating Gemini CLI via npm into ~/.local..."
+    npm install -g --prefix "$HOME/.local" @google/gemini-cli@latest
+
+    if [ ! -x "$HOME/.local/bin/gemini" ]; then
+        print_error "Gemini CLI install failed: ~/.local/bin/gemini not found"
+        return 1
+    fi
+
+    if command -v gemini &> /dev/null && [ "$(command -v gemini)" != "$HOME/.local/bin/gemini" ]; then
+        print_warning "Another gemini binary is earlier in PATH: $(command -v gemini)"
+        print_info "Ensure ~/.local/bin is first in PATH to use the shared Gemini install"
+    fi
+    print_success "Gemini CLI installed/updated at ~/.local/bin/gemini"
+
+    mkdir -p "$HOME/.gemini"
+
+    # Link settings.json
+    if [ -f "$HOME/.gemini/settings.json" ] && [ ! -L "$HOME/.gemini/settings.json" ]; then
+        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+        mv "$HOME/.gemini/settings.json" "$HOME/.gemini/settings.json.backup.$TIMESTAMP"
+        print_warning "Backed up existing ~/.gemini/settings.json"
+    fi
+    if [ -L "$HOME/.gemini/settings.json" ]; then
+        rm "$HOME/.gemini/settings.json"
+    fi
+    if [ -f "$DOTFILES_DIR/gemini/settings.json" ]; then
+        ln -s "$DOTFILES_DIR/gemini/settings.json" "$HOME/.gemini/settings.json"
+    fi
+
+    # Link commands directory
+    if [ -L "$HOME/.gemini/commands" ]; then
+        rm "$HOME/.gemini/commands"
+    elif [ -d "$HOME/.gemini/commands" ]; then
+        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+        mv "$HOME/.gemini/commands" "$HOME/.gemini/commands.backup.$TIMESTAMP"
+    fi
+    ln -s "$DOTFILES_DIR/gemini/commands" "$HOME/.gemini/commands"
+
+    # Link agents directory
+    if [ -L "$HOME/.gemini/agents" ]; then
+        rm "$HOME/.gemini/agents"
+    elif [ -d "$HOME/.gemini/agents" ]; then
+        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+        mv "$HOME/.gemini/agents" "$HOME/.gemini/agents.backup.$TIMESTAMP"
+    fi
+    ln -s "$DOTFILES_DIR/gemini/agents" "$HOME/.gemini/agents"
+
+    # Link skills directory
+    if [ -L "$HOME/.gemini/skills" ]; then
+        rm "$HOME/.gemini/skills"
+    elif [ -d "$HOME/.gemini/skills" ]; then
+        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+        mv "$HOME/.gemini/skills" "$HOME/.gemini/skills.backup.$TIMESTAMP"
+    fi
+    ln -s "$DOTFILES_DIR/gemini/skills" "$HOME/.gemini/skills"
+
+    print_success "Gemini CLI configured"
+    print_info "Run 'gemini' to authenticate (Google account / API key)"
+}
+
 # ===========================
 # Dependency Resolution
 # ===========================
@@ -1150,6 +1222,14 @@ resolve_dependencies() {
                 fi
                 resolved+=("codex")
                 ;;
+            "gemini")
+                # Gemini CLI install uses npm
+                if ! command -v npm &> /dev/null; then
+                    print_warning "Adding Node.js (required by Gemini CLI)"
+                    resolved+=("nodejs")
+                fi
+                resolved+=("gemini")
+                ;;
             "playwright")
                 # Playwright CLI needs npm (Node.js)
                 if ! command -v npm &> /dev/null; then
@@ -1196,7 +1276,7 @@ show_profile_menu() {
 
     case $choice in
         1)
-            SELECTED_MODULES=(base_tools neovim nvim_config tmux_config zsh_ohmyzsh zsh_config golang_full nodejs tui_tools codex claude playwright opencode)
+            SELECTED_MODULES=(base_tools neovim nvim_config tmux_config zsh_ohmyzsh zsh_config golang_full nodejs tui_tools codex claude playwright opencode gemini)
             ;;
         2)
             SELECTED_MODULES=(base_tools neovim nvim_config tmux_config)
@@ -1236,6 +1316,7 @@ show_custom_menu() {
         "codex:Codex CLI"
         "claude:Claude Code CLI"
         "opencode:OpenCode CLI"
+        "gemini:Gemini CLI"
         "tui_tools:TUI Tools (lazygit, yazi, zoxide)"
         "playwright:Playwright CLI (browser automation)"
     )
@@ -1269,15 +1350,15 @@ show_custom_menu() {
             echo "  $i) $desc"
             ((i++))
         done
-        echo "  14) Toggle All"
-        echo "  15) Done"
+        echo "  15) Toggle All"
+        echo "  16) Done"
         echo ""
 
-        read -p "Enter number to toggle (or 15 when done): " choice
+        read -p "Enter number to toggle (or 16 when done): " choice
 
-        if [ "$choice" == "15" ]; then
+        if [ "$choice" == "16" ]; then
             break
-        elif [ "$choice" == "14" ]; then
+        elif [ "$choice" == "15" ]; then
             # Toggle all
             local all_selected=1
             for key in "${!selections[@]}"; do
@@ -1343,6 +1424,7 @@ show_installation_summary() {
             "codex") echo "  • Codex CLI" ;;
             "claude") echo "  • Claude Code CLI" ;;
             "opencode") echo "  • OpenCode CLI" ;;
+            "gemini") echo "  • Gemini CLI" ;;
             "tui_tools") echo "  • TUI Tools (lazygit, yazi, zoxide)" ;;
             "playwright") echo "  • Playwright CLI (browser automation)" ;;
         esac
@@ -1419,6 +1501,11 @@ execute_modules() {
                     FAILED_MODULES+=("codex")
                 fi
                 ;;
+            "gemini")
+                if ! install_gemini; then
+                    FAILED_MODULES+=("gemini")
+                fi
+                ;;
             "claude")
                 if ! install_claude; then
                     FAILED_MODULES+=("claude")
@@ -1457,7 +1544,7 @@ parse_arguments() {
             --profile)
                 case $2 in
                     full)
-                        SELECTED_MODULES=(base_tools neovim nvim_config tmux_config zsh_ohmyzsh zsh_config golang_full nodejs tui_tools codex claude playwright opencode)
+                        SELECTED_MODULES=(base_tools neovim nvim_config tmux_config zsh_ohmyzsh zsh_config golang_full nodejs tui_tools codex claude playwright opencode gemini)
                         ;;
                     minimal)
                         SELECTED_MODULES=(base_tools neovim nvim_config tmux_config)
@@ -1529,6 +1616,7 @@ Modules:
   tui_tools           TUI tools (lazygit, yazi, zoxide)
   claude              Claude Code CLI
   opencode            OpenCode CLI
+  gemini              Gemini CLI
   playwright          Playwright CLI (browser automation)
 
 Examples:
@@ -1605,6 +1693,7 @@ main() {
     echo "  • Codex: codex login"
     echo "  • Claude Code: claude auth login"
     echo "  • OpenCode: opencode auth login"
+    echo "  • Gemini CLI: gemini (first run prompts for auth)"
     echo ""
     print_success "Happy coding!"
 
