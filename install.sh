@@ -924,14 +924,11 @@ install_claude() {
 install_opencode() {
     print_header "Installing OpenCode"
 
-    if ! command -v opencode &> /dev/null; then
-        print_info "Installing OpenCode CLI..."
-        curl -fsSL https://opencode.ai/install | bash
-        export PATH="$HOME/.local/bin:$PATH"
-        print_success "OpenCode CLI installed"
-    else
-        print_success "OpenCode CLI is already installed"
-    fi
+    # Always run the official installer; it self-upgrades to the latest release.
+    print_info "Installing/upgrading OpenCode CLI via official installer..."
+    curl -fsSL https://opencode.ai/install | bash
+    export PATH="$HOME/.opencode/bin:$PATH"
+    print_success "OpenCode CLI installed/upgraded"
 
     mkdir -p "$HOME/.config/opencode"
 

@@ -1,41 +1,145 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "theme": "opencode",
-  "tui": {
-    "scroll_speed": 3,
-    "scroll_acceleration": {
-      "enabled": true
-    }
-  },
-  "model": "opencode/grok-code",
-  "small_model": "opencode/grok-code",
+  "model": "vllm-mlx-claude-distill/qwen3.5-27b-claude-4.6-opus-distilled-mlx-4bit",
+  "small_model": "vllm-mlx-qwen-9b/qwen3.5-9b-mlx-4bit",
   "permission": {
     "edit": "allow",
     "bash": "allow",
     "webfetch": "allow",
     "doom_loop": "ask"
   },
-  "autoupdate": "notify",
+  "autoupdate": true,
   "share": "manual",
   "instructions": ["AGENTS.md"],
   "provider": {
-    "openrouter": {
+    "vllm-mlx-claude-distill": {
       "npm": "@ai-sdk/openai-compatible",
+      "name": "vLLM-MLX: Qwen 3.5 27B Claude Distill (port 8001)",
       "options": {
-        "baseURL": "https://openrouter.ai/api/v1"
+        "baseURL": "http://localhost:8001/v1"
       },
       "models": {
-        "x-ai/grok-4.1-fast:free": {
-          "id": "x-ai/grok-4.1-fast:free",
-          "name": "Grok 4.1 Fast (Free)"
+        "qwen3.5-27b-claude-4.6-opus-distilled-mlx-4bit": {
+          "id": "qwen3.5-27b-claude-4.6-opus-distilled-mlx-4bit",
+          "name": "Qwen 3.5 27B Claude 4.6 Opus Distilled (MLX 4bit)"
+        }
+      }
+    },
+    "vllm-mlx-qwen-27b": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "vLLM-MLX: Qwen 3.5 27B (port 8002)",
+      "options": {
+        "baseURL": "http://localhost:8002/v1"
+      },
+      "models": {
+        "qwen3.5-27b-4bit": {
+          "id": "qwen3.5-27b-4bit",
+          "name": "Qwen 3.5 27B (4bit)"
+        }
+      }
+    },
+    "vllm-mlx-qwen-35b-4bit": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "vLLM-MLX: Qwen 3.5 35B A3B 4bit (port 8003)",
+      "options": {
+        "baseURL": "http://localhost:8003/v1"
+      },
+      "models": {
+        "qwen3.5-35b-a3b-4bit": {
+          "id": "qwen3.5-35b-a3b-4bit",
+          "name": "Qwen 3.5 35B A3B (4bit)"
+        }
+      }
+    },
+    "vllm-mlx-qwen-35b-8bit": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "vLLM-MLX: Qwen 3.5 35B A3B 8bit (port 8004)",
+      "options": {
+        "baseURL": "http://localhost:8004/v1"
+      },
+      "models": {
+        "qwen3.5-35b-a3b-8bit": {
+          "id": "qwen3.5-35b-a3b-8bit",
+          "name": "Qwen 3.5 35B A3B (8bit)"
+        }
+      }
+    },
+    "vllm-mlx-qwen-9b": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "vLLM-MLX: Qwen 3.5 9B (port 8005)",
+      "options": {
+        "baseURL": "http://localhost:8005/v1"
+      },
+      "models": {
+        "qwen3.5-9b-mlx-4bit": {
+          "id": "qwen3.5-9b-mlx-4bit",
+          "name": "Qwen 3.5 9B (MLX 4bit)"
+        }
+      }
+    },
+    "vllm-mlx-gpt-oss": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "vLLM-MLX: GPT-OSS 20B (port 8006)",
+      "options": {
+        "baseURL": "http://localhost:8006/v1"
+      },
+      "models": {
+        "gpt-oss-20b-mxfp4-q8": {
+          "id": "gpt-oss-20b-mxfp4-q8",
+          "name": "GPT-OSS 20B (MXFP4 Q8)"
+        }
+      }
+    },
+    "lmstudio": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "LM Studio (Local fallback)",
+      "options": {
+        "baseURL": "http://localhost:1234/v1"
+      },
+      "models": {
+        "qwen3.5-27b-claude-4.6-opus-distilled-mlx": {
+          "id": "qwen3.5-27b-claude-4.6-opus-distilled-mlx",
+          "name": "Qwen 3.5 27B Claude 4.6 Opus Distilled (MLX)"
         },
-        "qwen/qwen3-235b-a22b:free": {
-          "id": "qwen/qwen3-235b-a22b:free",
-          "name": "Qwen3 235B A22B (Free)"
+        "qwen3.5-35b-a3b@8bit": {
+          "id": "qwen3.5-35b-a3b@8bit",
+          "name": "Qwen 3.5 35B A3B (8bit)"
         },
-        "moonshotai/kimi-k2:free": {
-          "id": "moonshotai/kimi-k2:free",
-          "name": "Kimi K2 (Free)"
+        "qwen3.5-35b-a3b@4bit": {
+          "id": "qwen3.5-35b-a3b@4bit",
+          "name": "Qwen 3.5 35B A3B (4bit)"
+        },
+        "qwen/qwen3.5-35b-a3b": {
+          "id": "qwen/qwen3.5-35b-a3b",
+          "name": "Qwen 3.5 35B A3B"
+        },
+        "lmstudio-community/qwen3.5-27b": {
+          "id": "lmstudio-community/qwen3.5-27b",
+          "name": "Qwen 3.5 27B (LM Studio Community)"
+        },
+        "mlx-community/qwen3.5-27b": {
+          "id": "mlx-community/qwen3.5-27b",
+          "name": "Qwen 3.5 27B (MLX Community)"
+        },
+        "qwen3.5-9b-mlx": {
+          "id": "qwen3.5-9b-mlx",
+          "name": "Qwen 3.5 9B (MLX)"
+        },
+        "qwen3.5-0.8b": {
+          "id": "qwen3.5-0.8b",
+          "name": "Qwen 3.5 0.8B"
+        },
+        "qwen3-coder-next": {
+          "id": "qwen3-coder-next",
+          "name": "Qwen 3 Coder Next"
+        },
+        "gpt-oss-20b-mlx": {
+          "id": "gpt-oss-20b-mlx",
+          "name": "GPT-OSS 20B (MLX)"
+        },
+        "openai/gpt-oss-20b": {
+          "id": "openai/gpt-oss-20b",
+          "name": "GPT-OSS 20B"
         }
       }
     }

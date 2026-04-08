@@ -76,6 +76,42 @@ This dotfiles setup supports **Codex CLI**, **Claude Code**, and **OpenCode CLI*
 - Project template: `opencode/opencode.project.json` (for project-specific overrides)
 - Shared instructions: This AGENTS.md file
 - Uses Build/Plan mode switching
+- **Local-models only**: Frontier models are accessed via vendor harnesses (Claude Code, Codex). OpenCode is configured exclusively for local MLX models served by vllm-mlx (primary) or LM Studio (fallback). No cloud providers are configured.
+
+#### Local Model Backends
+
+**vllm-mlx (primary, via mlx-serve harness)**: Each model runs as its own `vllm-mlx serve` process on a fixed port. The `mlx-serve` CLI (`~/Code/mlx-serve`) wraps `vllm-mlx` with auto port assignment, auto context sizing, and per-model-family presets for tool/reasoning parsers.
+
+| Port | Model | OpenCode provider key |
+|------|-------|----------------------|
+| 8001 | Qwen3.5-27B-Claude-4.6-Opus-Distilled-MLX-4bit (**default**) | `vllm-mlx-claude-distill` |
+| 8002 | Qwen3.5-27B-4bit | `vllm-mlx-qwen-27b` |
+| 8003 | Qwen3.5-35B-A3B-4bit | `vllm-mlx-qwen-35b-4bit` |
+| 8004 | Qwen3.5-35B-A3B-8bit | `vllm-mlx-qwen-35b-8bit` |
+| 8005 | Qwen3.5-9B-MLX-4bit (**small_model**) | `vllm-mlx-qwen-9b` |
+| 8006 | gpt-oss-20b-MXFP4-Q8 | `vllm-mlx-gpt-oss` |
+
+The OpenAI API model id is the lowercased model directory name (e.g. `qwen3.5-27b-claude-4.6-opus-distilled-mlx-4bit`).
+
+**Workflow:**
+```bash
+# List discovered models and running instances
+mlx-serve list
+
+# Start the default model in background on its assigned port
+mlx-serve start claude-distill -d --port 8001
+
+# Start the small model used by OpenCode for cheap calls
+mlx-serve start qwen-9b -d --port 8005
+
+# Stop one or all
+mlx-serve stop 8001
+mlx-serve stop all
+```
+
+Only running instances will respond — OpenCode will list all 6 vllm-mlx models in its `/models` picker, but selecting a non-running one yields a connection error. Start the model you intend to use before launching `oc`.
+
+**LM Studio (fallback)**: Reachable at `http://localhost:1234/v1` via the `lmstudio` provider. Useful when LM Studio is already loaded or you need its model-manager UX. Slower than vllm-mlx for long contexts and parallel requests due to weaker KV cache management and GUI overhead.
 
 ### Ralph — Agentic Loop Job Runner (Claude Code / OpenCode)
 
