@@ -651,7 +651,7 @@ install_playwright() {
     # Install skills integration
     if command -v playwright-cli &> /dev/null; then
         print_info "Setting up Playwright CLI skills..."
-        if playwright-cli install --skills 2>/dev/null; then
+        if timeout 10 playwright-cli install --skills 2>/dev/null; then
             print_success "Playwright CLI skills installed"
         else
             print_warning "Failed to install Playwright CLI skills"
