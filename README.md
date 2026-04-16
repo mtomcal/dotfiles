@@ -2,6 +2,50 @@
 
 Personal development environment configuration for tmux, neovim, and zsh.
 
+## Table of Contents
+
+- [Features](#features)
+- [Quick Start](#quick-start)
+  - [Installation](#installation)
+  - [Post-Installation](#post-installation)
+- [Structure](#structure)
+- [Configuration Details](#configuration-details)
+  - [Tmux](#tmux)
+    - [Session Management](#session-management)
+    - [Windows & Panes](#windows--panes)
+    - [Copy Mode](#copy-mode)
+    - [Pane Layout Bindings](#pane-layout-bindings)
+    - [Nested Sessions](#nested-sessions)
+  - [Neovim](#neovim)
+    - [General Navigation](#general-navigation)
+    - [LSP (all languages)](#lsp-all-languages)
+    - [Git (inside Neovim)](#git-inside-neovim)
+    - [Adding Custom Plugins](#adding-custom-plugins)
+  - [Zsh](#zsh)
+  - [Node.js (fnm)](#nodejs-fnm)
+  - [Language Development](#language-development)
+    - [Python Development](#python-development)
+    - [Go (Golang) Development](#go-golang-development)
+  - [TUI Tools](#tui-tools)
+    - [Lazygit](#lazygit)
+    - [Yazi (File Manager)](#yazi-file-manager)
+    - [Zoxide (Smart cd)](#zoxide-smart-cd)
+  - [AI Coding Tools](#ai-coding-tools)
+    - [Codex CLI](#codex-cli)
+    - [Claude Code](#claude-code)
+    - [OpenCode CLI](#opencode-cli)
+    - [Gemini CLI](#gemini-cli)
+    - [GitHub Copilot CLI](#github-copilot-cli)
+- [Platform-Specific Notes](#platform-specific-notes)
+  - [Ubuntu/Debian](#ubuntudebian)
+  - [macOS](#macos)
+- [Updating](#updating)
+- [Customization](#customization)
+- [Deploying to New Servers](#deploying-to-new-servers)
+- [Troubleshooting](#troubleshooting)
+- [Requirements](#requirements)
+- [Credits](#credits)
+
 ## Features
 
 - **Tmux**: Vim-style navigation and keybindings with optimized settings for neovim
