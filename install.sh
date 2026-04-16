@@ -887,6 +887,15 @@ install_claude() {
     fi
     ln -s "$DOTFILES_DIR/claude/agents" "$HOME/.claude/agents"
 
+    # Link skills
+    if [ -L "$HOME/.claude/skills" ]; then
+        rm "$HOME/.claude/skills"
+    elif [ -d "$HOME/.claude/skills" ]; then
+        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+        mv "$HOME/.claude/skills" "$HOME/.claude/skills.backup.$TIMESTAMP"
+    fi
+    ln -s "$DOTFILES_DIR/.claude/skills" "$HOME/.claude/skills"
+
     # Link settings
     if [ -f "$HOME/.claude/settings.json" ] && [ ! -L "$HOME/.claude/settings.json" ]; then
         TIMESTAMP=$(date +%Y%m%d_%H%M%S)
