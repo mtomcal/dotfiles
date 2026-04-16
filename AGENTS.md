@@ -164,6 +164,9 @@ This design allows updating kickstart.nvim independently (`cd ~/.config/nvim && 
 - `neo-tree.lua` - File explorer with SSH-friendly ASCII icons
 - `diffview.lua` - Git diff viewer optimized for code review
 - `neogit.lua` - Interactive git interface for commits, rebases, pulls, pushes
+- `formatting.lua` - Multi-language formatting via conform.nvim (Go, Python, JS/TS, Lua, web); `<leader>f` to format on demand, also formats on save; prettier takes precedence over eslint_d for JS/TS; both only activate when their config file is found in the project
+- `indent-detect.lua` - vim-sleuth for heuristic indent auto-detection (fallback for projects without .editorconfig); EditorConfig support is built into Neovim 0.9+
+- `statusline-indent.lua` - Adds indent indicator to mini.statusline (e.g. `·2` = 2-space spaces, `→4` = 4-wide tabs)
 
 ### Tmux Configuration
 

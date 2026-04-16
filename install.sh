@@ -442,7 +442,7 @@ EOF
 
     # Install Mason packages (base language support)
     print_info "Installing Mason packages..."
-    MASON_PACKAGES="stylua ruff pyright"
+    MASON_PACKAGES="stylua ruff pyright prettier eslint_d"
 
     if nvim --headless "+MasonInstall $MASON_PACKAGES" +qa 2>/dev/null; then
         print_success "Mason packages installed"
