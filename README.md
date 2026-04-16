@@ -8,7 +8,7 @@ Personal development environment configuration for tmux, neovim, and zsh.
 - **Neovim**: Official [kickstart.nvim](https://github.com/nvim-lua/kickstart.nvim) base with custom plugin layer
 - **Zsh**: Oh My Zsh with custom aliases and tmux integration
 - **TUI Tools**: lazygit, yazi file manager, zoxide smart directory jumping
-- **AI Coding Tools**: Codex CLI, Claude Code, OpenCode CLI, and Gemini CLI with shared instructions
+- **AI Coding Tools**: Codex CLI, Claude Code, OpenCode CLI, Gemini CLI, and GitHub Copilot CLI with shared instructions
 - **Language Support**:
   - **Python**: Pyright LSP + Ruff linting/formatting with Poetry auto-detection
   - **Go (Golang)**: Full toolchain (gopls, delve debugger, gofumpt, goimports) with testing and debugging support
@@ -42,7 +42,7 @@ The installer provides a **menu-driven interface** with multiple installation pr
 |---------|----------|----------|
 | **Full** | Everything (Neovim, Tmux, Zsh, Go dev, Node.js, TUI tools, AI agents) | Complete development setup |
 | **Minimal** | Neovim + Tmux configs only | Quick editor setup |
-| **Work** | Neovim, Tmux, TUI tools, OpenCode (no personal tools) | Work machines |
+| **Work** | Neovim, Tmux, TUI tools, OpenCode, Copilot CLI | Work machines |
 
 **Non-Interactive Mode** (command-line flags):
 ```bash
@@ -86,6 +86,7 @@ The installer provides a **menu-driven interface** with multiple installation pr
 - `claude` - Claude Code CLI + MCP servers
 - `opencode` - OpenCode CLI
 - `gemini` - Gemini CLI (Google's open-source AI agent)
+- `copilot` - GitHub Copilot CLI (curl installer, work-network friendly)
 
 **Features**:
 - Automatic dependency resolution
@@ -136,6 +137,10 @@ dotfiles/
 │   ├── skills/            # Gemini CLI user skills
 │   ├── settings.json      # Gemini CLI settings (~/.gemini/settings.json)
 │   └── README.md          # Gemini CLI documentation
+├── copilot/
+│   ├── commands/          # Copilot CLI custom commands
+│   ├── agents/            # Copilot CLI agents
+│   └── skills/            # Copilot CLI skills (playwright-cli symlinked from .claude/skills)
 ├── lazygit/
 │   └── config.yml             # lazygit configuration
 ├── yazi/
@@ -389,6 +394,7 @@ vim.keymap.set('n', '<leader>x', '<cmd>MyCommand<CR>', { desc = 'My custom comma
 | `oc` | `opencode` |
 | `cx` | `codex` |
 | `gm` | `gemini` |
+| `cop` | `copilot` |
 
 ### Node.js (fnm)
 
@@ -591,7 +597,7 @@ Also integrates with yazi (`z` key).
 
 ### AI Coding Tools
 
-Four AI coding assistants are configured:
+Five AI coding assistants are configured:
 
 #### Codex CLI
 
@@ -653,6 +659,27 @@ gemini  # First launch prompts for Google account / API key
 **Usage**:
 ```bash
 gemini  # or `gm`
+```
+
+#### GitHub Copilot CLI
+
+GitHub's AI coding assistant for the terminal, requires an active Copilot subscription.
+
+**Installation**: Uses `curl -fsSL https://gh.io/copilot-install | bash` (work-network friendly, no npm required).
+
+**Authentication**:
+```bash
+copilot login
+```
+
+**Features**:
+- Custom commands in `~/.config/copilot/commands/`
+- Skills in `~/.config/copilot/skills/` (includes `playwright-cli`)
+- Included in both **full** and **work** profiles
+
+**Usage**:
+```bash
+copilot  # or `cop`
 ```
 
 **Adding Custom Commands / Skills**:
