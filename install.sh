@@ -576,7 +576,7 @@ install_golang_full() {
         print_info "Installing govulncheck (Go vulnerability scanner)..."
         # Clear build cache to avoid stale toolchain version mismatches after upgrades
         go clean -cache
-        if GOTOOLCHAIN=local go install golang.org/x/vuln/cmd/govulncheck@v1.1.4; then
+        if GOTOOLCHAIN=auto go install golang.org/x/vuln/cmd/govulncheck@latest; then
             print_success "govulncheck installed"
         else
             print_warning "Failed to install govulncheck"
