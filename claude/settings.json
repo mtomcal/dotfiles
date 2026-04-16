@@ -8,5 +8,6 @@
     "command": "~/.claude/statusline.sh"
   },
   "alwaysThinkingEnabled": false,
-  "skipDangerousModePermissionPrompt": true
+  "skipDangerousModePermissionPrompt": true,
+  "model": "sonnet"
 }
