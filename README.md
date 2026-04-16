@@ -147,7 +147,8 @@ dotfiles/
 │   ├── QUICK_REFERENCE.md     # Cheat sheets for all tools
 │   └── PYTHON_DEVELOPMENT.md  # Python development guide
 ├── tmux/
-│   └── .tmux.conf         # Tmux configuration
+│   ├── .tmux.conf         # Tmux configuration
+│   └── reverse-panes.sh   # Helper script for Ctrl-a R pane reversal
 ├── zsh/
 │   └── .zshrc.custom      # Custom zsh configuration
 └── nvim/
@@ -179,6 +180,13 @@ dotfiles/
 - `Ctrl-a r` - Reload tmux config
 - `Ctrl-a [` - Enter copy mode (use vim keys)
 - `F12` - Toggle nested tmux session control (see Nested Sessions below)
+
+**Pane Layout Bindings**:
+- `Ctrl-a M` - Merge all panes from current window into the left (previous) window as side-by-side splits
+- `Ctrl-a B` - Break current pane out into a new window
+- `Ctrl-a E` - Explode all panes in current window into separate windows (great for mobile)
+- `Ctrl-a V` - Rearrange all panes into equal vertical columns (`even-horizontal` layout)
+- `Ctrl-a R` - Reverse the order of all panes in the current window
 
 **Aliases** (in zsh):
 - `t` - Start tmux
