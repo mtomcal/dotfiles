@@ -17,7 +17,6 @@ Personal development environment configuration for tmux, neovim, and zsh.
 - **Git Integration**: diffview and neogit for comprehensive code review workflows
 - **Cross-platform**: Supports both Ubuntu/Debian (apt) and macOS (Homebrew)
 
-**Quick Reference**: See [docs/QUICK_REFERENCE.md](docs/QUICK_REFERENCE.md) for cheat sheets for every tool.
 
 ## Quick Start
 
@@ -144,7 +143,6 @@ dotfiles/
 │   ├── keymap.toml            # Vim keybindings + quick jumps
 │   └── theme.toml             # ASCII-friendly icons (no Nerd Fonts)
 ├── docs/
-│   ├── QUICK_REFERENCE.md     # Cheat sheets for all tools
 │   └── PYTHON_DEVELOPMENT.md  # Python development guide
 ├── tmux/
 │   ├── .tmux.conf         # Tmux configuration
@@ -152,9 +150,7 @@ dotfiles/
 ├── zsh/
 │   └── .zshrc.custom      # Custom zsh configuration
 └── nvim/
-    ├── README.md          # Neovim setup documentation
     └── custom/            # Custom neovim configs (symlinked)
-        ├── README.md      # Custom config documentation
         └── plugins/       # Your custom plugins (6 plugins)
             ├── go.lua     # Go debugging and testing
             ├── python.lua # Python linting with Ruff
@@ -170,31 +166,48 @@ dotfiles/
 
 **Prefix Key**: `Ctrl-a` (changed from default `Ctrl-b`)
 
-**Key Bindings**:
-- `Ctrl-a |` - Split window vertically
-- `Ctrl-a -` - Split window horizontally
-- `Ctrl-a h/j/k/l` - Navigate panes (vim-style)
-- `Ctrl-a H/J/K/L` - Resize panes (vim-style)
-- `Ctrl-a c` - Create new window (adjacent to current window)
-- `Ctrl-a d` - Detach from session
-- `Ctrl-a r` - Reload tmux config
-- `Ctrl-a [` - Enter copy mode (use vim keys)
-- `F12` - Toggle nested tmux session control (see Nested Sessions below)
+### Session Management
 
-**Pane Layout Bindings**:
-- `Ctrl-a M` - Merge all panes from current window into the left (previous) window as side-by-side splits
-- `Ctrl-a B` - Break current pane out into a new window
-- `Ctrl-a E` - Explode all panes in current window into separate windows (great for mobile)
-- `Ctrl-a V` - Rearrange all panes into equal vertical columns (`even-horizontal` layout)
-- `Ctrl-a R` - Reverse the order of all panes in the current window
+| Command | Action |
+|---------|--------|
+| `tn work` | New session named "work" |
+| `ta work` | Attach to session "work" |
+| `tl` | List all sessions |
+| `tk work` | Kill session "work" |
+| `td` | Detach from current session |
+| `Ctrl-a d` | Detach (inside tmux) |
 
-**Aliases** (in zsh):
-- `t` - Start tmux
-- `ta <session>` - Attach to session
-- `tn <session>` - New session
-- `tl` - List sessions
-- `tk <session>` - Kill session
-- `td` - Detach
+### Windows & Panes
+
+| Key | Action |
+|-----|--------|
+| `Ctrl-a c` | New window (adjacent to current) |
+| `Ctrl-a \|` | Split vertically |
+| `Ctrl-a -` | Split horizontally |
+| `Ctrl-a h/j/k/l` | Navigate panes (vim-style) |
+| `Ctrl-a H/J/K/L` | Resize panes |
+| `Ctrl-a Ctrl-h` | Previous window |
+| `Ctrl-a Ctrl-l` | Next window |
+| `Ctrl-a r` | Reload config |
+
+### Copy Mode
+
+| Key | Action |
+|-----|--------|
+| `Ctrl-a [` | Enter copy mode |
+| `v` | Start selection (in copy mode) |
+| `y` | Yank selection to clipboard |
+| `q` | Exit copy mode |
+
+### Pane Layout Bindings
+
+| Key | Action |
+|-----|--------|
+| `Ctrl-a M` | Merge all panes into previous window as side-by-side splits |
+| `Ctrl-a B` | Break current pane into a new window |
+| `Ctrl-a E` | Explode all panes into separate windows |
+| `Ctrl-a V` | Rearrange panes into equal vertical columns |
+| `Ctrl-a R` | Reverse order of all panes in current window |
 
 **Features**:
 - True color support
@@ -211,16 +224,16 @@ dotfiles/
 
 Perfect for managing tmux orchestration systems (like Claude Code session managers) within your existing tmux workflow.
 
+| Key | Action |
+|-----|--------|
+| `F12` | Toggle control to inner session (status bar dims) |
+| `F12` again | Toggle back to outer session |
+| `Ctrl-a Ctrl-a <key>` | Send command to inner session directly |
+
 *Two methods available:*
 
-1. **F12 Toggle** (Recommended)
-   - Press `F12` to toggle between outer and inner session control
-   - Visual indicator: Status bar dims when controlling inner session
-   - Press `F12` again to toggle back to outer session
-
-2. **Double Prefix**
-   - Use `Ctrl-a Ctrl-a` followed by your command
-   - Example: `Ctrl-a Ctrl-a c` creates a new window in the inner session
+1. **F12 Toggle** (Recommended) — status bar dims as visual indicator
+2. **Double Prefix** — `Ctrl-a Ctrl-a` followed by your command
 
 *Example workflow:*
 ```bash
@@ -260,17 +273,59 @@ git pull
 
 Your custom configs persist across updates!
 
+### General Navigation
+
+| Key | Action |
+|-----|--------|
+| `\` | Toggle file explorer (neo-tree) |
+| `<leader>sf` | Search files (Telescope) |
+| `<leader>sg` | Search by grep (Telescope) |
+| `<leader>sb` | Search buffers |
+| `<leader>sh` | Search help tags |
+| `<leader>sd` | Search diagnostics |
+| `K` | Hover documentation |
+
+### LSP (all languages)
+
+| Key | Action |
+|-----|--------|
+| `grd` | Go to definition |
+| `grr` | Go to references |
+| `gri` | Go to implementation |
+| `grt` | Go to type definition |
+| `grn` | Rename symbol |
+| `gra` | Code action |
+| `<leader>f` | Format buffer |
+
+### Git (inside Neovim)
+
+**Neogit** (interactive git):
+
+| Key | Action |
+|-----|--------|
+| `<leader>gg` | Open Neogit status |
+| `<leader>gc` | Git commit |
+| `<leader>gp` | Git pull |
+| `<leader>gP` | Git push |
+
+**Diffview** (code review):
+
+| Key | Action |
+|-----|--------|
+| `<leader>dv` | Open diff view (unstaged changes) |
+| `<leader>dc` | Close diff view |
+| `<leader>dh` | File history (current file) |
+| `<leader>df` | File history (all files) |
+
 **Current Custom Plugins**:
 
 1. **go.lua** - Go development with debugging and testing
    - nvim-dap-go for debugging
    - neotest-golang for test running
-   - Keybindings: `<leader>dt` (debug test), `<leader>db` (breakpoint), `<leader>tn` (nearest test)
 
 2. **python.lua** - Python linting with Ruff
    - Poetry project auto-detection
    - Real-time linting on save
-   - Keybindings: `<leader>l` (lint)
 
 3. **markdown.lua** - Beautiful markdown rendering
    - MeanderingProgrammer/render-markdown.nvim
@@ -280,12 +335,9 @@ Your custom configs persist across updates!
    - SSH-friendly ASCII icons
    - Git status tracking
 
-5. **diffview.nvim** - Git diff viewer
-   - Perfect for code review
-   - Keybindings: `<leader>dv` (open), `<leader>dc` (close), `<leader>dh` (history)
+5. **diffview.nvim** - Git diff viewer for code review
 
 6. **neogit.nvim** - Interactive git operations
-   - Keybindings: `<leader>gg` (open), `<leader>gc` (commit), `<leader>gp` (pull)
 
 **Adding Custom Plugins**:
 
@@ -322,11 +374,21 @@ vim.keymap.set('n', '<leader>x', '<cmd>MyCommand<CR>', { desc = 'My custom comma
 - fnm (Fast Node Manager) integration
 
 **Aliases**:
-- `vim`, `vi` → `nvim`
-- `lg` → `lazygit`
-- `y` → `yazi`
-- `oc` → `opencode`, `cx` → `codex`, `gm` → `gemini`
-- All tmux aliases listed above
+
+| Alias | Expands To |
+|-------|------------|
+| `vim`, `vi` | `nvim` |
+| `lg` | `lazygit` |
+| `y` | `yazi` |
+| `t` | `tmux` |
+| `ta <name>` | `tmux attach -t <name>` |
+| `tn <name>` | `tmux new -s <name>` |
+| `tl` | `tmux ls` |
+| `tk <name>` | `tmux kill-session -t <name>` |
+| `td` | `tmux detach` |
+| `oc` | `opencode` |
+| `cx` | `codex` |
+| `gm` | `gemini` |
 
 ### Node.js (fnm)
 
@@ -414,12 +476,42 @@ Terminal UI tools for file management, git, and navigation.
 
 A terminal UI for git commands. Launch with `lg`.
 
-**Quick start**:
-- `Space` on files to stage/unstage
-- `c` to commit
-- `P` to push, `p` to pull
-- `?` for full keybinding reference
-- Opens files in neovim (`e` key)
+### Navigation
+
+| Key | Action |
+|-----|--------|
+| `1-5` | Switch panels (status, files, branches, commits, stash) |
+| `h/l` | Cycle panels left/right |
+| `j/k` | Move up/down in panel |
+| `Enter` | Focus/expand item |
+| `q` | Quit |
+| `?` | Show all keybindings |
+
+### Common Operations
+
+| Key | Panel | Action |
+|-----|-------|--------|
+| `Space` | Files | Stage/unstage file |
+| `a` | Files | Stage/unstage all |
+| `c` | Files | Commit staged changes |
+| `P` | Files | Push |
+| `p` | Files | Pull |
+| `e` | Files | Edit file in neovim |
+| `Space` | Branches | Checkout branch |
+| `n` | Branches | New branch |
+| `M` | Branches | Merge into current |
+| `r` | Branches | Rebase onto current |
+| `z` | Any | Undo last action |
+
+**Workflow**:
+```
+lg                    # Launch lazygit
+Space (on files)      # Stage files
+c                     # Open commit message editor
+:wq                   # Save commit message
+P                     # Push to remote
+q                     # Quit
+```
 
 **Config**: `~/dotfiles/lazygit/config.yml` (auto-fetch enabled, neovim as editor)
 
@@ -427,13 +519,59 @@ A terminal UI for git commands. Launch with `lg`.
 
 Blazing-fast terminal file manager with vim keybindings. Launch with `y`.
 
-**Navigation**: `h/j/k/l` to navigate, `Enter` to open, `/` to search.
+### Navigation
 
-**File operations**: `y` yank, `x` cut, `p` paste, `r` rename, `a` new file, `A` new directory.
+| Key | Action |
+|-----|--------|
+| `h` | Go to parent directory |
+| `l` or `Enter` | Open file / enter directory |
+| `j/k` | Move down/up |
+| `G` | Jump to bottom |
+| `g g` | Jump to top |
+| `/` | Search in current directory |
+| `z` | Fuzzy jump with zoxide |
+| `Z` | Fuzzy jump with fzf |
 
-**Quick jumps** (custom): `gh` home, `gd` dotfiles, `gp` projects, `gt` /tmp.
+### Quick Directory Jumps (custom)
 
-**Fuzzy directory jump**: Press `z` inside yazi to use zoxide.
+| Key | Action |
+|-----|--------|
+| `g h` | Go to `~` (home) |
+| `g d` | Go to `~/dotfiles` |
+| `g p` | Go to `~/projects` |
+| `g t` | Go to `/tmp` |
+
+### File Operations
+
+| Key | Action |
+|-----|--------|
+| `y` | Yank (copy) |
+| `x` | Cut (mark for move) |
+| `p` | Paste (complete copy/move) |
+| `d` | Delete (trash) |
+| `D` | Permanent delete |
+| `r` | Rename |
+| `a` | Create new file |
+| `A` | Create new directory |
+| `.` | Toggle hidden files |
+| `e` | Edit in neovim |
+
+### Selection
+
+| Key | Action |
+|-----|--------|
+| `Space` | Toggle select current file |
+| `v` | Enter visual mode (select range) |
+| `V` | Select all in directory |
+| `Esc` | Clear selection |
+
+**Workflow: Move Files**:
+```
+j/k          # Navigate to file
+x            # Cut (mark for move)
+h/l          # Navigate to destination directory
+p            # Paste (completes the move)
+```
 
 **Config**: `~/dotfiles/yazi/` (SSH-friendly ASCII icons, no Nerd Fonts required)
 
@@ -441,16 +579,15 @@ Blazing-fast terminal file manager with vim keybindings. Launch with `y`.
 
 Tracks your most-visited directories and jumps to them with partial matches.
 
-```bash
-z dot          # Jumps to ~/dotfiles
-z proj         # Jumps to ~/projects
-z src comp     # Best match containing both "src" and "comp"
-zi             # Interactive selection with fzf
-```
+| Command | Action |
+|---------|--------|
+| `z foo` | Jump to highest-ranked directory matching "foo" |
+| `z foo bar` | Jump to directory matching both "foo" and "bar" |
+| `z ~/projects` | Works like regular `cd` for full paths |
+| `zi` | Interactive selection with fzf |
+| `zoxide query -ls` | Show all tracked directories with scores |
 
 Also integrates with yazi (`z` key).
-
-See [docs/QUICK_REFERENCE.md](docs/QUICK_REFERENCE.md) for comprehensive cheat sheets.
 
 ### AI Coding Tools
 
