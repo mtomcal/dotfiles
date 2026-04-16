@@ -54,11 +54,15 @@ The primary entry point is `./install.sh`, which:
   - `~/.gemini/commands/` → `~/dotfiles/gemini/commands/`
   - `~/.gemini/agents/` → `~/dotfiles/gemini/agents/`
   - `~/.gemini/skills/` → `~/dotfiles/gemini/skills/`
+- **GitHub Copilot CLI**:
+  - `~/.config/copilot/commands/` → `~/dotfiles/copilot/commands/`
+  - `~/.config/copilot/agents/` → `~/dotfiles/copilot/agents/`
+  - `~/.config/copilot/skills/` → `~/dotfiles/copilot/skills/`
 - Custom zsh config sourced in `~/.zshrc` (not symlinked)
 
 ### AI Coding Assistants
 
-This dotfiles setup supports **Codex CLI**, **Claude Code**, **OpenCode CLI**, and **Gemini CLI**, with **Playwright CLI** (`playwright-cli`) available for browser automation:
+This dotfiles setup supports **Codex CLI**, **Claude Code**, **OpenCode CLI**, **Gemini CLI**, and **GitHub Copilot CLI**, with **Playwright CLI** (`playwright-cli`) available for browser automation:
 
 **Codex CLI**:
 - Configuration: `codex/` directory
@@ -92,6 +96,15 @@ This dotfiles setup supports **Codex CLI**, **Claude Code**, **OpenCode CLI**, a
 - Installed via `npm install -g --prefix ~/.local @google/gemini-cli@latest` (same `~/.local` prefix as Codex so it survives `fnm` Node version switches)
 - Reference clone: `~/Code/gemini-cli` (upstream repo for docs and source spelunking)
 - Authenticate by running `gemini` — first launch prompts for Google account / API key
+
+**GitHub Copilot CLI**:
+- Configuration: `copilot/` directory
+- Commands: `copilot/commands/` (symlinked to `~/.config/copilot/commands/`)
+- Agents: `copilot/agents/` (symlinked to `~/.config/copilot/agents/`)
+- Skills: `copilot/skills/` (symlinked to `~/.config/copilot/skills/`); `playwright-cli` skill symlinked from `.claude/skills/playwright-cli`
+- Installed via `curl -fsSL https://gh.io/copilot-install | bash` (binary at `~/.local/bin/copilot`)
+- Authenticate by running `copilot login`
+- Requires an active GitHub Copilot subscription
 
 #### Local Model Backends
 
@@ -323,6 +336,7 @@ Shell aliases are available for common operations:
 - `claude` - Launch Claude Code
 - `oc` or `opencode` - Launch OpenCode CLI
 - `gm` or `gemini` - Launch Gemini CLI
+- `cop` or `copilot` - Launch GitHub Copilot CLI
 - Tmux aliases: `t`, `ta`, `tn`, `tl`, `tk`, `td`
 
 ## Working with Multiple AI Assistants

@@ -1164,6 +1164,60 @@ install_gemini() {
     print_info "Run 'gemini' to authenticate (Google account / API key)"
 }
 
+install_copilot() {
+    print_header "Installing GitHub Copilot CLI"
+
+    # GitHub Copilot CLI is installed via official curl installer.
+    # Binary lands in ~/.local/bin/copilot (non-root default).
+    if ! command -v curl &> /dev/null; then
+        print_error "curl not found. Install base tools first."
+        return 1
+    fi
+
+    mkdir -p "$HOME/.local/bin"
+    print_info "Installing/updating GitHub Copilot CLI via curl installer..."
+    curl -fsSL https://gh.io/copilot-install | bash
+
+    if [ ! -x "$HOME/.local/bin/copilot" ]; then
+        print_error "Copilot CLI install failed: ~/.local/bin/copilot not found"
+        return 1
+    fi
+
+    print_success "GitHub Copilot CLI installed at ~/.local/bin/copilot"
+
+    mkdir -p "$HOME/.config/copilot"
+
+    # Link commands directory
+    if [ -L "$HOME/.config/copilot/commands" ]; then
+        rm "$HOME/.config/copilot/commands"
+    elif [ -d "$HOME/.config/copilot/commands" ]; then
+        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+        mv "$HOME/.config/copilot/commands" "$HOME/.config/copilot/commands.backup.$TIMESTAMP"
+    fi
+    ln -s "$DOTFILES_DIR/copilot/commands" "$HOME/.config/copilot/commands"
+
+    # Link agents directory
+    if [ -L "$HOME/.config/copilot/agents" ]; then
+        rm "$HOME/.config/copilot/agents"
+    elif [ -d "$HOME/.config/copilot/agents" ]; then
+        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+        mv "$HOME/.config/copilot/agents" "$HOME/.config/copilot/agents.backup.$TIMESTAMP"
+    fi
+    ln -s "$DOTFILES_DIR/copilot/agents" "$HOME/.config/copilot/agents"
+
+    # Link skills directory
+    if [ -L "$HOME/.config/copilot/skills" ]; then
+        rm "$HOME/.config/copilot/skills"
+    elif [ -d "$HOME/.config/copilot/skills" ]; then
+        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+        mv "$HOME/.config/copilot/skills" "$HOME/.config/copilot/skills.backup.$TIMESTAMP"
+    fi
+    ln -s "$DOTFILES_DIR/copilot/skills" "$HOME/.config/copilot/skills"
+
+    print_success "GitHub Copilot CLI configured"
+    print_info "Run 'copilot login' to authenticate with GitHub"
+}
+
 # ===========================
 # Dependency Resolution
 # ===========================
@@ -1239,6 +1293,14 @@ resolve_dependencies() {
                 fi
                 resolved+=("gemini")
                 ;;
+            "copilot")
+                # Copilot CLI uses curl installer
+                if ! command -v curl &> /dev/null; then
+                    print_warning "Adding curl (required by Copilot CLI)"
+                    resolved+=("base_tools")
+                fi
+                resolved+=("copilot")
+                ;;
             "playwright")
                 # Playwright CLI needs npm (Node.js)
                 if ! command -v npm &> /dev/null; then
@@ -1273,7 +1335,7 @@ show_profile_menu() {
     echo "     Neovim + config, Tmux + config"
     echo ""
     echo "  3) Work Profile"
-    echo "     Neovim, Tmux, TUI tools, OpenCode (no personal tools)"
+    echo "     Neovim, Tmux, TUI tools, OpenCode, Copilot CLI"
     echo ""
     echo "  4) Custom (pick components)"
     echo "     Interactive component selection"
@@ -1285,13 +1347,13 @@ show_profile_menu() {
 
     case $choice in
         1)
-            SELECTED_MODULES=(base_tools neovim nvim_config tmux_config zsh_ohmyzsh zsh_config golang_full nodejs tui_tools codex claude playwright opencode gemini)
+            SELECTED_MODULES=(base_tools neovim nvim_config tmux_config zsh_ohmyzsh zsh_config golang_full nodejs tui_tools codex claude playwright opencode gemini copilot)
             ;;
         2)
             SELECTED_MODULES=(base_tools neovim nvim_config tmux_config)
             ;;
         3)
-            SELECTED_MODULES=(base_tools neovim nvim_config tmux_config tui_tools opencode)
+            SELECTED_MODULES=(base_tools neovim nvim_config tmux_config tui_tools opencode copilot)
             ;;
         4)
             show_custom_menu
@@ -1328,6 +1390,7 @@ show_custom_menu() {
         "gemini:Gemini CLI"
         "tui_tools:TUI Tools (lazygit, yazi, zoxide)"
         "playwright:Playwright CLI (browser automation)"
+        "copilot:GitHub Copilot CLI"
     )
 
     # Initialize all as unselected
@@ -1359,15 +1422,15 @@ show_custom_menu() {
             echo "  $i) $desc"
             ((i++))
         done
-        echo "  15) Toggle All"
-        echo "  16) Done"
+        echo "  16) Toggle All"
+        echo "  17) Done"
         echo ""
 
-        read -p "Enter number to toggle (or 16 when done): " choice
+        read -p "Enter number to toggle (or 17 when done): " choice
 
-        if [ "$choice" == "16" ]; then
+        if [ "$choice" == "17" ]; then
             break
-        elif [ "$choice" == "15" ]; then
+        elif [ "$choice" == "16" ]; then
             # Toggle all
             local all_selected=1
             for key in "${!selections[@]}"; do
@@ -1384,7 +1447,7 @@ show_custom_menu() {
                     selections[$key]=1
                 fi
             done
-        elif [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le "${#options[@]}" ]; then
+        elif [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le 15 ]; then
             # Toggle individual selection
             local idx=$((choice - 1))
             local opt="${options[$idx]}"
@@ -1436,6 +1499,7 @@ show_installation_summary() {
             "gemini") echo "  • Gemini CLI" ;;
             "tui_tools") echo "  • TUI Tools (lazygit, yazi, zoxide)" ;;
             "playwright") echo "  • Playwright CLI (browser automation)" ;;
+            "copilot") echo "  • GitHub Copilot CLI" ;;
         esac
     done
 
@@ -1535,6 +1599,11 @@ execute_modules() {
                     FAILED_MODULES+=("playwright")
                 fi
                 ;;
+            "copilot")
+                if ! install_copilot; then
+                    FAILED_MODULES+=("copilot")
+                fi
+                ;;
         esac
     done
 }
@@ -1553,13 +1622,13 @@ parse_arguments() {
             --profile)
                 case $2 in
                     full)
-                        SELECTED_MODULES=(base_tools neovim nvim_config tmux_config zsh_ohmyzsh zsh_config golang_full nodejs tui_tools codex claude playwright opencode gemini)
+                        SELECTED_MODULES=(base_tools neovim nvim_config tmux_config zsh_ohmyzsh zsh_config golang_full nodejs tui_tools codex claude playwright opencode gemini copilot)
                         ;;
                     minimal)
                         SELECTED_MODULES=(base_tools neovim nvim_config tmux_config)
                         ;;
                     work)
-                        SELECTED_MODULES=(base_tools neovim nvim_config tmux_config tui_tools opencode)
+                        SELECTED_MODULES=(base_tools neovim nvim_config tmux_config tui_tools opencode copilot)
                         ;;
                     *)
                         print_error "Unknown profile: $2"
@@ -1609,7 +1678,7 @@ Options:
 Profiles:
   full                Everything (includes Go development environment)
   minimal             Editors only (Neovim + Tmux)
-  work                Work setup (Neovim, Tmux, OpenCode - no Go)
+  work                Work setup (Neovim, Tmux, OpenCode, Copilot - no Go)
 
 Modules:
   base_tools          Base tools (git, curl, tmux, zsh, etc.)
@@ -1626,6 +1695,7 @@ Modules:
   claude              Claude Code CLI
   opencode            OpenCode CLI
   gemini              Gemini CLI
+  copilot             GitHub Copilot CLI
   playwright          Playwright CLI (browser automation)
 
 Examples:
@@ -1703,6 +1773,7 @@ main() {
     echo "  • Claude Code: claude auth login"
     echo "  • OpenCode: opencode auth login"
     echo "  • Gemini CLI: gemini (first run prompts for auth)"
+    echo "  • Copilot CLI: copilot login"
     echo ""
     print_success "Happy coding!"
 
