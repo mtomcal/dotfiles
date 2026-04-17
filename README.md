@@ -237,6 +237,8 @@ dotfiles/
 | `Ctrl-a H/J/K/L` | Resize panes |
 | `Ctrl-a Ctrl-h` | Previous window |
 | `Ctrl-a Ctrl-l` | Next window |
+| `Ctrl-a <` | Move current window left (swap with previous) |
+| `Ctrl-a >` | Move current window right (swap with next) |
 | `Ctrl-a r` | Reload config |
 
 ### Copy Mode
@@ -252,7 +254,7 @@ dotfiles/
 
 | Key | Action |
 |-----|--------|
-| `Ctrl-a M` | Merge all panes into previous window as side-by-side splits |
+| `Ctrl-a M` | Merge current window's panes into previous window as side-by-side splits |
 | `Ctrl-a B` | Break current pane into a new window |
 | `Ctrl-a E` | Explode all panes into separate windows |
 | `Ctrl-a V` | Rearrange panes into equal vertical columns |
