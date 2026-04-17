@@ -1,3 +1,5 @@
+name = "playwright-visual-qa"
+description = "Visual QA agent that navigates web pages, captures screenshots, inspects accessibility, and reports visual and network issues using playwright-cli."
 model_reasoning_effort = "medium"
 
 developer_instructions = """

@@ -1,3 +1,5 @@
+name = "test-quality-verifier"
+description = "Audits test files for vague assertions, checks coverage, fixes problems, and reports results."
 model_reasoning_effort = "high"
 
 developer_instructions = """
