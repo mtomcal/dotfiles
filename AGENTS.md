@@ -85,7 +85,7 @@ This dotfiles setup supports **Codex CLI**, **Claude Code**, **OpenCode CLI**, *
 - Project template: `opencode/opencode.project.json` (for project-specific overrides)
 - Shared instructions: This AGENTS.md file
 - Uses Build/Plan mode switching
-- **Local-models only**: Frontier models are accessed via vendor harnesses (Claude Code, Codex). OpenCode is configured exclusively for local MLX models served by vllm-mlx (primary) or LM Studio (fallback). No cloud providers are configured.
+- **Primarily local models**: Local MLX models served by vllm-mlx (primary) or LM Studio (fallback). OpenRouter (built-in provider) available for large open-source models too big to run locally. Authenticate via `/connect` in OpenCode.
 
 **Gemini CLI**:
 - Configuration: `gemini/` directory (symlinked into `~/.gemini/`)
@@ -140,6 +140,15 @@ mlx-serve stop all
 Only running instances will respond — OpenCode will list all 6 vllm-mlx models in its `/models` picker, but selecting a non-running one yields a connection error. Start the model you intend to use before launching `oc`.
 
 **LM Studio (fallback)**: Reachable at `http://localhost:1234/v1` via the `lmstudio` provider. Useful when LM Studio is already loaded or you need its model-manager UX. Slower than vllm-mlx for long contexts and parallel requests due to weaker KV cache management and GUI overhead.
+
+#### Cloud Model Backend
+
+**OpenRouter (built-in)**: Provides access to large open-source models that exceed local MLX memory. Models are auto-discovered — authenticate via `/connect` in OpenCode, then browse available models in `/models`. Context limits are pinned in `opencode.json` since auto-detection is unreliable.
+
+| Model | Context | Output | OpenCode model selector |
+|-------|---------|--------|------------------------|
+| Kimi K2.6 (Moonshot AI) | 262K | 262K | `openrouter/moonshotai/kimi-k2.6` |
+| DeepSeek V3.2 | 131K | 65K | `openrouter/deepseek/deepseek-v3.2` |
 
 ### Ralph — Agentic Loop Job Runner (Claude Code / OpenCode)
 

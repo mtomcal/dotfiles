@@ -90,6 +90,22 @@
         }
       }
     },
+    "openrouter": {
+      "models": {
+        "moonshotai/kimi-k2.6": {
+          "limit": {
+            "context": 262144,
+            "output": 262144
+          }
+        },
+        "deepseek/deepseek-v3.2": {
+          "limit": {
+            "context": 131072,
+            "output": 65536
+          }
+        }
+      }
+    },
     "lmstudio": {
       "npm": "@ai-sdk/openai-compatible",
       "name": "LM Studio (Local fallback)",
