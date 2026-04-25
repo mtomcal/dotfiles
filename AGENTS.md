@@ -43,12 +43,10 @@ The primary entry point is `./install.sh`, which:
   - `~/.codex/AGENTS.md` → `~/dotfiles/codex/AGENTS.md` (optional global instructions)
   - `~/.agents/skills/` → `~/dotfiles/shared/skills/`
 - **Claude Code**:
-  - `~/.claude/commands` → `~/dotfiles/claude/commands`
   - `~/.claude/agents` → `~/dotfiles/claude/agents`
   - `~/.claude/skills/` → `~/dotfiles/shared/skills/`
   - `~/.claude/settings.json` → `~/dotfiles/claude/settings.json`
 - **OpenCode CLI**:
-  - `~/.config/opencode/commands/` → `~/dotfiles/opencode/commands/`
   - `~/.config/opencode/agents/` → `~/dotfiles/opencode/agents/`
   - `~/.config/opencode/skills/` → `~/dotfiles/shared/skills/`
   - `~/.config/opencode/opencode.json` → `~/dotfiles/opencode/opencode.json`
@@ -59,7 +57,6 @@ The primary entry point is `./install.sh`, which:
   - `~/.gemini/agents/` → `~/dotfiles/gemini/agents/`
   - `~/.gemini/skills/` → `~/dotfiles/shared/skills/`
 - **GitHub Copilot CLI**:
-  - `~/.config/copilot/commands/` → `~/dotfiles/copilot/commands/`
   - `~/.config/copilot/agents/` → `~/dotfiles/copilot/agents/`
   - `~/.config/copilot/skills/` → `~/dotfiles/shared/skills/`
 - Custom zsh config sourced in `~/.zshrc` (not symlinked)
@@ -81,13 +78,11 @@ This dotfiles setup supports **Codex CLI**, **Claude Code**, **OpenCode CLI**, *
 
 **Claude Code**:
 - Configuration: `claude/` directory
-- Commands: `/ralph` — configure and launch `loop.sh` agentic loop jobs
 - Agents: `claude/agents/` — includes `test-quality-verifier` for post-implementation test quality checks and `playwright-visual-qa` for browser-based Visual QA via Playwright CLI
 - Settings: `claude/settings.json`
 
 **OpenCode CLI**:
 - Configuration: `opencode/` directory
-- Commands: `opencode/commands/` (includes `/ralph`)
 - Agents: `opencode/agents/` (includes `test-quality-verifier`, `playwright-visual-qa`)
 - Skills: `shared/skills/` (symlinked to `~/.config/opencode/skills/`)
 - Standard config: `opencode/opencode.json` (symlinked globally)
@@ -99,7 +94,6 @@ This dotfiles setup supports **Codex CLI**, **Claude Code**, **OpenCode CLI**, *
 **Gemini CLI**:
 - Configuration: `gemini/` directory (symlinked into `~/.gemini/`)
 - Settings: `gemini/settings.json` → `~/.gemini/settings.json`
-- Custom slash commands (TOML): `gemini/commands/` → `~/.gemini/commands/`
 - User subagents (Markdown): `gemini/agents/` → `~/.gemini/agents/`
 - User skills: `gemini/skills/` → `~/.gemini/skills/`
 - Installed via `npm install -g --prefix ~/.local @google/gemini-cli@latest` (same `~/.local` prefix as Codex so it survives `fnm` Node version switches)
@@ -108,7 +102,6 @@ This dotfiles setup supports **Codex CLI**, **Claude Code**, **OpenCode CLI**, *
 
 **GitHub Copilot CLI**:
 - Configuration: `copilot/` directory
-- Commands: `copilot/commands/` (symlinked to `~/.config/copilot/commands/`)
 - Agents: `copilot/agents/` (symlinked to `~/.config/copilot/agents/`)
 - Skills: `copilot/skills/` (symlinked to `~/.config/copilot/skills/`); `playwright-cli` skill symlinked from `.claude/skills/playwright-cli`
 - Installed via `curl -fsSL https://gh.io/copilot-install | bash` (binary at `~/.local/bin/copilot`)
@@ -264,8 +257,7 @@ Update the install script's dependency installation section (install.sh:114-138)
 - **Tmux**: Edit `tmux/.tmux.conf`, reload with `tmux source-file ~/.tmux.conf` or Ctrl-a r
 - **Zsh**: Edit `zsh/.zshrc.custom`, reload with `source ~/.zshrc`
 - **Neovim**: Add plugins in `nvim/custom/plugins/`, restart neovim (lazy.nvim auto-installs)
-- **Claude Code**: Add markdown files to `claude/commands/`, they become slash commands
-- **OpenCode**: Add markdown files to `opencode/commands/`, `opencode/agents/`, or `opencode/skills/` for custom workflows
+- **OpenCode**: Add markdown files to `opencode/agents/` for custom agent workflows
 
 ### Language-Specific Development
 
@@ -363,5 +355,5 @@ This setup allows seamless switching between Claude Code and OpenCode:
 - Both tools share the same project context via this AGENTS.md file
 - Both tools have `/ralph` plus matching test/visual QA agent workflows
 - OpenCode provides a terminal TUI with Plan/Build mode switching
-- Both tools support custom commands, agents, and skills via their respective directories
+- Both tools support agents and skills via their respective directories
 - Choose the tool based on your needs - both have full context

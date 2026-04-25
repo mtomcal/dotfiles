@@ -178,21 +178,21 @@ dotfiles/
 │   └── README.md          # Codex documentation
 ├── claude/
 │   ├── agents/            # Claude Code subagents
-│   ├── commands/          # Claude Code slash commands
+
 │   ├── settings.json      # Claude Code settings
 │   └── README.md          # Claude Code documentation
 ├── opencode/
-│   ├── commands/          # OpenCode CLI slash commands
+
 │   ├── agents/            # OpenCode CLI agents
 │   ├── opencode.json      # OpenCode config (symlinked globally)
 │   └── README.md          # OpenCode documentation
 ├── gemini/
-│   ├── commands/          # Gemini CLI custom slash commands (TOML)
+
 │   ├── agents/            # Gemini CLI user-level subagents (Markdown)
 │   ├── settings.json      # Gemini CLI settings (~/.gemini/settings.json)
 │   └── README.md          # Gemini CLI documentation
 ├── copilot/
-│   ├── commands/          # Copilot CLI custom commands
+
 │   └── agents/            # Copilot CLI agents
 ├── lazygit/
 │   └── config.yml             # lazygit configuration
@@ -729,8 +729,6 @@ See [claude/README.md](claude/README.md) for details.
 claude auth login
 ```
 
-**Available Commands**:
-- `/ralph` - Configure and launch `loop.sh` agentic loop jobs (PROMPT.md + IMPLEMENTATION_PLAN.md + ORCHESTRATOR.md)
 
 #### OpenCode CLI
 
@@ -763,7 +761,6 @@ gemini  # First launch prompts for Google account / API key
 ```
 
 **Features**:
-- Custom slash commands (TOML) in `~/.gemini/commands/`
 - User-level subagents in `~/.gemini/agents/`
 - User-level skills in `~/.gemini/skills/`
 - MCP server support via `~/.gemini/settings.json`
@@ -785,8 +782,7 @@ copilot login
 ```
 
 **Features**:
-- Custom commands in `~/.config/copilot/commands/`
-- Skills in `~/.config/copilot/skills/` (includes `playwright-cli`)
+- Skills in `~/.config/copilot/skills/` (symlinked to `shared/skills/`)
 - Included in both **full** and **work** profiles
 
 **Usage**:
@@ -805,20 +801,6 @@ mkdir ~/dotfiles/shared/skills/my-skill
 nvim ~/dotfiles/shared/skills/my-skill/SKILL.md
 ```
 
-**Agent-specific slash commands** (for `/ralph`-style triggered workflows, not general capabilities):
-
-```bash
-# Claude Code — adds a /command-name slash command
-nvim ~/dotfiles/claude/commands/my-command.md
-
-# OpenCode — adds a /command-name slash command
-nvim ~/dotfiles/opencode/commands/my-command.md
-
-# Gemini CLI — TOML format
-nvim ~/dotfiles/gemini/commands/my-command.toml
-```
-
-For most new capabilities, prefer adding a shared skill over a per-agent command.
 
 ## Platform-Specific Notes
 
