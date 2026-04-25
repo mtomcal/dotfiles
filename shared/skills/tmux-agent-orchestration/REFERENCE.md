@@ -273,6 +273,50 @@ Hard rule:
 - `fix pushed` is not done
 - `all required checks green` is done
 
+## Merge Drift Follow-Up
+
+Before sending a worker back onto an open PR, inspect the PR's current mergeability:
+
+```bash
+gh pr view <pr-number> --json mergeStateStatus,headRefName,baseRefName,url
+```
+
+Interpretation:
+
+- `CLEAN`: no merge-conflict follow-up is needed right now
+- `DIRTY`: the PR must be reconciled against the base branch
+- other states still warrant inspection before you assume the branch is current
+
+When a PR has gone stale because another PR merged first:
+
+1. send the original worker back onto that PR
+2. tell it to fetch `origin`
+3. rebase or merge `origin/main` into the PR branch
+4. inspect conflict hunks for behavioral correctness, not just textual resolution
+5. pay attention to silent auto-merge drift in overlapping files even when there are no conflict markers
+6. rerun the targeted verification plus the broader suite needed for confidence
+7. push the updated branch
+8. re-check `gh pr view` or `gh pr checks`
+
+Important:
+
+- a locally rebased branch may still look stale on GitHub until it is pushed
+- `git status --short --branch` showing `ahead` and `behind` after a rebase usually means the local branch is updated but the remote PR branch is not yet
+- do not report the PR as refreshed until the push completes
+
+### Silent semantic drift
+
+Conflict markers are not the only risk. Auto-merged files can still be wrong.
+
+Review especially:
+
+- shared adapter layers
+- publication and transport code
+- event routing files
+- any place where two refactors changed the same behavior through different abstractions
+
+If a newer path on `main` still hand-builds behavior that the rebased PR was centralizing, fix that composition gap explicitly.
+
 ## When To Avoid TUI Steering
 
 For one-shot tasks like opening a PR, a non-interactive mode such as `codex exec` can be more reliable than steering an idle TUI pane.
@@ -325,6 +369,52 @@ Symptom:
 Fix:
 - inspect outcomes via git state, remote branches, or PR list instead of assuming they completed
 
+### Local branch updated, PR still stale
+
+Symptom:
+- worker says the rebase finished
+- local branch is ahead/behind
+- GitHub PR still shows `DIRTY` or an old head SHA
+
+Fix:
+- wait for verification to finish
+- push the rebased branch
+- re-check `gh pr view <pr-number> --json mergeStateStatus,headRefOid`
+
+### False-negative cleanup check
+
+Symptom:
+- a removal command ran, but an immediate existence check still reports the old path
+
+Fix:
+- re-run the filesystem check directly
+- prefer `ls` or `find` against the exact path over relying on one stale-looking result
+- treat the second direct check as authoritative
+
+## Cleanup
+
+After all work is merged or explicitly abandoned, clean up both the session and the clones.
+
+### Kill the orchestration session
+
+```bash
+tmux kill-session -t <session-name>
+tmux list-sessions
+```
+
+Verify the named worker session is gone before you assume cleanup is complete.
+
+### Remove the clone bundle
+
+```bash
+rm -rf /path/to/clone-bundle
+find /path/to/clone-bundle -maxdepth 1
+```
+
+If the check reports the directory still exists, run a second direct `ls` or `find` on that exact path. Filesystem checks can occasionally look inconsistent when issued back-to-back; verify again before concluding cleanup failed.
+
+Keep unrelated tmux sessions intact. Only remove the worker session and clone bundle associated with this orchestration run.
+
 ## Monitoring Cadence
 
 For each worker, keep checking:
@@ -359,5 +449,8 @@ git ls-remote --heads https://github.com/owner/repo.git 'codex/*'
 - [ ] pane shows `Working` after steering
 - [ ] clone remotes are correct before push/PR tasks
 - [ ] PRs are created from clean branches off `origin/main`
+- [ ] merge-drift follow-ups start by checking `mergeStateStatus`
+- [ ] rebased PR branches are pushed before reporting them refreshed
 - [ ] CI is monitored until green, not just until PR creation
 - [ ] monitor by pane output and git state, not assumption
+- [ ] worker session and clone bundle are cleaned up at the end
