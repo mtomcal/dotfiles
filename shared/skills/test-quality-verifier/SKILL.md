@@ -1,6 +1,7 @@
 ---
 name: test-quality-verifier
-description: Audit tests for vague assertions, improve coverage, and produce a structured report. Pairs well with @test_quality_verifier.
+description: Audit tests for vague assertions, improve coverage, and produce a structured report. Pairs well with @test_quality_verifier. Use when auditing tests for vague assertions, improving coverage, or validating test quality.
+allowed-tools: Bash(rg:*) Bash(npm:*) Bash(go:*) Bash(pytest:*)
 metadata:
   short-description: Verify and improve test quality
 ---

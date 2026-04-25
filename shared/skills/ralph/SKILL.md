@@ -1,6 +1,6 @@
 ---
 name: ralph
-description: Configure and run a loop.sh agentic loop job (PROMPT.md + IMPLEMENTATION_PLAN.md + ORCHESTRATOR.md).
+description: Configure and run a loop.sh agentic loop job (PROMPT.md + IMPLEMENTATION_PLAN.md + ORCHESTRATOR.md). Use when setting up or launching a loop.sh iterative agentic job.
 metadata:
   short-description: Set up loop.sh iterative jobs
 ---
