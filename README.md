@@ -658,11 +658,11 @@ All five agents share a single skills directory at `shared/skills/`. Every agent
 | `playwright-visual-qa` | Quick visual QA loop: screenshot, a11y snapshot, console and network checks against a URL |
 | `test-quality-verifier` | Audit tests for vague assertions, improve coverage, produce a structured report |
 | `ralph` | Set up and launch a `loop.sh` iterative agentic job (PROMPT.md + IMPLEMENTATION_PLAN.md + ORCHESTRATOR.md) |
-| `write-a-skill` | Interactively create a new agent skill with proper structure and frontmatter |
-| `improve-codebase-architecture` | Find and fix architectural friction — shallow modules, poor seams, testability gaps |
+| `improve-codebase-architecture` | Find and fix architectural friction — shallow modules, poor seams, testability gaps _(based on [mattpocock/skills](https://github.com/mattpocock/skills))_ |
 | `tmux-agent-orchestration` | Launch, steer, and monitor parallel CLI agents in tmux with per-worker clones |
-| `ubiquitous-language` | Extract a DDD-style glossary from a conversation and save it to `UBIQUITOUS_LANGUAGE.md` |
+| `ubiquitous-language` | Extract a DDD-style glossary from a conversation and save it to `UBIQUITOUS_LANGUAGE.md` _(based on [mattpocock/skills](https://github.com/mattpocock/skills))_ |
 | `audit-shared-skills` | Audit `shared/skills/` for cross-agent frontmatter compatibility, flag and fix issues |
+| `write-a-skill` | Interactively create a new agent skill with proper structure and frontmatter _(based on [mattpocock/skills](https://github.com/mattpocock/skills))_ |
 
 **Adding a new skill**:
 
@@ -967,6 +967,7 @@ Should point to `~/dotfiles/nvim/custom`
 - [kickstart.nvim](https://github.com/nvim-lua/kickstart.nvim) - Neovim configuration by TJ DeVries
 - [Oh My Zsh](https://github.com/ohmyzsh/ohmyzsh) - Zsh framework
 - [tmux](https://github.com/tmux/tmux) - Terminal multiplexer
+- [mattpocock/skills](https://github.com/mattpocock/skills) - Original source for `improve-codebase-architecture`, `ubiquitous-language`, and `write-a-skill` skills (modified for cross-agent compatibility)
 
 ## License
 
