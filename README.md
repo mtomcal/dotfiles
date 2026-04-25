@@ -31,6 +31,7 @@ Personal development environment configuration for tmux, neovim, and zsh.
     - [Yazi (File Manager)](#yazi-file-manager)
     - [Zoxide (Smart cd)](#zoxide-smart-cd)
   - [AI Coding Tools](#ai-coding-tools)
+    - [Shared Skills](#shared-skills)
     - [Codex CLI](#codex-cli)
     - [Claude Code](#claude-code)
     - [OpenCode CLI](#opencode-cli)
@@ -644,6 +645,49 @@ Also integrates with yazi (`z` key).
 ### AI Coding Tools
 
 Five AI coding assistants are configured:
+
+#### Shared Skills
+
+All five agents share a single skills directory at `shared/skills/`. Every agent's skills path is symlinked here, so a skill installed via `npx skills@latest add` into any agent lands in one canonical place and is instantly available to all agents.
+
+**Available skills**:
+
+| Skill | Description |
+|-------|-------------|
+| `playwright-cli` | Browser automation — navigate, click, fill, screenshot, and debug web pages via `playwright-cli` |
+| `playwright-visual-qa` | Quick visual QA loop: screenshot, a11y snapshot, console and network checks against a URL |
+| `test-quality-verifier` | Audit tests for vague assertions, improve coverage, produce a structured report |
+| `ralph` | Set up and launch a `loop.sh` iterative agentic job (PROMPT.md + IMPLEMENTATION_PLAN.md + ORCHESTRATOR.md) |
+| `write-a-skill` | Interactively create a new agent skill with proper structure and frontmatter |
+| `improve-codebase-architecture` | Find and fix architectural friction — shallow modules, poor seams, testability gaps |
+| `tmux-agent-orchestration` | Launch, steer, and monitor parallel CLI agents in tmux with per-worker clones |
+| `ubiquitous-language` | Extract a DDD-style glossary from a conversation and save it to `UBIQUITOUS_LANGUAGE.md` |
+| `audit-shared-skills` | Audit `shared/skills/` for cross-agent frontmatter compatibility, flag and fix issues |
+
+**Adding a new skill**:
+
+```bash
+# Via npx (installs into shared/skills/ automatically)
+npx skills@latest add
+
+# Or create manually
+mkdir shared/skills/my-skill
+nvim shared/skills/my-skill/SKILL.md
+```
+
+**Skill frontmatter schema** (required fields for all agents):
+
+```yaml
+---
+name: skill-name
+description: What it does. Use when [trigger condition].  # max 1024 chars
+metadata:
+  short-description: Short label (≤6 words)   # Codex/OpenCode
+allowed-tools: Bash(cmd:*)                    # Claude Code only, if needed
+---
+```
+
+Run the `audit-shared-skills` skill in any agent to verify all skills are compatible.
 
 #### Codex CLI
 
