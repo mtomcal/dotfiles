@@ -1,6 +1,6 @@
 ---
 name: ralph
-description: Configure and run a loop.sh agentic loop job (PROMPT.md + IMPLEMENTATION_PLAN.md + ORCHESTRATOR.md) driven by Codex CLI.
+description: Configure and run a loop.sh agentic loop job (PROMPT.md + IMPLEMENTATION_PLAN.md + ORCHESTRATOR.md).
 metadata:
   short-description: Set up loop.sh iterative jobs
 ---

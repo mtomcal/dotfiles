@@ -894,7 +894,7 @@ install_claude() {
         TIMESTAMP=$(date +%Y%m%d_%H%M%S)
         mv "$HOME/.claude/skills" "$HOME/.claude/skills.backup.$TIMESTAMP"
     fi
-    ln -s "$DOTFILES_DIR/.claude/skills" "$HOME/.claude/skills"
+    ln -s "$DOTFILES_DIR/shared/skills" "$HOME/.claude/skills"
 
     # Link settings
     if [ -f "$HOME/.claude/settings.json" ] && [ ! -L "$HOME/.claude/settings.json" ]; then
@@ -981,7 +981,7 @@ install_opencode() {
         TIMESTAMP=$(date +%Y%m%d_%H%M%S)
         mv "$HOME/.config/opencode/skills" "$HOME/.config/opencode/skills.backup.$TIMESTAMP"
     fi
-    ln -s "$DOTFILES_DIR/opencode/skills" "$HOME/.config/opencode/skills"
+    ln -s "$DOTFILES_DIR/shared/skills" "$HOME/.config/opencode/skills"
 
     # Link AGENTS.md
     if [ -f "$HOME/.config/opencode/AGENTS.md" ] && [ ! -L "$HOME/.config/opencode/AGENTS.md" ]; then
@@ -1086,7 +1086,7 @@ install_codex() {
         TIMESTAMP=$(date +%Y%m%d_%H%M%S)
         mv "$HOME/.agents/skills" "$HOME/.agents/skills.backup.$TIMESTAMP"
     fi
-    ln -s "$DOTFILES_DIR/codex/skills" "$HOME/.agents/skills"
+    ln -s "$DOTFILES_DIR/shared/skills" "$HOME/.agents/skills"
 
     print_success "Codex configured"
     print_info "Run 'codex login' to authenticate"
@@ -1158,7 +1158,7 @@ install_gemini() {
         TIMESTAMP=$(date +%Y%m%d_%H%M%S)
         mv "$HOME/.gemini/skills" "$HOME/.gemini/skills.backup.$TIMESTAMP"
     fi
-    ln -s "$DOTFILES_DIR/gemini/skills" "$HOME/.gemini/skills"
+    ln -s "$DOTFILES_DIR/shared/skills" "$HOME/.gemini/skills"
 
     print_success "Gemini CLI configured"
     print_info "Run 'gemini' to authenticate (Google account / API key)"
@@ -1212,7 +1212,7 @@ install_copilot() {
         TIMESTAMP=$(date +%Y%m%d_%H%M%S)
         mv "$HOME/.config/copilot/skills" "$HOME/.config/copilot/skills.backup.$TIMESTAMP"
     fi
-    ln -s "$DOTFILES_DIR/copilot/skills" "$HOME/.config/copilot/skills"
+    ln -s "$DOTFILES_DIR/shared/skills" "$HOME/.config/copilot/skills"
 
     print_success "GitHub Copilot CLI configured"
     print_info "Run 'copilot login' to authenticate with GitHub"

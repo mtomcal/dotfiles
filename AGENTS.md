@@ -34,39 +34,48 @@ The primary entry point is `./install.sh`, which:
 - `~/.config/nvim/lua/custom/` → `~/dotfiles/nvim/custom/`
 - **lazygit**: `~/.config/lazygit/config.yml` → `~/dotfiles/lazygit/config.yml`
 - **yazi**: `~/.config/yazi/{yazi,keymap,theme}.toml` → `~/dotfiles/yazi/*.toml`
+- **Shared skills** (all agents):
+  - All agent skill paths → `~/dotfiles/shared/skills/` (single canonical source)
+  - Skills installed via `npx skills@latest add` into any agent's skills dir land directly in `shared/skills/` via the symlink
 - **Codex CLI**:
   - `~/.codex/config.toml` ← copied from `~/dotfiles/codex/config.toml` template
   - `~/.codex/agents/` → `~/dotfiles/codex/agents/`
   - `~/.codex/AGENTS.md` → `~/dotfiles/codex/AGENTS.md` (optional global instructions)
-  - `~/.agents/skills/` → `~/dotfiles/codex/skills/`
+  - `~/.agents/skills/` → `~/dotfiles/shared/skills/`
 - **Claude Code**:
   - `~/.claude/commands` → `~/dotfiles/claude/commands`
   - `~/.claude/agents` → `~/dotfiles/claude/agents`
+  - `~/.claude/skills/` → `~/dotfiles/shared/skills/`
   - `~/.claude/settings.json` → `~/dotfiles/claude/settings.json`
 - **OpenCode CLI**:
   - `~/.config/opencode/commands/` → `~/dotfiles/opencode/commands/`
   - `~/.config/opencode/agents/` → `~/dotfiles/opencode/agents/`
-  - `~/.config/opencode/skills/` → `~/dotfiles/opencode/skills/`
+  - `~/.config/opencode/skills/` → `~/dotfiles/shared/skills/`
   - `~/.config/opencode/opencode.json` → `~/dotfiles/opencode/opencode.json`
   - `~/.config/opencode/AGENTS.md` → `~/dotfiles/AGENTS.md` (this file)
 - **Gemini CLI**:
   - `~/.gemini/settings.json` → `~/dotfiles/gemini/settings.json`
   - `~/.gemini/commands/` → `~/dotfiles/gemini/commands/`
   - `~/.gemini/agents/` → `~/dotfiles/gemini/agents/`
-  - `~/.gemini/skills/` → `~/dotfiles/gemini/skills/`
+  - `~/.gemini/skills/` → `~/dotfiles/shared/skills/`
 - **GitHub Copilot CLI**:
   - `~/.config/copilot/commands/` → `~/dotfiles/copilot/commands/`
   - `~/.config/copilot/agents/` → `~/dotfiles/copilot/agents/`
-  - `~/.config/copilot/skills/` → `~/dotfiles/copilot/skills/`
+  - `~/.config/copilot/skills/` → `~/dotfiles/shared/skills/`
 - Custom zsh config sourced in `~/.zshrc` (not symlinked)
 
 ### AI Coding Assistants
 
 This dotfiles setup supports **Codex CLI**, **Claude Code**, **OpenCode CLI**, **Gemini CLI**, and **GitHub Copilot CLI**, with **Playwright CLI** (`playwright-cli`) available for browser automation:
 
+**Shared Skills**:
+- All agents share a single canonical skills directory: `shared/skills/`
+- Every agent's skills path is symlinked to `shared/skills/` — skills installed via `npx skills@latest add` to any agent land here automatically
+- Frontmatter union schema: `name`, `description`, `metadata.short-description` (Codex/OpenCode), `allowed-tools` (Claude Code)
+
 **Codex CLI**:
 - Configuration: `codex/` directory
-- Skills: `codex/skills/` (symlinked to `~/.agents/skills/`)
+- Skills: `shared/skills/` (symlinked to `~/.agents/skills/`)
 - Agent roles: `codex/agents/` (symlinked to `~/.codex/agents/`)
 - Global config template: `codex/config.toml` (copied to local `~/.codex/config.toml`)
 
@@ -80,7 +89,7 @@ This dotfiles setup supports **Codex CLI**, **Claude Code**, **OpenCode CLI**, *
 - Configuration: `opencode/` directory
 - Commands: `opencode/commands/` (includes `/ralph`)
 - Agents: `opencode/agents/` (includes `test-quality-verifier`, `playwright-visual-qa`)
-- Skills: `opencode/skills/` (one-to-one mirrors for `ralph`, `test-quality-verifier`, `playwright-visual-qa`)
+- Skills: `shared/skills/` (symlinked to `~/.config/opencode/skills/`)
 - Standard config: `opencode/opencode.json` (symlinked globally)
 - Project template: `opencode/opencode.project.json` (for project-specific overrides)
 - Shared instructions: This AGENTS.md file
