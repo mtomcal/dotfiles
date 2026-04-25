@@ -666,11 +666,25 @@ All five agents share a single skills directory at `shared/skills/`. Every agent
 
 **Adding a new skill**:
 
-```bash
-# Via npx (installs into shared/skills/ automatically)
-npx skills@latest add
+Skills from any GitHub-hosted collection can be installed with one command. Because all agent skills paths are symlinked to `shared/skills/`, installing into any agent puts the skill everywhere.
 
-# Or create manually
+```bash
+# Install from a GitHub skills repo (e.g. mattpocock/skills)
+npx skills@latest add mattpocock/skills/tdd
+npx skills@latest add mattpocock/skills/grill-me
+npx skills@latest add mattpocock/skills/git-guardrails-claude-code
+
+# Browse all available skills in a collection first
+npx skills@latest list mattpocock/skills
+
+# Or create a skill from scratch (interactive)
+npx skills@latest add
+```
+
+After installing, run the `audit-shared-skills` skill to verify the new skill's frontmatter is compatible across all agents.
+
+```bash
+# Or create a skill file manually
 mkdir shared/skills/my-skill
 nvim shared/skills/my-skill/SKILL.md
 ```
