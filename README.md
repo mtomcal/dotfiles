@@ -160,32 +160,40 @@ nvim
 dotfiles/
 ├── install.sh              # Installation script (Ubuntu + macOS)
 ├── README.md              # This file
-├── AGENTS.md              # Shared AI agent instructions
+├── AGENTS.md              # Shared AI agent instructions (all agents read this)
+├── shared/
+│   └── skills/            # Canonical skills dir — symlinked into every agent
+│       ├── playwright-cli/
+│       ├── playwright-visual-qa/
+│       ├── test-quality-verifier/
+│       ├── ralph/
+│       ├── write-a-skill/
+│       ├── improve-codebase-architecture/
+│       ├── tmux-agent-orchestration/
+│       ├── ubiquitous-language/
+│       └── audit-shared-skills/
 ├── codex/
 │   ├── agents/            # Codex agent role configs (~/.codex/agents)
-│   ├── skills/            # Codex skills (~/.agents/skills)
 │   ├── config.toml        # Codex config template (copied to ~/.codex/config.toml)
 │   └── README.md          # Codex documentation
 ├── claude/
-│   ├── agents/            # Custom AI agents (available for future use)
+│   ├── agents/            # Claude Code subagents
 │   ├── commands/          # Claude Code slash commands
-│   │   └── ralph.md      # Agentic loop job runner
 │   ├── settings.json      # Claude Code settings
 │   └── README.md          # Claude Code documentation
 ├── opencode/
-│   ├── commands/          # OpenCode CLI commands (available for future use)
-│   ├── agents/            # OpenCode CLI agents (available for future use)
+│   ├── commands/          # OpenCode CLI slash commands
+│   ├── agents/            # OpenCode CLI agents
+│   ├── opencode.json      # OpenCode config (symlinked globally)
 │   └── README.md          # OpenCode documentation
 ├── gemini/
 │   ├── commands/          # Gemini CLI custom slash commands (TOML)
 │   ├── agents/            # Gemini CLI user-level subagents (Markdown)
-│   ├── skills/            # Gemini CLI user skills
 │   ├── settings.json      # Gemini CLI settings (~/.gemini/settings.json)
 │   └── README.md          # Gemini CLI documentation
 ├── copilot/
 │   ├── commands/          # Copilot CLI custom commands
-│   ├── agents/            # Copilot CLI agents
-│   └── skills/            # Copilot CLI skills (playwright-cli symlinked from .claude/skills)
+│   └── agents/            # Copilot CLI agents
 ├── lazygit/
 │   └── config.yml             # lazygit configuration
 ├── yazi/
@@ -786,19 +794,27 @@ copilot login
 copilot  # or `cop`
 ```
 
-**Adding Custom Commands / Skills**:
+**Adding Custom Skills** (shared across all agents):
 
 ```bash
-# Codex (skills)
-ls ~/dotfiles/codex/skills
+# Install from a GitHub skills collection
+npx skills@latest add mattpocock/skills/tdd
 
-# Claude Code
+# Or create manually — lands in shared/skills/ and is available everywhere
+mkdir ~/dotfiles/shared/skills/my-skill
+nvim ~/dotfiles/shared/skills/my-skill/SKILL.md
+```
+
+**Adding Agent-Specific Commands**:
+
+```bash
+# Claude Code slash command
 nvim ~/dotfiles/claude/commands/my-command.md
 
-# OpenCode
+# OpenCode slash command
 nvim ~/dotfiles/opencode/commands/my-command.md
 
-# Gemini CLI (TOML)
+# Gemini CLI slash command (TOML format)
 nvim ~/dotfiles/gemini/commands/my-command.toml
 ```
 
