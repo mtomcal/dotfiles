@@ -713,7 +713,7 @@ Run the `audit-shared-skills` skill in any agent to verify all skills are compat
 
 #### Codex CLI
 
-Codex CLI is configured via `codex/` (skills + agent roles). See `codex/README.md`.
+Codex CLI is configured via `codex/` (agents + config). See `codex/README.md`.
 
 **Authentication**:
 ```bash
@@ -722,7 +722,7 @@ codex login
 
 #### Claude Code
 
-Custom `/ralph` skill for running agentic loop jobs. See [claude/README.md](claude/README.md) for details.
+See [claude/README.md](claude/README.md) for details.
 
 **Authentication**:
 ```bash
@@ -805,18 +805,20 @@ mkdir ~/dotfiles/shared/skills/my-skill
 nvim ~/dotfiles/shared/skills/my-skill/SKILL.md
 ```
 
-**Adding Agent-Specific Commands**:
+**Agent-specific slash commands** (for `/ralph`-style triggered workflows, not general capabilities):
 
 ```bash
-# Claude Code slash command
+# Claude Code — adds a /command-name slash command
 nvim ~/dotfiles/claude/commands/my-command.md
 
-# OpenCode slash command
+# OpenCode — adds a /command-name slash command
 nvim ~/dotfiles/opencode/commands/my-command.md
 
-# Gemini CLI slash command (TOML format)
+# Gemini CLI — TOML format
 nvim ~/dotfiles/gemini/commands/my-command.toml
 ```
+
+For most new capabilities, prefer adding a shared skill over a per-agent command.
 
 ## Platform-Specific Notes
 
