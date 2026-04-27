@@ -786,7 +786,7 @@ All agents inherit the active model — switch models with `Ctrl+P` and subagent
 
 ##### Pi Sandbox (`pis`)
 
-Run Pi inside a Docker container for safe agentic coding. The container is ephemeral — destroyed after each session. Your project directory is mounted read-write; everything else on the host is isolated.
+Run Pi inside a Docker container for safe agentic coding. The container is ephemeral — destroyed after each session. Your project directory is mounted read-write; everything else on the host is isolated. Pi runs inside a tmux session, enabling the tmux orchestration skill to spawn additional Pi agents in separate panes/windows.
 
 **Prerequisites**: Docker must be installed. The image builds automatically on first run.
 
@@ -821,6 +821,9 @@ pis ~/Code/lib -- --mode rpc            # Extra dir + pi args
 | `~/.pi/agent/settings.json` | `/root/.pi/agent/settings.json` | read-only |
 | `~/.pi/agent/models.json` | `/root/.pi/agent/models.json` | read-only |
 | `~/.pi/agent/skills/` | `/root/.pi/agent/skills/` | read-only |
+| `~/.pi/agent/agents/` | `/root/.pi/agent/agents/` | read-only |
+| `~/.pi/agent/prompts/` | `/root/.pi/agent/prompts/` | read-only |
+| `~/.pi/agent/extensions/` | `/root/.pi/agent/extensions/` | read-only |
 
 **Environment**: API key env vars (`*_API_KEY`) are forwarded automatically.
 
