@@ -1,6 +1,6 @@
 {
   "enableSkillCommands": true,
   "lastChangelogVersion": "0.70.2",
-  "defaultProvider": "openrouter",
-  "defaultModel": "minimax/minimax-m2.7"
+  "defaultProvider": "ollama-cloud",
+  "defaultModel": "kimi-k2.6"
 }
