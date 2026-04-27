@@ -1432,7 +1432,7 @@ show_profile_menu() {
 show_custom_menu() {
     print_header "Custom Component Selection"
 
-    declare -A selections
+    # Parallel arrays instead of associative array (bash 3.2 compat)
     local options=(
         "base_tools:Base Tools (git, curl, tmux, zsh, etc.)"
         "neovim:Neovim 0.10+"
@@ -1451,11 +1451,14 @@ show_custom_menu() {
         "playwright:Playwright CLI (browser automation)"
         "copilot:GitHub Copilot CLI"
     )
+    local count=${#options[@]}
+    local toggle_num=$((count + 1))
+    local done_num=$((count + 2))
 
-    # Initialize all as unselected
-    for opt in "${options[@]}"; do
-        key="${opt%%:*}"
-        selections[$key]=0
+    # Indexed selection state (0 = off, 1 = on)
+    local selected=()
+    for ((i=0; i<count; i++)); do
+        selected[$i]=0
     done
 
     while true; do
@@ -1463,10 +1466,9 @@ show_custom_menu() {
         print_header "Select Components"
 
         echo "Current selections:"
-        for opt in "${options[@]}"; do
-            key="${opt%%:*}"
-            desc="${opt#*:}"
-            if [ "${selections[$key]}" == "1" ]; then
+        for ((i=0; i<count; i++)); do
+            local desc="${options[$i]#*:}"
+            if [ "${selected[$i]}" == "1" ]; then
                 echo "  [X] $desc"
             else
                 echo "  [ ] $desc"
@@ -1475,46 +1477,40 @@ show_custom_menu() {
 
         echo ""
         echo "Options:"
-        local i=1
-        for opt in "${options[@]}"; do
-            desc="${opt#*:}"
-            echo "  $i) $desc"
-            ((i++))
+        for ((i=0; i<count; i++)); do
+            local desc="${options[$i]#*:}"
+            echo "  $((i + 1))) $desc"
         done
-        echo "  17) Toggle All"
-        echo "  18) Done"
+        echo "  ${toggle_num}) Toggle All"
+        echo "  ${done_num}) Done"
         echo ""
 
-        read -p "Enter number to toggle (or 18 when done): " choice
+        read -p "Enter number to toggle (or ${done_num} when done): " choice
 
-        if [ "$choice" == "18" ]; then
+        if [ "$choice" == "$done_num" ]; then
             break
-        elif [ "$choice" == "17" ]; then
+        elif [ "$choice" == "$toggle_num" ]; then
             # Toggle all
             local all_selected=1
-            for key in "${!selections[@]}"; do
-                if [ "${selections[$key]}" == "0" ]; then
+            for ((i=0; i<count; i++)); do
+                if [ "${selected[$i]}" == "0" ]; then
                     all_selected=0
                     break
                 fi
             done
-
-            for key in "${!selections[@]}"; do
+            for ((i=0; i<count; i++)); do
                 if [ "$all_selected" == "1" ]; then
-                    selections[$key]=0
+                    selected[$i]=0
                 else
-                    selections[$key]=1
+                    selected[$i]=1
                 fi
             done
-        elif [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le 16 ]; then
-            # Toggle individual selection
+        elif [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le "$count" ]; then
             local idx=$((choice - 1))
-            local opt="${options[$idx]}"
-            local key="${opt%%:*}"
-            if [ "${selections[$key]}" == "1" ]; then
-                selections[$key]=0
+            if [ "${selected[$idx]}" == "1" ]; then
+                selected[$idx]=0
             else
-                selections[$key]=1
+                selected[$idx]=1
             fi
         else
             print_error "Invalid choice"
@@ -1524,9 +1520,9 @@ show_custom_menu() {
 
     # Build selected modules array
     SELECTED_MODULES=()
-    for opt in "${options[@]}"; do
-        key="${opt%%:*}"
-        if [ "${selections[$key]}" == "1" ]; then
+    for ((i=0; i<count; i++)); do
+        if [ "${selected[$i]}" == "1" ]; then
+            local key="${options[$i]%%:*}"
             SELECTED_MODULES+=("$key")
         fi
     done
