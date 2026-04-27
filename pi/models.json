@@ -9,11 +9,11 @@
         "supportsReasoningEffort": false
       },
       "models": [
-        { "id": "glm-5.1" },
-        { "id": "minimax-m2.7" },
-        { "id": "kimi-k2.6" },
-        { "id": "deepseek-v4-pro" },
-        { "id": "deepseek-v4-flash" }
+        { "id": "glm-5.1", "name": "GLM 5.1 (198K)", "contextWindow": 198000, "maxTokens": 16384 },
+        { "id": "minimax-m2.7", "name": "MiniMax M2.7 (200K)", "contextWindow": 200000, "maxTokens": 16384 },
+        { "id": "kimi-k2.6", "name": "Kimi K2.6 (256K)", "contextWindow": 256000, "maxTokens": 16384, "input": ["text", "image"] },
+        { "id": "deepseek-v4-pro", "name": "DeepSeek V4 Pro (1M)", "contextWindow": 1000000, "maxTokens": 16384, "reasoning": true },
+        { "id": "deepseek-v4-flash", "name": "DeepSeek V4 Flash (1M)", "contextWindow": 1000000, "maxTokens": 16384, "reasoning": true }
       ]
     }
   }
