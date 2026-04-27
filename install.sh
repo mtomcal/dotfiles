@@ -990,6 +990,34 @@ install_pi() {
         ln -s "$DOTFILES_DIR/pi/models.json" "$HOME/.pi/agent/models.json"
     fi
 
+    # Link agents directory
+    if [ -L "$HOME/.pi/agent/agents" ]; then
+        rm "$HOME/.pi/agent/agents"
+    elif [ -d "$HOME/.pi/agent/agents" ]; then
+        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+        mv "$HOME/.pi/agent/agents" "$HOME/.pi/agent/agents.backup.$TIMESTAMP"
+    fi
+    ln -s "$DOTFILES_DIR/pi/agents" "$HOME/.pi/agent/agents"
+
+    # Link prompts directory
+    if [ -L "$HOME/.pi/agent/prompts" ]; then
+        rm "$HOME/.pi/agent/prompts"
+    elif [ -d "$HOME/.pi/agent/prompts" ]; then
+        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+        mv "$HOME/.pi/agent/prompts" "$HOME/.pi/agent/prompts.backup.$TIMESTAMP"
+    fi
+    ln -s "$DOTFILES_DIR/pi/prompts" "$HOME/.pi/agent/prompts"
+
+    # Link subagent extension
+    if [ -L "$HOME/.pi/agent/extensions/subagent" ]; then
+        rm "$HOME/.pi/agent/extensions/subagent"
+    elif [ -d "$HOME/.pi/agent/extensions/subagent" ]; then
+        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+        mv "$HOME/.pi/agent/extensions/subagent" "$HOME/.pi/agent/extensions/subagent.backup.$TIMESTAMP"
+    fi
+    mkdir -p "$HOME/.pi/agent/extensions"
+    ln -s "$DOTFILES_DIR/pi/extensions/subagent" "$HOME/.pi/agent/extensions/subagent"
+
     print_success "Pi coding agent configured"
     print_info "Run 'pi' to start (first launch prompts for authentication)"
 }
