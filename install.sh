@@ -1018,6 +1018,15 @@ install_pi() {
     mkdir -p "$HOME/.pi/agent/extensions"
     ln -s "$DOTFILES_DIR/pi/extensions/subagent" "$HOME/.pi/agent/extensions/subagent"
 
+    # Link web-search extension
+    if [ -L "$HOME/.pi/agent/extensions/web-search" ]; then
+        rm "$HOME/.pi/agent/extensions/web-search"
+    elif [ -d "$HOME/.pi/agent/extensions/web-search" ]; then
+        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+        mv "$HOME/.pi/agent/extensions/web-search" "$HOME/.pi/agent/extensions/web-search.backup.$TIMESTAMP"
+    fi
+    ln -s "$DOTFILES_DIR/pi/extensions/web-search" "$HOME/.pi/agent/extensions/web-search"
+
     print_success "Pi coding agent configured"
     print_info "Run 'pi' to start (first launch prompts for authentication)"
 }
