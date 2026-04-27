@@ -41,19 +41,21 @@ ENV PATH="/usr/local/go/bin:${PATH}"
 ENV GOPATH="/root/go-workspace"
 ENV PATH="${GOPATH}/bin:${PATH}"
 
-# fnm + Node.js LTS
+# fnm + Node.js LTS + Pi coding agent
+# Combined into one RUN so fnm's PATH is available for npm install
 ENV FNM_DIR="/root/.local/share/fnm"
-RUN curl -fsSL https://fnm.vercel.app/install | bash -s -- --install-dir "${FNM_DIR}" --skip-shell
-ENV PATH="${FNM_DIR}:${PATH}"
-RUN eval "$(${FNM_DIR}/fnm env --shell bash)" \
+RUN curl -fsSL https://fnm.vercel.app/install | bash -s -- --install-dir "${FNM_DIR}" --skip-shell \
+    && export PATH="${FNM_DIR}:${PATH}" \
+    && eval "$(fnm env --shell bash)" \
     && fnm install --lts \
-    && fnm default lts-latest
-# Ensure fnm shims are on PATH for all subsequent RUN and runtime
-SHELL ["/bin/bash", "-c"]
-ENV PATH="/root/.local/share/fnm/aliases/lts-latest/installation/bin:${PATH}"
+    && fnm default lts-latest \
+    && npm install -g @mariozechner/pi-coding-agent@latest
 
-# Pi coding agent
-RUN npm install -g @mariozechner/pi-coding-agent@latest
+# Resolve node binary path for subsequent layers and runtime.
+# fnm aliases/default/ IS the node installation root (contains bin/, lib/).
+# Docker ENV can't follow symlinks, so create a stable /usr/local/node link.
+RUN ln -sf "${FNM_DIR}/aliases/default" /usr/local/node
+ENV PATH="/usr/local/node/bin:${FNM_DIR}:${PATH}"
 
 # fd-find is installed as fdfind on Debian; alias it
 RUN ln -sf "$(which fdfind)" /usr/local/bin/fd
