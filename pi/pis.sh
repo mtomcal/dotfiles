@@ -121,16 +121,24 @@ DOCKER_ARGS=(
 DOCKER_ARGS+=("${EXTRA_VOLUMES[@]}")
 
 # Forward API key env vars that are set
-for VAR in $(env | grep -oP '^[A-Z_]*API[_]?KEY(?==)'); do
-    DOCKER_ARGS+=("-e" "$VAR")
-done
-
-# Also forward common auth env vars
 for VAR in ANTHROPIC_API_KEY OPENAI_API_KEY GOOGLE_API_KEY GEMINI_API_KEY; do
     if [[ -n "${!VAR}" ]]; then
         DOCKER_ARGS+=("-e" "$VAR")
     fi
 done
+
+# Also forward any other *_API_KEY or *_API_TOKEN env vars
+while IFS='=' read -r key _; do
+    case "$key" in
+        *API_KEY|*API_TOKEN|*APIKEY)
+            # Skip if already added above
+            case "$key" in
+                ANTHROPIC_API_KEY|OPENAI_API_KEY|GOOGLE_API_KEY|GEMINI_API_KEY) ;;
+                *) DOCKER_ARGS+=("-e" "$key") ;;
+            esac
+            ;;
+    esac
+done < <(env)
 
 # ===========================
 # Ensure mount sources exist
