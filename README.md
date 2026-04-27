@@ -35,6 +35,7 @@ Personal development environment configuration for tmux, neovim, and zsh.
     - [Codex CLI](#codex-cli)
     - [Claude Code](#claude-code)
     - [Pi Coding Agent](#pi-coding-agent)
+      - [Pi Sandbox (`pis`)](#pi-sandbox-pis)
     - [Gemini CLI](#gemini-cli)
     - [GitHub Copilot CLI](#github-copilot-cli)
 - [Platform-Specific Notes](#platform-specific-notes)
@@ -130,6 +131,7 @@ The installer provides a **menu-driven interface** with multiple installation pr
 - `codex` - Codex CLI + skills + agent roles
 - `claude` - Claude Code CLI + MCP servers
 - `pi` - Pi Coding Agent
+- `pi_sandbox` - Pi Sandbox (Docker image + `pis` script)
 - `gemini` - Gemini CLI (Google's open-source AI agent)
 - `copilot` - GitHub Copilot CLI (curl installer, work-network friendly)
 
@@ -183,7 +185,9 @@ dotfiles/
 │   └── README.md          # Claude Code documentation
 ├── pi/
 │   ├── settings.json      # Pi settings (symlinked to ~/.pi/agent/)
-│   └── models.json        # Pi custom provider definitions
+│   ├── models.json        # Pi custom provider definitions
+│   ├── Dockerfile         # Pi sandbox Docker image
+│   └── pis.sh             # Pi sandbox wrapper script (~/.local/bin/pis)
 ├── gemini/
 
 │   ├── agents/            # Gemini CLI user-level subagents (Markdown)
@@ -747,6 +751,48 @@ pi  # First launch prompts for authentication
 ```bash
 pi  # Start interactive session
 ```
+
+##### Pi Sandbox (`pis`)
+
+Run Pi inside a Docker container for safe agentic coding. The container is ephemeral — destroyed after each session. Your project directory is mounted read-write; everything else on the host is isolated.
+
+**Prerequisites**: Docker must be installed. The image builds automatically on first run.
+
+**Basic usage**:
+```bash
+pis                     # Run pi in cwd (sandboxed)
+pis --build             # Rebuild the Docker image
+```
+
+**Mounting extra directories** (read-only by default):
+```bash
+pis ~/Code/shared-lib                    # Mount read-only
+pis -rw ~/Code/shared-lib               # Mount read-write
+pis ~/Code/lib1 ~/Code/lib2             # Multiple dirs (both read-only)
+pis -rw ~/Code/lib1 ~/Code/lib2         # First read-write, second read-only
+```
+
+**Passing arguments to Pi** (use `--` separator):
+```bash
+pis -- --mode print -p "fix the tests"  # Pi args after --
+pis ~/Code/lib -- --mode rpc            # Extra dir + pi args
+```
+
+**What's mounted in the container**:
+
+| Host path | Container path | Mode |
+|-----------|---------------|------|
+| Current directory | Same absolute path | read-write |
+| Extra directories | Same absolute path | read-only (or `-rw`) |
+| `~/.pi/agent/sessions/` | `/root/.pi/agent/sessions/` | read-write |
+| `~/.pi/agent/auth.json` | `/root/.pi/agent/auth.json` | read-only |
+| `~/.pi/agent/settings.json` | `/root/.pi/agent/settings.json` | read-only |
+| `~/.pi/agent/models.json` | `/root/.pi/agent/models.json` | read-only |
+| `~/.pi/agent/skills/` | `/root/.pi/agent/skills/` | read-only |
+
+**Environment**: API key env vars (`*_API_KEY`) are forwarded automatically.
+
+**Container toolchains**: Ubuntu 24.04, Node.js LTS (fnm), Python 3, Go 1.24+, tmux, git, ripgrep, fd, jq, gh, build-essential, zsh.
 
 #### Gemini CLI
 

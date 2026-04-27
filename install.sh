@@ -994,6 +994,36 @@ install_pi() {
     print_info "Run 'pi' to start (first launch prompts for authentication)"
 }
 
+install_pi_sandbox() {
+    print_header "Installing Pi Sandbox (Docker)"
+
+    if ! command -v docker &> /dev/null; then
+        print_error "Docker not found. Install Docker first."
+        return 1
+    fi
+
+    # Build the Docker image
+    print_info "Building Pi sandbox Docker image (pis:latest)..."
+    if docker build -t "pis:latest" "$DOTFILES_DIR/pi/"; then
+        print_success "Pi sandbox Docker image built"
+    else
+        print_error "Failed to build Pi sandbox Docker image"
+        return 1
+    fi
+
+    # Symlink pis script
+    mkdir -p "$HOME/.local/bin"
+    if [ -L "$HOME/.local/bin/pis" ]; then
+        rm "$HOME/.local/bin/pis"
+    elif [ -f "$HOME/.local/bin/pis" ]; then
+        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+        mv "$HOME/.local/bin/pis" "$HOME/.local/bin/pis.backup.$TIMESTAMP"
+    fi
+    ln -s "$DOTFILES_DIR/pi/pis.sh" "$HOME/.local/bin/pis"
+
+    print_success "Pi sandbox configured (run 'pis' to launch)"
+}
+
 install_codex() {
     print_header "Installing Codex CLI"
 
@@ -1270,6 +1300,13 @@ resolve_dependencies() {
                 fi
                 resolved+=("pi")
                 ;;
+            "pi_sandbox")
+                # Pi sandbox needs Docker (not installed by this script) and pi
+                if ! command -v docker &> /dev/null; then
+                    print_warning "Docker required for Pi sandbox (install Docker separately)"
+                fi
+                resolved+=("pi_sandbox")
+                ;;
             "codex")
                 # Codex CLI install uses npm
                 if ! command -v npm &> /dev/null; then
@@ -1340,7 +1377,7 @@ show_profile_menu() {
 
     case $choice in
         1)
-            SELECTED_MODULES=(base_tools neovim nvim_config tmux_config zsh_ohmyzsh zsh_config golang_full nodejs tui_tools codex claude playwright pi gemini copilot)
+            SELECTED_MODULES=(base_tools neovim nvim_config tmux_config zsh_ohmyzsh zsh_config golang_full nodejs tui_tools codex claude playwright pi pi_sandbox gemini copilot)
             ;;
         2)
             SELECTED_MODULES=(base_tools neovim nvim_config tmux_config)
@@ -1380,6 +1417,7 @@ show_custom_menu() {
         "codex:Codex CLI"
         "claude:Claude Code CLI"
         "pi:Pi Coding Agent"
+        "pi_sandbox:Pi Sandbox (Docker)"
         "gemini:Gemini CLI"
         "tui_tools:TUI Tools (lazygit, yazi, zoxide)"
         "playwright:Playwright CLI (browser automation)"
@@ -1415,15 +1453,15 @@ show_custom_menu() {
             echo "  $i) $desc"
             ((i++))
         done
-        echo "  16) Toggle All"
-        echo "  17) Done"
+        echo "  17) Toggle All"
+        echo "  18) Done"
         echo ""
 
-        read -p "Enter number to toggle (or 17 when done): " choice
+        read -p "Enter number to toggle (or 18 when done): " choice
 
-        if [ "$choice" == "17" ]; then
+        if [ "$choice" == "18" ]; then
             break
-        elif [ "$choice" == "16" ]; then
+        elif [ "$choice" == "17" ]; then
             # Toggle all
             local all_selected=1
             for key in "${!selections[@]}"; do
@@ -1440,7 +1478,7 @@ show_custom_menu() {
                     selections[$key]=1
                 fi
             done
-        elif [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le 15 ]; then
+        elif [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le 16 ]; then
             # Toggle individual selection
             local idx=$((choice - 1))
             local opt="${options[$idx]}"
@@ -1489,6 +1527,7 @@ show_installation_summary() {
             "codex") echo "  • Codex CLI" ;;
             "claude") echo "  • Claude Code CLI" ;;
             "pi") echo "  • Pi Coding Agent" ;;
+            "pi_sandbox") echo "  • Pi Sandbox (Docker)" ;;
             "gemini") echo "  • Gemini CLI" ;;
             "tui_tools") echo "  • TUI Tools (lazygit, yazi, zoxide)" ;;
             "playwright") echo "  • Playwright CLI (browser automation)" ;;
@@ -1582,6 +1621,11 @@ execute_modules() {
                     FAILED_MODULES+=("pi")
                 fi
                 ;;
+            "pi_sandbox")
+                if ! install_pi_sandbox; then
+                    FAILED_MODULES+=("pi_sandbox")
+                fi
+                ;;
             "tui_tools")
                 if ! install_tui_tools; then
                     FAILED_MODULES+=("tui_tools")
@@ -1615,7 +1659,7 @@ parse_arguments() {
             --profile)
                 case $2 in
                     full)
-                        SELECTED_MODULES=(base_tools neovim nvim_config tmux_config zsh_ohmyzsh zsh_config golang_full nodejs tui_tools codex claude playwright pi gemini copilot)
+                        SELECTED_MODULES=(base_tools neovim nvim_config tmux_config zsh_ohmyzsh zsh_config golang_full nodejs tui_tools codex claude playwright pi pi_sandbox gemini copilot)
                         ;;
                     minimal)
                         SELECTED_MODULES=(base_tools neovim nvim_config tmux_config)
@@ -1687,6 +1731,7 @@ Modules:
   tui_tools           TUI tools (lazygit, yazi, zoxide)
   claude              Claude Code CLI
   pi                  Pi Coding Agent
+  pi_sandbox          Pi Sandbox (Docker image + pis script)
   gemini              Gemini CLI
   copilot             GitHub Copilot CLI
   playwright          Playwright CLI (browser automation)

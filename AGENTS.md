@@ -88,6 +88,7 @@ This dotfiles setup supports **Codex CLI**, **Claude Code**, **Pi**, **Gemini CL
 - Installed via npm to `~/.local` (same pattern as Codex/Gemini)
 - Multi-provider cloud agent (Anthropic, OpenAI, Google, and 30+ others)
 - Extensible via TypeScript extensions, prompt templates, and themes
+- **Sandbox mode**: `pis` runs Pi inside an ephemeral Docker container with full toolchains (Node.js, Python, Go, tmux). CWD is mounted read-write; extra directories can be added as positional args (read-only by default, `-rw` for read-write).
 
 **Gemini CLI**:
 - Configuration: `gemini/` directory (symlinked into `~/.gemini/`)
