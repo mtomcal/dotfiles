@@ -115,6 +115,9 @@ DOCKER_ARGS=(
     -v "${PI_AGENT_DIR}/settings.json:/root/.pi/agent/settings.json:ro"
     -v "${PI_AGENT_DIR}/models.json:/root/.pi/agent/models.json:ro"
     -v "${PI_AGENT_DIR}/skills:/root/.pi/agent/skills:ro"
+    -v "${PI_AGENT_DIR}/agents:/root/.pi/agent/agents:ro"
+    -v "${PI_AGENT_DIR}/prompts:/root/.pi/agent/prompts:ro"
+    -v "${PI_AGENT_DIR}/extensions:/root/.pi/agent/extensions:ro"
 )
 
 # Extra directory mounts

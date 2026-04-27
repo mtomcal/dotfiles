@@ -63,4 +63,8 @@ RUN ln -sf "$(which fdfind)" /usr/local/bin/fd
 # Default working directory (overridden by pis script)
 WORKDIR /workspace
 
-ENTRYPOINT ["pi"]
+# Entrypoint: start pi inside tmux so the tmux orchestration skill
+# can spawn additional Pi agents in separate panes/windows.
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+ENTRYPOINT ["entrypoint.sh"]
