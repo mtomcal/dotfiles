@@ -34,7 +34,7 @@ Personal development environment configuration for tmux, neovim, and zsh.
     - [Shared Skills](#shared-skills)
     - [Codex CLI](#codex-cli)
     - [Claude Code](#claude-code)
-    - [OpenCode CLI](#opencode-cli)
+    - [Pi Coding Agent](#pi-coding-agent)
     - [Gemini CLI](#gemini-cli)
     - [GitHub Copilot CLI](#github-copilot-cli)
 - [Platform-Specific Notes](#platform-specific-notes)
@@ -53,7 +53,7 @@ Personal development environment configuration for tmux, neovim, and zsh.
 - **Neovim**: Official [kickstart.nvim](https://github.com/nvim-lua/kickstart.nvim) base with custom plugin layer
 - **Zsh**: Oh My Zsh with custom aliases and tmux integration
 - **TUI Tools**: lazygit, yazi file manager, zoxide smart directory jumping
-- **AI Coding Tools**: Codex CLI, Claude Code, OpenCode CLI, Gemini CLI, and GitHub Copilot CLI with shared instructions
+- **AI Coding Tools**: Codex CLI, Claude Code, Pi, Gemini CLI, and GitHub Copilot CLI with shared instructions
 - **Language Support**:
   - **Python**: Pyright LSP + Ruff linting/formatting with Poetry auto-detection
   - **Go (Golang)**: Full toolchain (gopls, delve debugger, gofumpt, goimports) with testing and debugging support
@@ -87,7 +87,7 @@ The installer provides a **menu-driven interface** with multiple installation pr
 |---------|----------|----------|
 | **Full** | Everything (Neovim, Tmux, Zsh, Go dev, Node.js, TUI tools, AI agents) | Complete development setup |
 | **Minimal** | Neovim + Tmux configs only | Quick editor setup |
-| **Work** | Neovim, Tmux, TUI tools, OpenCode, Copilot CLI | Work machines |
+| **Work** | Neovim, Tmux, TUI tools, Copilot CLI | Work machines |
 
 **Non-Interactive Mode** (command-line flags):
 ```bash
@@ -129,7 +129,7 @@ The installer provides a **menu-driven interface** with multiple installation pr
 - `tui_tools` - TUI tools (lazygit, yazi, zoxide)
 - `codex` - Codex CLI + skills + agent roles
 - `claude` - Claude Code CLI + MCP servers
-- `opencode` - OpenCode CLI
+- `pi` - Pi Coding Agent
 - `gemini` - Gemini CLI (Google's open-source AI agent)
 - `copilot` - GitHub Copilot CLI (curl installer, work-network friendly)
 
@@ -181,11 +181,9 @@ dotfiles/
 
 │   ├── settings.json      # Claude Code settings
 │   └── README.md          # Claude Code documentation
-├── opencode/
-
-│   ├── agents/            # OpenCode CLI agents
-│   ├── opencode.json      # OpenCode config (symlinked globally)
-│   └── README.md          # OpenCode documentation
+├── pi/
+│   ├── settings.json      # Pi settings (symlinked to ~/.pi/agent/)
+│   └── models.json        # Pi custom provider definitions
 ├── gemini/
 
 │   ├── agents/            # Gemini CLI user-level subagents (Markdown)
@@ -446,7 +444,7 @@ vim.keymap.set('n', '<leader>x', '<cmd>MyCommand<CR>', { desc = 'My custom comma
 | `tl` | `tmux ls` |
 | `tk <name>` | `tmux kill-session -t <name>` |
 | `td` | `tmux detach` |
-| `oc` | `opencode` |
+| `pi` | Pi coding agent (no alias, binary name) |
 | `cx` | `codex` |
 | `gm` | `gemini` |
 | `cop` | `copilot` |
@@ -704,7 +702,7 @@ nvim shared/skills/my-skill/SKILL.md
 name: skill-name
 description: What it does. Use when [trigger condition].  # max 1024 chars
 metadata:
-  short-description: Short label (≤6 words)   # Codex/OpenCode
+  short-description: Short label (≤6 words)   # Codex/Pi
 allowed-tools: Bash(cmd:*)                    # Claude Code only, if needed
 ---
 ```
@@ -730,23 +728,24 @@ claude auth login
 ```
 
 
-#### OpenCode CLI
+#### Pi Coding Agent
 
-Multi-model AI coding assistant with terminal TUI. See [opencode/README.md](opencode/README.md) for details.
+Minimal, extensible terminal-based AI coding agent with 30+ provider support. Built from the [pi-mono](https://github.com/nickvdyck/pi-mono) project.
 
 **Authentication**:
 ```bash
-opencode auth login
+pi  # First launch prompts for authentication
 ```
 
 **Features**:
-- Plan/Build mode switching
-- OpenRouter free model support
-- Shared project context via AGENTS.md
+- 30+ LLM providers (Anthropic, OpenAI, Google, and more)
+- TypeScript extensions for custom tools and workflows
+- Session tree navigation and branching
+- Multiple modes: interactive TUI, print, JSON, RPC
 
 **Usage**:
 ```bash
-opencode  # Start interactive session
+pi  # Start interactive session
 ```
 
 #### Gemini CLI

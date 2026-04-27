@@ -1,0 +1,5 @@
+# Pi coding agent — sensitive/runtime files
+auth.json
+sessions/
+bin/
+tools/

@@ -930,83 +930,68 @@ install_claude() {
     fi
 }
 
-install_opencode() {
-    print_header "Installing OpenCode"
+install_pi() {
+    print_header "Installing Pi Coding Agent"
 
-    # Always run the official installer; it self-upgrades to the latest release.
-    print_info "Installing/upgrading OpenCode CLI via official installer..."
-    curl -fsSL https://opencode.ai/install | bash
-    export PATH="$HOME/.opencode/bin:$PATH"
-    print_success "OpenCode CLI installed/upgraded"
-
-    mkdir -p "$HOME/.config/opencode"
-
-    # Clean up legacy singular paths used by older OpenCode releases
-    if [ -L "$HOME/.config/opencode/command" ]; then
-        rm "$HOME/.config/opencode/command"
-    elif [ -d "$HOME/.config/opencode/command" ]; then
-        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-        mv "$HOME/.config/opencode/command" "$HOME/.config/opencode/command.backup.$TIMESTAMP"
+    # Pi is distributed as an npm package.
+    # Install to ~/.local so it is shared across fnm Node versions.
+    if ! command -v npm &> /dev/null; then
+        print_warning "npm not found. Installing Node.js first..."
+        install_nodejs || return 1
     fi
 
-    if [ -L "$HOME/.config/opencode/agent" ]; then
-        rm "$HOME/.config/opencode/agent"
-    elif [ -d "$HOME/.config/opencode/agent" ]; then
-        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-        mv "$HOME/.config/opencode/agent" "$HOME/.config/opencode/agent.backup.$TIMESTAMP"
+    mkdir -p "$HOME/.local/bin"
+    print_info "Installing/updating Pi coding agent via npm into ~/.local..."
+    npm install -g --prefix "$HOME/.local" @mariozechner/pi-coding-agent@latest
+
+    if [ ! -x "$HOME/.local/bin/pi" ]; then
+        print_error "Pi coding agent install failed: ~/.local/bin/pi not found"
+        return 1
     fi
 
-    # Link commands
-    if [ -L "$HOME/.config/opencode/commands" ]; then
-        rm "$HOME/.config/opencode/commands"
-    elif [ -d "$HOME/.config/opencode/commands" ]; then
-        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-        mv "$HOME/.config/opencode/commands" "$HOME/.config/opencode/commands.backup.$TIMESTAMP"
+    if command -v pi &> /dev/null && [ "$(command -v pi)" != "$HOME/.local/bin/pi" ]; then
+        print_warning "Another pi binary is earlier in PATH: $(command -v pi)"
+        print_info "Ensure ~/.local/bin is first in PATH to use the shared Pi install"
     fi
-    ln -s "$DOTFILES_DIR/opencode/commands" "$HOME/.config/opencode/commands"
+    print_success "Pi coding agent installed/updated at ~/.local/bin/pi"
 
-    # Link agents
-    if [ -L "$HOME/.config/opencode/agents" ]; then
-        rm "$HOME/.config/opencode/agents"
-    elif [ -d "$HOME/.config/opencode/agents" ]; then
-        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-        mv "$HOME/.config/opencode/agents" "$HOME/.config/opencode/agents.backup.$TIMESTAMP"
-    fi
-    ln -s "$DOTFILES_DIR/opencode/agents" "$HOME/.config/opencode/agents"
+    mkdir -p "$HOME/.pi/agent"
 
     # Link skills
-    if [ -L "$HOME/.config/opencode/skills" ]; then
-        rm "$HOME/.config/opencode/skills"
-    elif [ -d "$HOME/.config/opencode/skills" ]; then
+    if [ -L "$HOME/.pi/agent/skills" ]; then
+        rm "$HOME/.pi/agent/skills"
+    elif [ -d "$HOME/.pi/agent/skills" ]; then
         TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-        mv "$HOME/.config/opencode/skills" "$HOME/.config/opencode/skills.backup.$TIMESTAMP"
+        mv "$HOME/.pi/agent/skills" "$HOME/.pi/agent/skills.backup.$TIMESTAMP"
     fi
-    ln -s "$DOTFILES_DIR/shared/skills" "$HOME/.config/opencode/skills"
+    ln -s "$DOTFILES_DIR/shared/skills" "$HOME/.pi/agent/skills"
 
-    # Link AGENTS.md
-    if [ -f "$HOME/.config/opencode/AGENTS.md" ] && [ ! -L "$HOME/.config/opencode/AGENTS.md" ]; then
+    # Link settings.json
+    if [ -f "$HOME/.pi/agent/settings.json" ] && [ ! -L "$HOME/.pi/agent/settings.json" ]; then
         TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-        mv "$HOME/.config/opencode/AGENTS.md" "$HOME/.config/opencode/AGENTS.md.backup.$TIMESTAMP"
+        mv "$HOME/.pi/agent/settings.json" "$HOME/.pi/agent/settings.json.backup.$TIMESTAMP"
     fi
-    if [ -L "$HOME/.config/opencode/AGENTS.md" ]; then
-        rm "$HOME/.config/opencode/AGENTS.md"
+    if [ -L "$HOME/.pi/agent/settings.json" ]; then
+        rm "$HOME/.pi/agent/settings.json"
     fi
-    ln -s "$DOTFILES_DIR/AGENTS.md" "$HOME/.config/opencode/AGENTS.md"
-
-    # Link config
-    if [ -f "$HOME/.config/opencode/opencode.json" ] && [ ! -L "$HOME/.config/opencode/opencode.json" ]; then
-        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-        mv "$HOME/.config/opencode/opencode.json" "$HOME/.config/opencode/opencode.json.backup.$TIMESTAMP"
-    fi
-    if [ -L "$HOME/.config/opencode/opencode.json" ]; then
-        rm "$HOME/.config/opencode/opencode.json"
-    fi
-    if [ -f "$DOTFILES_DIR/opencode/opencode.json" ]; then
-        ln -s "$DOTFILES_DIR/opencode/opencode.json" "$HOME/.config/opencode/opencode.json"
+    if [ -f "$DOTFILES_DIR/pi/settings.json" ]; then
+        ln -s "$DOTFILES_DIR/pi/settings.json" "$HOME/.pi/agent/settings.json"
     fi
 
-    print_success "OpenCode configured"
-    print_info "Run 'opencode auth login' to authenticate"
+    # Link models.json
+    if [ -f "$HOME/.pi/agent/models.json" ] && [ ! -L "$HOME/.pi/agent/models.json" ]; then
+        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+        mv "$HOME/.pi/agent/models.json" "$HOME/.pi/agent/models.json.backup.$TIMESTAMP"
+    fi
+    if [ -L "$HOME/.pi/agent/models.json" ]; then
+        rm "$HOME/.pi/agent/models.json"
+    fi
+    if [ -f "$DOTFILES_DIR/pi/models.json" ]; then
+        ln -s "$DOTFILES_DIR/pi/models.json" "$HOME/.pi/agent/models.json"
+    fi
+
+    print_success "Pi coding agent configured"
+    print_info "Run 'pi' to start (first launch prompts for authentication)"
 }
 
 install_codex() {
@@ -1269,13 +1254,21 @@ resolve_dependencies() {
                 fi
                 resolved+=("zsh_config")
                 ;;
-            "claude"|"opencode")
-                # AI agents need curl
+            "claude")
+                # Claude Code needs curl
                 if ! command -v curl &> /dev/null; then
-                    print_warning "Adding curl (required by AI agents)"
+                    print_warning "Adding curl (required by Claude Code)"
                     resolved+=("base_tools")
                 fi
-                resolved+=("$module")
+                resolved+=("claude")
+                ;;
+            "pi")
+                # Pi coding agent uses npm
+                if ! command -v npm &> /dev/null; then
+                    print_warning "Adding Node.js (required by Pi coding agent)"
+                    resolved+=("nodejs")
+                fi
+                resolved+=("pi")
                 ;;
             "codex")
                 # Codex CLI install uses npm
@@ -1335,7 +1328,7 @@ show_profile_menu() {
     echo "     Neovim + config, Tmux + config"
     echo ""
     echo "  3) Work Profile"
-    echo "     Neovim, Tmux, TUI tools, OpenCode, Copilot CLI"
+    echo "     Neovim, Tmux, TUI tools, Copilot CLI"
     echo ""
     echo "  4) Custom (pick components)"
     echo "     Interactive component selection"
@@ -1347,13 +1340,13 @@ show_profile_menu() {
 
     case $choice in
         1)
-            SELECTED_MODULES=(base_tools neovim nvim_config tmux_config zsh_ohmyzsh zsh_config golang_full nodejs tui_tools codex claude playwright opencode gemini copilot)
+            SELECTED_MODULES=(base_tools neovim nvim_config tmux_config zsh_ohmyzsh zsh_config golang_full nodejs tui_tools codex claude playwright pi gemini copilot)
             ;;
         2)
             SELECTED_MODULES=(base_tools neovim nvim_config tmux_config)
             ;;
         3)
-            SELECTED_MODULES=(base_tools neovim nvim_config tmux_config tui_tools opencode copilot)
+            SELECTED_MODULES=(base_tools neovim nvim_config tmux_config tui_tools copilot)
             ;;
         4)
             show_custom_menu
@@ -1386,7 +1379,7 @@ show_custom_menu() {
         "nodejs:Node.js LTS (fnm)"
         "codex:Codex CLI"
         "claude:Claude Code CLI"
-        "opencode:OpenCode CLI"
+        "pi:Pi Coding Agent"
         "gemini:Gemini CLI"
         "tui_tools:TUI Tools (lazygit, yazi, zoxide)"
         "playwright:Playwright CLI (browser automation)"
@@ -1495,7 +1488,7 @@ show_installation_summary() {
             "nodejs") echo "  • Node.js LTS (fnm)" ;;
             "codex") echo "  • Codex CLI" ;;
             "claude") echo "  • Claude Code CLI" ;;
-            "opencode") echo "  • OpenCode CLI" ;;
+            "pi") echo "  • Pi Coding Agent" ;;
             "gemini") echo "  • Gemini CLI" ;;
             "tui_tools") echo "  • TUI Tools (lazygit, yazi, zoxide)" ;;
             "playwright") echo "  • Playwright CLI (browser automation)" ;;
@@ -1584,9 +1577,9 @@ execute_modules() {
                     FAILED_MODULES+=("claude")
                 fi
                 ;;
-            "opencode")
-                if ! install_opencode; then
-                    FAILED_MODULES+=("opencode")
+            "pi")
+                if ! install_pi; then
+                    FAILED_MODULES+=("pi")
                 fi
                 ;;
             "tui_tools")
@@ -1622,13 +1615,13 @@ parse_arguments() {
             --profile)
                 case $2 in
                     full)
-                        SELECTED_MODULES=(base_tools neovim nvim_config tmux_config zsh_ohmyzsh zsh_config golang_full nodejs tui_tools codex claude playwright opencode gemini copilot)
+                        SELECTED_MODULES=(base_tools neovim nvim_config tmux_config zsh_ohmyzsh zsh_config golang_full nodejs tui_tools codex claude playwright pi gemini copilot)
                         ;;
                     minimal)
                         SELECTED_MODULES=(base_tools neovim nvim_config tmux_config)
                         ;;
                     work)
-                        SELECTED_MODULES=(base_tools neovim nvim_config tmux_config tui_tools opencode copilot)
+                        SELECTED_MODULES=(base_tools neovim nvim_config tmux_config tui_tools copilot)
                         ;;
                     *)
                         print_error "Unknown profile: $2"
@@ -1678,7 +1671,7 @@ Options:
 Profiles:
   full                Everything (includes Go development environment)
   minimal             Editors only (Neovim + Tmux)
-  work                Work setup (Neovim, Tmux, OpenCode, Copilot - no Go)
+  work                Work setup (Neovim, Tmux, Copilot - no Go)
 
 Modules:
   base_tools          Base tools (git, curl, tmux, zsh, etc.)
@@ -1693,7 +1686,7 @@ Modules:
   codex               Codex CLI
   tui_tools           TUI tools (lazygit, yazi, zoxide)
   claude              Claude Code CLI
-  opencode            OpenCode CLI
+  pi                  Pi Coding Agent
   gemini              Gemini CLI
   copilot             GitHub Copilot CLI
   playwright          Playwright CLI (browser automation)
@@ -1771,7 +1764,7 @@ main() {
     print_info "For AI agents:"
     echo "  • Codex: codex login"
     echo "  • Claude Code: claude auth login"
-    echo "  • OpenCode: opencode auth login"
+    echo "  • Pi: pi (first launch prompts for auth)"
     echo "  • Gemini CLI: gemini (first run prompts for auth)"
     echo "  • Copilot CLI: copilot login"
     echo ""

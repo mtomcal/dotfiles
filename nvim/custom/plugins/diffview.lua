@@ -1,5 +1,5 @@
 -- Diffview.nvim - Single tabpage interface for reviewing diffs
--- Perfect for reviewing AI-generated code changes from Claude Code or OpenCode
+-- Perfect for reviewing AI-generated code changes from Claude Code or Pi
 return {
   'sindrets/diffview.nvim',
   dependencies = {

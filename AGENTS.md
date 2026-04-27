@@ -1,6 +1,6 @@
 # AI Agent Instructions
 
-This file provides guidance to AI coding agents (Claude Code, OpenCode, and others) when working with code in this repository.
+This file provides guidance to AI coding agents (Claude Code, Pi, and others) when working with code in this repository.
 
 ## Repository Overview
 
@@ -17,8 +17,8 @@ The primary entry point is `./install.sh`, which:
 - Installs TUI tools (lazygit, yazi, zoxide) with config symlinks
 - Installs Go (Golang) 1.24+ with architecture detection (x86_64/arm64)
 - Installs fnm (Fast Node Manager) and Node.js LTS
-- Links AI coding assistant configurations (Codex CLI, Claude Code, OpenCode)
-- Installs Codex CLI, OpenCode CLI, and Gemini CLI
+- Links AI coding assistant configurations (Codex CLI, Claude Code, Pi)
+- Installs Codex CLI, Pi coding agent, and Gemini CLI
 - Sets up Mason LSP/formatter packages (Python, Go, Lua)
 
 **Key behavior**: The script is idempotent and safe to re-run for updates.
@@ -46,11 +46,10 @@ The primary entry point is `./install.sh`, which:
   - `~/.claude/agents` → `~/dotfiles/claude/agents`
   - `~/.claude/skills/` → `~/dotfiles/shared/skills/`
   - `~/.claude/settings.json` → `~/dotfiles/claude/settings.json`
-- **OpenCode CLI**:
-  - `~/.config/opencode/agents/` → `~/dotfiles/opencode/agents/`
-  - `~/.config/opencode/skills/` → `~/dotfiles/shared/skills/`
-  - `~/.config/opencode/opencode.json` → `~/dotfiles/opencode/opencode.json`
-  - `~/.config/opencode/AGENTS.md` → `~/dotfiles/AGENTS.md` (this file)
+- **Pi Coding Agent**:
+  - `~/.pi/agent/skills/` → `~/dotfiles/shared/skills/`
+  - `~/.pi/agent/settings.json` → `~/dotfiles/pi/settings.json`
+  - `~/.pi/agent/models.json` → `~/dotfiles/pi/models.json`
 - **Gemini CLI**:
   - `~/.gemini/settings.json` → `~/dotfiles/gemini/settings.json`
   - `~/.gemini/commands/` → `~/dotfiles/gemini/commands/`
@@ -63,12 +62,12 @@ The primary entry point is `./install.sh`, which:
 
 ### AI Coding Assistants
 
-This dotfiles setup supports **Codex CLI**, **Claude Code**, **OpenCode CLI**, **Gemini CLI**, and **GitHub Copilot CLI**, with **Playwright CLI** (`playwright-cli`) available for browser automation:
+This dotfiles setup supports **Codex CLI**, **Claude Code**, **Pi**, **Gemini CLI**, and **GitHub Copilot CLI**, with **Playwright CLI** (`playwright-cli`) available for browser automation:
 
 **Shared Skills**:
 - All agents share a single canonical skills directory: `shared/skills/`
 - Every agent's skills path is symlinked to `shared/skills/` — skills installed via `npx skills@latest add` to any agent land here automatically
-- Frontmatter union schema: `name`, `description`, `metadata.short-description` (Codex/OpenCode), `allowed-tools` (Claude Code)
+- Frontmatter union schema: `name`, `description`, `metadata.short-description` (Codex/Pi), `allowed-tools` (Claude Code)
 
 **Codex CLI**:
 - Configuration: `codex/` directory
@@ -81,15 +80,14 @@ This dotfiles setup supports **Codex CLI**, **Claude Code**, **OpenCode CLI**, *
 - Agents: `claude/agents/` — includes `test-quality-verifier` for post-implementation test quality checks and `playwright-visual-qa` for browser-based Visual QA via Playwright CLI
 - Settings: `claude/settings.json`
 
-**OpenCode CLI**:
-- Configuration: `opencode/` directory
-- Agents: `opencode/agents/` (includes `test-quality-verifier`, `playwright-visual-qa`)
-- Skills: `shared/skills/` (symlinked to `~/.config/opencode/skills/`)
-- Standard config: `opencode/opencode.json` (symlinked globally)
-- Project template: `opencode/opencode.project.json` (for project-specific overrides)
-- Shared instructions: This AGENTS.md file
-- Uses Build/Plan mode switching
-- **Primarily local models**: Local MLX models served by vllm-mlx (primary) or LM Studio (fallback). OpenRouter (built-in provider) available for large open-source models too big to run locally. Authenticate via `/connect` in OpenCode.
+**Pi Coding Agent**:
+- Configuration: `pi/` directory
+- Skills: `shared/skills/` (symlinked to `~/.pi/agent/skills/`)
+- Settings: `pi/settings.json` (symlinked to `~/.pi/agent/settings.json`)
+- Models: `pi/models.json` (symlinked to `~/.pi/agent/models.json`)
+- Installed via npm to `~/.local` (same pattern as Codex/Gemini)
+- Multi-provider cloud agent (Anthropic, OpenAI, Google, and 30+ others)
+- Extensible via TypeScript extensions, prompt templates, and themes
 
 **Gemini CLI**:
 - Configuration: `gemini/` directory (symlinked into `~/.gemini/`)
@@ -108,51 +106,7 @@ This dotfiles setup supports **Codex CLI**, **Claude Code**, **OpenCode CLI**, *
 - Authenticate by running `copilot login`
 - Requires an active GitHub Copilot subscription
 
-#### Local Model Backends
-
-**vllm-mlx (primary, via mlx-serve harness)**: Each model runs as its own `vllm-mlx serve` process on a fixed port. The `mlx-serve` CLI (`~/Code/mlx-serve`) wraps `vllm-mlx` with auto port assignment, auto context sizing, and per-model-family presets for tool/reasoning parsers.
-
-| Port | Model | OpenCode provider key |
-|------|-------|----------------------|
-| 8001 | Qwen3.5-27B-Claude-4.6-Opus-Distilled-MLX-4bit (**default**) | `vllm-mlx-claude-distill` |
-| 8002 | Qwen3.5-27B-4bit | `vllm-mlx-qwen-27b` |
-| 8003 | Qwen3.5-35B-A3B-4bit | `vllm-mlx-qwen-35b-4bit` |
-| 8004 | Qwen3.5-35B-A3B-8bit | `vllm-mlx-qwen-35b-8bit` |
-| 8005 | Qwen3.5-9B-MLX-4bit (**small_model**) | `vllm-mlx-qwen-9b` |
-| 8006 | gpt-oss-20b-MXFP4-Q8 | `vllm-mlx-gpt-oss` |
-
-The OpenAI API model id is the lowercased model directory name (e.g. `qwen3.5-27b-claude-4.6-opus-distilled-mlx-4bit`).
-
-**Workflow:**
-```bash
-# List discovered models and running instances
-mlx-serve list
-
-# Start the default model in background on its assigned port
-mlx-serve start claude-distill -d --port 8001
-
-# Start the small model used by OpenCode for cheap calls
-mlx-serve start qwen-9b -d --port 8005
-
-# Stop one or all
-mlx-serve stop 8001
-mlx-serve stop all
-```
-
-Only running instances will respond — OpenCode will list all 6 vllm-mlx models in its `/models` picker, but selecting a non-running one yields a connection error. Start the model you intend to use before launching `oc`.
-
-**LM Studio (fallback)**: Reachable at `http://localhost:1234/v1` via the `lmstudio` provider. Useful when LM Studio is already loaded or you need its model-manager UX. Slower than vllm-mlx for long contexts and parallel requests due to weaker KV cache management and GUI overhead.
-
-#### Cloud Model Backend
-
-**OpenRouter (built-in)**: Provides access to large open-source models that exceed local MLX memory. Models are auto-discovered — authenticate via `/connect` in OpenCode, then browse available models in `/models`. Context limits are pinned in `opencode.json` since auto-detection is unreliable.
-
-| Model | Context | Output | OpenCode model selector |
-|-------|---------|--------|------------------------|
-| Kimi K2.6 (Moonshot AI) | 262K | 262K | `openrouter/moonshotai/kimi-k2.6` |
-| DeepSeek V3.2 | 131K | 65K | `openrouter/deepseek/deepseek-v3.2` |
-
-### Ralph — Agentic Loop Job Runner (Claude Code / OpenCode)
+### Ralph — Agentic Loop Job Runner (Claude Code / Pi)
 
 The `/ralph` command configures and launches a `loop.sh` agentic loop job. It walks through setting up three files:
 
@@ -257,7 +211,7 @@ Update the install script's dependency installation section (install.sh:114-138)
 - **Tmux**: Edit `tmux/.tmux.conf`, reload with `tmux source-file ~/.tmux.conf` or Ctrl-a r
 - **Zsh**: Edit `zsh/.zshrc.custom`, reload with `source ~/.zshrc`
 - **Neovim**: Add plugins in `nvim/custom/plugins/`, restart neovim (lazy.nvim auto-installs)
-- **OpenCode**: Add markdown files to `opencode/agents/` for custom agent workflows
+- **Pi**: Add TypeScript extensions to `~/.pi/agent/extensions/` for custom workflows
 
 ### Language-Specific Development
 
@@ -318,7 +272,7 @@ Two plugins work together for comprehensive git workflows:
 
 ### AI Assistant Privacy
 
-The `.gitignore` files in `claude/` and `opencode/` exclude sensitive files (credentials, history, project data) while tracking commands, agents, and settings. When modifying configs, never commit:
+The `.gitignore` files in `claude/` and `pi/` exclude sensitive files (credentials, history, project data) while tracking settings and config. When modifying configs, never commit:
 - `.credentials.json` or `auth.json`
 - `history.jsonl`
 - Project-specific data
@@ -335,7 +289,7 @@ Recent addition (commit b41aca0) checks if zsh is already the default shell to a
 2. **Homebrew path on Apple Silicon**: Script handles `/opt/homebrew/bin/brew` vs `/usr/local/bin/brew` (install.sh:76-79)
 3. **Custom plugin imports**: Must uncomment `{ import = 'custom.plugins' }` in kickstart's init.lua for custom neovim plugins to load
 4. **fnm initialization**: Requires both PATH export and `fnm env` eval in shell config (zsh/.zshrc.custom:42-46)
-5. **AI assistant authentication**: Both Claude Code and OpenCode require separate authentication setup by the user
+5. **AI assistant authentication**: Each AI agent requires separate authentication setup by the user
 
 ## Command Line Aliases
 
@@ -344,16 +298,14 @@ Shell aliases are available for common operations:
 - `y` - Launch yazi file manager
 - `z` - zoxide smart cd (e.g. `z dotfiles` jumps to ~/dotfiles)
 - `claude` - Launch Claude Code
-- `oc` or `opencode` - Launch OpenCode CLI
+- `pi` - Launch Pi coding agent
 - `gm` or `gemini` - Launch Gemini CLI
 - `cop` or `copilot` - Launch GitHub Copilot CLI
 - Tmux aliases: `t`, `ta`, `tn`, `tl`, `tk`, `td`
 
 ## Working with Multiple AI Assistants
 
-This setup allows seamless switching between Claude Code and OpenCode:
-- Both tools share the same project context via this AGENTS.md file
-- Both tools have `/ralph` plus matching test/visual QA agent workflows
-- OpenCode provides a terminal TUI with Plan/Build mode switching
-- Both tools support agents and skills via their respective directories
-- Choose the tool based on your needs - both have full context
+All five agents (Claude Code, Codex, Pi, Gemini, Copilot) share:
+- Project context via this AGENTS.md file
+- Skills via the single `shared/skills/` directory
+- Choose the tool based on your needs — all have full context

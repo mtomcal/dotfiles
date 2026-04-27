@@ -1,6 +1,6 @@
 ---
 name: audit-shared-skills
-description: Audit skills in shared/skills/ for cross-agent frontmatter compatibility, flagging missing fields and offering to fix them. Use when skills have been added via npx or manually and need to be checked for compatibility across Claude Code, Codex, OpenCode, Gemini CLI, and Copilot CLI.
+description: Audit skills in shared/skills/ for cross-agent frontmatter compatibility, flagging missing fields and offering to fix them. Use when skills have been added via npx or manually and need to be checked for compatibility across Claude Code, Codex, Pi, Gemini CLI, and Copilot CLI.
 metadata:
   short-description: Audit shared skills for cross-agent compatibility
 ---
@@ -17,7 +17,7 @@ Every skill in `shared/skills/` should have:
 |-------|----------|---------|
 | `name` | yes | all agents |
 | `description` | yes | all agents (max 1024 chars, include "Use when...") |
-| `metadata.short-description` | recommended | Codex, OpenCode |
+| `metadata.short-description` | recommended | Codex, Pi |
 | `allowed-tools` | if needed | Claude Code only |
 
 Agent-specific fields (`compatibility`, `disable-model-invocation`) are fine to keep — agents ignore fields they don't recognize.
