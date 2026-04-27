@@ -185,7 +185,10 @@ dotfiles/
 │   └── README.md          # Claude Code documentation
 ├── pi/
 │   ├── settings.json      # Pi settings (symlinked to ~/.pi/agent/)
-│   ├── models.json        # Pi custom provider definitions
+│   ├── models.json        # Pi custom provider definitions (Ollama Cloud)
+│   ├── agents/            # Subagent definitions (scout, planner, reviewer, worker)
+│   ├── prompts/           # Workflow prompt templates (implement, scout-and-plan, etc.)
+│   ├── extensions/        # Pi extensions (subagent tool)
 │   ├── Dockerfile         # Pi sandbox Docker image
 │   └── pis.sh             # Pi sandbox wrapper script (~/.local/bin/pis)
 ├── gemini/
@@ -743,6 +746,7 @@ pi  # First launch prompts for authentication
 
 **Features**:
 - 30+ LLM providers (Anthropic, OpenAI, Google, and more)
+- Ollama Cloud models (GLM 5.1, MiniMax M2.7, Kimi K2.6, DeepSeek V4 Pro/Flash)
 - TypeScript extensions for custom tools and workflows
 - Session tree navigation and branching
 - Multiple modes: interactive TUI, print, JSON, RPC
@@ -751,6 +755,34 @@ pi  # First launch prompts for authentication
 ```bash
 pi  # Start interactive session
 ```
+
+##### Subagents
+
+Pi includes a subagent extension for delegating tasks to specialized agents with isolated context windows. Each subagent runs as a separate `pi` process.
+
+**Agents** (in `pi/agents/`, symlinked to `~/.pi/agent/agents/`):
+
+| Agent | Purpose | Tools |
+|-------|---------|-------|
+| `scout` | Fast codebase recon, returns compressed context | read, grep, find, ls, bash |
+| `planner` | Creates implementation plans (read-only) | read, grep, find, ls |
+| `reviewer` | Code review for quality and security | read, grep, find, ls, bash |
+| `worker` | General-purpose with full capabilities | all |
+
+All agents inherit the active model — switch models with `Ctrl+P` and subagents follow.
+
+**Three execution modes**:
+- **Single**: `Use scout to find all authentication code`
+- **Parallel**: `Run 2 scouts in parallel: one to find models, one to find providers` (max 8 tasks, 4 concurrent)
+- **Chain**: `Use a chain: scout finds the code, planner creates a plan, worker implements it`
+
+**Workflow prompts** (in `pi/prompts/`, symlinked to `~/.pi/agent/prompts/`):
+
+| Prompt | Flow |
+|--------|------|
+| `/implement <task>` | scout → planner → worker |
+| `/scout-and-plan <task>` | scout → planner (no implementation) |
+| `/implement-and-review <task>` | worker → reviewer → worker |
 
 ##### Pi Sandbox (`pis`)
 
