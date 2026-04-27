@@ -118,6 +118,9 @@ DOCKER_ARGS=(
     -v "${PI_AGENT_DIR}/agents:/root/.pi/agent/agents:ro"
     -v "${PI_AGENT_DIR}/prompts:/root/.pi/agent/prompts:ro"
     -v "${PI_AGENT_DIR}/extensions:/root/.pi/agent/extensions:ro"
+
+    # Tmux configuration
+    -v "$HOME/.tmux.conf:/root/.tmux.conf:ro"
 )
 
 # Extra directory mounts
