@@ -173,7 +173,8 @@ dotfiles/
 │       ├── improve-codebase-architecture/
 │       ├── tmux-agent-orchestration/
 │       ├── ubiquitous-language/
-│       └── audit-shared-skills/
+│       ├── audit-shared-skills/
+│       └── grill-me/
 ├── codex/
 │   ├── agents/            # Codex agent role configs (~/.codex/agents)
 │   ├── config.toml        # Codex config template (copied to ~/.codex/config.toml)
@@ -675,6 +676,7 @@ All five agents share a single skills directory at `shared/skills/`. Every agent
 | `tmux-agent-orchestration` | Launch, steer, and monitor parallel CLI agents in tmux with per-worker clones |
 | `ubiquitous-language` | Extract a DDD-style glossary from a conversation and save it to `UBIQUITOUS_LANGUAGE.md` _(based on [mattpocock/skills](https://github.com/mattpocock/skills))_ |
 | `audit-shared-skills` | Audit `shared/skills/` for cross-agent frontmatter compatibility, flag and fix issues |
+| `grill-me` | Interview the user relentlessly about a plan or design, resolving each branch of the decision tree _(based on [mattpocock/skills](https://github.com/mattpocock/skills))_ |
 | `write-a-skill` | Interactively create a new agent skill with proper structure and frontmatter _(based on [mattpocock/skills](https://github.com/mattpocock/skills))_ |
 
 **Adding a new skill**:
@@ -1061,7 +1063,7 @@ Should point to `~/dotfiles/nvim/custom`
 - [kickstart.nvim](https://github.com/nvim-lua/kickstart.nvim) - Neovim configuration by TJ DeVries
 - [Oh My Zsh](https://github.com/ohmyzsh/ohmyzsh) - Zsh framework
 - [tmux](https://github.com/tmux/tmux) - Terminal multiplexer
-- [mattpocock/skills](https://github.com/mattpocock/skills) - Original source for `improve-codebase-architecture`, `ubiquitous-language`, and `write-a-skill` skills (modified for cross-agent compatibility)
+- [mattpocock/skills](https://github.com/mattpocock/skills) - Original source for `improve-codebase-architecture`, `ubiquitous-language`, `grill-me`, and `write-a-skill` skills (modified for cross-agent compatibility)
 
 ## License
 
