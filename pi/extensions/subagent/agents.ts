@@ -11,6 +11,18 @@ export type AgentScope = "user" | "project" | "both";
 
 const VALID_THINKING_LEVELS = ["off", "minimal", "low", "medium", "high", "xhigh"] as const;
 
+export function isThinkingLevel(s: string): s is ThinkingLevel {
+	return VALID_THINKING_LEVELS.includes(s as ThinkingLevel);
+}
+
+/**
+ * Normalize empty strings to undefined for config fields.
+ * Prevents empty-string overrides from silently winning in priority chains.
+ */
+export function normalizeOptional(s: string | undefined): string | undefined {
+	return s && s.trim() !== "" ? s : undefined;
+}
+
 export interface AgentConfig {
 	name: string;
 	description: string;
@@ -107,12 +119,15 @@ function loadAgentsFromDir(dir: string, source: "user" | "project"): AgentConfig
 			model = parsed.model;
 		}
 
+		// Normalize empty strings to undefined (prevents "" from winning over real values in priority chains)
+		provider = normalizeOptional(provider);
+
 		// Explicit thinking field overrides shorthand
 		if (frontmatter.thinking) {
-			if (VALID_THINKING_LEVELS.includes(frontmatter.thinking as ThinkingLevel)) {
-				thinking = frontmatter.thinking as ThinkingLevel;
+			if (isThinkingLevel(frontmatter.thinking)) {
+				thinking = frontmatter.thinking;
 			} else {
-				// Skip agent with invalid thinking level
+				console.warn(`Skipping agent "${frontmatter.name}" in ${filePath}: invalid thinking level "${frontmatter.thinking}". Valid levels: ${VALID_THINKING_LEVELS.join(", ")}`);
 				continue;
 			}
 		}

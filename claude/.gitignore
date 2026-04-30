@@ -2,6 +2,9 @@
 .credentials.json
 credentials.json
 
+# Local settings (machine-specific permissions)
+settings.local.json
+
 # User-specific data
 history.jsonl
 projects/

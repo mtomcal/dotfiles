@@ -126,20 +126,20 @@ This supports all these frontmatter styles:
 
 ```yaml
 # Style 1: Separate fields (most explicit)
-provider: anthropic
-model: claude-opus-4-7
+provider: ollama-cloud
+model: deepseek-v4-pro
 thinking: high
 
 # Style 2: Shorthand in model field
-model: anthropic/claude-opus-4-7:high
+model: ollama-cloud/deepseek-v4-pro:high
 
 # Style 3: Mixed (explicit overrides shorthand)
-model: anthropic/claude-opus-4-7:medium  # shorthand says medium
+model: ollama-cloud/deepseek-v4-pro:medium  # shorthand says medium
 thinking: high                             # but explicit field wins
 
 # Style 4: Provider + model, no thinking
-provider: google
-model: gemini-3.1-flash
+provider: ollama-cloud
+model: deepseek-v4-flash
 ```
 
 ### 2. Add `provider` and `thinking` to subagent invocation parameters (`index.ts`)
@@ -306,8 +306,8 @@ function formatUsageStats(usage: UsageStats, model?: string, provider?: string, 
 name: reviewer
 description: Code review specialist for quality and security analysis
 tools: read, grep, find, ls, bash
-provider: anthropic
-model: claude-opus-4-7
+provider: ollama-cloud
+model: deepseek-v4-pro
 thinking: high
 ---
 ```
@@ -319,8 +319,8 @@ thinking: high
 name: scout
 description: Fast codebase recon that returns compressed context
 tools: read, grep, find, ls, bash
-provider: google
-model: gemini-3.1-flash
+provider: ollama-cloud
+model: deepseek-v4-flash
 thinking: low
 ---
 ```
@@ -332,19 +332,20 @@ thinking: low
 name: planner
 description: Creates implementation plans from context and requirements
 tools: read, grep, find, ls
-provider: anthropic
-model: claude-sonnet-4-5
+provider: ollama-cloud
+model: glm-5.1
+thinking: medium
 ---
 ```
 
-**`agents/worker.md`** — full capabilities, default thinking:
+**`agents/worker.md`** — full capabilities, default thinking (flash model, no explicit thinking):
 
 ```yaml
 ---
 name: worker
 description: General-purpose subagent with full capabilities, isolated context
-provider: anthropic
-model: claude-sonnet-4-5
+provider: ollama-cloud
+model: deepseek-v4-flash
 ---
 ```
 
@@ -396,8 +397,8 @@ Document the new frontmatter fields and invocation parameters:
 
 Pin providers on agent definitions to prevent accidental routing:
 \`\`\`yaml
-provider: anthropic  # Always use Anthropic, never accidentally route to OpenAI
-model: claude-opus-4-7
+provider: ollama-cloud  # Always use Ollama Cloud, never accidentally route elsewhere
+model: deepseek-v4-pro
 thinking: high
 \`\`\`
 ```
@@ -408,16 +409,16 @@ thinking: high
 |------|--------|
 | `pi/extensions/subagent/agents.ts` | Add `provider`, `thinking` to `AgentConfig`; add `parseModelField()` for shorthand parsing; update `loadAgentsFromDir` |
 | `pi/extensions/subagent/index.ts` | Add `provider`/`thinking` to `SubagentParams`, `TaskItem`, `ChainItem`; add `resolveEffectiveConfig()`; update `runSingleAgent` signature and CLI args; add `provider`/`thinking` to `SingleResult`; update `formatUsageStats`, `renderCall`, `renderResult` |
-| `pi/agents/reviewer.md` | Add `provider: anthropic`, `model: claude-opus-4-7`, `thinking: high` |
-| `pi/agents/scout.md` | Add `provider: google`, `model: gemini-3.1-flash`, `thinking: low` |
-| `pi/agents/planner.md` | Add `provider: anthropic`, `model: claude-sonnet-4-5` |
-| `pi/agents/worker.md` | Add `provider: anthropic`, `model: claude-sonnet-4-5` |
+| `pi/agents/reviewer.md` | Add `provider: ollama-cloud`, `model: deepseek-v4-pro`, `thinking: high` |
+| `pi/agents/scout.md` | Add `provider: ollama-cloud`, `model: deepseek-v4-flash`, `thinking: low` |
+| `pi/agents/planner.md` | Add `provider: ollama-cloud`, `model: glm-5.1`, `thinking: medium` |
+| `pi/agents/worker.md` | Add `provider: ollama-cloud`, `model: deepseek-v4-flash` (no thinking — flash defaults to medium) |
 | `pi/extensions/subagent/README.md` | Document `provider`, `thinking` fields and resolution priority (in pi-mono upstream only — don't create a copy in dotfiles) |
 
 ## Invocation Examples
 
 ```javascript
-// Single: reviewer on opus with high thinking, pinned to anthropic (from agent def)
+// Single: reviewer on deepseek-v4-pro with high thinking, pinned to ollama-cloud (from agent def)
 subagent({ agent: "reviewer", task: "Review the auth module" })
 
 // Override thinking for deeper review
@@ -427,39 +428,39 @@ subagent({ agent: "reviewer", task: "Review the auth module", thinking: "xhigh" 
 subagent({ agent: "reviewer", task: "Quick lint check", provider: "google", thinking: "low" })
 
 // Top-level defaults for all tasks in this call
-subagent({ provider: "anthropic", thinking: "high", tasks: [
+subagent({ provider: "ollama-cloud", thinking: "high", tasks: [
   { agent: "reviewer", task: "Review security" },
   { agent: "reviewer", task: "Review performance", thinking: "medium" },  // override thinking
 ]})
 
 // Chain with per-step control
 subagent({ chain: [
-  { agent: "scout", task: "Find auth code" },                          // google/flash/low (from def)
-  { agent: "planner", task: "Plan improvements using {previous}" },    // anthropic/sonnet/medium (from def)
-  { agent: "reviewer", task: "Review plan from {previous}", thinking: "xhigh" },  // anthropic/opus/xhigh
+  { agent: "scout", task: "Find auth code" },                                // ollama-cloud/flash/low (from def)
+  { agent: "planner", task: "Plan improvements using {previous}" },          // ollama-cloud/glm-5.1/medium (from def)
+  { agent: "reviewer", task: "Review plan from {previous}", thinking: "xhigh" },  // ollama-cloud/deepseek-v4-pro/xhigh
 ]})
 ```
 
 ## Testing Plan
 
 1. **Frontmatter parsing**: Test `parseModelField` with all styles:
-   - `"anthropic/claude-opus-4-7:high"` → `{ provider: "anthropic", model: "claude-opus-4-7", thinking: "high" }`
-   - `"claude-opus-4-7:high"` → `{ model: "claude-opus-4-7", thinking: "high" }`
-   - `"anthropic/claude-opus-4-7"` → `{ provider: "anthropic", model: "claude-opus-4-7" }`
-   - `"claude-opus-4-7"` → `{ model: "claude-opus-4-7" }`
+   - `"ollama-cloud/deepseek-v4-pro:high"` → `{ provider: "ollama-cloud", model: "deepseek-v4-pro", thinking: "high" }`
+   - `"deepseek-v4-pro:high"` → `{ model: "deepseek-v4-pro", thinking: "high" }`
+   - `"ollama-cloud/deepseek-v4-pro"` → `{ provider: "ollama-cloud", model: "deepseek-v4-pro" }`
+   - `"deepseek-v4-pro"` → `{ model: "deepseek-v4-pro" }`
    - `"openrouter/google/gemma-3:high"` → `{ provider: "openrouter", model: "google/gemma-3", thinking: "high" }`
 
 2. **Priority resolution**: Test `resolveEffectiveConfig` with combinations:
-   - Agent def has `provider: anthropic`, task override has `provider: google` → google wins
+   - Agent def has `provider: ollama-cloud`, task override has `provider: google` → google wins
    - Agent def has `thinking: high`, top-level has `thinking: medium`, per-task has nothing → medium wins
    - Agent def has `thinking: high`, top-level has nothing, per-task has `thinking: xhigh` → xhigh wins
 
 3. **CLI arg generation**: Verify spawned args:
-   - `provider=anthropic, model=opus, thinking=high` → `["--provider", "anthropic", "--model", "opus", "--thinking", "high"]`
+   - `provider=ollama-cloud, model=deepseek-v4-pro, thinking=high` → `["--provider", "ollama-cloud", "--model", "deepseek-v4-pro", "--thinking", "high"]`
    - `thinking=medium` → no `--thinking` flag (default, omitted)
    - No provider → no `--provider` flag (model resolver handles it via `provider/id` in `--model`)
 
-4. **Invalid values**: Invalid thinking level in frontmatter → agent skipped. Invalid thinking level in invocation → clear error returned.
+4. **Invalid values**: Invalid thinking level in frontmatter → agent skipped with a warning. Invalid thinking level in invocation → clear error returned.
 
 ## Open Questions
 

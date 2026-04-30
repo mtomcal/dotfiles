@@ -23,7 +23,7 @@ import { StringEnum } from "@mariozechner/pi-ai";
 import { type ExtensionAPI, getMarkdownTheme, withFileMutationQueue } from "@mariozechner/pi-coding-agent";
 import { Container, Markdown, Spacer, Text } from "@mariozechner/pi-tui";
 import { Type } from "typebox";
-import { type AgentConfig, type AgentScope, discoverAgents } from "./agents.js";
+import { type AgentConfig, type AgentScope, discoverAgents, normalizeOptional } from "./agents.js";
 
 const MAX_PARALLEL_TASKS = 8;
 const MAX_CONCURRENCY = 4;
@@ -61,6 +61,7 @@ function formatUsageStats(
 		parts.push(`ctx:${formatTokens(usage.contextTokens)}`);
 	}
 	if (provider && model) parts.push(`${provider}/${model}`);
+	else if (provider) parts.push(provider);
 	else if (model) parts.push(model);
 	if (thinking && thinking !== "medium") parts.push(`think:${thinking}`);
 	return parts.join(" ");
@@ -256,7 +257,7 @@ function resolveEffectiveConfig(options: {
 	perTaskThinking?: ThinkingLevel;
 }): EffectiveModelConfig {
 	return {
-		provider: options.perTaskProvider ?? options.topLevelProvider ?? options.agent?.provider,
+		provider: normalizeOptional(options.perTaskProvider) ?? normalizeOptional(options.topLevelProvider) ?? options.agent?.provider,
 		model: options.agent?.model,
 		thinking: options.perTaskThinking ?? options.topLevelThinking ?? options.agent?.thinking ?? "medium",
 	};
@@ -685,10 +686,13 @@ export default function (pi: ExtensionAPI) {
 				});
 
 				const successCount = results.filter((r) => r.exitCode === 0).length;
-				const summaries = results.map((r) => {
+			const summaries = results.map((r) => {
 					const output = getFinalOutput(r.messages);
+					const truncated = output.length > 500
+						? output.slice(0, 500) + "\n\n*(...truncated, full output in details)*"
+						: output;
 					const status = r.exitCode === 0 ? "completed" : "failed";
-					return `## ${r.agent} (${status})\n\n${output || "(no output)"}`;
+					return `## ${r.agent} (${status})\n\n${truncated || "(no output)"}`;
 				});
 				return {
 					content: [
