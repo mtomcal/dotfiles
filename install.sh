@@ -1027,6 +1027,15 @@ install_pi() {
     fi
     ln -s "$DOTFILES_DIR/pi/extensions/web-search" "$HOME/.pi/agent/extensions/web-search"
 
+    # Link inherit-last-model extension
+    if [ -L "$HOME/.pi/agent/extensions/inherit-last-model" ]; then
+        rm "$HOME/.pi/agent/extensions/inherit-last-model"
+    elif [ -d "$HOME/.pi/agent/extensions/inherit-last-model" ]; then
+        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+        mv "$HOME/.pi/agent/extensions/inherit-last-model" "$HOME/.pi/agent/extensions/inherit-last-model.backup.$TIMESTAMP"
+    fi
+    ln -s "$DOTFILES_DIR/pi/extensions/inherit-last-model" "$HOME/.pi/agent/extensions/inherit-last-model"
+
     print_success "Pi coding agent configured"
     print_info "Run 'pi' to start (first launch prompts for authentication)"
 }
@@ -1039,10 +1048,12 @@ install_pi_sandbox() {
         return 1
     fi
 
-    # Build the Docker image
-    print_info "Building Pi sandbox Docker image (pis:latest)..."
-    if docker build -t "pis:latest" "$DOTFILES_DIR/pi/"; then
-        print_success "Pi sandbox Docker image built"
+    # Build the Docker image (pin Pi version from npm so the image label is accurate)
+    print_info "Resolving latest Pi version for sandbox image..."
+    PI_SANDBOX_VER=$(npm view @mariozechner/pi-coding-agent version 2>/dev/null || echo "latest")
+    print_info "Building Pi sandbox Docker image (Pi @${PI_SANDBOX_VER})..."
+    if docker build --build-arg PI_VERSION="$PI_SANDBOX_VER" -t "pis:latest" "$DOTFILES_DIR/pi/"; then
+        print_success "Pi sandbox Docker image built (Pi @${PI_SANDBOX_VER})"
     else
         print_error "Failed to build Pi sandbox Docker image"
         return 1

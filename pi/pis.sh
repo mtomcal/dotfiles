@@ -7,6 +7,7 @@
 #   pis -rw ~/Code/lib               # Mount extra dir (read-write)
 #   pis ~/Code/lib -- --mode print   # Extra dir + pi args
 #   pis -- -p "fix the tests"        # Pi args only
+#   pis --no-rebuild                 # Skip auto-rebuild check
 #   pis --build                      # Rebuild the Docker image
 #
 # CWD is always mounted read-write. Extra directories are read-only
@@ -30,6 +31,7 @@ NC='\033[0m'
 EXTRA_VOLUMES=()
 PI_ARGS=()
 BUILD_ONLY=false
+NO_REBUILD=false
 NEXT_RW=false
 PARSING_PIS_ARGS=true
 
@@ -44,13 +46,17 @@ while [[ $# -gt 0 ]]; do
                 BUILD_ONLY=true
                 shift
                 ;;
+            --no-rebuild)
+                NO_REBUILD=true
+                shift
+                ;;
             -rw)
                 NEXT_RW=true
                 shift
                 ;;
             -*)
                 echo -e "${RED}[pis]${NC} Unknown flag: $1" >&2
-                echo "Usage: pis [-rw] [extra_dirs...] [-- pi_args...]" >&2
+                echo "Usage: pis [--no-rebuild] [-rw] [extra_dirs...] [-- pi_args...]" >&2
                 exit 1
                 ;;
             *)
@@ -79,8 +85,13 @@ done
 # ===========================
 
 build_image() {
-    echo -e "${GREEN}[pis]${NC} Building Docker image ${IMAGE_NAME}..."
-    docker build -t "$IMAGE_NAME" "$DOCKERFILE_DIR"
+    # Resolve the exact Pi version from npm so we can pin it in the build.
+    # This ensures Docker cache is invalidated when the version changes and
+    # the pi.version label matches the installed package.
+    local pi_ver
+    pi_ver=$(npm view @mariozechner/pi-coding-agent version 2>/dev/null || echo "latest")
+    echo -e "${GREEN}[pis]${NC} Building Docker image ${IMAGE_NAME} (Pi @${pi_ver})..."
+    docker build --build-arg PI_VERSION="$pi_ver" -t "$IMAGE_NAME" "$DOCKERFILE_DIR"
     echo -e "${GREEN}[pis]${NC} Image built successfully"
 }
 
@@ -92,6 +103,21 @@ fi
 if ! docker image inspect "$IMAGE_NAME" &>/dev/null; then
     echo -e "${YELLOW}[pis]${NC} Image ${IMAGE_NAME} not found, building..."
     build_image
+elif [[ "$NO_REBUILD" != true ]]; then
+    # Auto-rebuild: compare the Pi version baked into the image against npm latest.
+    # The pi.version label is set at build time, so docker image inspect is
+    # instant (no container startup needed).
+    image_pi=$(docker image inspect "$IMAGE_NAME" --format '{{ index .Config.Labels "pi.version" }}' 2>/dev/null)
+    latest_pi=$(npm view @mariozechner/pi-coding-agent version 2>/dev/null)
+
+    if [[ -n "$latest_pi" && ( -z "$image_pi" || "$image_pi" != "$latest_pi" ) ]]; then
+        if [[ -z "$image_pi" ]]; then
+            echo -e "${YELLOW}[pis]${NC} Pi version label missing in image — rebuilding..."
+        else
+            echo -e "${YELLOW}[pis]${NC} Pi v${image_pi} in image, v${latest_pi} available — rebuilding..."
+        fi
+        build_image
+    fi
 fi
 
 # ===========================

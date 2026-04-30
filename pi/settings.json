@@ -1,6 +1,7 @@
 {
   "enableSkillCommands": true,
-  "lastChangelogVersion": "0.70.2",
+  "lastChangelogVersion": "0.70.6",
   "defaultProvider": "ollama-cloud",
-  "defaultModel": "kimi-k2.6"
+  "defaultModel": "glm-5.1",
+  "defaultThinkingLevel": "medium"
 }

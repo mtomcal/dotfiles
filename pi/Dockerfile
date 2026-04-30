@@ -4,6 +4,11 @@
 
 FROM ubuntu:24.04
 
+# Pin the Pi version so Docker cache is invalidated when the version changes.
+# Default to 'latest' for manual builds; the pis wrapper script resolves
+# the exact version and passes --build-arg PI_VERSION=<x.y.z>.
+ARG PI_VERSION=latest
+
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Base dev tools
@@ -49,7 +54,7 @@ RUN curl -fsSL https://fnm.vercel.app/install | bash -s -- --install-dir "${FNM_
     && eval "$(fnm env --shell bash)" \
     && fnm install --lts \
     && fnm default lts-latest \
-    && npm install -g @mariozechner/pi-coding-agent@latest
+    && npm install -g @mariozechner/pi-coding-agent@${PI_VERSION}
 
 # Resolve node binary path for subsequent layers and runtime.
 # fnm aliases/default/ IS the node installation root (contains bin/, lib/).
@@ -61,6 +66,10 @@ ENV PATH="/usr/local/node/bin:${FNM_DIR}:${PATH}"
 RUN ln -sf "$(which fdfind)" /usr/local/bin/fd
 
 # Default working directory (overridden by pis script)
+# Stamp the resolved Pi version into the image metadata so the pis wrapper
+# can compare it against the latest npm release without starting a container.
+LABEL pi.version="${PI_VERSION}"
+
 WORKDIR /workspace
 
 # Entrypoint: start pi inside tmux so the tmux orchestration skill
