@@ -2,8 +2,8 @@
 name: scout
 description: Fast codebase recon that returns compressed context for handoff to other agents
 tools: read, grep, find, ls, bash
-provider: google
-model: gemini-3.1-flash
+provider: ollama-cloud
+model: deepseek-v4-flash
 thinking: low
 ---
 

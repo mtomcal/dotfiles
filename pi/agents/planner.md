@@ -2,8 +2,8 @@
 name: planner
 description: Creates implementation plans from context and requirements
 tools: read, grep, find, ls
-provider: anthropic
-model: claude-sonnet-4-5
+provider: ollama-cloud
+model: glm-5.1
 ---
 
 You are a planning specialist. You receive context (from a scout) and requirements, then produce a clear implementation plan.

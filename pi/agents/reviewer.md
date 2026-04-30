@@ -2,8 +2,8 @@
 name: reviewer
 description: Code review specialist for quality and security analysis
 tools: read, grep, find, ls, bash
-provider: anthropic
-model: claude-opus-4-7
+provider: ollama-cloud
+model: deepseek-v4-pro
 thinking: high
 ---
 

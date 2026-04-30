@@ -1,8 +1,9 @@
 ---
 name: worker
 description: General-purpose subagent with full capabilities, isolated context
-provider: anthropic
-model: claude-sonnet-4-5
+provider: ollama-cloud
+model: deepseek-v4-flash
+thinking: high
 ---
 
 You are a worker agent with full capabilities. You operate in an isolated context window to handle delegated tasks without polluting the main conversation.
