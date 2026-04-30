@@ -5,17 +5,51 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { getAgentDir, parseFrontmatter } from "@mariozechner/pi-coding-agent";
+import type { ThinkingLevel } from "@mariozechner/pi-agent-core";
 
 export type AgentScope = "user" | "project" | "both";
+
+const VALID_THINKING_LEVELS = ["off", "minimal", "low", "medium", "high", "xhigh"] as const;
 
 export interface AgentConfig {
 	name: string;
 	description: string;
 	tools?: string[];
+	provider?: string;
 	model?: string;
+	thinking?: ThinkingLevel;
 	systemPrompt: string;
 	source: "user" | "project";
 	filePath: string;
+}
+
+export function parseModelField(modelStr: string): {
+	provider?: string;
+	model: string;
+	thinking?: ThinkingLevel;
+} {
+	let remaining = modelStr;
+	let provider: string | undefined;
+	let thinking: ThinkingLevel | undefined;
+
+	// Extract provider prefix: "provider/model" -> provider="provider", model="model"
+	const slashIndex = remaining.indexOf("/");
+	if (slashIndex > 0) {
+		provider = remaining.substring(0, slashIndex);
+		remaining = remaining.substring(slashIndex + 1);
+	}
+
+	// Extract thinking suffix: "model:high" -> thinking="high", model="model"
+	const colonIndex = remaining.lastIndexOf(":");
+	if (colonIndex > 0) {
+		const possibleThinking = remaining.substring(colonIndex + 1);
+		if (VALID_THINKING_LEVELS.includes(possibleThinking as ThinkingLevel)) {
+			thinking = possibleThinking as ThinkingLevel;
+			remaining = remaining.substring(0, colonIndex);
+		}
+	}
+
+	return { provider, model: remaining, thinking };
 }
 
 export interface AgentDiscoveryResult {
@@ -60,11 +94,36 @@ function loadAgentsFromDir(dir: string, source: "user" | "project"): AgentConfig
 			.map((t: string) => t.trim())
 			.filter(Boolean);
 
+		// Parse model field (handles "provider/id:thinking" shorthand)
+		let provider = frontmatter.provider;
+		let model = frontmatter.model;
+		let thinking: ThinkingLevel | undefined;
+
+		if (model) {
+			const parsed = parseModelField(model);
+			// Shorthand components only apply if explicit fields aren't set
+			if (!provider && parsed.provider) provider = parsed.provider;
+			if (!frontmatter.thinking && parsed.thinking) thinking = parsed.thinking;
+			model = parsed.model;
+		}
+
+		// Explicit thinking field overrides shorthand
+		if (frontmatter.thinking) {
+			if (VALID_THINKING_LEVELS.includes(frontmatter.thinking as ThinkingLevel)) {
+				thinking = frontmatter.thinking as ThinkingLevel;
+			} else {
+				// Skip agent with invalid thinking level
+				continue;
+			}
+		}
+
 		agents.push({
 			name: frontmatter.name,
 			description: frontmatter.description,
 			tools: tools && tools.length > 0 ? tools : undefined,
-			model: frontmatter.model,
+			provider,
+			model,
+			thinking,
 			systemPrompt: body,
 			source,
 			filePath,

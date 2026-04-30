@@ -144,7 +144,7 @@ model: gemini-3.1-flash
 
 ### 2. Add `provider` and `thinking` to subagent invocation parameters (`index.ts`)
 
-**File**: `packages/coding-agent/examples/extensions/subagent/index.ts`
+**File**: `pi/extensions/subagent/index.ts`
 
 Add fields at every level:
 
@@ -199,7 +199,7 @@ const SubagentParams = Type.Object({
 
 ### 3. Pass `--provider` and `--thinking` to spawned `pi` process (`index.ts`)
 
-**File**: `packages/coding-agent/examples/extensions/subagent/index.ts`
+**File**: `pi/extensions/subagent/index.ts`
 
 Update `runSingleAgent` signature and CLI arg construction:
 
@@ -406,13 +406,13 @@ thinking: high
 
 | File | Change |
 |------|--------|
-| `packages/coding-agent/examples/extensions/subagent/agents.ts` | Add `provider`, `thinking` to `AgentConfig`; add `parseModelField()` for shorthand parsing; update `loadAgentsFromDir` |
-| `packages/coding-agent/examples/extensions/subagent/index.ts` | Add `provider`/`thinking` to `SubagentParams`, `TaskItem`, `ChainItem`; add `resolveEffectiveConfig()`; update `runSingleAgent` signature and CLI args; add `provider`/`thinking` to `SingleResult`; update `formatUsageStats`, `renderCall`, `renderResult` |
-| `packages/coding-agent/examples/extensions/subagent/agents/reviewer.md` | Add `provider: anthropic`, `model: claude-opus-4-7`, `thinking: high` |
-| `packages/coding-agent/examples/extensions/subagent/agents/scout.md` | Add `provider: google`, `model: gemini-3.1-flash`, `thinking: low` |
-| `packages/coding-agent/examples/extensions/subagent/agents/planner.md` | Add `provider: anthropic`, `model: claude-sonnet-4-5` |
-| `packages/coding-agent/examples/extensions/subagent/agents/worker.md` | Add `provider: anthropic`, `model: claude-sonnet-4-5` |
-| `packages/coding-agent/examples/extensions/subagent/README.md` | Document `provider`, `thinking` fields and resolution priority |
+| `pi/extensions/subagent/agents.ts` | Add `provider`, `thinking` to `AgentConfig`; add `parseModelField()` for shorthand parsing; update `loadAgentsFromDir` |
+| `pi/extensions/subagent/index.ts` | Add `provider`/`thinking` to `SubagentParams`, `TaskItem`, `ChainItem`; add `resolveEffectiveConfig()`; update `runSingleAgent` signature and CLI args; add `provider`/`thinking` to `SingleResult`; update `formatUsageStats`, `renderCall`, `renderResult` |
+| `pi/agents/reviewer.md` | Add `provider: anthropic`, `model: claude-opus-4-7`, `thinking: high` |
+| `pi/agents/scout.md` | Add `provider: google`, `model: gemini-3.1-flash`, `thinking: low` |
+| `pi/agents/planner.md` | Add `provider: anthropic`, `model: claude-sonnet-4-5` |
+| `pi/agents/worker.md` | Add `provider: anthropic`, `model: claude-sonnet-4-5` |
+| `pi/extensions/subagent/README.md` | Document `provider`, `thinking` fields and resolution priority (in pi-mono upstream only — don't create a copy in dotfiles) |
 
 ## Invocation Examples
 
