@@ -17,12 +17,13 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import type { AgentToolResult } from "@mariozechner/pi-agent-core";
+import type { ThinkingLevel } from "@mariozechner/pi-agent-core";
 import type { Message } from "@mariozechner/pi-ai";
 import { StringEnum } from "@mariozechner/pi-ai";
 import { type ExtensionAPI, getMarkdownTheme, withFileMutationQueue } from "@mariozechner/pi-coding-agent";
 import { Container, Markdown, Spacer, Text } from "@mariozechner/pi-tui";
 import { Type } from "typebox";
-import { type AgentConfig, type AgentScope, discoverAgents } from "./agents.js";
+import { type AgentConfig, type AgentScope, discoverAgents, normalizeOptional } from "./agents.js";
 
 const MAX_PARALLEL_TASKS = 8;
 const MAX_CONCURRENCY = 4;
@@ -46,6 +47,8 @@ function formatUsageStats(
 		turns?: number;
 	},
 	model?: string,
+	provider?: string,
+	thinking?: ThinkingLevel,
 ): string {
 	const parts: string[] = [];
 	if (usage.turns) parts.push(`${usage.turns} turn${usage.turns > 1 ? "s" : ""}`);
@@ -57,7 +60,10 @@ function formatUsageStats(
 	if (usage.contextTokens && usage.contextTokens > 0) {
 		parts.push(`ctx:${formatTokens(usage.contextTokens)}`);
 	}
-	if (model) parts.push(model);
+	if (provider && model) parts.push(`${provider}/${model}`);
+	else if (provider) parts.push(provider);
+	else if (model) parts.push(model);
+	if (thinking && thinking !== "medium") parts.push(`think:${thinking}`);
 	return parts.join(" ");
 }
 
@@ -147,7 +153,9 @@ interface SingleResult {
 	messages: Message[];
 	stderr: string;
 	usage: UsageStats;
+	provider?: string;
 	model?: string;
+	thinking?: ThinkingLevel;
 	stopReason?: string;
 	errorMessage?: string;
 	step?: number;
@@ -235,6 +243,26 @@ function getPiInvocation(args: string[]): { command: string; args: string[] } {
 
 type OnUpdateCallback = (partial: AgentToolResult<SubagentDetails>) => void;
 
+interface EffectiveModelConfig {
+	provider?: string;
+	model?: string;
+	thinking: ThinkingLevel;
+}
+
+function resolveEffectiveConfig(options: {
+	agent: AgentConfig | undefined;
+	topLevelProvider?: string;
+	topLevelThinking?: ThinkingLevel;
+	perTaskProvider?: string;
+	perTaskThinking?: ThinkingLevel;
+}): EffectiveModelConfig {
+	return {
+		provider: normalizeOptional(options.perTaskProvider) ?? normalizeOptional(options.topLevelProvider) ?? options.agent?.provider,
+		model: options.agent?.model,
+		thinking: options.perTaskThinking ?? options.topLevelThinking ?? options.agent?.thinking ?? "medium",
+	};
+}
+
 async function runSingleAgent(
 	defaultCwd: string,
 	agents: AgentConfig[],
@@ -245,6 +273,10 @@ async function runSingleAgent(
 	signal: AbortSignal | undefined,
 	onUpdate: OnUpdateCallback | undefined,
 	makeDetails: (results: SingleResult[]) => SubagentDetails,
+	topLevelProvider: string | undefined,
+	topLevelThinking: ThinkingLevel | undefined,
+	perTaskProvider: string | undefined,
+	perTaskThinking: ThinkingLevel | undefined,
 ): Promise<SingleResult> {
 	const agent = agents.find((a) => a.name === agentName);
 
@@ -262,8 +294,18 @@ async function runSingleAgent(
 		};
 	}
 
+	const effective = resolveEffectiveConfig({
+		agent,
+		topLevelProvider,
+		topLevelThinking,
+		perTaskProvider,
+		perTaskThinking,
+	});
+
 	const args: string[] = ["--mode", "json", "-p", "--no-session"];
-	if (agent.model) args.push("--model", agent.model);
+	if (effective.provider) args.push("--provider", effective.provider);
+	if (effective.model) args.push("--model", effective.model);
+	if (effective.thinking !== "medium") args.push("--thinking", effective.thinking);
 	if (agent.tools && agent.tools.length > 0) args.push("--tools", agent.tools.join(","));
 
 	let tmpPromptDir: string | null = null;
@@ -277,7 +319,9 @@ async function runSingleAgent(
 		messages: [],
 		stderr: "",
 		usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: 0, contextTokens: 0, turns: 0 },
-		model: agent.model,
+		provider: effective.provider,
+		model: effective.model,
+		thinking: effective.thinking,
 		step,
 	};
 
@@ -399,16 +443,30 @@ async function runSingleAgent(
 	}
 }
 
+const ProviderSchema = Type.Optional(Type.String({
+	description: "Provider override. Prevents accidental routing to expensive providers.",
+}));
+
+const ThinkingSchema = Type.Optional(
+	StringEnum(["off", "minimal", "low", "medium", "high", "xhigh"] as const, {
+		description: "Thinking level override. Overrides agent definition default.",
+	}),
+);
+
 const TaskItem = Type.Object({
 	agent: Type.String({ description: "Name of the agent to invoke" }),
 	task: Type.String({ description: "Task to delegate to the agent" }),
 	cwd: Type.Optional(Type.String({ description: "Working directory for the agent process" })),
+	provider: ProviderSchema,
+	thinking: ThinkingSchema,
 });
 
 const ChainItem = Type.Object({
 	agent: Type.String({ description: "Name of the agent to invoke" }),
 	task: Type.String({ description: "Task with optional {previous} placeholder for prior output" }),
 	cwd: Type.Optional(Type.String({ description: "Working directory for the agent process" })),
+	provider: ProviderSchema,
+	thinking: ThinkingSchema,
 });
 
 const AgentScopeSchema = StringEnum(["user", "project", "both"] as const, {
@@ -426,6 +484,8 @@ const SubagentParams = Type.Object({
 		Type.Boolean({ description: "Prompt before running project-local agents. Default: true.", default: true }),
 	),
 	cwd: Type.Optional(Type.String({ description: "Working directory for the agent process (single mode)" })),
+	provider: ProviderSchema,
+	thinking: ThinkingSchema,
 });
 
 export default function (pi: ExtensionAPI) {
@@ -531,6 +591,10 @@ export default function (pi: ExtensionAPI) {
 						signal,
 						chainUpdate,
 						makeDetails("chain"),
+						params.provider,
+						params.thinking as ThinkingLevel | undefined,
+						step.provider,
+						step.thinking as ThinkingLevel | undefined,
 					);
 					results.push(result);
 
@@ -611,6 +675,10 @@ export default function (pi: ExtensionAPI) {
 							}
 						},
 						makeDetails("parallel"),
+						params.provider,
+						params.thinking as ThinkingLevel | undefined,
+						t.provider,
+						t.thinking as ThinkingLevel | undefined,
 					);
 					allResults[index] = result;
 					emitParallelUpdate();
@@ -618,16 +686,19 @@ export default function (pi: ExtensionAPI) {
 				});
 
 				const successCount = results.filter((r) => r.exitCode === 0).length;
-				const summaries = results.map((r) => {
+			const summaries = results.map((r) => {
 					const output = getFinalOutput(r.messages);
-					const preview = output.slice(0, 100) + (output.length > 100 ? "..." : "");
-					return `[${r.agent}] ${r.exitCode === 0 ? "completed" : "failed"}: ${preview || "(no output)"}`;
+					const truncated = output.length > 500
+						? output.slice(0, 500) + "\n\n*(...truncated, full output in details)*"
+						: output;
+					const status = r.exitCode === 0 ? "completed" : "failed";
+					return `## ${r.agent} (${status})\n\n${truncated || "(no output)"}`;
 				});
 				return {
 					content: [
 						{
 							type: "text",
-							text: `Parallel: ${successCount}/${results.length} succeeded\n\n${summaries.join("\n\n")}`,
+							text: `Parallel: ${successCount}/${results.length} succeeded\n\n${summaries.join("\n\n---\n\n")}`,
 						},
 					],
 					details: makeDetails("parallel")(results),
@@ -645,6 +716,10 @@ export default function (pi: ExtensionAPI) {
 					signal,
 					onUpdate,
 					makeDetails("single"),
+					params.provider,
+					params.thinking as ThinkingLevel | undefined,
+					undefined,
+					undefined,
 				);
 				const isError = result.exitCode !== 0 || result.stopReason === "error" || result.stopReason === "aborted";
 				if (isError) {
@@ -685,8 +760,12 @@ export default function (pi: ExtensionAPI) {
 						"\n  " +
 						theme.fg("muted", `${i + 1}.`) +
 						" " +
-						theme.fg("accent", step.agent) +
-						theme.fg("dim", ` ${preview}`);
+						theme.fg("accent", step.agent);
+					const meta: string[] = [];
+					if (step.provider) meta.push(step.provider);
+					if (step.thinking && step.thinking !== "medium") meta.push(`think:${step.thinking}`);
+					if (meta.length > 0) text += theme.fg("muted", ` (${meta.join(", ")})`);
+					text += theme.fg("dim", ` ${preview}`);
 				}
 				if (args.chain.length > 3) text += `\n  ${theme.fg("muted", `... +${args.chain.length - 3} more`)}`;
 				return new Text(text, 0, 0);
@@ -698,7 +777,12 @@ export default function (pi: ExtensionAPI) {
 					theme.fg("muted", ` [${scope}]`);
 				for (const t of args.tasks.slice(0, 3)) {
 					const preview = t.task.length > 40 ? `${t.task.slice(0, 40)}...` : t.task;
-					text += `\n  ${theme.fg("accent", t.agent)}${theme.fg("dim", ` ${preview}`)}`;
+					text += `\n  ${theme.fg("accent", t.agent)}`;
+					const meta: string[] = [];
+					if (t.provider) meta.push(t.provider);
+					if (t.thinking && t.thinking !== "medium") meta.push(`think:${t.thinking}`);
+					if (meta.length > 0) text += theme.fg("muted", ` (${meta.join(", ")})`);
+					text += theme.fg("dim", ` ${preview}`);
 				}
 				if (args.tasks.length > 3) text += `\n  ${theme.fg("muted", `... +${args.tasks.length - 3} more`)}`;
 				return new Text(text, 0, 0);
@@ -709,6 +793,13 @@ export default function (pi: ExtensionAPI) {
 				theme.fg("toolTitle", theme.bold("subagent ")) +
 				theme.fg("accent", agentName) +
 				theme.fg("muted", ` [${scope}]`);
+			// Show provider/thinking in metadata
+			if (args.provider || args.thinking) {
+				const meta: string[] = [];
+				if (args.provider) meta.push(args.provider);
+				if (args.thinking && args.thinking !== "medium") meta.push(`think:${args.thinking}`);
+				if (meta.length > 0) text += theme.fg("muted", ` (${meta.join(", ")})`);
+			}
 			text += `\n  ${theme.fg("dim", preview)}`;
 			return new Text(text, 0, 0);
 		},
@@ -775,7 +866,7 @@ export default function (pi: ExtensionAPI) {
 							container.addChild(new Markdown(finalOutput.trim(), 0, 0, mdTheme));
 						}
 					}
-					const usageStr = formatUsageStats(r.usage, r.model);
+					const usageStr = formatUsageStats(r.usage, r.model, r.provider, r.thinking);
 					if (usageStr) {
 						container.addChild(new Spacer(1));
 						container.addChild(new Text(theme.fg("dim", usageStr), 0, 0));
@@ -791,7 +882,7 @@ export default function (pi: ExtensionAPI) {
 					text += `\n${renderDisplayItems(displayItems, COLLAPSED_ITEM_COUNT)}`;
 					if (displayItems.length > COLLAPSED_ITEM_COUNT) text += `\n${theme.fg("muted", "(Ctrl+O to expand)")}`;
 				}
-				const usageStr = formatUsageStats(r.usage, r.model);
+				const usageStr = formatUsageStats(r.usage, r.model, r.provider, r.thinking);
 				if (usageStr) text += `\n${theme.fg("dim", usageStr)}`;
 				return new Text(text, 0, 0);
 			}
@@ -860,7 +951,7 @@ export default function (pi: ExtensionAPI) {
 							container.addChild(new Markdown(finalOutput.trim(), 0, 0, mdTheme));
 						}
 
-						const stepUsage = formatUsageStats(r.usage, r.model);
+						const stepUsage = formatUsageStats(r.usage, r.model, r.provider, r.thinking);
 						if (stepUsage) container.addChild(new Text(theme.fg("dim", stepUsage), 0, 0));
 					}
 
@@ -945,7 +1036,7 @@ export default function (pi: ExtensionAPI) {
 							container.addChild(new Markdown(finalOutput.trim(), 0, 0, mdTheme));
 						}
 
-						const taskUsage = formatUsageStats(r.usage, r.model);
+						const taskUsage = formatUsageStats(r.usage, r.model, r.provider, r.thinking);
 						if (taskUsage) container.addChild(new Text(theme.fg("dim", taskUsage), 0, 0));
 					}
 

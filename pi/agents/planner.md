@@ -2,6 +2,9 @@
 name: planner
 description: Creates implementation plans from context and requirements
 tools: read, grep, find, ls
+provider: ollama-cloud
+model: glm-5.1
+thinking: medium
 ---
 
 You are a planning specialist. You receive context (from a scout) and requirements, then produce a clear implementation plan.

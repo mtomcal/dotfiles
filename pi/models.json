@@ -6,7 +6,7 @@
       "apiKey": "OLLAMA_API_KEY",
       "compat": {
         "supportsDeveloperRole": false,
-        "supportsReasoningEffort": false
+        "supportsReasoningEffort": true
       },
       "models": [
         { "id": "glm-5.1", "name": "GLM 5.1 (198K)", "contextWindow": 198000, "maxTokens": 16384 },
