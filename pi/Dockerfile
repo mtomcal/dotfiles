@@ -11,6 +11,15 @@ ARG PI_VERSION=latest
 
 ENV DEBIAN_FRONTEND=noninteractive
 
+# Use Arizona mirror instead of default Ubuntu repos (faster, avoids
+# security.ubuntu.com hangs on some networks).
+# Step 1: switch to HTTP (ca-certificates not yet installed), install certs,
+# then upgrade to HTTPS.
+RUN sed -i 's|http://archive.ubuntu.com/ubuntu/|http://mirror.arizona.edu/ubuntu/|g; s|http://security.ubuntu.com/ubuntu/|http://mirror.arizona.edu/ubuntu/|g; s|http://ports.ubuntu.com/ubuntu-ports/|http://mirror.arizona.edu/ubuntu-ports/|g' /etc/apt/sources.list.d/ubuntu.sources \
+    && apt-get update && apt-get install -y ca-certificates \
+    && sed -i 's|http://mirror.arizona.edu/|https://mirror.arizona.edu/|g' /etc/apt/sources.list.d/ubuntu.sources \
+    && rm -rf /var/lib/apt/lists/*
+
 # Base dev tools
 RUN apt-get update && apt-get install -y \
     git \
