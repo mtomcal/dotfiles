@@ -1,20 +1,20 @@
 /**
- * Cycle 6: subagent_run (Blocking) and tool registration.
- *
- * RED: Tests for subagent_run and verifying all 6 tools are registered.
+ * Cycle 6+: subagent_run (Blocking) — tests for ad-hoc config.
  */
 
-import { describe, test, expect, beforeAll } from "vitest";
+import { describe, test, expect, vi, beforeAll, afterEach } from "vitest";
 import { createMockExtension } from "./extension-helpers.js";
 
 let registeredTools: Map<string, any>;
 let mockPi: any;
 let runTool: any;
 let mockCtx: any;
+let jobMgr: any;
 
 beforeAll(async () => {
 	const ctx = createMockExtension();
 	mockPi = ctx.pi;
+	jobMgr = ctx.jobMgr;
 	registeredTools = ctx.registeredTools;
 
 	const mod = await import("../index.js");
@@ -30,6 +30,13 @@ beforeAll(async () => {
 	} as any;
 });
 
+afterEach(() => {
+	jobMgr.cancelAll();
+	for (const job of jobMgr.listJobs()) {
+		(jobMgr as any).jobs.delete(job.id);
+	}
+});
+
 describe("tool registration", () => {
 	test("all six tools are registered", () => {
 		const names = Array.from(registeredTools.keys());
@@ -41,9 +48,13 @@ describe("tool registration", () => {
 		expect(names).toContain("subagent_cancel");
 	});
 
-	test("subagent_run has no async references in description", () => {
-		expect(runTool.description).not.toContain("fork");
-		expect(runTool.description).not.toContain("background");
+	test("subagent_run description mentions systemPrompt and ad-hoc", () => {
+		expect(runTool.description).toContain("systemPrompt");
+		expect(runTool.description).toContain("ad-hoc");
+	});
+
+	test("subagent_run description does NOT mention agent discovery", () => {
+		expect(runTool.description).not.toContain("agent file");
 	});
 });
 
@@ -53,39 +64,38 @@ describe("subagent_run", () => {
 		expect(runTool.name).toBe("subagent_run");
 	});
 
-	test("returns error for missing agent", async () => {
-		const result = await runTool.execute("r1", { task: "Some task" }, undefined, undefined, mockCtx);
-		expect(result.content[0].text).toMatch(/invalid|agent/i);
-	});
-
-	test("returns error for unknown agent", async () => {
-		const result = await runTool.execute("r2", { agent: "nonexistent-agent", task: "Some task" }, undefined, undefined, mockCtx);
-		expect(result.isError).toBe(true);
-		expect(result.content[0].text).toContain("nonexistent-agent");
-	});
-
-	test("returns error when no mode specified", async () => {
+	test("returns error when no mode is specified", async () => {
 		const result = await runTool.execute("r3", {}, undefined, undefined, mockCtx);
 		expect(result.content[0].text).toMatch(/invalid/i);
+		expect(result.isError).toBe(true);
 	});
 
-	test("has valid chain parameter schema", () => {
-		// Verify parameters schema includes chain
+	test("no agentScope or confirmProjectAgents params", () => {
 		const schema = runTool.parameters;
-		expect(schema.properties).toHaveProperty("chain");
-		expect(schema.properties).toHaveProperty("tasks");
-		expect(schema.properties).toHaveProperty("agent");
-		expect(schema.properties).toHaveProperty("task");
+		expect(schema.properties.agentScope).toBeUndefined();
+		expect(schema.properties.confirmProjectAgents).toBeUndefined();
 	});
 
-	test("subagent tool is NOT registered (replaced by subagent_run)", () => {
-		expect(registeredTools.has("subagent")).toBe(false);
+	test("has name, systemPrompt, tools, model, contextFiles, extensions params", () => {
+		const schema = runTool.parameters;
+		expect(schema.properties.name).toBeDefined();
+		expect(schema.properties.systemPrompt).toBeDefined();
+		expect(schema.properties.tools).toBeDefined();
+		expect(schema.properties.model).toBeDefined();
+		expect(schema.properties.contextFiles).toBeDefined();
+		expect(schema.properties.extensions).toBeDefined();
 	});
 
-	test("subagent_fork has promptGuidelines", () => {
+	test("does NOT have agent param", () => {
+		const schema = runTool.parameters;
+		expect(schema.properties.agent).toBeUndefined();
+	});
+
+	test("subagent_fork has promptGuidelines mentioning systemPrompt", () => {
 		const forkTool = registeredTools.get("subagent_fork");
 		expect(forkTool.promptGuidelines).toBeDefined();
 		expect(forkTool.promptGuidelines.length).toBeGreaterThan(0);
-		expect(forkTool.promptGuidelines[0]).toContain("fork");
+		const all = forkTool.promptGuidelines.join(" ");
+		expect(all).toContain("systemPrompt");
 	});
 });

@@ -25,8 +25,7 @@ export interface UsageStats {
 
 /** Result from a single agent invocation */
 export interface SingleResult {
-	agent: string;
-	agentSource: "user" | "project" | "unknown";
+	name: string;
 	task: string;
 	exitCode: number;
 	messages: Message[];
@@ -43,8 +42,6 @@ export interface SingleResult {
 /** Aggregated details for subagent tool results */
 export interface SubagentDetails {
 	mode: "single" | "parallel" | "chain";
-	agentScope: string;
-	projectAgentsDir: string | null;
 	results: SingleResult[];
 }
 
@@ -227,7 +224,9 @@ export function renderSingleResult(
 
 	if (expanded) {
 		const container = new Container();
-		let header = `${icon} ${theme.fg("toolTitle", theme.bold(r.agent))}${theme.fg("muted", ` (${r.agentSource})`)}`;
+		let header = `${icon} ${theme.fg("toolTitle", theme.bold(r.name))}`;
+		if (r.provider && r.model) header += theme.fg("muted", ` (${r.provider}/${r.model})`);
+		else if (r.model) header += theme.fg("muted", ` (${r.model})`);
 		if (isError && r.stopReason) header += ` ${theme.fg("error", `[${r.stopReason}]`)}`;
 		container.addChild(new Text(header, 0, 0));
 		if (isError && r.errorMessage)
@@ -263,7 +262,9 @@ export function renderSingleResult(
 		return container as unknown as Component;
 	}
 
-	let text = `${icon} ${theme.fg("toolTitle", theme.bold(r.agent))}${theme.fg("muted", ` (${r.agentSource})`)}`;
+	let text = `${icon} ${theme.fg("toolTitle", theme.bold(r.name))}`;
+	if (r.provider && r.model) text += theme.fg("muted", ` (${r.provider}/${r.model})`);
+	else if (r.model) text += theme.fg("muted", ` (${r.model})`);
 	if (isError && r.stopReason) text += ` ${theme.fg("error", `[${r.stopReason}]`)}`;
 	if (isError && r.errorMessage) text += `\n${theme.fg("error", `Error: ${r.errorMessage}`)}`;
 	else if (displayItems.length === 0) text += `\n${theme.fg("muted", "(no output)")}`;
@@ -278,7 +279,7 @@ export function renderSingleResult(
 
 /** Render a job status line for the job table */
 export function renderJobStatusLine(
-	job: { id: string; agent: string; task: string; status: string; startedAt: number; completedAt: number | null; result?: SingleResult | null },
+	job: { id: string; name: string; task: string; status: string; startedAt: number; completedAt: number | null; result?: SingleResult | null },
 	theme: Theme,
 ): string {
 	const statusIcons: Record<string, string> = {
@@ -288,7 +289,7 @@ export function renderJobStatusLine(
 		cancelled: theme.fg("muted", "⊘"),
 	};
 	const icon = statusIcons[job.status] || theme.fg("muted", "?");
-	const name = theme.fg("accent", job.agent);
+	const nameStr = theme.fg("accent", job.name);
 
 	// Elapsed time
 	const now = Date.now();
@@ -314,5 +315,5 @@ export function renderJobStatusLine(
 		summary = summary.length > 80 ? summary.slice(0, 80) + "..." : summary;
 	}
 
-	return `${icon} ${name} ${theme.fg("dim", `(${elapsed})`)} ${theme.fg("muted", taskPreview)}${summary}`;
+	return `${icon} ${nameStr} ${theme.fg("dim", `(${elapsed})`)} ${theme.fg("muted", taskPreview)}${summary}`;
 }

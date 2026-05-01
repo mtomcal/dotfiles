@@ -17,7 +17,7 @@ export interface SentMessage {
 /**
  * Create a mock ExtensionAPI for testing tool implementations.
  */
-export function createMockExtension(options?: { projectAgents?: boolean }): {
+export function createMockExtension(): {
 	pi: any;
 	registeredTools: Map<string, any>;
 	jobMgr: JobManager;
@@ -81,8 +81,7 @@ export function createMockExtension(options?: { projectAgents?: boolean }): {
  */
 export function makeFakeResult(overrides?: Partial<SingleResult>): SingleResult {
 	const base: SingleResult = {
-		agent: "test-agent",
-		agentSource: "user",
+		name: "test-agent",
 		task: "test task",
 		exitCode: 0,
 		messages: [],

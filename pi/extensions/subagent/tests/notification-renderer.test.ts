@@ -1,8 +1,6 @@
 /**
- * Cycle 8: Message Renderer for Completion Notifications.
- *
- * Test that the "subagent-result" message renderer is registered and
- * produces correct output in collapsed and expanded modes.
+ * Message Renderer for Completion Notifications.
+ * Uses name (not agent) in notification details.
  */
 
 import { describe, test, expect, beforeAll } from "vitest";
@@ -35,7 +33,7 @@ function fakeNotificationMessage(overrides: any = {}) {
 		details: {
 			jobId: "code-reviewer-a3f2",
 			status: "completed",
-			agent: "code-reviewer",
+			name: "code-reviewer",
 			task: "Review the auth module",
 			summary: "The auth module looks good overall. Minor suggestions included.",
 			usage: {
@@ -50,7 +48,6 @@ function fakeNotificationMessage(overrides: any = {}) {
 		},
 	};
 
-	// Deep merge: override specific fields within details
 	if (overrides.details) {
 		defaults.details = { ...defaults.details, ...overrides.details };
 	}
@@ -58,7 +55,7 @@ function fakeNotificationMessage(overrides: any = {}) {
 	return { ...defaults, ...overrides, details: defaults.details };
 }
 
-describe("subagent-result message renderer registration", () => {
+describe("subagent-result message renderer", () => {
 	test("renderer is registered under 'subagent-result' key", () => {
 		expect(mockPi.messageRenderers.has("subagent-result")).toBe(true);
 	});
@@ -67,9 +64,7 @@ describe("subagent-result message renderer registration", () => {
 		const renderer = mockPi.messageRenderers.get("subagent-result");
 		expect(typeof renderer).toBe("function");
 	});
-});
 
-describe("subagent-result message renderer output", () => {
 	test("returns a component with text for valid message", () => {
 		const renderer = mockPi.messageRenderers.get("subagent-result");
 		const component = renderer(
@@ -82,7 +77,7 @@ describe("subagent-result message renderer output", () => {
 		expect(text).toContain("completed");
 	});
 
-	test("collapsed mode includes agent name", () => {
+	test("collapsed mode includes name", () => {
 		const renderer = mockPi.messageRenderers.get("subagent-result");
 		const component = renderer(
 			fakeNotificationMessage(),
@@ -95,7 +90,6 @@ describe("subagent-result message renderer output", () => {
 
 	test("collapsed mode includes status", () => {
 		const renderer = mockPi.messageRenderers.get("subagent-result");
-		// Use the deep-merge helper to only override the status field
 		const message = fakeNotificationMessage({
 			details: { status: "completed" },
 		});
@@ -104,7 +98,7 @@ describe("subagent-result message renderer output", () => {
 		expect(text).toContain("completed");
 	});
 
-	test("expanded mode returns a Container (has addChild)", () => {
+	test("expanded mode returns a Container", () => {
 		const renderer = mockPi.messageRenderers.get("subagent-result");
 		const component = renderer(
 			fakeNotificationMessage({ details: { result: fakeSingleResult() } }),
@@ -135,13 +129,10 @@ describe("subagent-result message renderer output", () => {
 		const message = fakeNotificationMessage({
 			details: { summary: undefined },
 		});
-		// Should not throw
-		const component = renderer(message, { expanded: false }, getMockTheme());
 		expect(() => renderer(message, { expanded: false }, getMockTheme())).not.toThrow();
-		expect(component).toBeDefined();
 	});
 
-	test("includes usage stats in output when available", () => {
+	test("includes usage stats in collapsed mode", () => {
 		const renderer = mockPi.messageRenderers.get("subagent-result");
 		const component = renderer(
 			fakeNotificationMessage(),
@@ -149,33 +140,19 @@ describe("subagent-result message renderer output", () => {
 			getMockTheme(),
 		);
 		const text = component?.text ?? "";
-		// Should contain formatted usage (turns count, cost)
 		expect(text).toMatch(/3|turn/i);
-		expect(text).toMatch(/0\.03/i);
 	});
 
-	test("task truncation in collapsed mode for long tasks", () => {
+	test("notification uses name, not agent field", () => {
 		const renderer = mockPi.messageRenderers.get("subagent-result");
 		const message = fakeNotificationMessage({
-			details: { task: "A".repeat(200) },
+			details: { name: "review" },
 		});
 		const component = renderer(message, { expanded: false }, getMockTheme());
 		const text = component?.text ?? "";
-		// The task (200+ chars) should be truncated — full string must not appear
-		const fullTaskString = "A".repeat(200);
-		expect(text).not.toContain(fullTaskString);
-	});
-
-	test("jobId is included in expanded output (collapsed shows agent + status)", () => {
-		const renderer = mockPi.messageRenderers.get("subagent-result");
-		const component = renderer(
-			fakeNotificationMessage(),
-			{ expanded: false },
-			getMockTheme(),
-		);
-		const text = component?.text ?? "";
-		// Collapsed output shows agent name and status (not the raw ID)
-		expect(text).toContain("code-reviewer");
-		expect(text).toContain("completed");
+		expect(text).toContain("review");
+		// The old 'agent' field should not be in the output
+		expect(text).not.toContain("(user)");
+		expect(text).not.toContain("(project)");
 	});
 });

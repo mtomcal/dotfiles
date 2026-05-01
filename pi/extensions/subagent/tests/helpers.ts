@@ -18,8 +18,7 @@ export function fakeUsageStats(): SingleResult["usage"] {
 
 export function fakeSingleResult(overrides: Partial<SingleResult> = {}): SingleResult {
 	return {
-		agent: "reviewer",
-		agentSource: "user",
+		name: "reviewer",
 		task: "Review the auth module",
 		exitCode: 0,
 		messages: [

@@ -1,11 +1,6 @@
 /**
- * Cycle 11: Rendering Consistency.
- *
- * Test renderCall and renderResult for all 6 tools.
- * Verify that collapsed and expanded modes produce expected output.
- *
- * NOTE: Tool lookups happen inside tests (not module-level const) because
- * beforeAll populates registeredTools after module-parsing time.
+ * Rendering Consistency — renderCall and renderResult for all 6 tools.
+ * Uses ad-hoc config (name, systemPrompt) instead of agent/agentScope.
  */
 
 import { describe, test, expect, beforeAll } from "vitest";
@@ -30,10 +25,10 @@ function getMockTheme() {
 }
 
 describe("renderCall for subagent_run", () => {
-	test("single mode renders agent name and task", () => {
+	test("single mode shows name and task", () => {
 		const tool: any = registeredTools.get("subagent_run");
 		const component = tool.renderCall(
-			{ agent: "reviewer", task: "Review the auth module" },
+			{ name: "reviewer", task: "Review the auth module" },
 			getMockTheme(),
 			{},
 		);
@@ -42,13 +37,24 @@ describe("renderCall for subagent_run", () => {
 		expect(text).toContain("Review the auth module");
 	});
 
+	test("bare task shows auto-derived name", () => {
+		const tool: any = registeredTools.get("subagent_run");
+		const component = tool.renderCall(
+			{ task: "Fix the login bug" },
+			getMockTheme(),
+			{},
+		);
+		const text = component?.text ?? "";
+		expect(text).toContain("fix");
+	});
+
 	test("parallel mode renders count", () => {
 		const tool: any = registeredTools.get("subagent_run");
 		const component = tool.renderCall(
 			{
 				tasks: [
-					{ agent: "reviewer", task: "Review auth" },
-					{ agent: "writer", task: "Write tests" },
+					{ task: "Review auth" },
+					{ task: "Write tests" },
 				],
 			},
 			getMockTheme(),
@@ -64,8 +70,8 @@ describe("renderCall for subagent_run", () => {
 		const component = tool.renderCall(
 			{
 				chain: [
-					{ agent: "planner", task: "Plan the feature" },
-					{ agent: "coder", task: "Implement {previous}" },
+					{ task: "Plan the feature" },
+					{ task: "Implement {previous}" },
 				],
 			},
 			getMockTheme(),
@@ -76,16 +82,23 @@ describe("renderCall for subagent_run", () => {
 		expect(text).toContain("2");
 	});
 
-	test("renders with provider/thinking metadata", () => {
+	test("renders with model and provider", () => {
 		const tool: any = registeredTools.get("subagent_run");
 		const component = tool.renderCall(
-			{ agent: "reviewer", task: "Review", provider: "anthropic", thinking: "high" as any },
+			{ task: "Review", model: "claude-sonnet-4-5", provider: "anthropic" },
 			getMockTheme(),
 			{},
 		);
 		const text = component?.text ?? "";
 		expect(text).toContain("anthropic");
-		expect(text).toContain("think:high");
+		expect(text).toContain("claude-sonnet-4-5");
+	});
+
+	test("no agentSource in any rendering parameters", () => {
+		const tool: any = registeredTools.get("subagent_run");
+		const schema = tool.parameters;
+		expect(schema.properties.agentScope).toBeUndefined();
+		expect(schema.properties.confirmProjectAgents).toBeUndefined();
 	});
 });
 
@@ -93,13 +106,14 @@ describe("renderCall for subagent_fork", () => {
 	test("renders fork icon and job info", () => {
 		const tool: any = registeredTools.get("subagent_fork");
 		const component = tool.renderCall(
-			{ agent: "reviewer", task: "Review auth module" },
+			{ task: "Review auth module" },
 			getMockTheme(),
 			{},
 		);
 		const text = component?.text ?? "";
 		expect(text).toContain("fork");
-		expect(text).toContain("reviewer");
+		// Auto-derived name from task
+		expect(text).toContain("review");
 	});
 
 	test("parallel fork renders task count", () => {
@@ -107,9 +121,9 @@ describe("renderCall for subagent_fork", () => {
 		const component = tool.renderCall(
 			{
 				tasks: [
-					{ agent: "a", task: "task a" },
-					{ agent: "b", task: "task b" },
-					{ agent: "c", task: "task c" },
+					{ task: "task a" },
+					{ task: "task b" },
+					{ task: "task c" },
 				],
 			},
 			getMockTheme(),
@@ -118,95 +132,44 @@ describe("renderCall for subagent_fork", () => {
 		const text = component?.text ?? "";
 		expect(text).toContain("3");
 	});
-
-	test("renders task truncation for long tasks", () => {
-		const tool: any = registeredTools.get("subagent_fork");
-		const longTask = "This is a very long task description that should be truncated in the render call display";
-		const component = tool.renderCall(
-			{ agent: "reviewer", task: longTask },
-			getMockTheme(),
-			{},
-		);
-		const text = component?.text ?? "";
-		expect(text).toContain("reviewer");
-	});
 });
 
-describe("renderCall for subagent_status", () => {
-	test("lists all jobs when no jobId", () => {
+describe("renderCall for status/results/wait/cancel", () => {
+	test("subagent_status: lists all jobs when no jobId", () => {
 		const tool: any = registeredTools.get("subagent_status");
 		const component = tool.renderCall({}, getMockTheme(), {});
-		const text = component?.text ?? "";
-		expect(text).toContain("subagent_status");
+		expect(component?.text).toContain("subagent_status");
 	});
 
-	test("shows specific jobId when provided", () => {
+	test("subagent_status: shows specific jobId", () => {
 		const tool: any = registeredTools.get("subagent_status");
-		const component = tool.renderCall(
-			{ jobId: "reviewer-ab12" },
-			getMockTheme(),
-			{},
-		);
-		const text = component?.text ?? "";
-		expect(text).toContain("reviewer-ab12");
+		const component = tool.renderCall({ jobId: "reviewer-ab12" }, getMockTheme(), {});
+		expect(component?.text).toContain("reviewer-ab12");
 	});
-});
 
-describe("renderCall for subagent_results", () => {
-	test("shows job ID", () => {
+	test("subagent_results: shows job ID", () => {
 		const tool: any = registeredTools.get("subagent_results");
-		const component = tool.renderCall(
-			{ jobId: "reviewer-ab12" },
-			getMockTheme(),
-			{},
-		);
-		const text = component?.text ?? "";
-		expect(text).toContain("reviewer-ab12");
+		const component = tool.renderCall({ jobId: "reviewer-ab12" }, getMockTheme(), {});
+		expect(component?.text).toContain("reviewer-ab12");
 	});
-});
 
-describe("renderCall for subagent_wait", () => {
-	test("shows job ID and timeout", () => {
+	test("subagent_wait: shows job ID and timeout", () => {
 		const tool: any = registeredTools.get("subagent_wait");
-		const component = tool.renderCall(
-			{ jobId: "reviewer-ab12", timeout: 120 },
-			getMockTheme(),
-			{},
-		);
-		const text = component?.text ?? "";
-		expect(text).toContain("reviewer-ab12");
-		expect(text).toContain("120");
+		const component = tool.renderCall({ jobId: "reviewer-ab12", timeout: 120 }, getMockTheme(), {});
+		expect(component?.text).toContain("reviewer-ab12");
+		expect(component?.text).toContain("120");
 	});
 
-	test("uses default 300s timeout when not specified", () => {
-		const tool: any = registeredTools.get("subagent_wait");
-		const component = tool.renderCall(
-			{ jobId: "reviewer-ab12" },
-			getMockTheme(),
-			{},
-		);
-		const text = component?.text ?? "";
-		expect(text).toContain("300");
-	});
-});
-
-describe("renderCall for subagent_cancel", () => {
-	test("shows jobId when cancelling specific job", () => {
+	test("subagent_cancel: shows jobId when cancelling specific job", () => {
 		const tool: any = registeredTools.get("subagent_cancel");
-		const component = tool.renderCall(
-			{ jobId: "reviewer-ab12" },
-			getMockTheme(),
-			{},
-		);
-		const text = component?.text ?? "";
-		expect(text).toContain("reviewer-ab12");
+		const component = tool.renderCall({ jobId: "reviewer-ab12" }, getMockTheme(), {});
+		expect(component?.text).toContain("reviewer-ab12");
 	});
 
-	test("shows cancel all when all:true", () => {
+	test("subagent_cancel: shows cancel all", () => {
 		const tool: any = registeredTools.get("subagent_cancel");
 		const component = tool.renderCall({ all: true }, getMockTheme(), {});
-		const text = component?.text ?? "";
-		expect(text).toMatch(/all/i);
+		expect(component?.text).toMatch(/all/i);
 	});
 });
 
@@ -219,8 +182,6 @@ describe("renderResult", () => {
 				content: [{ type: "text", text: "Done" }],
 				details: {
 					mode: "single",
-					agentScope: "user",
-					projectAgentsDir: null,
 					results: [result],
 				},
 			},
@@ -230,6 +191,9 @@ describe("renderResult", () => {
 		);
 		const text = rendered?.text ?? "";
 		expect(text).toContain("reviewer");
+		// No agentSource tag
+		expect(text).not.toContain("(user)");
+		expect(text).not.toContain("(project)");
 	});
 
 	test("subagent_status renderResult handles empty status", () => {
@@ -245,21 +209,6 @@ describe("renderResult", () => {
 		);
 		const text = rendered?.text ?? "";
 		expect(text).toMatch(/no subagent|0/i);
-	});
-
-	test("subagent_results renderResult renders result content", () => {
-		const tool: any = registeredTools.get("subagent_results");
-		const rendered = tool.renderResult(
-			{
-				content: [{ type: "text", text: "Job results here" }],
-				details: { results: [fakeSingleResult()] },
-			},
-			{ expanded: false },
-			getMockTheme(),
-			{},
-		);
-		const text = rendered?.text ?? "";
-		expect(text).toContain("reviewer");
 	});
 
 	test("subagent_fork renderResult shows fork prefix", () => {

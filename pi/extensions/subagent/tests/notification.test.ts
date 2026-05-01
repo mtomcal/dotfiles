@@ -1,27 +1,35 @@
 /**
- * Cycle 3: Completion Notification — Background job completion notifications.
+ * Completion Notification — Background job completion notifications.
+ * Uses name (not agent).
  */
 
-import { describe, test, expect, vi, beforeAll } from "vitest";
+import { describe, test, expect, vi, beforeAll, afterEach } from "vitest";
 import { createMockExtension } from "./extension-helpers.js";
 
 let registeredTools: Map<string, any>;
 let mockPi: any;
+let jobMgr: any;
 
 beforeAll(async () => {
 	const ctx = createMockExtension();
 	mockPi = ctx.pi;
+	jobMgr = ctx.jobMgr;
 	registeredTools = ctx.registeredTools;
 
 	const mod = await import("../index.js");
 	mod.default(mockPi);
 });
 
+afterEach(() => {
+	jobMgr.cancelAll();
+	for (const job of jobMgr.listJobs()) {
+		(jobMgr as any).jobs.delete(job.id);
+	}
+});
+
 describe("completion notification", () => {
 	test("subagent-result message renderer is registered", () => {
-		// registerMessageRenderer was called with "subagent-result"
 		expect(mockPi.messageRenderers.has("subagent-result")).toBe(true);
-		// All 6 tools are registered
 		expect(registeredTools.has("subagent_fork")).toBe(true);
 		expect(registeredTools.has("subagent_status")).toBe(true);
 		expect(registeredTools.has("subagent_results")).toBe(true);
@@ -30,7 +38,7 @@ describe("completion notification", () => {
 		expect(registeredTools.has("subagent_run")).toBe(true);
 	});
 
-	test("fork tool exists and creates job entries", async () => {
+	test("fork tool creates job entries with name field", async () => {
 		const forkTool = registeredTools.get("subagent_fork");
 		const mockCtx = {
 			cwd: "/test",
@@ -39,14 +47,13 @@ describe("completion notification", () => {
 			ui: { confirm: vi.fn() },
 		} as any;
 
-		const result = await forkTool.execute("cf1", { agent: "test-agent", task: "Test task" }, undefined, undefined, mockCtx);
+		const result = await forkTool.execute("cf1", { task: "Test task" }, undefined, undefined, mockCtx);
 		expect(result.details.jobs).toHaveLength(1);
-		expect(result.details.jobs[0].agent).toBe("test-agent");
+		expect(result.details.jobs[0].name).toBeDefined();
 		expect(result.details.jobs[0].status).toBeDefined();
 	});
 
-	test("session_start handler is registered (doesn't crash)", async () => {
-		// The extension was loaded without errors - session_start handler exists
+	test("session handlers registered", async () => {
 		expect(mockPi.eventHandlers.has("session_shutdown")).toBe(true);
 		expect(mockPi.eventHandlers.has("session_start")).toBe(true);
 	});

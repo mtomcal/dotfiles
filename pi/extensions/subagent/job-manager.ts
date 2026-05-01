@@ -21,8 +21,7 @@ export interface UsageStats {
 }
 
 export interface SingleResult {
-	agent: string;
-	agentSource: "user" | "project" | "unknown";
+	name: string;
 	task: string;
 	exitCode: number;
 	messages: Message[];
@@ -40,7 +39,7 @@ export type JobStatus = "running" | "completed" | "failed" | "cancelled";
 
 export interface AsyncJob {
 	id: string;
-	agent: string;
+	name: string;
 	task: string;
 	status: JobStatus;
 	process: ChildProcess | null;
@@ -51,7 +50,7 @@ export interface AsyncJob {
 
 export interface SerializedJob {
 	id: string;
-	agent: string;
+	name: string;
 	task: string;
 	status: JobStatus;
 	result: SingleResult | null;
@@ -64,23 +63,23 @@ export const MAX_RUNNING_JOBS = 8;
 export class JobManager {
 	private jobs = new Map<string, AsyncJob>();
 
-	createJob(agentName: string, task: string): AsyncJob {
+	createJob(name: string, task: string): AsyncJob {
 		const running = this.listRunning();
 		if (running.length >= MAX_RUNNING_JOBS) {
 			throw new Error(
 				`Maximum ${MAX_RUNNING_JOBS} concurrent async jobs. Cancel a job or wait for one to complete.`,
 			);
 		}
-		// 3 bytes = 6 hex chars = 16M values per agent name (safe from birthday collisions)
-	let id: string;
-	let attempts = 0;
-	do {
-		id = `${agentName}-${randomBytes(3).toString("hex")}`;
-		attempts++;
-	} while (this.jobs.has(id) && attempts < 10);
+		// 3 bytes = 6 hex chars = 16M values per name prefix (safe from birthday collisions)
+		let id: string;
+		let attempts = 0;
+		do {
+			id = `${name}-${randomBytes(3).toString("hex")}`;
+			attempts++;
+		} while (this.jobs.has(id) && attempts < 10);
 		const job: AsyncJob = {
 			id,
-			agent: agentName,
+			name,
 			task,
 			status: "running",
 			process: null,
@@ -112,8 +111,7 @@ export class JobManager {
 		if (job && job.status === "running") {
 			job.status = "failed";
 			job.result = job.result ?? {
-				agent: job.agent,
-				agentSource: "unknown",
+				name: job.name,
 				task: job.task,
 				exitCode: 1,
 				messages: [],
@@ -176,7 +174,7 @@ export class JobManager {
 	serialize(): SerializedJob[] {
 		return Array.from(this.jobs.values()).map((j) => ({
 			id: j.id,
-			agent: j.agent,
+			name: j.name,
 			task: j.task,
 			status: j.status,
 			result: j.result,
@@ -190,13 +188,18 @@ export class JobManager {
 		for (const d of data) {
 			// After session restore, "running" jobs have no process — mark as cancelled
 			const status: JobStatus = d.status === "running" ? "cancelled" : d.status;
+			// Backward-compat: legacy data may use 'agent' instead of 'name'
+			const name = d.name ?? (d as any).agent ?? "unknown";
+			const result = d.result
+				? { ...d.result, name: d.result.name ?? (d.result as any).agent ?? name }
+				: null;
 			const job: AsyncJob = {
 				id: d.id,
-				agent: d.agent,
+				name,
 				task: d.task,
 				status,
 				process: null,
-				result: d.result,
+				result,
 				startedAt: d.startedAt,
 				completedAt: d.completedAt,
 			};

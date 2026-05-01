@@ -1,8 +1,5 @@
 /**
- * Cycle 1: Job Manager Core — In-memory job tracker tests.
- *
- * RED: These tests should all pass (job-manager.ts is already implemented).
- * We verify correctness before moving to Cycle 2.
+ * Cycle 2: Job Manager — name terminology, remove agentSource, backward compat
  */
 
 import { describe, test, expect, vi } from "vitest";
@@ -10,12 +7,16 @@ import { JobManager } from "../job-manager.js";
 import { fakeSingleResult, setupJobManager } from "./helpers.js";
 
 describe("JobManager", () => {
-	test("createJob assigns agent-prefixed ID and status running", () => {
+	test("createJob uses name-based ID", () => {
 		const { jobMgr } = setupJobManager();
-		const job = jobMgr.createJob("code-reviewer", "Review auth module");
-		expect(job.id).toMatch(/^code-reviewer-[a-z0-9]{6}$/);
-		expect(job.agent).toBe("code-reviewer");
-		expect(job.task).toBe("Review auth module");
+		const job = jobMgr.createJob("review", "Review auth module");
+		expect(job.id).toMatch(/^review-[a-z0-9]{6}$/);
+		expect(job.name).toBe("review");
+	});
+
+	test("createJob assigns status running", () => {
+		const { jobMgr } = setupJobManager();
+		const job = jobMgr.createJob("test", "A task");
 		expect(job.status).toBe("running");
 	});
 
@@ -103,8 +104,8 @@ describe("JobManager", () => {
 	test("deserialize marks running jobs as cancelled (orphan protection)", () => {
 		const data = [
 			{
-				id: "reviewer-abc1",
-				agent: "reviewer",
+				id: "reviewer-abc123",
+				name: "reviewer",
 				task: "Review auth",
 				status: "running" as const,
 				result: null,
@@ -114,8 +115,40 @@ describe("JobManager", () => {
 		];
 		const mgr = new JobManager();
 		mgr.deserialize(data);
-		expect(mgr.getJob("reviewer-abc1")!.status).toBe("cancelled");
-		expect(mgr.getJob("reviewer-abc1")!.process).toBeNull();
+		expect(mgr.getJob("reviewer-abc123")!.status).toBe("cancelled");
+		expect(mgr.getJob("reviewer-abc123")!.process).toBeNull();
+	});
+
+	test("deserialize handles legacy 'agent' field for backward compat", () => {
+		const mgr = new JobManager();
+		// Simulate persisted state from old version with 'agent' instead of 'name'
+		const legacyData = [{
+			id: "reviewer-a3f2b7",
+			agent: "reviewer",  // old field name
+			task: "Review auth",
+			status: "completed" as const,
+			result: { agent: "reviewer", task: "Review auth", exitCode: 0, messages: [], stderr: "", usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: 0, contextTokens: 0, turns: 0 } },
+			startedAt: Date.now(),
+			completedAt: Date.now(),
+		}];
+		mgr.deserialize(legacyData as any);
+		const job = mgr.getJob("reviewer-a3f2b7");
+		expect(job).toBeDefined();
+		expect(job!.name).toBe("reviewer"); // migrated from 'agent'
+	});
+
+	test("SingleResult no longer has agentSource", () => {
+		const result: SingleResult = {
+			name: "review",
+			task: "Review auth",
+			exitCode: 0,
+			messages: [],
+			stderr: "",
+			usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: 0, contextTokens: 0, turns: 0 },
+		};
+		// Verify the interface doesn't have agentSource (TypeScript will enforce this)
+		expect(result.name).toBe("review");
+		expect((result as any).agentSource).toBeUndefined();
 	});
 
 	test("cancelJob captures process ref before nulling for SIGKILL escalation", () => {
@@ -126,15 +159,13 @@ describe("JobManager", () => {
 		jobMgr.setProcess(job.id, mockProc);
 		jobMgr.cancelJob(job.id);
 
-		// Process reference is nulled immediately (job.process is null)
+		// Process reference is nulled immediately
 		expect(jobMgr.getJob(job.id)!.process).toBeNull();
 		expect(jobMgr.getJob(job.id)!.status).toBe("cancelled");
-
-		// But the SIGTERM was sent via the captured reference
 		expect(mockProc.kill).toHaveBeenCalledWith("SIGTERM");
 
 		// After 5 seconds, SIGKILL fallback should still work via captured ref
-		mockProc.killed = false; // process didn't die from SIGTERM
+		mockProc.killed = false;
 		vi.advanceTimersByTime(5000);
 		expect(mockProc.kill).toHaveBeenCalledWith("SIGKILL");
 
@@ -152,11 +183,9 @@ describe("JobManager", () => {
 		jobMgr.setProcess(job2.id, mockProc2);
 		jobMgr.cancelAll();
 
-		// Both got SIGTERM
 		expect(mockProc1.kill).toHaveBeenCalledWith("SIGTERM");
 		expect(mockProc2.kill).toHaveBeenCalledWith("SIGTERM");
 
-		// After 5s, SIGKILL fallback fires for both
 		vi.advanceTimersByTime(5000);
 		expect(mockProc1.kill).toHaveBeenCalledWith("SIGKILL");
 		expect(mockProc2.kill).toHaveBeenCalledWith("SIGKILL");
@@ -166,10 +195,8 @@ describe("JobManager", () => {
 
 	test("createJob retries on ID collision", () => {
 		const { jobMgr } = setupJobManager();
-		// Force a collision by pre-creating a job with a known ID
 		const existing = jobMgr.createJob("test", "task");
 		const newJob = jobMgr.createJob("test", "task2");
-		// New job should have a different ID (collision avoidance)
 		expect(newJob.id).not.toBe(existing.id);
 		expect(newJob.id).toMatch(/^test-[a-z0-9]{6}$/);
 	});

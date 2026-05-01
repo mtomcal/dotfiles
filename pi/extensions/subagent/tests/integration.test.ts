@@ -1,9 +1,5 @@
 /**
- * Cycle 12: Integration Test — End-to-End Fork Flow.
- *
- * Exercises the full path: fork → background process →
- * completion notification → results retrieval.
- * Also tests cancel → no notification.
+ * Integration Test — End-to-end ad-hoc config workflow.
  */
 
 import { describe, test, expect, vi, beforeAll, afterEach } from "vitest";
@@ -23,241 +19,102 @@ beforeAll(async () => {
 });
 
 afterEach(() => {
-	// Clear sent messages between tests
 	mockPi.sentMessages.length = 0;
 	mockPi.appendEntries.length = 0;
+	mockPi.jobMgr.cancelAll();
+	for (const job of mockPi.jobMgr.listJobs()) {
+		(mockPi.jobMgr as any).jobs.delete(job.id);
+	}
 });
 
 describe("integration: full async workflow", () => {
-	test("fork tool sends no immediate notification (process runs in background)", async () => {
+	test("fork with bare task sends job and returns ID", async () => {
 		const forkTool = registeredTools.get("subagent_fork");
-		const mockCtx = {
-			cwd: "/test",
-			hasUI: false,
-			signal: undefined,
-			ui: { confirm: vi.fn() },
-		} as any;
+		const mockCtx = { cwd: "/test", hasUI: false, signal: undefined, ui: { confirm: vi.fn() } } as any;
 
-		const result = await forkTool.execute(
-			"int-fork-1",
-			{ agent: "test-agent", task: "Background task" },
-			undefined,
-			undefined,
-			mockCtx,
-		);
+		const result = await forkTool.execute("int-fork-1", { task: "Review the auth module" }, undefined, undefined, mockCtx);
 
-		// Immediate result has no completion notification
 		expect(result.content[0].text).toMatch(/forked/i);
 		expect(result.details.jobs).toHaveLength(1);
-		// No notification sent yet
-		expect(mockPi.sentMessages).toHaveLength(0);
+		expect(result.details.jobs[0].name).toBe("review"); // auto-derived
+		expect(result.details.jobs[0].id).toMatch(/^review-/);
+		expect(mockPi.sentMessages).toHaveLength(0); // no notification yet
 	});
 
-	test("status tool sees the forked job", async () => {
+	test("fork with name and systemPrompt", async () => {
 		const forkTool = registeredTools.get("subagent_fork");
-		const statusTool = registeredTools.get("subagent_status");
-		const mockCtx = {
-			cwd: "/test",
-			hasUI: false,
-			signal: undefined,
-			ui: { confirm: vi.fn() },
-		} as any;
+		const mockCtx = { cwd: "/test", hasUI: false, signal: undefined, ui: { confirm: vi.fn() } } as any;
 
-		// Fork a job
-		const forkResult = await forkTool.execute("int-fork-2", {
-			agent: "status-test-agent",
-			task: "Status test task",
+		const result = await forkTool.execute("int-fork-2", {
+			name: "security-auditor",
+			task: "Audit auth module",
+			systemPrompt: "You are a security auditor.",
 		}, undefined, undefined, mockCtx);
 
-		const jobId = forkResult.details.jobs[0].id;
-
-		// Status should show it (may be failed if agent not found, but still tracked)
-		const statusResult = await statusTool.execute("int-status-1", {
-			jobId,
-		}, undefined, undefined, mockCtx);
-
-		expect(statusResult.content[0].text).toContain(jobId);
+		expect(result.details.jobs[0].name).toBe("security-auditor");
+		expect(result.details.jobs[0].id).toMatch(/^security-auditor-/);
 	});
 
-	test("forking multiple agents in one call returns multiple job IDs", async () => {
+	test("fork with tasks array creates multiple jobs", async () => {
 		const forkTool = registeredTools.get("subagent_fork");
-		const mockCtx = {
-			cwd: "/test",
-			hasUI: false,
-			signal: undefined,
-			ui: { confirm: vi.fn() },
-		} as any;
+		const mockCtx = { cwd: "/test", hasUI: false, signal: undefined, ui: { confirm: vi.fn() } } as any;
 
 		const result = await forkTool.execute("int-fork-3", {
 			tasks: [
-				{ agent: "agent-a", task: "Task A" },
-				{ agent: "agent-b", task: "Task B" },
-				{ agent: "agent-c", task: "Task C" },
+				{ task: "Review auth" },
+				{ task: "Write tests" },
+				{ task: "Check security", systemPrompt: "Be a security scanner.", model: "anthropic/claude-sonnet-4-5:high" },
 			],
 		}, undefined, undefined, mockCtx);
 
 		expect(result.details.jobs).toHaveLength(3);
 		const ids = result.details.jobs.map((j: any) => j.id);
-		// All IDs should be unique
 		expect(new Set(ids).size).toBe(3);
 	});
 
-	test("fork with tasks array increments running count", async () => {
+	test("status tool sees the forked job", async () => {
 		const forkTool = registeredTools.get("subagent_fork");
-		const mockCtx = {
-			cwd: "/test",
-			hasUI: false,
-			signal: undefined,
-			ui: { confirm: vi.fn() },
-		} as any;
+		const statusTool = registeredTools.get("subagent_status");
+		const mockCtx = { cwd: "/test", hasUI: false, signal: undefined, ui: { confirm: vi.fn() } } as any;
 
-		// Count running before
-		const runningBefore = mockPi.jobMgr.runningCount();
-
-		await forkTool.execute("int-fork-4", {
-			tasks: [
-				{ agent: "x", task: "t1" },
-				{ agent: "y", task: "t2" },
-			],
-		}, undefined, undefined, mockCtx);
-
-		// Running count may have changed depending on agent availability
-		// Jobs are created first, process runs after
-		const jobCount = mockPi.jobMgr.listJobs().length;
-		// Two tasks were submitted — jobs must be tracked
-		expect(jobCount).toBeGreaterThanOrEqual(2);
-	});
-
-	test("cancel clears job without sending notification", async () => {
-		const forkTool = registeredTools.get("subagent_fork");
-		const cancelTool = registeredTools.get("subagent_cancel");
-		const mockCtx = {
-			cwd: "/test",
-			hasUI: false,
-			signal: undefined,
-			ui: { confirm: vi.fn() },
-		} as any;
-
-		// Fork a job
-		const forkResult = await forkTool.execute("int-fork-5", {
-			agent: "cancel-agent",
-			task: "Will be cancelled",
-		}, undefined, undefined, mockCtx);
-
+		const forkResult = await forkTool.execute("int-fork-4", { task: "Status test task" }, undefined, undefined, mockCtx);
 		const jobId = forkResult.details.jobs[0].id;
 
-		// Cancel it
-		const cancelResult = await cancelTool.execute("int-cancel-1", {
-			jobId,
-		}, undefined, undefined, mockCtx);
-
-		expect(cancelResult.content[0].text).toMatch(/cancel/i);
-
-		// Job was immediately failed by fork (agent not found in test environment).
-		// The cancel tool correctly refuses to cancel a non-running job.
-		const job = mockPi.jobMgr.getJob(jobId);
-		if (job) {
-			expect(job.status).toBe("failed");
-		}
+		const statusResult = await statusTool.execute("int-status-1", { jobId }, undefined, undefined, mockCtx);
+		expect(statusResult.content[0].text).toContain(jobId);
 	});
 
-	test("cancel all cancels all running jobs", async () => {
+	test("cancel clears job", async () => {
 		const cancelTool = registeredTools.get("subagent_cancel");
-		const mockCtx = {
-			cwd: "/test",
-			hasUI: false,
-			signal: undefined,
-			ui: { confirm: vi.fn() },
-		} as any;
+		const mockCtx = { cwd: "/test", hasUI: false, signal: undefined, ui: { confirm: vi.fn() } } as any;
 
-		const result = await cancelTool.execute("int-cancel-all", {
-			all: true,
-		}, undefined, undefined, mockCtx);
-
-		expect(result.content[0].text).toMatch(/cancel/i);
-		// Should either say "no running" or show a count
-		expect(result.content[0].text).toMatch(/no running|cancelled/i);
+		const result = await cancelTool.execute("int-cancel-all", { all: true }, undefined, undefined, mockCtx);
+		expect(result.content[0].text).toMatch(/cancel|no running/i);
 	});
 
 	test("appendEntry is called after fork", async () => {
 		const forkTool = registeredTools.get("subagent_fork");
-		const mockCtx = {
-			cwd: "/test",
-			hasUI: false,
-			signal: undefined,
-			ui: { confirm: vi.fn() },
-		} as any;
+		const mockCtx = { cwd: "/test", hasUI: false, signal: undefined, ui: { confirm: vi.fn() } } as any;
 
-		// Fork directly in this test so the appendEntries are not cleared by afterEach
-		await forkTool.execute("int-fork-persist", {
-			agent: "persist-agent",
-			task: "Persist test",
-		}, undefined, undefined, mockCtx);
+		await forkTool.execute("int-fork-persist", { task: "Persist test" }, undefined, undefined, mockCtx);
 
-		const stateEntries = mockPi.appendEntries.filter(
-			(e: any) => e.customType === "subagent-job-state",
-		);
+		const stateEntries = mockPi.appendEntries.filter((e: any) => e.customType === "subagent-job-state");
 		expect(stateEntries.length).toBeGreaterThan(0);
 	});
 
 	test("results tool handles unknown job gracefully", async () => {
 		const resultsTool = registeredTools.get("subagent_results");
-		const mockCtx = {
-			cwd: "/test",
-			hasUI: false,
-			signal: undefined,
-			ui: { confirm: vi.fn() },
-		} as any;
+		const mockCtx = { cwd: "/test", hasUI: false, signal: undefined, ui: { confirm: vi.fn() } } as any;
 
-		const result = await resultsTool.execute("int-results-1", {
-			jobId: "nonexistent-job-xxxx",
-		}, undefined, undefined, mockCtx);
-
+		const result = await resultsTool.execute("int-results-1", { jobId: "nonexistent-job-xxxx" }, undefined, undefined, mockCtx);
 		expect(result.isError).toBe(true);
 	});
 
 	test("wait tool handles unknown job gracefully", async () => {
 		const waitTool = registeredTools.get("subagent_wait");
-		const mockCtx = {
-			cwd: "/test",
-			hasUI: false,
-			signal: undefined,
-			ui: { confirm: vi.fn() },
-		} as any;
+		const mockCtx = { cwd: "/test", hasUI: false, signal: undefined, ui: { confirm: vi.fn() } } as any;
 
-		const result = await waitTool.execute("int-wait-1", {
-			jobId: "nonexistent-job-xxxx",
-		}, undefined, undefined, mockCtx);
-
+		const result = await waitTool.execute("int-wait-1", { jobId: "nonexistent-job-xxxx" }, undefined, undefined, mockCtx);
 		expect(result.isError).toBe(true);
-	});
-
-	test("wait tool returns immediately for non-running job", async () => {
-		const forkTool = registeredTools.get("subagent_fork");
-		const waitTool = registeredTools.get("subagent_wait");
-		const mockCtx = {
-			cwd: "/test",
-			hasUI: false,
-			signal: undefined,
-			ui: { confirm: vi.fn() },
-		} as any;
-
-		// Fork a job that will fail immediately (agent not found)
-		const forkResult = await forkTool.execute("int-fork-6", {
-			agent: "unknown-agent-xyz",
-			task: "Will fail",
-		}, undefined, undefined, mockCtx);
-
-		const jobId = forkResult.details.jobs[0].id;
-
-		// Wait should return immediately since job failed
-		const waitResult = await waitTool.execute("int-wait-2", {
-			jobId,
-			timeout: 5,
-		}, undefined, undefined, mockCtx);
-
-		expect(waitResult.content[0].text).toMatch(/fail|complet/i);
-		// Should not say "still running" since it already failed
-		expect(waitResult.content[0].text).not.toMatch(/still running/i);
 	});
 });

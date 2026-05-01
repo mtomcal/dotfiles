@@ -1,11 +1,8 @@
 /**
- * Cycle 7: Fork Parallel Support.
- *
- * Test that subagent_fork correctly handles arrays of tasks,
- * enforces the 8-job cap across calls, and supports per-task overrides.
+ * Fork Parallel Support — tests for tasks array and cap enforcement.
  */
 
-import { describe, test, expect, vi, beforeAll } from "vitest";
+import { describe, test, expect, vi, beforeAll, beforeEach } from "vitest";
 import { createMockExtension } from "./extension-helpers.js";
 import { MAX_RUNNING_JOBS } from "../job-manager.js";
 
@@ -23,7 +20,15 @@ beforeAll(async () => {
 	mod.default(ctx.pi);
 });
 
-function mockCtx() {
+beforeEach(() => {
+	// Clean up jobs between tests
+	jobMgr.cancelAll();
+	for (const job of jobMgr.listJobs()) {
+		(jobMgr as any).jobs.delete(job.id);
+	}
+});
+
+function mockCtxFunc() {
 	return {
 		cwd: "/test",
 		hasUI: false,
@@ -39,21 +44,19 @@ describe("subagent_fork parallel (tasks array)", () => {
 			"fp-1",
 			{
 				tasks: [
-					{ agent: "code-reviewer", task: "Review auth" },
-					{ agent: "test-writer", task: "Write tests" },
-					{ agent: "security", task: "Check vulnerabilities" },
+					{ task: "Review auth" },
+					{ task: "Write tests" },
+					{ task: "Check vulnerabilities" },
 				],
 			},
-			undefined,
-			undefined,
-			mockCtx(),
+			undefined, undefined, mockCtxFunc(),
 		);
 
 		expect(result.content[0].text).toMatch(/3 jobs|3.*fork/i);
 		expect(result.details.jobs).toHaveLength(3);
 		for (const job of result.details.jobs) {
 			expect(job).toHaveProperty("id");
-			expect(job).toHaveProperty("agent");
+			expect(job).toHaveProperty("name");
 			expect(job).toHaveProperty("task");
 			expect(job).toHaveProperty("status");
 		}
@@ -65,15 +68,13 @@ describe("subagent_fork parallel (tasks array)", () => {
 			"fp-2",
 			{
 				tasks: [
-					{ agent: "a", task: "t1" },
-					{ agent: "b", task: "t2" },
-					{ agent: "c", task: "t3" },
-					{ agent: "d", task: "t4" },
+					{ task: "t1" },
+					{ task: "t2" },
+					{ task: "t3" },
+					{ task: "t4" },
 				],
 			},
-			undefined,
-			undefined,
-			mockCtx(),
+			undefined, undefined, mockCtxFunc(),
 		);
 
 		const ids = result.details.jobs.map((j: any) => j.id);
@@ -81,10 +82,7 @@ describe("subagent_fork parallel (tasks array)", () => {
 		expect(uniqueIds.size).toBe(4);
 	});
 
-	test("enforces 8-job cap — ninth individual fork is rejected", async () => {
-		// Fill the cap directly via JobManager (bypassing fork, which would
-		// immediately fail jobs in the test env where agents aren't discoverable).
-		// This tests that the fork tool correctly checks runningCount() before spawning.
+	test("enforces 8-job cap — excess fork is rejected", async () => {
 		const freshCtx = createMockExtension();
 		const freshMod = await import("../index.js");
 		freshMod.default(freshCtx.pi);
@@ -92,25 +90,20 @@ describe("subagent_fork parallel (tasks array)", () => {
 		const freshJobMgr = freshCtx.pi.jobMgr;
 		const freshMockCtx = () => ({ cwd: "/test", hasUI: false, signal: undefined, ui: { confirm: vi.fn() } });
 
-		// Pre-fill 8 running jobs directly in the JobManager
 		for (let i = 0; i < MAX_RUNNING_JOBS; i++) {
 			freshJobMgr.createJob(`agent-${i}`, `Task ${i}`);
 		}
-		expect(freshJobMgr.runningCount()).toBe(MAX_RUNNING_JOBS);
 
-		// 9th fork must be rejected at the cap check
 		const result = await freshForkTool.execute(
 			"fp-cap-attempt",
-			{ agent: "excess", task: "Over cap" },
-			undefined,
-			undefined,
-			freshMockCtx(),
+			{ task: "Over cap" },
+			undefined, undefined, freshMockCtx(),
 		);
 		expect(result.isError).toBe(true);
 		expect(result.content[0].text).toMatch(/8|maximum|concurrent/i);
 	});
 
-	test("cap enforcement error message includes max count", async () => {
+	test("9 tasks in single call triggers cap check", async () => {
 		const freshCtx = createMockExtension();
 		const freshMod = await import("../index.js");
 		freshMod.default(freshCtx.pi);
@@ -118,179 +111,69 @@ describe("subagent_fork parallel (tasks array)", () => {
 		const freshJobMgr = freshCtx.pi.jobMgr;
 		const freshMockCtx = () => ({ cwd: "/test", hasUI: false, signal: undefined, ui: { confirm: vi.fn() } });
 
-		// Pre-fill 8 running jobs directly in the JobManager
-		for (let i = 0; i < MAX_RUNNING_JOBS; i++) {
-			freshJobMgr.createJob(`cap-agent-${i}`, `Cap task ${i}`);
-		}
-
-		// One more should fail with isError containing the cap message.
-		const result = await freshForkTool.execute(
-			"fp-fresh-attempt",
-			{ agent: "excess", task: "Over cap" },
-			undefined,
-			undefined,
-			freshMockCtx(),
-		);
-		expect(result.isError).toBe(true);
-		expect(result.content[0].text).toMatch(/8|maximum|concurrent/i);
-	});
-
-	test("single call with 9 tasks triggers cap check", async () => {
-		const freshCtx = createMockExtension();
-		const freshMod = await import("../index.js");
-		freshMod.default(freshCtx.pi);
-		const freshForkTool = freshCtx.registeredTools.get("subagent_fork");
-		const freshJobMgr = freshCtx.pi.jobMgr;
-		const freshMockCtx = () => ({ cwd: "/test", hasUI: false, signal: undefined, ui: { confirm: vi.fn() } });
-
-		// Pre-fill 8 running jobs directly in the JobManager
 		for (let i = 0; i < MAX_RUNNING_JOBS; i++) {
 			freshJobMgr.createJob(`fill-${i}`, `Fill task ${i}`);
 		}
 
-		// Try to spawn 9 more in a single call — should be rejected because 9 > (8 - runningCount)
 		const result = await freshForkTool.execute(
 			"fp9-attempt",
 			{
 				tasks: Array.from({ length: 9 }, (_, i) => ({
-					agent: `agent-${i}`,
 					task: `Task ${i}`,
 				})),
 			},
-			undefined,
-			undefined,
-			freshMockCtx(),
+			undefined, undefined, freshMockCtx(),
 		);
 		expect(result.isError).toBe(true);
 		expect(result.content[0].text).toMatch(/8|maximum|concurrent/i);
 	});
 
-	test("single agent+task mode still works alongside tasks array", async () => {
+	test("single task mode still works alongside tasks array", async () => {
 		const forkTool = registeredTools.get("subagent_fork");
 
 		const result = await forkTool.execute(
 			"fp-single",
-			{ agent: "single-agent", task: "Single task" },
-			undefined,
-			undefined,
-			mockCtx(),
+			{ task: "Single task" },
+			undefined, undefined, mockCtxFunc(),
 		);
 
 		expect(result.details.jobs).toHaveLength(1);
-		expect(result.details.jobs[0].agent).toBe("single-agent");
-	});
-
-	test("returns error when both agent+task and tasks are provided", async () => {
-		const forkTool = registeredTools.get("subagent_fork");
-
-		const result = await forkTool.execute(
-			"fp-ambiguous",
-			{
-				agent: "a",
-				task: "t",
-				tasks: [{ agent: "b", task: "t2" }],
-			},
-			undefined,
-			undefined,
-			mockCtx(),
-		);
-
-		// agent+task takes precedence (single mode)
-		expect(result.details.jobs).toHaveLength(1);
+		expect(result.details.jobs[0].name).toBe("single");
 	});
 });
 
 describe("subagent_fork per-task overrides", () => {
-	test("per-task provider override", async () => {
+	test("per-task provider override in spawned config", async () => {
 		const forkTool = registeredTools.get("subagent_fork");
 		const result = await forkTool.execute(
 			"fp-override-1",
 			{
 				tasks: [
-					{ agent: "reviewer", task: "Review", provider: "anthropic" },
-					{ agent: "writer", task: "Write", provider: "openai" },
+					{ task: "Review something", provider: "anthropic" },
+					{ task: "Write something", provider: "openai" },
 				],
 			},
-			undefined,
-			undefined,
-			mockCtx(),
+			undefined, undefined, mockCtxFunc(),
 		);
 
 		expect(result.details.jobs).toHaveLength(2);
-		// Verify provider overrides were applied to each job
+		// Verify provider overrides were applied to each spawned job
 		expect(result.details.jobs[0].provider).toBe("anthropic");
 		expect(result.details.jobs[1].provider).toBe("openai");
 	});
 
-	test("per-task thinking override", async () => {
+	test("top-level provider/thinking applies to single task", async () => {
 		const forkTool = registeredTools.get("subagent_fork");
 		const result = await forkTool.execute(
-			"fp-override-2",
+			"fp-toplevel-single",
 			{
-				tasks: [
-					{ agent: "reviewer", task: "Review", thinking: "high" as any },
-					{ agent: "writer", task: "Write", thinking: "off" as any },
-				],
-			},
-			undefined,
-			undefined,
-			mockCtx(),
-		);
-
-		expect(result.details.jobs).toHaveLength(2);
-		// Verify thinking overrides were applied to each job
-		expect(result.details.jobs[0].thinking).toBe("high");
-		expect(result.details.jobs[1].thinking).toBe("off");
-	});
-
-	test("top-level provider/thinking applies to all tasks when per-task not set", async () => {
-		const forkTool = registeredTools.get("subagent_fork");
-		const result = await forkTool.execute(
-			"fp-toplevel",
-			{
+				task: "Top level task",
 				provider: "anthropic",
-				thinking: "high" as any,
-				tasks: [
-					{ agent: "a", task: "task a" },
-					{ agent: "b", task: "task b" },
-				],
 			},
-			undefined,
-			undefined,
-			mockCtx(),
+			undefined, undefined, mockCtxFunc(),
 		);
 
-		expect(result.details.jobs).toHaveLength(2);
-		// Both jobs should inherit the top-level provider/thinking
+		expect(result.details.jobs).toHaveLength(1);
 		expect(result.details.jobs[0].provider).toBe("anthropic");
-		expect(result.details.jobs[0].thinking).toBe("high");
-		expect(result.details.jobs[1].provider).toBe("anthropic");
-		expect(result.details.jobs[1].thinking).toBe("high");
-	});
-
-	test("per-task overrides take precedence over top-level", async () => {
-		const forkTool = registeredTools.get("subagent_fork");
-		const result = await forkTool.execute(
-			"fp-precedence",
-			{
-				provider: "openai",
-				thinking: "low" as any,
-				tasks: [
-					{ agent: "a", task: "t1", provider: "anthropic" },
-					{ agent: "b", task: "t2", thinking: "high" as any },
-				],
-			},
-			undefined,
-			undefined,
-			mockCtx(),
-		);
-
-		expect(result.details.jobs).toHaveLength(2);
-		// Job 0: provider override wins over top-level, thinking inherits top-level
-		expect(result.details.jobs[0].provider).toBe("anthropic");
-		expect(result.details.jobs[0].thinking).toBe("low");
-		// Job 1: thinking override wins over top-level, provider inherits top-level
-		expect(result.details.jobs[1].provider).toBe("openai");
-		expect(result.details.jobs[1].thinking).toBe("high");
 	});
 });

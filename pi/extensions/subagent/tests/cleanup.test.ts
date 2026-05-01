@@ -1,13 +1,9 @@
 /**
- * Cycle 13: Remove Old subagent, Update agents.ts.
- *
- * Verify the old "subagent" tool is gone and that shared code (agents.ts)
- * still works correctly.
+ * Cycle 9 cleanup: Verify old agents.ts is gone and subagent-config is used.
  */
 
 import { describe, test, expect, beforeAll } from "vitest";
 import { createMockExtension } from "./extension-helpers.js";
-import * as agentsMod from "../agents.js";
 
 let registeredTools: Map<string, any>;
 
@@ -38,49 +34,60 @@ describe("old subagent removal", () => {
 	});
 });
 
-describe("agents.ts exports still work", () => {
-	test("discoverAgents is exported and callable", () => {
-		expect(typeof agentsMod.discoverAgents).toBe("function");
+describe("subagent-config module", () => {
+	test("subagent-config exports resolveConfig", async () => {
+		const mod = await import("../subagent-config.js");
+		expect(typeof mod.resolveConfig).toBe("function");
 	});
 
-	test("parseModelField is exported and callable", () => {
-		expect(typeof agentsMod.parseModelField).toBe("function");
+	test("subagent-config exports deriveName", async () => {
+		const mod = await import("../subagent-config.js");
+		expect(typeof mod.deriveName).toBe("function");
 	});
 
-	test("parseModelField handles provider/model:thinking format", () => {
-		const result = agentsMod.parseModelField("anthropic/claude-3-5-sonnet:high");
-		expect(result.provider).toBe("anthropic");
-		expect(result.model).toBe("claude-3-5-sonnet");
-		expect(result.thinking).toBe("high");
+	test("subagent-config exports parseModelField", async () => {
+		const mod = await import("../subagent-config.js");
+		expect(typeof mod.parseModelField).toBe("function");
 	});
 
-	test("parseModelField handles plain model name", () => {
-		const result = agentsMod.parseModelField("claude-3-5-sonnet");
-		expect(result.provider).toBeUndefined();
-		expect(result.model).toBe("claude-3-5-sonnet");
-		expect(result.thinking).toBeUndefined();
+	test("subagent-config exports parseTools", async () => {
+		const mod = await import("../subagent-config.js");
+		expect(typeof mod.parseTools).toBe("function");
 	});
 
-	test("parseModelField handles model:thinking without provider", () => {
-		const result = agentsMod.parseModelField("claude-3-5-sonnet:medium");
-		expect(result.model).toBe("claude-3-5-sonnet");
-		expect(result.thinking).toBe("medium");
+	test("subagent-config exports normalizeOptional", async () => {
+		const mod = await import("../subagent-config.js");
+		expect(typeof mod.normalizeOptional).toBe("function");
 	});
 
-	test("normalizeOptional returns undefined for empty string", () => {
-		expect(agentsMod.normalizeOptional("")).toBeUndefined();
-		expect(agentsMod.normalizeOptional("   ")).toBeUndefined();
+	test("subagent-config exports buildSpawnArgs", async () => {
+		const mod = await import("../subagent-config.js");
+		expect(typeof mod.buildSpawnArgs).toBe("function");
+	});
+});
+
+describe("no agent discovery imports in index.ts", () => {
+	test("index.ts does not import from agents.js", async () => {
+		const fs = await import("node:fs");
+		const content = fs.readFileSync(`${__dirname}/../index.ts`, "utf-8");
+		expect(content).not.toContain("from './agents.js'");
 	});
 
-	test("normalizeOptional returns trimmed value for non-empty", () => {
-		expect(agentsMod.normalizeOptional("hello")).toBe("hello");
-		expect(agentsMod.normalizeOptional("  openai  ")).toBe("openai");
-		expect(agentsMod.normalizeOptional("gemini-2.5-pro")).toBe("gemini-2.5-pro");
+	test("index.ts does not reference AgentScope", async () => {
+		const fs = await import("node:fs");
+		const content = fs.readFileSync(`${__dirname}/../index.ts`, "utf-8");
+		expect(content).not.toContain("AgentScope");
 	});
 
-	test("formatAgentList returns text and remaining count", () => {
-		const result = agentsMod.formatAgentList([], 5);
-		expect(result.text).toBe("none");
-		expect(result.remaining).toBe(0);
+	test("index.ts does not reference agentScope", async () => {
+		const fs = await import("node:fs");
+		const content = fs.readFileSync(`${__dirname}/../index.ts`, "utf-8");
+		expect(content).not.toContain("agentScope");
+	});
+
+	test("index.ts imports from subagent-config.js", async () => {
+		const fs = await import("node:fs");
+		const content = fs.readFileSync(`${__dirname}/../index.ts`, "utf-8");
+		expect(content).toContain("subagent-config.js");
 	});
 });

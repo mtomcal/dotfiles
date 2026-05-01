@@ -1,11 +1,8 @@
 /**
- * Cycle 10: Tool Descriptions and Prompt Guidelines.
- *
- * Verify all 6 tools are registered with correct names, descriptions,
- * promptSnippets, and promptGuidelines.
+ * Tool Descriptions and Prompt Guidelines — ad-hoc config version.
  */
 
-import { describe, test, expect, vi, beforeAll } from "vitest";
+import { describe, test, expect, beforeAll } from "vitest";
 import { createMockExtension } from "./extension-helpers.js";
 
 let registeredTools: Map<string, any>;
@@ -46,31 +43,60 @@ describe("tool registration", () => {
 		}
 	});
 
-	test("subagent_run description is blocking-only (no async references)", () => {
+	test("subagent_run description mentions systemPrompt and ad-hoc", () => {
 		const tool = registeredTools.get("subagent_run")!;
-		expect(tool.description).not.toMatch(/fork/i);
-		expect(tool.description).not.toMatch(/background/i);
-		expect(tool.description).not.toMatch(/notify/i);
+		expect(tool.description).toContain("systemPrompt");
+		expect(tool.description).toContain("ad-hoc");
 	});
 
-	test("subagent_fork description mentions background jobs and max 8", () => {
-		const tool = registeredTools.get("subagent_fork")!;
-		expect(tool.description).toMatch(/background/i);
-		expect(tool.description).toMatch(/8/i);
+	test("subagent_run does NOT mention agent files or agent discovery", () => {
+		const tool = registeredTools.get("subagent_run")!;
+		expect(tool.description).not.toContain("agent file");
+		expect(tool.description).not.toContain("discover");
 	});
 
-	test("subagent_fork has promptGuidelines", () => {
-		const tool = registeredTools.get("subagent_fork")!;
-		expect(tool.promptGuidelines).toBeDefined();
-		expect(Array.isArray(tool.promptGuidelines)).toBe(true);
-		expect(tool.promptGuidelines.length).toBeGreaterThan(0);
+	test("subagent_run parameters include name, systemPrompt, tools, model", () => {
+		const schema = registeredTools.get("subagent_run")!.parameters;
+		expect(schema.properties.name).toBeDefined();
+		expect(schema.properties.systemPrompt).toBeDefined();
+		expect(schema.properties.tools).toBeDefined();
+		expect(schema.properties.model).toBeDefined();
+		expect(schema.properties.contextFiles).toBeDefined();
+		expect(schema.properties.extensions).toBeDefined();
 	});
 
-	test("subagent_fork promptGuidelines mention continue and notification", () => {
+	test("subagent_run parameters do NOT include agent, agentScope, confirmProjectAgents", () => {
+		const schema = registeredTools.get("subagent_run")!.parameters;
+		expect(schema.properties.agent).toBeUndefined();
+		expect(schema.properties.agentScope).toBeUndefined();
+		expect(schema.properties.confirmProjectAgents).toBeUndefined();
+	});
+
+	test("subagent_fork parameters include name, systemPrompt, tasks", () => {
+		const schema = registeredTools.get("subagent_fork")!.parameters;
+		expect(schema.properties.name).toBeDefined();
+		expect(schema.properties.systemPrompt).toBeDefined();
+		expect(schema.properties.tasks).toBeDefined();
+	});
+
+	test("subagent_fork parameters do NOT include agent, agentScope", () => {
+		const schema = registeredTools.get("subagent_fork")!.parameters;
+		expect(schema.properties.agent).toBeUndefined();
+		expect(schema.properties.agentScope).toBeUndefined();
+	});
+
+	test("promptGuidelines teach the primary path", () => {
+		const tool = registeredTools.get("subagent_run")!;
+		const guidelines = tool.promptGuidelines.join(" ");
+		expect(guidelines).toContain("systemPrompt");
+		expect(guidelines).toContain("isolated context");
+	});
+
+	test("subagent_fork promptGuidelines mention systemPrompt and continue", () => {
 		const tool = registeredTools.get("subagent_fork")!;
 		const all = tool.promptGuidelines.join(" ");
-		expect(all).toMatch(/continue/i);
-		expect(all).toMatch(/notif/i);
+		expect(all).toContain("systemPrompt");
+		expect(all).toMatch(/continue|notif/i);
 	});
 
 	test("subagent_status promptGuidelines mention polling not required", () => {
@@ -100,14 +126,6 @@ describe("tool registration", () => {
 		expect(tool.promptGuidelines).toBeDefined();
 		const all = tool.promptGuidelines.join(" ");
 		expect(all).toMatch(/notif|summary/i);
-	});
-
-	test("subagent_run has no async references in description", () => {
-		const tool = registeredTools.get("subagent_run")!;
-		const d = tool.description.toLowerCase();
-		expect(d).not.toContain("fork");
-		expect(d).not.toContain("background");
-		expect(d).not.toContain("notification");
 	});
 
 	test("each tool has a label", () => {
