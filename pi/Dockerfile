@@ -87,9 +87,14 @@ RUN ln -sf "$(which fdfind)" /usr/local/bin/fd
 # that consult /etc/passwd work correctly. The pis wrapper passes --user
 # at runtime to match the host UID/GID, but this ensures the username exists.
 # Home directory structure is created as mount targets for Pi agent state.
-RUN groupadd -g ${HOST_GID} ${HOST_USER} \
-    && useradd -m -u ${HOST_UID} -g ${HOST_GID} -s /bin/zsh ${HOST_USER} \
-    && mkdir -p /home/${HOST_USER}/.pi/agent
+#
+# Remove the default 'ubuntu' user/group first (ubuntu:24.04 creates
+# ubuntu:1000:1000) to avoid GID/UID conflicts when the host user is 1000.
+RUN userdel -r ubuntu 2>/dev/null; \
+    groupdel ubuntu 2>/dev/null; \
+    groupadd -g ${HOST_GID} ${HOST_USER} && \
+    useradd -m -u ${HOST_UID} -g ${HOST_GID} -s /bin/zsh ${HOST_USER} && \
+    mkdir -p /home/${HOST_USER}/.pi/agent
 
 # Default working directory (overridden by pis script)
 # Stamp the resolved Pi version into the image metadata so the pis wrapper
