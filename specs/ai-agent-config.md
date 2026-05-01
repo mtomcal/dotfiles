@@ -64,6 +64,9 @@ The system MUST ensure that:
 | `SUBAGENT_MAX_RUNNING_JOBS` | `8` | count | Maximum concurrent async subagent jobs (internal constant, not user-configurable) |
 | `SUBAGENT_MAX_PARALLEL_TASKS` | `20` | count | Maximum tasks in a single parallel `subagent_run` call (internal constant, not user-configurable) |
 | `SUBAGENT_WAIT_TIMEOUT_DEFAULT` | `300` | seconds | Default timeout for `subagent_wait` (internal constant, not user-configurable) |
+| `SUBAGENT_WIDGET_DEBOUNCE_MS` | `1000` | milliseconds | Minimum interval between TUI widget re-renders for live job progress (internal constant, not user-configurable) |
+| `SUBAGENT_WIDGET_DISMISS_DELAY_MS` | `5000` | milliseconds | Delay after last job finishes before the status widget is removed (internal constant, not user-configurable) |
+| `SUBAGENT_SUMMARY_MIN_LENGTH` | `50` | characters | Minimum character length for a text block to be considered substantive in summary extraction; shorter blocks are skipped when scanning backward (internal constant, not user-configurable) |
 | `CODEX_CONFIG_TEMPLATE_MODE` | `preserve` | enum: `preserve` \| `overwrite` | Whether the install script overwrites existing Codex config with template; `preserve` keeps local runtime values |
 | `BACKUP_TIMESTAMP_FMT` | `%Y%m%d_%H%M%S` | strftime format | Timestamp format appended to backup filenames during symlink deployment (e.g., `settings.json.backup.20260501_120000`) |
 | `RALPH_DEFAULT_ITERATIONS` | `25` | count | Default max loop iterations for Ralph agentic loop |
@@ -201,10 +204,55 @@ An async background subagent job managed by the Pi subagent extension.
 | `status` | enum | `running`, `completed`, `failed`, `cancelled` | Current job state |
 | `startedAt` | timestamp | Set on creation | When the job was created |
 | `completedAt` | timestamp | Set on completion | When the job finished |
-| `result` | SingleResult | Set on completion | Full output including messages, usage, exit code |
+| `result` | SingleResult | Updated on every `message_end` event while running; finalized on completion | Partial or full output including messages, usage, exit code |
 | `provider` | string | Optional | Provider override for the subagent |
 | `model` | string | Optional | Model override for the subagent |
 | `thinking` | enum | `off`, `minimal`, `low`, `medium`, `high`, `xhigh` | Thinking level override |
+
+### Subagent Live Progress
+
+The live progress system provides real-time visibility into running forked subagent jobs through three surfaces: a TUI status widget, enhanced `subagent_status` output, and `subagent_wait` streaming updates.
+
+#### Status Widget
+
+A TUI widget displayed above the editor while any forked job is running. The widget provides always-on visibility without requiring the LLM to query status.
+
+| Field | Type | Constraints | Description |
+|-------|------|-------------|-------------|
+| Widget ID | string | Fixed: `subagent-jobs` | Identifier for `ctx.ui.setWidget()` |
+| Placement | enum | `aboveEditor` | Widget position (above the input editor) |
+| Interactivity | boolean | Always `false` | Display-only; no keyboard input. Cancelling goes through `subagent_cancel` |
+| Dismiss delay | number | `SUBAGENT_WIDGET_DISMISS_DELAY_MS` (5000ms) | Widget remains visible for this duration after last job finishes |
+
+**Widget format (running job — two lines):**
+
+```
+⏳ {name} ({elapsed}) {usage} {turns} turns
+  "{last text snippet}"  → {last tool call}
+```
+
+**Widget format (completed/failed job — one line):**
+
+```
+✓ {name} ({elapsed}) {usage} "{truncated result}"
+```
+
+**Widget header line (always shown):**
+
+```
+⏳ {done}/{total} jobs — {completed} done, {failed} failed, {running} running ({total elapsed})
+```
+
+**Text truncation rules:**
+
+1. Truncate at the first newline boundary.
+2. Then clip to fit remaining terminal width after the status prefix.
+
+**Update cadence:** Debounced to `SUBAGENT_WIDGET_DEBOUNCE_MS` (1000ms) minimum between re-renders. State transitions (completion, failure, cancellation) trigger immediate re-render regardless of debounce.
+
+#### Summary Extraction
+
+When selecting the text snippet for a completion notification, widget, or status output, the extension MUST scan backward through assistant display items and select the first text block with length ≥ `SUBAGENT_SUMMARY_MIN_LENGTH` (50 chars). If no text block meets the threshold (e.g., a tool-call-only subagent), the extension MUST fall back to the last text block regardless of length.
 
 ### Subagent Model Routing
 
@@ -335,6 +383,17 @@ The subagent extension registers six tools:
 7. Job state MUST be persisted so that jobs survive across session switches.
 8. On `session_start`, persisted job state MUST be restored from session entries.
 9. Completion notifications MUST be delivered as steering messages that trigger a new turn.
+10. Cancellation notifications MUST be delivered as steering messages that trigger a new turn, using the same delivery mode as completion notifications (`deliverAs: "steer"`, `triggerTurn: true`).
+11. The `AsyncJob.result` field MUST be updated on every `message_end` and `tool_result_end` event from the subagent process, enabling live progress visibility for running jobs.
+12. A TUI status widget (`subagent-jobs`) MUST be displayed above the editor while any forked job is running. The widget MUST show a header line, two-line progress for each running job (last text snippet + last tool call from completed messages only), and one-line summary for each completed/failed job. The widget MUST be removed `SUBAGENT_WIDGET_DISMISS_DELAY_MS` after the last running job finishes.
+13. Widget re-renders MUST be debounced to `SUBAGENT_WIDGET_DEBOUNCE_MS`, except for state transitions (completion, failure, cancellation) which MUST trigger immediate re-render.
+14. `subagent_status` for a running job MUST include a "Progress" section showing turns so far, usage so far, last text snippet, and last tool call (from completed messages only).
+15. `subagent_wait` MUST use `onUpdate` to stream progress during the wait, using the same two-line format as the widget (last text snippet + last tool call). The update MUST be refreshed on each `message_end` event.
+16. Summary extraction for notifications and displays MUST scan backward through assistant display items and select the first text block with length ≥ `SUBAGENT_SUMMARY_MIN_LENGTH` (50 chars). If no text block meets the threshold, the last text block MUST be used as fallback.
+17. Text truncation in the widget and notifications MUST truncate at the first newline boundary, then clip to fit the remaining terminal width after the status prefix.
+18. Notification content for cancelled jobs MUST include partial usage stats (tokens consumed before cancellation) and a partial trace showing the last completed assistant text and last completed tool call at the time of cancellation. Only completed messages MUST be shown — partial/mid-stream data MUST NOT appear.
+19. The `subagent_fork` `promptGuidelines` MUST mention that a status widget is shown while jobs are running.
+20. The status widget MUST be display-only with no keyboard input. Cancelling jobs goes through `subagent_cancel`.
 
 **Model routing rules:**
 
@@ -476,6 +535,7 @@ The install script supports module-based installation:
 | AIAGT-011 | Invalid subagent_run parameters | More or fewer than 1 of task/tasks/chain | Return error with usage guidance | Provide exactly one mode parameter |
 | AIAGT-012 | Codex config overwrite attempted | `CODEX_CONFIG_TEMPLATE_MODE=overwrite` with existing file | Back up existing config, copy template | Restore from backup if needed |
 | AIAGT-013 | Subagent model routing missing | `subagentModelRouting` key absent from Pi settings.json | Extension logs warning; tool descriptions omit routing table | Fall back to parent agent's default model and thinking level |
+| AIAGT-014 | Widget render failure | Exception during widget rendering | Log error, skip re-render, widget may be stale | Widget continues on next successful render; user can check `subagent_status` as fallback |
 
 ---
 
@@ -614,7 +674,35 @@ Category: Unit
 Priority: Critical
 Preconditions: No running background jobs
 Input: `subagent_fork` with `task: "analyze large codebase"`
-Expected Output: Returns immediately with job ID; job runs in background; completion notification is sent via steer message.
+Expected Output: Returns immediately with job ID; job runs in background; completion notification is sent via steer message; status widget appears above editor showing the running job.
+
+**TS-AIAGT-015a**: Subagent fork — live progress widget
+Category: Unit
+Priority: Critical
+Preconditions: No running background jobs
+Input: `subagent_fork` with `tasks: [{task: "review auth"}, {task: "run tests"}, {task: "check lint"}]`
+Expected Output: Widget appears above editor with header line showing total job count. Running jobs show two-line format: last text snippet + last tool call. As jobs complete, they collapse to one-line summary. When last job finishes, widget remains visible for 5 seconds then disappears.
+
+**TS-AIAGT-015b**: Subagent fork — widget dismiss delay
+Category: Unit
+Priority: Medium
+Preconditions: One forked job is running
+Input: Job completes
+Expected Output: Widget shows completed job as one-line summary. After 5 seconds (`SUBAGENT_WIDGET_DISMISS_DELAY_MS`), widget is removed.
+
+**TS-AIAGT-015c**: Subagent fork — widget update debounce
+Category: Unit
+Priority: Medium
+Preconditions: A forked job is active and producing messages rapidly
+Input: Multiple `message_end` events arrive within 1 second
+Expected Output: Widget re-renders at most once per `SUBAGENT_WIDGET_DEBOUNCE_MS` (1000ms). State transitions (completion, failure) trigger immediate re-render regardless of debounce.
+
+**TS-AIAGT-015d**: Subagent fork — partial result available on running job
+Category: Unit
+Priority: High
+Preconditions: A forked job is running and has processed at least 2 assistant messages
+Input: `subagent_status` with the running job's ID
+Expected Output: Status output includes "Progress" section with turns so far, usage so far, last text snippet, and last tool call from completed messages.
 
 **TS-AIAGT-016**: Subagent fork — concurrency cap
 Category: Unit
@@ -630,12 +718,33 @@ Preconditions: A job is running that takes longer than the specified timeout
 Input: `subagent_wait` with `jobId` and `timeout: 10`
 Expected Output: After 10 seconds, returns error indicating the job is still running; job is NOT cancelled.
 
+**TS-AIAGT-017a**: Subagent wait — streaming progress
+Category: Unit
+Priority: High
+Preconditions: A forked job is running
+Input: `subagent_wait` with the running job's ID
+Expected Output: Tool result area streams progress updates using two-line format (last text snippet + last tool call), refreshed on each `message_end` event. When job completes, final result is returned.
+
 **TS-AIAGT-018**: Subagent cancel — cancel all
 Category: Unit
 Priority: Medium
 Preconditions: 3 background jobs running
 Input: `subagent_cancel` with `all: true`
-Expected Output: All 3 jobs are cancelled; `subagent_status` shows no running jobs.
+Expected Output: All 3 jobs are cancelled; `subagent_status` shows no running jobs; cancellation notification is delivered via steer message for each cancelled job.
+
+**TS-AIAGT-018a**: Subagent cancel — notification content
+Category: Unit
+Priority: High
+Preconditions: One forked job is running and has consumed tokens
+Input: `subagent_cancel` with the running job's ID
+Expected Output: Cancellation steer message includes: status icon (⊘), job name, elapsed time, partial usage stats (tokens consumed before cancellation), last completed assistant text, and last completed tool call. No partial/mid-stream data is shown.
+
+**TS-AIAGT-018b**: Subagent cancel — silent cancellation detection
+Category: Unit
+Priority: Medium
+Preconditions: A job is cancelled via `subagent_cancel`
+Input: LLM does NOT call `subagent_status` after cancellation
+Expected Output: LLM receives a steer notification about the cancellation without needing to poll.
 
 ### Pi Sandbox
 
@@ -718,6 +827,20 @@ Preconditions: Pi settings.json contains `subagentModelRouting` with all five ca
 Input: Pi starts a new session
 Expected Output: The `subagent_run` and `subagent_fork` tool descriptions include a markdown table with columns: category, description, model, provider, thinking, rationale; the table contains entries for scout, planner, reviewer, implementer, and specialist.
 
+**TS-AIAGT-028**: Subagent fork — summary extraction threshold
+Category: Unit
+Priority: High
+Preconditions: A subagent's last assistant message is a short acknowledgment ("Done.", 5 chars); the second-to-last assistant message contains a substantive 200-character analysis
+Input: Subagent completes; notification is emitted
+Expected Output: Notification summary uses the 200-character analysis text, not the 5-char acknowledgment, because the acknowledgment is below `SUBAGENT_SUMMARY_MIN_LENGTH` (50 chars).
+
+**TS-AIAGT-029**: Subagent fork — widget text truncation
+Category: Unit
+Priority: Medium
+Preconditions: A running subagent's last text output contains newlines
+Input: `subagent_fork` with a job producing multi-line text
+Expected Output: Widget shows the text truncated at the first newline boundary, then clipped to fit remaining terminal width. No line-wrapping occurs in the widget.
+
 ---
 
 ## Changelog
@@ -726,4 +849,5 @@ Expected Output: The `subagent_run` and `subagent_fork` tool descriptions includ
 |---------|------|---------|
 | 1.0.0 | 2026-05-01 | Initial specification extracted from brownfield codebase. Covers all five agents, shared skills, Pi extensions (subagent, inherit-last-model, web-search), Pi sandbox, Ralph agentic loop, agent role definitions, symlink deployment, and error handling. |
 | 1.1.0 | 2026-05-01 | Added subagent model routing: prescriptive model selection via `subagentModelRouting` in Pi settings, injected into subagent tool descriptions. Added data structure, behavior rules, error handling, and test scenarios. |
+| 1.3.0 | 2026-05-01 | Added subagent live progress: TUI status widget for forked jobs, partial result updates on running jobs, cancellation notifications, `subagent_status` progress section, `subagent_wait` streaming updates, improved summary extraction (skip short text blocks), widget debounce and dismiss delay. |
 | 1.2.0 | 2026-05-01 | Pi sandbox runs as host user (not root): Dockerfile creates host user via build args, `pis` script passes `--user` flag and mounts agent state under `/home/{HOST_USER}/`. Files written by the container are now owned by the host user. |
