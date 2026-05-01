@@ -81,12 +81,26 @@ const FULL_ROUTING = {
 			thinking: "medium",
 			rationale: "Workhorse model for most implementation tasks, medium thinking balances quality and cost",
 		},
-		specialist: {
-			description: "Deep domain reasoning for the hardest problems — race conditions, complex debugging, security auditing",
+		"expert (1st)": {
+			description: "Deep domain reasoning — delegate hard problems or consult when stuck. Primary expert.",
 			model: "deepseek-v4-pro",
 			provider: "ollama-cloud",
 			thinking: "high",
-			rationale: "Strongest reasoning model for tasks that exceed implementer capability",
+			rationale: "Strongest reasoner for deep domain problems and primary consultation when stuck",
+		},
+		"expert (2nd)": {
+			description: "Expert consultation fallback — same issue, different perspective. Second consultation.",
+			model: "glm-5.1",
+			provider: "ollama-cloud",
+			thinking: "high",
+			rationale: "High-thinking GLM-5.1 provides a different architectural perspective on second consultation",
+		},
+		"expert (3rd)": {
+			description: "Expert consultation fallback — same issue, third architecture. Final consultation before user escalation.",
+			model: "kimi-k2.6",
+			provider: "opencode-go",
+			thinking: "high",
+			rationale: "Yet another architecture for a fresh perspective; final consultation before user escalation",
 		},
 	},
 };
@@ -115,15 +129,15 @@ const PARTIAL_ROUTING = {
 // ═══════════════════════════════════════════════════════════════════════
 
 describe("readRoutingTable", () => {
-	test("reads subagentModelRouting with all 5 categories from a valid settings.json", () => {
+	test("reads subagentModelRouting with all 7 categories from a valid settings.json", () => {
 		const filePath = writeFixture("full-routing.json", JSON.stringify(FULL_ROUTING));
 		const result = readRoutingTable(filePath);
 		expect(result).not.toBeNull();
-		expect(result).toHaveLength(5);
+		expect(result).toHaveLength(7);
 
 		// Verify each category is present with correct values
 		const categories = result!.map((e) => e.category).sort();
-		expect(categories).toEqual(["implementer", "planner", "reviewer", "scout", "specialist"]);
+		expect(categories).toEqual(["expert (1st)", "expert (2nd)", "expert (3rd)", "implementer", "planner", "reviewer", "scout"]);
 
 		// Spot-check a few values
 		const scout = result!.find((e) => e.category === "scout")!;
@@ -135,6 +149,15 @@ describe("readRoutingTable", () => {
 		const reviewer = result!.find((e) => e.category === "reviewer")!;
 		expect(reviewer.model).toBe("deepseek-v4-pro");
 		expect(reviewer.thinking).toBe("high");
+
+		// Spot-check expert rows
+		const expert1st = result!.find((e) => e.category === "expert (1st)")!;
+		expect(expert1st.model).toBe("deepseek-v4-pro");
+		expect(expert1st.provider).toBe("ollama-cloud");
+
+		const expert3rd = result!.find((e) => e.category === "expert (3rd)")!;
+		expect(expert3rd.model).toBe("kimi-k2.6");
+		expect(expert3rd.provider).toBe("opencode-go");
 	});
 
 	test("returns null when subagentModelRouting key is missing", () => {
@@ -196,7 +219,7 @@ describe("readRoutingTable", () => {
 		const filePath = writeFixture("full-routing.json", JSON.stringify(FULL_ROUTING));
 		const result = readRoutingTable(filePath);
 		expect(result).not.toBeNull();
-		// Categories should be sorted: implementer, planner, reviewer, scout, specialist
+		// Categories should be sorted alphabetically (locale-aware)
 		for (let i = 1; i < result!.length; i++) {
 			expect(result![i - 1].category.localeCompare(result![i].category)).toBeLessThanOrEqual(0);
 		}
@@ -309,27 +332,6 @@ describe("readRoutingTable", () => {
 		expect(result).toBeNull();
 		expect(warnSpy).toHaveBeenCalledWith(
 			expect.stringContaining("present but empty"),
-		);
-		warnSpy.mockRestore();
-	});
-
-	test("logs warning for unknown category names but still accepts them", () => {
-		const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-		const filePath = writeFixture(
-			"typo-category.json",
-			JSON.stringify({
-				subagentModelRouting: {
-					implmenter: { model: "m", provider: "p", thinking: "medium" },
-					valid: { model: "m", provider: "p", thinking: "low" },
-				},
-			}),
-		);
-		const result = readRoutingTable(filePath);
-		expect(result).not.toBeNull();
-		// Unknown category is still included
-		expect(result!.map((e) => e.category)).toContain("implmenter");
-		expect(warnSpy).toHaveBeenCalledWith(
-			expect.stringContaining("unknown routing category"),
 		);
 		warnSpy.mockRestore();
 	});
@@ -672,12 +674,14 @@ describe("integration: readRoutingTable → buildToolDescription", () => {
 		expect(desc).toContain("glm-5.1");
 		expect(desc).toContain("deepseek-v4-pro");
 		expect(desc).toContain("Deviation requires explicit justification");
-		// All 5 categories present
+		// All 7 categories present
 		expect(desc).toContain("| scout |");
 		expect(desc).toContain("| planner |");
 		expect(desc).toContain("| reviewer |");
 		expect(desc).toContain("| implementer |");
-		expect(desc).toContain("| specialist |");
+		expect(desc).toContain("| expert (1st) |");
+		expect(desc).toContain("| expert (2nd) |");
+		expect(desc).toContain("| expert (3rd) |");
 	});
 
 	test("reads partial file → builds tool description with partial table", () => {
@@ -693,7 +697,9 @@ describe("integration: readRoutingTable → buildToolDescription", () => {
 		expect(desc).toContain("| implementer |");
 		expect(desc).not.toContain("| planner |");
 		expect(desc).not.toContain("| reviewer |");
-		expect(desc).not.toContain("| specialist |");
+		expect(desc).not.toContain("| expert (1st) |");
+		expect(desc).not.toContain("| expert (2nd) |");
+		expect(desc).not.toContain("| expert (3rd) |");
 	});
 
 	test("missing file → builds tool description with fallback note", () => {
@@ -740,8 +746,8 @@ describe("integration: readRoutingTable → buildToolDescription", () => {
 
 		// All categories should be unique (no duplicates)
 		expect(new Set(categoryCols).size).toBe(categoryCols.length);
-		// And there should be 5 data rows
-		expect(categoryCols).toHaveLength(5);
+		// And there should be 7 data rows
+		expect(categoryCols).toHaveLength(7);
 	});
 });
 
@@ -759,7 +765,7 @@ describe("reloadRoutingTable (hot-reload)", () => {
 		const filePath = writeFixture("reload-full.json", JSON.stringify(FULL_ROUTING));
 		const result = reloadRoutingTable(filePath);
 		expect(result).not.toBeNull();
-		expect(result).toHaveLength(5);
+		expect(result).toHaveLength(7);
 	});
 
 	test("returns null when file not found", async () => {

@@ -5,8 +5,8 @@
  * The subagent extension reads a `subagentModelRouting` table from Pi's
  * settings.json and injects it as a markdown table into subagent_run and
  * subagent_fork tool descriptions. The LLM classifies tasks into one of
- * five intent categories (scout, planner, reviewer, implementer, specialist)
- * and uses the prescribed model/provider/thinking values.
+ * seven intent categories (scout, planner, reviewer, implementer, expert (1st),
+ * expert (2nd), expert (3rd)) and uses the prescribed model/provider/thinking values.
  *
  * Spec: ai-agent-config.md v1.2.0 (B5.1 rules 10-13)
  */
@@ -39,9 +39,6 @@ let _settingsPath: string | null = null;
 // ─── Constants ────────────────────────────────────────────────────────
 
 const VALID_THINKING_LEVELS = ["off", "minimal", "low", "medium", "high", "xhigh"];
-
-/** Known routing category names. Unknown categories are accepted but logged. */
-const KNOWN_CATEGORIES = new Set(["scout", "planner", "reviewer", "implementer", "specialist"]);
 
 const WARNING_PREFIX = "[subagent-routing]";
 
@@ -118,12 +115,7 @@ export function readRoutingTable(settingsPath: string): RoutingEntry[] | null {
 		const thinking = typeof entry.thinking === "string" ? entry.thinking : "medium";
 		const rationale = typeof entry.rationale === "string" ? entry.rationale : "";
 
-		// Warn on unknown category names (but still accept them)
-		if (!KNOWN_CATEGORIES.has(category)) {
-			console.warn(`${WARNING_PREFIX} unknown routing category "${category}" — did you mean scout, planner, reviewer, implementer, or specialist?`);
-		}
-
-		// Skip entries without both model and provider
+// Skip entries without both model and provider
 		if (!model || !provider) continue;
 
 		// Warn on invalid thinking levels before defaulting

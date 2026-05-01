@@ -30,7 +30,9 @@ beforeAll(async () => {
 			planner: { description: "Read-only analysis and implementation planning", model: "glm-5.1", provider: "ollama-cloud", thinking: "medium", rationale: "Good instruction-following and breadth" },
 			reviewer: { description: "Code quality, security, and architecture analysis", model: "deepseek-v4-pro", provider: "ollama-cloud", thinking: "high", rationale: "Deep reasoning required" },
 			implementer: { description: "Writing or modifying code autonomously", model: "glm-5.1", provider: "ollama-cloud", thinking: "medium", rationale: "Workhorse model" },
-			specialist: { description: "Deep domain reasoning for the hardest problems", model: "deepseek-v4-pro", provider: "ollama-cloud", thinking: "high", rationale: "Strongest reasoning model" },
+			"expert (1st)": { description: "Deep domain reasoning — delegate hard problems or consult when stuck. Primary expert.", model: "deepseek-v4-pro", provider: "ollama-cloud", thinking: "high", rationale: "Strongest reasoner for deep domain problems" },
+			"expert (2nd)": { description: "Expert consultation fallback — same issue, different perspective.", model: "glm-5.1", provider: "ollama-cloud", thinking: "high", rationale: "Different architectural perspective" },
+			"expert (3rd)": { description: "Expert consultation fallback — same issue, third architecture.", model: "kimi-k2.6", provider: "opencode-go", thinking: "high", rationale: "Final consultation before user escalation" },
 		},
 	};
 	const settingsPath = path.join(tmpDir, "settings.json");
@@ -163,15 +165,17 @@ describe("tool registration", () => {
 			expect(tool.description).toContain("### Subagent Model Routing");
 		});
 
-		test("subagent_run description includes routing table with all 5 categories", () => {
+		test("subagent_run description includes routing table with all 7 categories", () => {
 			const tool = registeredTools.get("subagent_run")!;
 			expect(tool.description).toContain("| Category | Description | Model | Provider | Thinking | Rationale |");
 			expect(tool.description).toContain("| scout |");
 			expect(tool.description).toContain("| planner |");
 			expect(tool.description).toContain("| reviewer |");
 			expect(tool.description).toContain("| implementer |");
-			expect(tool.description).toContain("| specialist |");
-		});
+			expect(tool.description).toContain("| expert (1st) |");
+			expect(tool.description).toContain("| expert (2nd) |");
+			expect(tool.description).toContain("| expert (3rd) |");
+			});
 
 		test("subagent_run description includes footnote about deviation requiring justification", () => {
 			const tool = registeredTools.get("subagent_run")!;
@@ -183,11 +187,12 @@ describe("tool registration", () => {
 			expect(tool.description).toContain("### Subagent Model Routing");
 		});
 
-		test("subagent_fork description includes routing table with all 5 categories", () => {
+		test("subagent_fork description includes routing table with all 7 categories", () => {
 			const tool = registeredTools.get("subagent_fork")!;
 			expect(tool.description).toContain("| Category | Description | Model | Provider | Thinking | Rationale |");
 			expect(tool.description).toContain("| scout |");
 			expect(tool.description).toContain("| implementer |");
+			expect(tool.description).toContain("| expert (1st) |");
 		});
 
 		test("other tool descriptions do NOT include routing section", () => {
