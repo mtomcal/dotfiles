@@ -61,12 +61,13 @@ RUN ARCH=$(dpkg --print-architecture) \
     && curl -fsSL "https://go.dev/dl/go${GO_VERSION}.linux-${ARCH}.tar.gz" \
       | tar -C /usr/local -xz
 ENV PATH="/usr/local/go/bin:${PATH}"
-ENV GOPATH="/root/go-workspace"
+ENV GOPATH="/opt/go-workspace"
 ENV PATH="${GOPATH}/bin:${PATH}"
 
 # fnm + Node.js LTS + Pi coding agent
+# Installed under /opt so all users can access it (not locked behind /root/ 700 perms).
 # Combined into one RUN so fnm's PATH is available for npm install
-ENV FNM_DIR="/root/.local/share/fnm"
+ENV FNM_DIR="/opt/fnm"
 RUN curl -fsSL https://fnm.vercel.app/install | bash -s -- --install-dir "${FNM_DIR}" --skip-shell \
     && export PATH="${FNM_DIR}:${PATH}" \
     && eval "$(fnm env --shell bash)" \
