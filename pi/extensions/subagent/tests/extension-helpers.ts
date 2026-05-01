@@ -71,6 +71,10 @@ export function createMockExtension(): {
 		registerMessageRenderer(customType: string, renderer: Function) {
 			messageRenderers.set(customType, renderer);
 		},
+
+		registerCommand(name: string, options: any) {
+			// No-op in tests — command registration is tested separately
+		},
 	};
 
 	return { pi, registeredTools, jobMgr };

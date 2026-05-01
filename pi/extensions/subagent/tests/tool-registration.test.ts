@@ -2,10 +2,14 @@
  * Tool Descriptions and Prompt Guidelines — ad-hoc config version.
  */
 
-import { describe, test, expect, beforeAll } from "vitest";
+import { describe, test, expect, beforeAll, vi } from "vitest";
 import { createMockExtension } from "./extension-helpers.js";
+import * as fs from "node:fs";
+import * as path from "node:path";
+import * as os from "node:os";
 
 let registeredTools: Map<string, any>;
+let tmpDir: string;
 
 const TOOL_NAMES = [
 	"subagent_run",
@@ -17,6 +21,24 @@ const TOOL_NAMES = [
 ];
 
 beforeAll(async () => {
+	// Use a unique temp directory to avoid conflicts with other test fixtures
+	tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "pi-subagent-routing-test-"));
+
+	const routingFixture = {
+		subagentModelRouting: {
+			scout: { description: "Fast codebase recon, return compressed context", model: "deepseek-v4-flash", provider: "ollama-cloud", thinking: "low", rationale: "Flash model for speed" },
+			planner: { description: "Read-only analysis and implementation planning", model: "glm-5.1", provider: "ollama-cloud", thinking: "medium", rationale: "Good instruction-following and breadth" },
+			reviewer: { description: "Code quality, security, and architecture analysis", model: "deepseek-v4-pro", provider: "ollama-cloud", thinking: "high", rationale: "Deep reasoning required" },
+			implementer: { description: "Writing or modifying code autonomously", model: "glm-5.1", provider: "ollama-cloud", thinking: "medium", rationale: "Workhorse model" },
+			specialist: { description: "Deep domain reasoning for the hardest problems", model: "deepseek-v4-pro", provider: "ollama-cloud", thinking: "high", rationale: "Strongest reasoning model" },
+		},
+	};
+	const settingsPath = path.join(tmpDir, "settings.json");
+	fs.writeFileSync(settingsPath, JSON.stringify(routingFixture), "utf-8");
+
+	// Set env var to point extension to the test fixture
+	vi.stubEnv("PI_SUBAGENT_SETTINGS_PATH", settingsPath);
+
 	const ctx = createMockExtension();
 	registeredTools = ctx.registeredTools;
 
@@ -134,4 +156,78 @@ describe("tool registration", () => {
 			expect(typeof tool.label).toBe("string", `${name} should have a label`);
 		}
 	});
+
+	describe("routing table injection", () => {
+		test("subagent_run description includes subagent model routing section", () => {
+			const tool = registeredTools.get("subagent_run")!;
+			expect(tool.description).toContain("### Subagent Model Routing");
+		});
+
+		test("subagent_run description includes routing table with all 5 categories", () => {
+			const tool = registeredTools.get("subagent_run")!;
+			expect(tool.description).toContain("| Category | Description | Model | Provider | Thinking | Rationale |");
+			expect(tool.description).toContain("| scout |");
+			expect(tool.description).toContain("| planner |");
+			expect(tool.description).toContain("| reviewer |");
+			expect(tool.description).toContain("| implementer |");
+			expect(tool.description).toContain("| specialist |");
+		});
+
+		test("subagent_run description includes footnote about deviation requiring justification", () => {
+			const tool = registeredTools.get("subagent_run")!;
+			expect(tool.description).toContain("Deviation requires explicit justification");
+		});
+
+		test("subagent_fork description includes subagent model routing section", () => {
+			const tool = registeredTools.get("subagent_fork")!;
+			expect(tool.description).toContain("### Subagent Model Routing");
+		});
+
+		test("subagent_fork description includes routing table with all 5 categories", () => {
+			const tool = registeredTools.get("subagent_fork")!;
+			expect(tool.description).toContain("| Category | Description | Model | Provider | Thinking | Rationale |");
+			expect(tool.description).toContain("| scout |");
+			expect(tool.description).toContain("| implementer |");
+		});
+
+		test("other tool descriptions do NOT include routing section", () => {
+			const noRoutingTools = ["subagent_status", "subagent_results", "subagent_wait", "subagent_cancel"];
+			for (const name of noRoutingTools) {
+				const tool = registeredTools.get(name);
+				expect(tool.description).not.toContain("### Subagent Model Routing");
+			}
+		});
+
+		test("routing table does not include fallback chains — each category maps to exactly one row", () => {
+			const tool = registeredTools.get("subagent_run")!;
+			// Each category should appear exactly once
+			const runLines = tool.description.split("\n");
+			const tableRows = runLines.filter((l: string) => l.startsWith("| ") && !l.startsWith("| ---"));
+			const categoryCols = tableRows.slice(1).map((l: string) => l.split("|")[1]?.trim()).filter(Boolean);
+			expect(new Set(categoryCols).size).toBe(categoryCols.length);
+		});
+
+		test("subagent_run description still contains base description text", () => {
+			const tool = registeredTools.get("subagent_run")!;
+			expect(tool.description).toContain("systemPrompt");
+			expect(tool.description).toContain("Blocks until completion");
+		});
+
+		test("subagent_fork description still contains base description text", () => {
+			const tool = registeredTools.get("subagent_fork")!;
+			expect(tool.description).toContain("systemPrompt");
+			expect(tool.description).toContain("Returns immediately");
+		});
+	});
+});
+
+import { afterAll } from "vitest";
+afterAll(() => {
+	if (tmpDir) {
+		try {
+			const files = fs.readdirSync(tmpDir);
+			for (const f of files) fs.unlinkSync(path.join(tmpDir, f));
+			fs.rmdirSync(tmpDir);
+		} catch { /* ignore */ }
+	}
 });

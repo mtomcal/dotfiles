@@ -54,6 +54,7 @@ import {
 	renderJobStatusLine,
 	renderSingleResult,
 } from "./renderers.js";
+import { readRoutingTable, buildToolDescription } from "./routing.js";
 
 // ─── Schema Definitions ───────────────────────────────────────────────
 
@@ -479,6 +480,35 @@ export default function (pi: ExtensionAPI) {
 		pi.appendEntry("subagent-job-state", jobMgr.serialize());
 	}
 
+		// ── Read subagent model routing from settings ────────────────────
+	const settingsPath =
+		process.env.PI_SUBAGENT_SETTINGS_PATH ??
+		path.join(os.homedir(), ".pi", "agent", "settings.json");
+	const routingTable = readRoutingTable(settingsPath);
+
+	// ── Register /reload-routing command ───────────────────────────
+	// Allows hot-reload of routing table without restarting pi.
+	// Useful after editing settings.json during a session.
+	//
+	// NOTE: tool descriptions are baked in at registration time (lines 522, 703 below).
+	// Mutating the module-level `routingTable` variable does NOT update already-registered
+	// tool descriptions. To apply routing changes to tool descriptions, run `/reload`
+	// (full pi extension reload) after `/reload-routing`.
+	pi.registerCommand("reload-routing", {
+		label: "Reload subagent routing",
+		help: "Reload the subagent model routing table from settings.json (use /reload after to update tool descriptions)",
+		autoConfirm: false,
+		handler: async () => {
+			const { reloadRoutingTable } = await import("./routing.js");
+			const updated = reloadRoutingTable(settingsPath);
+			const count = updated ? updated.length : 0;
+			console.warn(
+				`[subagent-routing] Reloaded — ${count} categories active. ` +
+				"Run /reload to apply changes to subagent_run and subagent_fork tool descriptions.",
+			);
+		},
+	});
+
 	// ── Lifecycle ────────────────────────────────────────────────────
 	pi.on("session_shutdown", async () => { jobMgr.cancelAll(); persist(); });
 	pi.on("session_start", async (_event, ctx) => {
@@ -493,11 +523,11 @@ export default function (pi: ExtensionAPI) {
 	pi.registerTool({
 		name: "subagent_run",
 		label: "Subagent Run",
-		description: [
+		description: buildToolDescription([
 			"Run a subagent synchronously. Modes: single (task), parallel (tasks array), chain (sequential with {previous} placeholder).",
 			"Blocks until completion. Provide `systemPrompt` to define the subagent's role, or omit for a default assistant with isolated context.",
 			"ad-hoc subagents: each call configures the subagent inline.",
-		].join(" "),
+		].join(" "), routingTable),
 		parameters: Type.Object({
 			name: Type.Optional(Type.String({ description: "Display label. Auto-derived from task text if omitted." })),
 			task: Type.Optional(Type.String({ description: "Task to delegate (single mode)" })),
@@ -674,12 +704,12 @@ export default function (pi: ExtensionAPI) {
 	pi.registerTool({
 		name: "subagent_fork",
 		label: "Subagent Fork",
-		description: [
+		description: buildToolDescription([
 			"Start one or more background subagent jobs. Returns immediately with job IDs.",
 			"You receive a completion notification when each job finishes. Max 8 concurrent jobs.",
 			"Provide `systemPrompt` to define the subagent's role, or omit for a default assistant with isolated context.",
 			"ad-hoc subagents: each call configures the subagent inline.",
-		].join(" "),
+		].join(" "), routingTable),
 		parameters: Type.Object({
 			name: Type.Optional(Type.String({ description: "Display label. Auto-derived from task text if omitted." })),
 			task: Type.Optional(Type.String({ description: "Task to delegate (for single mode)" })),
