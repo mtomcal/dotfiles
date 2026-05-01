@@ -1,0 +1,485 @@
+# Install Orchestrator
+
+> **Spec Version**: 1.0.0
+> **Last Updated**: 2026-05-01
+> **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md), [Design Language](DESIGN_LANGUAGE.md), [Tool Provisioning](tool-provisioning.md), [Symlink Manager](symlink-manager.md)
+> **Depended By**: None (this is the top-level orchestrator)
+
+---
+
+## Overview
+
+The Install Orchestrator is the top-level entry point for deploying the entire dotfiles-managed development environment. It detects the platform, resolves module dependencies, presents an interactive or command-line-driven module selection interface, and then executes each selected module in dependency order. The orchestrator guarantees idempotency — running it multiple times with the same module list MUST produce the same system state without errors, data loss, or redundant operations.
+
+The orchestrator does NOT implement any module's internal logic (package installation, symlink creation, etc.). It calls per-module functions that own those details. This spec governs the orchestration flow, phase ordering, platform branching, module dependency resolution, interactive menu behavior, and failure reporting.
+
+---
+
+## Dependencies
+
+### Technology Dependencies
+
+| Technology | Purpose | Version Constraint |
+|-----------|---------|-------------------|
+| Bash | Runtime interpreter | Compatible with macOS system shell |
+| apt | Package manager (Ubuntu/Debian) | — |
+| Homebrew | Package manager (macOS) | Auto-installed if missing |
+| curl | Downloading external installers | System-provided |
+| git | Cloning kickstart.nvim and Oh My Zsh | System-provided |
+
+### Spec Dependencies
+
+| Spec | Relationship |
+|------|-------------|
+| [Parameters](parameters.md) | All tuning values (versions, URLs, thresholds) live there |
+| [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md) | Shared term definitions |
+| [Design Language](DESIGN_LANGUAGE.md) | CLI output formatting tokens |
+| [Tool Provisioning](tool-provisioning.md) | Per-module install/configure function specifications |
+| [Symlink Manager](symlink-manager.md) | Cross-cutting symlink deployment and backup rules |
+
+---
+
+## Parameters
+
+| Parameter | Value | Unit | Rationale |
+|-----------|-------|------|-----------|
+| `SCRIPT_MODE` | strict | enum: `strict` | Any command failure halts execution immediately; module functions MUST catch their own failures and convert them into tracked module failures rather than allowing the script to exit |
+| `BACKUP_TIMESTAMP_FMT` | `%Y%m%d_%H%M%S` | strftime | Sortable, second-granular timestamps for conflict backups |
+| `DOTFILES_DIR` | Auto-detected script directory | path | The repository root MUST be auto-detected from the script's own location at runtime, never hard-coded |
+| `CODEX_CONFIG_TEMPLATE_MODE` | `preserve` | enum: `preserve`, `overwrite` | Controls whether an existing local Codex config is kept or replaced from the dotfiles template |
+| `MAX_PROFILE_CHOICE` | 4 | integer | Highest valid choice on the profile menu (Full, Minimal, Work, Custom) |
+| `NPM_GLOBAL_PREFIX` | `~/.local` | path | All npm-based global installs (Codex, Pi, Gemini) use this prefix so they survive fnm Node version switches |
+
+---
+
+## Data Structures
+
+### Platform Identity
+
+| Field | Type | Constraints | Description |
+|-------|------|-------------|-------------|
+| `OS` | enum: `ubuntu`, `macos` | Set exactly once during detection | Determines package manager, architecture detection method, and platform-specific branching |
+| `PACKAGE_MANAGER` | enum: `apt`, `brew` | Derived from `OS` | Drives all package operations |
+
+### Module
+
+| Field | Type | Constraints | Description |
+|-------|------|-------------|-------------|
+| `name` | string | One of the valid module identifiers | Unique identifier for a selectable install unit |
+| `label` | string | Human-readable description | Displayed in menus and summaries |
+
+**Valid module identifiers**: `base_tools`, `neovim`, `nvim_config`, `tmux_config`, `zsh_ohmyzsh`, `zsh_config`, `golang` (toolchain only), `golang_full` (toolchain + LSP + tools), `nodejs`, `tui_tools`, `codex`, `claude`, `pi`, `pi_sandbox`, `gemini`, `copilot`, `playwright`
+
+### Installation Profile
+
+| Profile | Modules Included |
+|---------|-----------------|
+| `full` | base_tools, neovim, nvim_config, tmux_config, zsh_ohmyzsh, zsh_config, golang_full, nodejs, tui_tools, codex, claude, playwright, pi, pi_sandbox, gemini, copilot |
+| `minimal` | base_tools, neovim, nvim_config, tmux_config |
+| `work` | base_tools, neovim, nvim_config, tmux_config, tui_tools, copilot |
+
+### Dependency Map
+
+Modules declare implicit prerequisites via the dependency resolver. The resolver adds missing prerequisites **conditionally** — only when the prerequisite tool is not already found on the system. If a tool is already installed, its prerequisite module is not added.
+
+| Module | Conditional Prerequisite(s) | Condition |
+|--------|----------------------------|-----------|
+| `nvim_config` | `base_tools` | Only if `git` is not found |
+| `nvim_config` | `neovim` | Only if `nvim` is not found |
+| `zsh_ohmyzsh` | `base_tools` | Only if `zsh` or `git` is not found |
+| `zsh_config` | `base_tools` | Only if `zsh` is not found |
+| `tmux_config` | `base_tools` | Only if `tmux` is not found |
+| `claude` | `base_tools` | Only if `curl` is not found |
+| `copilot` | `base_tools` | Only if `curl` is not found |
+| `pi` | `nodejs` | Only if `npm` is not found |
+| `pi_sandbox` | Docker (external) | Not auto-installed; warning issued if missing |
+| `codex` | `nodejs` | Only if `npm` is not found |
+| `gemini` | `nodejs` | Only if `npm` is not found |
+| `playwright` | `nodejs` | Only if `npm` is not found |
+| `golang_full` | `golang` | Always (golang_full calls golang install internally) |
+
+**Deduplication rule**: After dependency resolution, duplicate modules MUST be removed while preserving insertion order.
+
+### Failure Tracking
+
+| Field | Type | Constraints | Description |
+|-------|------|-------------|-------------|
+| `FAILED_MODULES` | list of string | Appended to when a module function returns non-zero | Modules that failed during execution |
+| `SELECTED_MODULES` | list of string | Final resolved list after dependency expansion | All modules that were attempted |
+
+---
+
+## Behavior
+
+### Phase Ordering
+
+The orchestrator MUST execute phases in this exact order:
+
+```
+Phase 1: ARGUMENT PARSING
+  → Parse CLI flags (--profile, --modules, --codex-config-template, --help)
+  → If --help, display help and exit
+
+Phase 2: PLATFORM DETECTION
+  → Detect OS and package manager
+  → Setup package manager (install Homebrew on macOS if missing)
+  → Update package manager index
+
+Phase 3: MODULE SELECTION
+  → If modules were provided via CLI (--profile or --modules), use those
+  → If no modules provided, show interactive profile menu
+  → Validate module names
+
+Phase 4: DEPENDENCY RESOLUTION
+  → Expand selected modules to include implicit prerequisites
+  → Deduplicate while preserving order
+
+Phase 5: CONFIRMATION
+  → Show installation summary with human-readable labels
+  → Prompt user to confirm (y/n)
+  → If declined, exit cleanly
+
+Phase 6: MODULE EXECUTION
+  → Iterate resolved modules in order
+  → Call each module's install/configure function
+  → Track failures; do NOT halt script on individual module failure
+
+Phase 7: COMPLETION REPORT
+  → Display list of successfully installed modules
+  → Display list of failed modules (if any)
+  → Display next-steps guidance (shell restart, tool auth)
+  → Exit non-zero if any module failed
+```
+
+### Platform Detection Rules
+
+| Condition | `OS` | `PACKAGE_MANAGER` |
+|-----------|------|-------------------|
+| `$OSTYPE` matches `linux-gnu*` AND `apt` is available | `ubuntu` | `apt` |
+| `$OSTYPE` matches `linux-gnu*` AND `apt` is NOT available | — | Script exits with error |
+| `$OSTYPE` matches `darwin*` | `macos` | `brew` |
+| Any other `$OSTYPE` | — | Script exits with error |
+
+**Homebrew auto-install**: On macOS, if `brew` is not found, the orchestrator MUST install Homebrew automatically. For Apple Silicon Macs, it MUST also add Homebrew shell environment initialization to `~/.zprofile`.
+
+### Package Install Idempotency
+
+| Condition | Action |
+|-----------|--------|
+| Package NOT installed | Install via appropriate package manager |
+| Package already installed | Log success, skip installation |
+
+### Interactive Menu Behavior
+
+**Profile Menu**: Presents four options (Full, Minimal, Work, Custom) plus Exit (0). Invalid input re-displays the menu.
+
+**Custom Menu**: Presents a toggle list of all modules. User toggles individual modules by number. Includes "Toggle All" and "Done" actions. The menu implementation MUST remain compatible with the system shell on all supported platforms.
+
+**Summary Confirmation**: Displays resolved module list with human-readable labels. Requires `y` or `Y` to proceed. Any other input cancels the installation.
+
+### Command-Line Interface
+
+| Flag | Argument | Description |
+|------|----------|-------------|
+| `--profile` | `full`, `minimal`, `work` | Select a predefined profile |
+| `--modules` | comma-separated module names | Select specific modules |
+| `--codex-config-template` | `preserve` or `overwrite` | Control Codex config template behavior |
+| `--help` | — | Display help text and exit |
+
+**Precedence**: CLI arguments override interactive menu. If `--profile` or `--modules` is provided, the interactive menu is skipped entirely.
+
+### Module Execution Semantics
+
+- Modules execute sequentially in resolved order
+- Each module function returns 0 on success, non-zero on failure
+- On failure: the module name is appended to `FAILED_MODULES`, execution continues to the next module
+- The script runs in strict failure mode (errors halt execution by default), but module functions catch their own errors and report them to the failure tracker, allowing execution to continue to the next module
+
+### Symlink Management Rules (Cross-Cutting)
+
+The orchestrator delegates symlink creation to per-module functions, but all MUST follow these uniform rules:
+
+| Existing Path Condition | Action |
+|-------------------------|--------|
+| Symlink pointing to the correct dotfiles target | Remove and recreate (ensure freshness) |
+| Symlink pointing elsewhere | Remove, then create new symlink |
+| Regular file or directory | Back up with timestamp suffix, then create symlink |
+| Path does not exist | Create parent directories, then create symlink |
+
+**Backup naming**: `{original_path}.backup.{TIMESTAMP}` where `TIMESTAMP` uses `BACKUP_TIMESTAMP_FMT`.
+
+**Exception — Codex config.toml**: This file is COPIED from the dotfiles template, never symlinked, because the agent writes machine-specific values into it. The `CODEX_CONFIG_TEMPLATE_MODE` parameter controls whether an existing copy is preserved or overwritten.
+
+### Fresh Installation vs Update Cache Management
+
+| Condition | Cache Handling |
+|-----------|---------------|
+| Neovim data directory does NOT exist (fresh install) | Delete `~/.local/share/nvim`, `~/.local/state/nvim`, `~/.cache/nvim` to start clean |
+| Neovim data directory EXISTS (update) | Preserve `~/.local/share/nvim` (Mason packages); delete only `~/.cache/nvim` |
+
+### Dirty Plugin Cache Cleanup
+
+When Neovim's Lazy plugin sync reports local changes in cached plugins:
+
+| Step | Action |
+|------|--------|
+| 1 | Enumerate all plugin directories under `~/.local/share/nvim/lazy/` |
+| 2 | For each directory with a `.git` subdirectory, check for uncommitted changes (`git status --porcelain`) |
+| 3 | Remove any plugin directory with dirty state |
+| 4 | Retry Lazy sync once |
+| 5 | If retry also fails, log a warning with manual remediation steps |
+
+---
+
+## Error Handling
+
+| Error Case | Trigger | Detection | Response | Recovery |
+|------------|---------|-----------|----------|----------|
+| Unsupported OS | Operating system type is not a Linux variant or macOS | Platform detection phase | Print error with detected OS type, exit 1 | User must run on Ubuntu/Debian or macOS |
+| Linux without apt | Linux detected but apt package manager not found | Platform detection phase | Print error, exit 1 | User must install apt or use a supported platform |
+| Module install failure | A module function signals failure | Failure tracking | Append module name to `FAILED_MODULES`, continue execution | Report at completion; user re-runs with failed modules |
+| Neovim below minimum version | Installed Neovim version reports less than 0.10 | `configure_neovim` module | Remove apt version if present, download and install AppImage from GitHub releases | Automatic; fails if download or architecture unsupported |
+| Unsupported CPU architecture | Detected architecture is not x86_64, aarch64, or arm64 | Neovim or Go install modules | Print error, skip module | User must build from source or use supported hardware |
+| Homebrew install failure | Homebrew installation script exits non-zero | `setup_package_manager` | Script exits | User troubleshoots Homebrew install manually |
+| Lazy sync dirty cache | `Lazy! sync` reports local changes in plugins | Plugin sync phase | Clean dirty plugin caches, retry once | Automatic; manual Lazy sync if retry fails |
+| Mason package install failure | MasonInstall command exits non-zero | Mason installation phase | Print warning with manual remediation command | User runs `:Mason` inside Neovim |
+| npm not found for agent install | Node.js/npm is not available when installing Codex, Pi, or Gemini | Dependency resolver | Auto-add `nodejs` module to resolved list | Automatic; user notified via warning message |
+| Docker not found for Pi sandbox | Docker command not found when installing `pi_sandbox` | `install_pi_sandbox` module | Print error, skip module | User must install Docker separately before re-running |
+| Go version fetch failure | Version endpoint returns empty result | `install_golang` module | Print error, signal module failure | Module fails; user retries or installs Go manually |
+| PATH conflict for npm-installed agents | The agent binary is found via PATH but not at `~/.local/bin/` | Post-install verification | Print warning identifying the conflicting binary path | User must ensure `~/.local/bin` is earlier in PATH |
+| Codex config symlink detected | Existing `~/.codex/config.toml` is a symlink | `install_codex` module | Remove symlink, copy template as regular file | Automatic; local config file created from template |
+
+---
+
+## Implementation Notes
+
+1. **Shell compatibility**: The interactive menu system uses indexed arrays (parallel arrays), not associative arrays, to remain compatible with the default shell on all supported platforms (including macOS). All module menus and selection state MUST use indexed arrays.
+
+2. **Idempotency contract**: Every module function MUST be safe to run multiple times. The script MUST NOT fail, produce errors, or cause data loss when re-run with already-installed state. This is achieved through:
+   - Checking for existing installations before installing
+   - Backing up (never overwriting) existing non-symlink configuration files
+   - Removing and recreating symlinks to ensure they point to the correct target
+
+3. **Platform branching pattern**: All platform-specific logic uses `if [ "$OS" == "ubuntu" ]` / `elif [ "$OS" == "macos" ]` branching. The `OS` variable is set once during detection and referenced throughout. No module function should re-detect the platform.
+
+4. **Module isolation**: Each module function is self-contained — it performs its own prerequisite checks (e.g., checking if `npm` exists before installing an npm package). The dependency resolver adds modules to the execution list but does not skip internal prerequisite checks.
+
+5. **Global install prefix**: All npm-based global tools (Codex, Pi, Gemini) MUST be installed with `--prefix` pointing to `NPM_GLOBAL_PREFIX` (`~/.local`) to ensure they survive fnm Node version switches. The resulting binaries land in `~/.local/bin/`. Claude Code and Copilot CLI use curl-based installers instead of npm (see Tool Provisioning spec for installer type details).
+
+6. **Architecture detection**: Ubuntu modules detect `x86_64` → `amd64` and `aarch64`/`arm64` → `arm64` for binary downloads. macOS uses Homebrew's architecture-aware install. Unsupported architectures cause module failure with an error message.
+
+7. **Temp directory cleanup**: All download operations MUST use a temporary directory and MUST clean it up (remove all contents) on both success and failure paths. No temporary files should leak.
+
+8. **Version comparison**: Version comparisons MUST use semantic version ordering (so that e.g. 0.9 < 0.10). The Neovim version check on Ubuntu uses floating-point comparison (`bc -l`), while the Go version check uses version-sort comparison.
+
+9. **In-place file edits**: File modifications MUST use platform-appropriate in-place editing. The implementation details differ between macOS and Ubuntu/Debian.
+
+10. **Git config prompting**: Git user.name and user.email prompting is described in AGENTS.md but is **not currently implemented** in the install script. This feature may be added in a future version; for now, users must configure git identity manually.
+
+---
+
+## Test Scenarios
+
+### TS-INSTL-001: Full Profile Installs All Modules
+Category: End-to-End
+Priority: Critical
+Preconditions: Fresh Ubuntu machine with apt available, no prior dotfiles installation
+Input: `--profile full`
+Expected Output: All 16 modules are resolved and executed. `FAILED_MODULES` is empty. No backup files created (fresh system). All symlinks point to dotfiles repo.
+
+### TS-INSTL-002: Minimal Profile Installs Only Editors
+Category: End-to-End
+Priority: Critical
+Preconditions: Fresh system, no prior installation
+Input: `--profile minimal`
+Expected Output: Only `base_tools`, `neovim`, `nvim_config`, `tmux_config` are resolved and executed. No AI agent or TUI tool modules run.
+
+### TS-INSTL-003: Dependency Resolution Adds Missing Prerequisites
+Category: Integration
+Priority: Critical
+Preconditions: User selects `nvim_config` but not `neovim` or `base_tools`; `git` and `nvim` are NOT installed on the system
+Input: `--modules nvim_config`
+Expected Output: `resolve_dependencies` adds `base_tools` and `neovim` before `nvim_config`. Final list: `base_tools`, `neovim`, `nvim_config`.
+
+### TS-INSTL-004: Dependency Deduplication Preserves Order
+Category: Unit
+Priority: High
+Preconditions: User selects both `pi` (requires `nodejs`) and `codex` (requires `nodejs`); `npm` is NOT installed
+Input: `--modules pi,codex`
+Expected Output: `nodejs` appears exactly once in the resolved list, before both `pi` and `codex`.
+
+### TS-INSTL-005: Idempotent Re-Run Skips Existing Installations
+Category: Integration
+Priority: Critical
+Preconditions: Full profile already installed
+Input: `--profile full` (second run)
+Expected Output: All module functions detect existing installations and log "already installed" messages. No packages reinstalled. No backups created for already-symlinked configs. No data loss.
+
+### TS-INSTL-006: Symlink Conflict Creates Timestamped Backup
+Category: Unit
+Priority: High
+Preconditions: Regular file exists at `~/.tmux.conf` (not a symlink)
+Input: Module `tmux_config`
+Expected Output: Existing `~/.tmux.conf` moved to `~/.tmux.conf.backup.{TIMESTAMP}`. New symlink created pointing to dotfiles repo.
+
+### TS-INSTL-007: Existing Symlink Is Replaced Not Backed Up
+Category: Unit
+Priority: High
+Preconditions: Symlink already exists at `~/.tmux.conf`
+Input: Module `tmux_config`
+Expected Output: Old symlink removed (no backup). New symlink created with correct target. No `.backup` file generated.
+
+### TS-INSTL-008: Unsupported OS Exits With Error
+Category: Unit
+Priority: Critical
+Preconditions: `$OSTYPE` is neither `linux-gnu*` nor `darwin*`
+Input: Run install script
+Expected Output: Error message printed with actual `$OSTYPE` value. Script exits with code 1.
+
+### TS-INSTL-009: Linux Without Apt Exits With Error
+Category: Unit
+Priority: Critical
+Preconditions: `$OSTYPE` matches `linux-gnu*` but `apt` is not found
+Input: Run install script
+Expected Output: Error message stating apt is required. Script exits with code 1.
+
+### TS-INSTL-010: Module Failure Does Not Halt Other Modules
+Category: Integration
+Priority: High
+Preconditions: Go binary download fails (network error)
+Input: `--modules golang_full,tmux_config`
+Expected Output: `golang_full` is added to `FAILED_MODULES`. `tmux_config` still executes and succeeds. Completion report shows both failed and succeeded modules.
+
+### TS-INSTL-011: Codex Config Template Preserve Mode
+Category: Unit
+Priority: Medium
+Preconditions: `~/.codex/config.toml` already exists as a regular file; `CODEX_CONFIG_TEMPLATE_MODE=preserve`
+Input: Module `codex`
+Expected Output: Existing `config.toml` is untouched. No overwrite, no backup created.
+
+### TS-INSTL-012: Codex Config Template Overwrite Mode
+Category: Unit
+Priority: Medium
+Preconditions: `~/.codex/config.toml` already exists as a regular file; `CODEX_CONFIG_TEMPLATE_MODE=overwrite`
+Input: Module `codex` with `--codex-config-template overwrite`
+Expected Output: Existing `config.toml` backed up with timestamp. Template copied from dotfiles repo to replace it.
+
+### TS-INSTL-013: Codex Config Symlink Converted To Local File
+Category: Unit
+Priority: Medium
+Preconditions: `~/.codex/config.toml` is a symlink to the dotfiles template
+Input: Module `codex`
+Expected Output: Symlink removed. Template copied as a regular file in its place. Log message indicates conversion.
+
+### TS-INSTL-014: Interactive Menu Cancel Exits Cleanly
+Category: Integration
+Priority: Medium
+Preconditions: No `--profile` or `--modules` flags
+Input: User selects profile 0 (Exit) at profile menu
+Expected Output: Script prints "Installation cancelled" and exits with code 0.
+
+### TS-INSTL-015: Summary Confirmation Declined
+Category: Integration
+Priority: Medium
+Preconditions: Modules selected (any method)
+Input: User presses `n` at confirmation prompt
+Expected Output: Script prints "Installation cancelled" and exits with code 0. No modules executed.
+
+### TS-INSTL-016: Neovim Fresh Install Clears All Caches
+Category: Unit
+Priority: High
+Preconditions: `~/.local/share/nvim/lazy` does NOT exist (no prior Neovim installation)
+Input: Module `nvim_config`
+Expected Output: Three directories are deleted: `~/.local/share/nvim`, `~/.local/state/nvim`, `~/.cache/nvim`.
+
+### TS-INSTL-017: Neovim Update Preserves Mason Data
+Category: Unit
+Priority: High
+Preconditions: `~/.local/share/nvim/lazy` directory exists (prior installation)
+Input: Module `nvim_config`
+Expected Output: Only `~/.cache/nvim` is deleted. `~/.local/share/nvim` and `~/.local/state/nvim` are preserved.
+
+### TS-INSTL-018: Kickstart Nvim Update Preserves Custom Layer
+Category: Integration
+Priority: High
+Preconditions: `~/.config/nvim/.git` exists with remote URL matching official kickstart.nvim
+Input: Module `nvim_config`
+Expected Output: `git fetch origin` and `git reset --hard origin/master` are executed. The custom layer symlink at `~/.config/nvim/lua/custom` is preserved (not deleted by the git reset).
+
+### TS-INSTL-019: Kickstart Custom Plugin Import Enabled
+Category: Unit
+Priority: High
+Preconditions: `~/.config/nvim/init.lua` contains commented-out `-- { import = 'custom.plugins' },`
+Input: Module `nvim_config`
+Expected Output: The line is uncommented to `{ import = 'custom.plugins' },`. This is persistent across re-runs.
+
+### TS-INSTL-020: Dirty Lazy Plugin Cache Cleanup And Retry
+Category: Unit
+Priority: Medium
+Preconditions: `Lazy! sync` fails with "You have local changes" error
+Input: Module `nvim_config`
+Expected Output: Dirty plugin directories are removed, Lazy sync is retried once. If retry succeeds, log success. If retry fails, log warning with manual command.
+
+### TS-INSTL-021: Agent Install Auto-Adds Node.js Dependency
+Category: Integration
+Priority: High
+Preconditions: `npm` is not found on the system
+Input: `--modules pi`
+Expected Output: Dependency resolver detects missing `npm` and adds `nodejs` before `pi` in the resolved list. `install_nodejs` runs first, then `install_pi`.
+
+### TS-INSTL-022: PATH Conflict Warning For Agent Binary
+Category: Unit
+Priority: Medium
+Preconditions: A `codex` binary exists on PATH at a location other than `~/.local/bin/codex`
+Input: Module `codex`
+Expected Output: Warning message printed showing the conflicting binary path. Installation still proceeds to `~/.local/bin/codex`.
+
+### TS-INSTL-023: macOS Homebrew Auto-Install
+Category: Unit
+Priority: High
+Preconditions: macOS system, `brew` command not found
+Input: Phase 2 (platform detection)
+Expected Output: Homebrew installed via official install script. For Apple Silicon, shell environment initialization appended to `~/.zprofile`. `brew update` runs after install.
+
+### TS-INSTL-024: Architecture Detection For Binary Downloads
+Category: Unit
+Priority: High
+Preconditions: Ubuntu, `uname -m` returns `aarch64`
+Input: Module `neovim` or `golang`
+Expected Output: Correct ARM64 binary variant is selected for download (e.g., `nvim-linux-arm64.appimage` for Neovim, `linux-arm64` tarball for Go).
+
+### TS-INSTL-025: Completion Report Lists Failed Modules
+Category: Integration
+Priority: High
+Preconditions: One or more modules failed during execution
+Input: Any profile where at least one module fails
+Expected Output: Completion summary shows `✗` for each failed module and `✓` for each succeeded module. Exit code is 1.
+
+### TS-INSTL-026: Completion Report Success
+Category: Integration
+Priority: Medium
+Preconditions: All modules succeeded
+Input: Any successful profile
+Expected Output: Completion summary shows `✓` for every module. No failure section displayed. Exit code is 0.
+
+### TS-INSTL-027: Custom Module Selection Toggle
+Category: Integration
+Priority: Medium
+Preconditions: No CLI flags; interactive mode entered
+Input: User selects profile 4 (Custom), toggles modules 1 and 5, then selects Done
+Expected Output: Only the toggled modules appear in the resolved and confirmed lists.
+
+### TS-INSTL-028: Shared Skills Directory Linked To All Agents
+Category: Integration
+Priority: High
+Preconditions: Multiple agent modules selected (e.g., `claude`, `pi`, `codex`, `gemini`, `copilot`)
+Input: `--modules claude,pi,codex,gemini,copilot`
+Expected Output: Each agent's skills directory symlink points to the same `~/dotfiles/shared/skills/` directory. A skill added to this directory is immediately available to all agents.
+
+---
+
+## Changelog
+
+| Version | Date | Summary |
+|---------|------|---------|
+| 1.0.0 | 2026-05-01 | Initial spec: orchestration flow, phase ordering, platform branching, dependency resolution, idempotency rules, error handling, interactive/CLI modes |
