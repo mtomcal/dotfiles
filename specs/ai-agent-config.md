@@ -1,6 +1,6 @@
 # AI Agent Configuration Specification
 
-> **Version**: 1.0.0
+> **Version**: 1.2.0
 > **Last Updated**: 2026-05-01
 > **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md), [Design Language](DESIGN_LANGUAGE.md)
 > **Depended By**: Install Orchestrator (INSTL)
@@ -206,6 +206,20 @@ An async background subagent job managed by the Pi subagent extension.
 | `model` | string | Optional | Model override for the subagent |
 | `thinking` | enum | `off`, `minimal`, `low`, `medium`, `high`, `xhigh` | Thinking level override |
 
+### Subagent Model Routing
+
+A prescriptive mapping from subagent intent categories to model, provider, and thinking level. The routing table is stored in Pi's `settings.json` as the `subagentModelRouting` key and injected into the `subagent_run` and `subagent_fork` tool descriptions by the subagent extension as a markdown table.
+
+| Field | Type | Constraints | Description |
+|-------|------|-------------|-------------|
+| `subagentModelRouting` | map | Required in Pi settings; key is routing category name | Top-level key in Pi settings containing the routing table |
+| category key | string | Required; one of: `scout`, `planner`, `reviewer`, `implementer`, `specialist` | Intent category that classifies the subagent's task |
+| `description` | string | Required | Brief description of what counts as this category; helps the LLM classify tasks correctly |
+| `model` | string | Required | Model ID matching an entry in `models.json` |
+| `provider` | string | Required | Provider ID matching an entry in `models.json` |
+| `thinking` | enum | Required; one of: `off`, `minimal`, `low`, `medium`, `high`, `xhigh` | Thinking level for this category |
+| `rationale` | string | Required | One-line explanation of why this model/thinking pair was chosen for this category |
+
 ### Shared Skills Directory
 
 The single canonical directory at `~/dotfiles/shared/skills/` — all agent skill configuration paths MUST point here via symlinks. When a skill is installed via any agent's skill installer (e.g., `npx skills@latest add`), it lands directly in this directory because every agent's skills path is already a symlink to it.
@@ -280,7 +294,7 @@ The shared skills system MUST satisfy:
 
 #### B4.3: Pi Configuration
 
-1. `settings.json` MUST set `enableSkillCommands` to `true` and define `defaultProvider`, `defaultModel`, and `defaultThinkingLevel`.
+1. `settings.json` MUST set `enableSkillCommands` to `true` and define `defaultProvider`, `defaultModel`, `defaultThinkingLevel`, and `subagentModelRouting`.
 2. `models.json` MUST define providers with `baseUrl`, `api`, `apiKey` (env var reference), and model arrays specifying `id`, `name`, `contextWindow`, `maxTokens`, and optional flags `reasoning`, `input`, and `api` (for per-model API overrides).
 3. Extensions are loaded from `~/.pi/agent/extensions/`, where each extension directory is a symlink to the dotfiles repo.
 
@@ -321,6 +335,13 @@ The subagent extension registers six tools:
 7. Job state MUST be persisted so that jobs survive across session switches.
 8. On `session_start`, persisted job state MUST be restored from session entries.
 9. Completion notifications MUST be delivered as steering messages that trigger a new turn.
+
+**Model routing rules:**
+
+10. When `subagentModelRouting` is present in Pi's `settings.json`, the extension MUST read it and inject a markdown table into the tool descriptions of `subagent_run` and `subagent_fork`. The table MUST include columns for category, description, model, provider, thinking, and rationale.
+11. The LLM MUST select a routing category from the table and use the prescribed `model`, `provider`, and `thinking` values in the subagent call. Deviation from the routing table requires explicit justification in the call.
+12. When `subagentModelRouting` is absent from `settings.json`, the extension MUST log a warning and fall back to the parent agent's default model and thinking level for all subagent calls.
+13. The routing table MUST NOT include fallback chains — each category maps to exactly one model/provider/thinking combination. When models change, the table MUST be updated manually in `settings.json`.
 
 **Subagent configuration (ad-hoc):**
 
@@ -363,12 +384,15 @@ The `pis` script provides a Docker sandbox wrapper for the Pi coding agent.
 **Rules:**
 
 1. The current working directory MUST be mounted read-write at its original path inside the container.
-2. Pi agent state (sessions, auth, settings, models, skills, extensions) MUST be mounted into the container.
-3. API key environment variables MUST be forwarded to the container: the well-known keys (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_API_KEY`, `GEMINI_API_KEY`) if set, plus any environment variables matching the patterns `*_API_KEY`, `*_API_TOKEN`, or `*_APIKEY`.
-4. Extra directories specified as positional arguments MUST be mounted read-only by default; the read-write flag switches to read-write.
-5. The script MUST auto-rebuild the Docker image if the installed Pi version in the image label doesn't match the latest npm version.
-6. `--no-rebuild` skips the version check; `--build` forces a build.
-7. Container MUST run as ephemeral (removed on exit). Recommended resource allocation is 8g memory, 4 CPUs, and 512 PIDs, but these limits are NOT enforced by the `pis` command — they are applied only when running under the Ralph sandbox mode.
+2. Pi agent state (sessions, auth, settings, models, skills, extensions) MUST be mounted into the container under the container user's home directory (`/home/{HOST_USER}/`, not `/root/`).
+3. The container MUST run as the host user (`--user UID:GID`) so that files written to mounted volumes are owned by the host user, not root.
+4. The `HOME` environment variable inside the container MUST be set to `/home/{HOST_USER}/` so that tools (git, ssh, pi) resolve the correct home directory.
+5. The Dockerfile MUST create a user matching the host username, UID, and GID at build time via `HOST_USER`, `HOST_UID`, and `HOST_GID` build arguments, ensuring `/etc/passwd` has a proper entry for git and other tools that require a username.
+6. API key environment variables MUST be forwarded to the container: the well-known keys (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_API_KEY`, `GEMINI_API_KEY`) if set, plus any environment variables matching the patterns `*_API_KEY`, `*_API_TOKEN`, or `*_APIKEY`.
+7. Extra directories specified as positional arguments MUST be mounted read-only by default; the read-write flag switches to read-write.
+8. The script MUST auto-rebuild the Docker image if the installed Pi version in the image label doesn't match the latest npm version.
+9. `--no-rebuild` skips the version check; `--build` forces a build.
+10. Container MUST run as ephemeral (removed on exit). Recommended resource allocation is 8g memory, 4 CPUs, and 512 PIDs, but these limits are NOT enforced by the `pis` command — they are applied only when running under the Ralph sandbox mode.
 
 ### B8: Ralph Agentic Loop
 
@@ -428,7 +452,7 @@ The install script supports module-based installation:
 |-------|---------------|--------------|
 | Codex | `config.toml` (copy, not symlink) | `multi_agent = true`, `apps = true`, agent role definitions |
 | Claude | `settings.json` (symlink) | `DISABLE_AUTOUPDATER`, `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`, statusline command |
-| Pi | `settings.json` (symlink) | `enableSkillCommands`, `defaultProvider`, `defaultModel`, `defaultThinkingLevel` |
+| Pi | `settings.json` (symlink) | `enableSkillCommands`, `defaultProvider`, `defaultModel`, `defaultThinkingLevel`, `subagentModelRouting` |
 | Pi | `models.json` (symlink) | Provider definitions with models, context windows, API compatibility flags |
 | Gemini | `settings.json` (symlink) | `ide.enabled`, `security.auth.selectedType`, `general.disableAutoUpdate` |
 | Copilot | None | Auth via `copilot login` |
@@ -451,6 +475,7 @@ The install script supports module-based installation:
 | AIAGT-010 | Missing API key for web search | `OLLAMA_API_KEY` env var not set | Tool returns error message | Set environment variable and retry |
 | AIAGT-011 | Invalid subagent_run parameters | More or fewer than 1 of task/tasks/chain | Return error with usage guidance | Provide exactly one mode parameter |
 | AIAGT-012 | Codex config overwrite attempted | `CODEX_CONFIG_TEMPLATE_MODE=overwrite` with existing file | Back up existing config, copy template | Restore from backup if needed |
+| AIAGT-013 | Subagent model routing missing | `subagentModelRouting` key absent from Pi settings.json | Extension logs warning; tool descriptions omit routing table | Fall back to parent agent's default model and thinking level |
 
 ---
 
@@ -642,6 +667,20 @@ Preconditions: Additional project directory exists
 Input: Run `pis -rw ~/Code/lib`
 Expected Output: Container mounts `~/Code/lib` as read-write.
 
+**TS-AIAGT-022b**: Pi sandbox — non-root container user
+Category: Integration
+Priority: Critical
+Preconditions: Docker image built with `HOST_USER`, `HOST_UID`, and `HOST_GID` build args matching the host user
+Input: Run `pis` and create a file inside the container at the mounted CWD
+Expected Output: File is created with the host user's UID and GID ownership (not root). `ls -la` on the host shows the file owned by the host user.
+
+**TS-AIAGT-022c**: Pi sandbox — container home directory matches host user
+Category: Integration
+Priority: High
+Preconditions: Docker image built with host user build args
+Input: Run `pis` and check `echo $HOME` and `whoami` inside the container
+Expected Output: `$HOME` is `/home/{HOST_USER}/`, `whoami` returns `{HOST_USER}`, and Pi agent state is mounted at `/home/{HOST_USER}/.pi/agent/`.
+
 ### Agent Roles
 
 **TS-AIAGT-023**: Test quality verifier — vague assertion detection
@@ -658,6 +697,27 @@ Preconditions: `playwright-cli` is not installed
 Input: Run playwright visual QA agent
 Expected Output: Agent reports that `playwright-cli` is not found and instructs the user to install it; does not proceed with browser automation.
 
+**TS-AIAGT-025**: Subagent model routing — prescriptive model selection
+Category: Unit
+Priority: Critical
+Preconditions: Pi settings.json contains `subagentModelRouting` with all five categories; the LLM invokes `subagent_run` with a scouting task
+Input: LLM classifies task as "scout" and uses the prescribed model/provider/thinking from the routing table
+Expected Output: The subagent is launched with the exact model, provider, and thinking level specified in the routing table for the "scout" category; no deviation without explicit justification.
+
+**TS-AIAGT-026**: Subagent model routing — missing routing table
+Category: Unit
+Priority: High
+Preconditions: Pi settings.json does NOT contain `subagentModelRouting`
+Input: LLM invokes `subagent_run` for any task
+Expected Output: Extension logs a warning about missing routing configuration; subagent uses parent agent's default model and thinking level; tool descriptions do not include routing guidance.
+
+**TS-AIAGT-027**: Subagent model routing — routing table injected into tool descriptions
+Category: Unit
+Priority: High
+Preconditions: Pi settings.json contains `subagentModelRouting` with all five categories
+Input: Pi starts a new session
+Expected Output: The `subagent_run` and `subagent_fork` tool descriptions include a markdown table with columns: category, description, model, provider, thinking, rationale; the table contains entries for scout, planner, reviewer, implementer, and specialist.
+
 ---
 
 ## Changelog
@@ -665,3 +725,5 @@ Expected Output: Agent reports that `playwright-cli` is not found and instructs 
 | Version | Date | Summary |
 |---------|------|---------|
 | 1.0.0 | 2026-05-01 | Initial specification extracted from brownfield codebase. Covers all five agents, shared skills, Pi extensions (subagent, inherit-last-model, web-search), Pi sandbox, Ralph agentic loop, agent role definitions, symlink deployment, and error handling. |
+| 1.1.0 | 2026-05-01 | Added subagent model routing: prescriptive model selection via `subagentModelRouting` in Pi settings, injected into subagent tool descriptions. Added data structure, behavior rules, error handling, and test scenarios. |
+| 1.2.0 | 2026-05-01 | Pi sandbox runs as host user (not root): Dockerfile creates host user via build args, `pis` script passes `--user` flag and mounts agent state under `/home/{HOST_USER}/`. Files written by the container are now owned by the host user. |

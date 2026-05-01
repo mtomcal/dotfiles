@@ -28,7 +28,7 @@ Every subagent skill should include:
 1. **Frontmatter** with `name`, `description`, and `allowed-tools` (standard skill format)
 2. **Role Definition Pattern** — what system prompts work for this type of subagent
 3. **Tool Scoping Guidance** — which tools to allow for this type of task
-4. **Model/Thinking Heuristics** — which model and thinking levels work best
+4. **Routing Category** — which subagent intent category this skill maps to (model/thinking is prescribed by the routing table in Pi settings)
 5. **Composition Patterns** — how to chain or parallelize this type of subagent
 6. **Anti-patterns** — what to avoid
 7. **Worked Example** — a concrete example subagent call
@@ -58,19 +58,6 @@ You are a [role]. Your task is to [scope].
 | Testing | `read, write, bash` | Write test files, run tests |
 
 **Principle**: Scope tools to the minimum needed. Over-scoping leads to unexpected modifications. Under-scoping blocks the subagent from completing its task.
-
-## Model and Thinking Heuristics
-
-| Purpose | Model | Thinking | Reasoning |
-|---------|-------|----------|-----------|
-| Code review | Powerful | High | Complex reasoning needed |
-| Architecture | Powerful | High | Deep analysis required |
-| Simple lookup | Fast | Low | Factual retrieval only |
-| Formatting | Fast | Low | Pattern matching only |
-| Implementation | Powerful | Medium | Coding needs capability |
-| Security audit | Powerful | High | Edge case reasoning critical |
-
-**Default**: Omit `model` and `thinking` — the parent agent's default (medium thinking) works well for most tasks. Only specify model/thinking when the task genuinely needs different capability.
 
 ## Composition Patterns
 
@@ -122,7 +109,6 @@ systemPrompt: |
   Output: Files Retrieved (with line ranges), Key Code (actual code snippets),
   Architecture (brief explanation), Start Here (which file first and why).
 tools: "read,grep,find,ls,bash"
-thinking: "low"
 ```
 
 ### Example: Planner — Implementation Plan Writer
@@ -135,7 +121,6 @@ systemPrompt: |
   a clear implementation plan. You must NOT make any changes. Only read, analyze,
   and plan. Output: Goal, Plan (numbered steps), Files to Modify, New Files, Risks.
 tools: "read,grep,find,ls"
-thinking: "medium"
 ```
 
 ### Example: Reviewer — Code Quality Reviewer
@@ -149,7 +134,6 @@ systemPrompt: |
   Do NOT modify files or run builds. Output: Files Reviewed, Critical (must fix),
   Warnings (should fix), Suggestions (consider), Summary (2-3 sentences).
 tools: "read,grep,bash"
-thinking: "high"
 ```
 
 ### Example: Worker — General-Purpose Implementer
@@ -162,7 +146,6 @@ systemPrompt: |
   window. Work autonomously to complete the assigned task. Output: Completed (what
   was done), Files Changed, Notes (anything the main agent should know).
 tools: "read,write,bash,edit"  # full access
-# model and thinking left to parent agent's defaults
 ```
 
 ---
@@ -215,8 +198,7 @@ You are a [role]. [Scope definition].
 
 ## Recommended Configuration
 - **tools**: [Tool list]
-- **model**: [Recommended model or omit]
-- **thinking**: [Recommended level or omit for default]
+- **routing category**: [scout | planner | reviewer | implementer | specialist]
 - **Single or parallel**: [When to use single vs parallel vs chain]
 
 ## Example Usage

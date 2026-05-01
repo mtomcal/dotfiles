@@ -1,6 +1,6 @@
 # Parameters
 
-> **Spec Version**: 1.1.0
+> **Spec Version**: 1.2.0
 > **Last Updated**: 2026-05-01
 > **Depends On**: None (foundational spec)
 > **Depended By**: All other specs
@@ -122,11 +122,29 @@ Parameters serve three purposes:
 | `SANDBOX_MEMORY_DEFAULT` | 8g | memory limit | Default Docker container memory for Pi sandbox |
 | `SANDBOX_CPU_DEFAULT` | 4 | CPU limit | Default CPU cores for Pi sandbox |
 | `SANDBOX_PIDS_DEFAULT` | 512 | PID limit | Default process count cap for Pi sandbox |
+| `SANDBOX_HOST_USER_ARG` | `HOST_USER` | string | Docker build arg name for the host username; defaults to `mtomcal` in the Dockerfile, overridden by `pis` script at build time |
+| `SANDBOX_HOST_UID_ARG` | `HOST_UID` | string | Docker build arg name for the host user UID; defaults to `1000` in the Dockerfile, overridden by `pis` script at build time |
+| `SANDBOX_HOST_GID_ARG` | `HOST_GID` | string | Docker build arg name for the host user GID; defaults to `1000` in the Dockerfile, overridden by `pis` script at build time |
 | `SUBAGENT_MAX_RUNNING_JOBS` | 8 | count | Maximum concurrent async subagent jobs |
 | `SUBAGENT_MAX_PARALLEL_TASKS` | 20 | count | Maximum tasks in a single parallel subagent_run call |
 | `SUBAGENT_WAIT_TIMEOUT_DEFAULT` | 300 | seconds | Default timeout for subagent_wait blocking calls |
 | `RALPH_DEFAULT_ITERATIONS` | 25 | count | Default max loop iterations for Ralph agentic loop |
 | `RALPH_DONE_PATTERN` | /done | string | Pattern that signals loop completion in Ralph worker output |
+| `SUBAGENT_ROUTING_SCOUT_MODEL` | deepseek-v4-flash | string | Flash-tier model for fast read-only codebase recon; no reasoning needed, speed and cost efficiency prioritize |
+| `SUBAGENT_ROUTING_SCOUT_PROVIDER` | ollama-cloud | string | Provider for scout-tier subagent models |
+| `SUBAGENT_ROUTING_SCOUT_THINKING` | low | enum: off, minimal, low, medium, high, xhigh | Minimal thinking for retrieval tasks; reasoning depth is wasted on scouting |
+| `SUBAGENT_ROUTING_PLANNER_MODEL` | glm-5.1 | string | Good instruction-following and breadth for planning; medium-tier model balances capability and cost |
+| `SUBAGENT_ROUTING_PLANNER_PROVIDER` | ollama-cloud | string | Provider for planner-tier subagent models |
+| `SUBAGENT_ROUTING_PLANNER_THINKING` | medium | enum: off, minimal, low, medium, high, xhigh | Balanced thinking for analysis and plan generation |
+| `SUBAGENT_ROUTING_REVIEWER_MODEL` | deepseek-v4-pro | string | Reasoning model for deep code analysis, security audit, and architecture review |
+| `SUBAGENT_ROUTING_REVIEWER_PROVIDER` | ollama-cloud | string | Provider for reviewer-tier subagent models |
+| `SUBAGENT_ROUTING_REVIEWER_THINKING` | high | enum: off, minimal, low, medium, high, xhigh | High thinking for catching subtle bugs and security issues |
+| `SUBAGENT_ROUTING_IMPLEMENTER_MODEL` | glm-5.1 | string | Workhorse model for code generation; sufficient for most implementation tasks |
+| `SUBAGENT_ROUTING_IMPLEMENTER_PROVIDER` | ollama-cloud | string | Provider for implementer-tier subagent models |
+| `SUBAGENT_ROUTING_IMPLEMENTER_THINKING` | medium | enum: off, minimal, low, medium, high, xhigh | Medium thinking balances generation quality with cost |
+| `SUBAGENT_ROUTING_SPECIALIST_MODEL` | deepseek-v4-pro | string | Strongest reasoning model for deep domain problems: race conditions, security audits, complex debugging |
+| `SUBAGENT_ROUTING_SPECIALIST_PROVIDER` | ollama-cloud | string | Provider for specialist-tier subagent models |
+| `SUBAGENT_ROUTING_SPECIALIST_THINKING` | high | enum: off, minimal, low, medium, high, xhigh | Maximum reasoning depth for hardest problems |
 
 ---
 

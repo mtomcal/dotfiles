@@ -91,7 +91,12 @@ build_image() {
     local pi_ver
     pi_ver=$(npm view @mariozechner/pi-coding-agent version 2>/dev/null || echo "latest")
     echo -e "${GREEN}[pis]${NC} Building Docker image ${IMAGE_NAME} (Pi @${pi_ver})..."
-    docker build --build-arg PI_VERSION="$pi_ver" -t "$IMAGE_NAME" "$DOCKERFILE_DIR"
+    docker build \
+        --build-arg PI_VERSION="$pi_ver" \
+        --build-arg HOST_USER="$(whoami)" \
+        --build-arg HOST_UID="$(id -u)" \
+        --build-arg HOST_GID="$(id -g)" \
+        -t "$IMAGE_NAME" "$DOCKERFILE_DIR"
     echo -e "${GREEN}[pis]${NC} Image built successfully"
 }
 
@@ -127,24 +132,32 @@ fi
 HOST_CWD="$(pwd)"
 PI_AGENT_DIR="$HOME/.pi/agent"
 
+HOST_USER="$(whoami)"
+HOST_UID="$(id -u)"
+HOST_GID="$(id -g)"
+CONTAINER_HOME="/home/${HOST_USER}"
+
 DOCKER_ARGS=(
     --rm
     -it
+    --user "${HOST_UID}:${HOST_GID}"
+    -e HOME="${CONTAINER_HOME}"
     -w "$HOST_CWD"
 
     # Project directory (read-write)
     -v "${HOST_CWD}:${HOST_CWD}:rw"
 
-    # Pi agent state
-    -v "${PI_AGENT_DIR}/sessions:/root/.pi/agent/sessions:rw"
-    -v "${PI_AGENT_DIR}/auth.json:/root/.pi/agent/auth.json:ro"
-    -v "${PI_AGENT_DIR}/settings.json:/root/.pi/agent/settings.json:ro"
-    -v "${PI_AGENT_DIR}/models.json:/root/.pi/agent/models.json:ro"
-    -v "${PI_AGENT_DIR}/skills:/root/.pi/agent/skills:ro"
-    -v "${PI_AGENT_DIR}/extensions:/root/.pi/agent/extensions:ro"
+    # Pi agent state — mounted under the container user's home directory
+    # so files are created with the host user's ownership, not root.
+    -v "${PI_AGENT_DIR}/sessions:${CONTAINER_HOME}/.pi/agent/sessions:rw"
+    -v "${PI_AGENT_DIR}/auth.json:${CONTAINER_HOME}/.pi/agent/auth.json:ro"
+    -v "${PI_AGENT_DIR}/settings.json:${CONTAINER_HOME}/.pi/agent/settings.json:ro"
+    -v "${PI_AGENT_DIR}/models.json:${CONTAINER_HOME}/.pi/agent/models.json:ro"
+    -v "${PI_AGENT_DIR}/skills:${CONTAINER_HOME}/.pi/agent/skills:ro"
+    -v "${PI_AGENT_DIR}/extensions:${CONTAINER_HOME}/.pi/agent/extensions:ro"
 
     # Tmux configuration
-    -v "$HOME/.tmux.conf:/root/.tmux.conf:ro"
+    -v "$HOME/.tmux.conf:${CONTAINER_HOME}/.tmux.conf:ro"
 )
 
 # Extra directory mounts

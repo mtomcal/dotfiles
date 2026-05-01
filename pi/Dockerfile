@@ -9,6 +9,15 @@ FROM ubuntu:24.04
 # the exact version and passes --build-arg PI_VERSION=<x.y.z>.
 ARG PI_VERSION=latest
 
+# Host user args — the pis wrapper script passes these at build time so
+# the container has a matching user with a real /etc/passwd entry.
+# This ensures git, ssh, and other tools that need a username work inside
+# the container, and files written to mounted volumes are owned by the
+# host user (not root).
+ARG HOST_USER=mtomcal
+ARG HOST_UID=1000
+ARG HOST_GID=1000
+
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Use Arizona mirror instead of default Ubuntu repos (faster, avoids
@@ -73,6 +82,14 @@ ENV PATH="/usr/local/node/bin:${FNM_DIR}:${PATH}"
 
 # fd-find is installed as fdfind on Debian; alias it
 RUN ln -sf "$(which fdfind)" /usr/local/bin/fd
+
+# Create the host user inside the container so git, ssh, and other tools
+# that consult /etc/passwd work correctly. The pis wrapper passes --user
+# at runtime to match the host UID/GID, but this ensures the username exists.
+# Home directory structure is created as mount targets for Pi agent state.
+RUN groupadd -g ${HOST_GID} ${HOST_USER} \
+    && useradd -m -u ${HOST_UID} -g ${HOST_GID} -s /bin/zsh ${HOST_USER} \
+    && mkdir -p /home/${HOST_USER}/.pi/agent
 
 # Default working directory (overridden by pis script)
 # Stamp the resolved Pi version into the image metadata so the pis wrapper
