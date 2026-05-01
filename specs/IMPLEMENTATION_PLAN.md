@@ -252,20 +252,39 @@ Prompt focus:
 
 ## Implementation Checklist
 
-- [ ] Create `pi/extensions/subagent/routing.ts` with `RoutingEntry` type, `RoutingTable` type
-- [ ] Implement `readRoutingTable(settingsPath: string): RoutingEntry[] | null`
-- [ ] Implement `formatRoutingTable(entries: RoutingEntry[]): string`
-- [ ] Implement `buildToolDescription(base: string, routing: RoutingEntry[] | null): string`
-- [ ] Create `pi/extensions/subagent/tests/routing.test.ts` with unit tests
-- [ ] **Run tests, observe red failure**
-- [ ] Wire routing into `index.ts` — read settings at init, build descriptions for `subagent_run` and `subagent_fork`
-- [ ] **Run tests, observe green pass**
-- [ ] Add warning log for missing `subagentModelRouting`
+- [ ] **Slice 1: Read subagentModelRouting from settings.json** — Create `pi/extensions/subagent/tests/routing.test.ts`, write tests for parsing `subagentModelRouting` (5 categories present, missing key returns null, partial data returns what's available)
+- [ ] **Slice 1: RED** — Run `npm test` in `pi/extensions/subagent/`, observe failure for `readRoutingTable` tests
+- [ ] **Slice 1: GREEN** — Create `pi/extensions/subagent/routing.ts` with `RoutingEntry` type, `RoutingTable` type, and `readRoutingTable(settingsPath: string): RoutingEntry[] | null`
+- [ ] **Slice 1: GREEN** — Run `npm test` in `pi/extensions/subagent/`, observe pass for `readRoutingTable` tests
+- [ ] **Slice 1: REFACTOR** — none needed
+- [ ] **Slice 1: REFACTOR** — Run `npm test`, confirm still green
+
+- [ ] **Slice 2: Format routing table as markdown** — Add tests to `pi/extensions/subagent/tests/routing.test.ts` for `formatRoutingTable` (5 categories → correct markdown, 0 categories → empty string/fallback)
+- [ ] **Slice 2: RED** — Run `npm test` in `pi/extensions/subagent/`, observe failure for `formatRoutingTable` tests
+- [ ] **Slice 2: GREEN** — Add `formatRoutingTable(entries: RoutingEntry[]): string` to `pi/extensions/subagent/routing.ts`
+- [ ] **Slice 2: GREEN** — Run `npm test` in `pi/extensions/subagent/`, observe pass for `formatRoutingTable` tests
+- [ ] **Slice 2: REFACTOR** — none needed
+- [ ] **Slice 2: REFACTOR** — Run `npm test`, confirm still green
+
+- [ ] **Slice 3: Inject routing table into tool descriptions** — Add tests to `pi/extensions/subagent/tests/routing.test.ts` for `buildToolDescription` (routing present → markdown in description, null → fallback note)
+- [ ] **Slice 3: RED** — Run `npm test` in `pi/extensions/subagent/`, observe failure for `buildToolDescription` tests
+- [ ] **Slice 3: GREEN** — Add `buildToolDescription(base: string, routing: RoutingEntry[] | null): string` to `pi/extensions/subagent/routing.ts`
+- [ ] **Slice 3: GREEN** — Run `npm test` in `pi/extensions/subagent/`, observe pass for `buildToolDescription` tests
+- [ ] **Slice 3: REFACTOR** — none needed
+- [ ] **Slice 3: REFACTOR** — Run `npm test`, confirm still green
+
+- [ ] **Slice 4: Wire routing into subagent_run and subagent_fork registration** — Add tests to `pi/extensions/subagent/tests/routing.test.ts` that tool descriptions include routing table when configured and omit it when not
+- [ ] **Slice 4: RED** — Run `npm test` in `pi/extensions/subagent/`, observe failure for integration tests
+- [ ] **Slice 4: GREEN** — Wire `readRoutingTable` + `buildToolDescription` into `pi/extensions/subagent/index.ts` — read settings at init, build descriptions for `subagent_run` and `subagent_fork`; add warning log for missing `subagentModelRouting`
+- [ ] **Slice 4: GREEN** — Run `npm test` in `pi/extensions/subagent/`, observe pass for all tests
+- [ ] **Slice 4: REFACTOR** — Extract description strings to constants (now built dynamically)
+- [ ] **Slice 4: REFACTOR** — Run `npm test`, confirm still green
+
+- [ ] Run full test suite: `npm test` in `pi/extensions/subagent/`
+- [ ] Run type-check: `npx tsc --noEmit` in `pi/extensions/subagent/`
 - [ ] Verify `settings.json` has all 5 routing categories
 - [ ] Verify `create-subagent-skill/SKILL.md` has routing category field
-- [ ] Run `npm test` in `pi/extensions/subagent/`
-- [ ] Run `npx tsc --noEmit` in `pi/extensions/subagent/`
-- [ ] Run `test-quality-verifier` pass on routing tests
+- [ ] Run `test-quality-verifier` pass on `pi/extensions/subagent/tests/routing.test.ts`
 - [ ] Run pre-mortem subagent pass
 
 ---
