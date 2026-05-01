@@ -881,7 +881,7 @@ export default function (pi: ExtensionAPI) {
 
 			let text = `**${allJobs.length} jobs** — ${running} running, ${completed} completed, ${failed} failed, ${cancelled} cancelled\n\n`;
 			for (const job of allJobs) {
-				text += renderJobStatusLine(job, { fg: () => (s: string) => s, bold: (s: string) => s } as any) + "\n";
+				text += renderJobStatusLine(job, { fg: (_color: any, s: string) => s, bold: (s: string) => s } as any) + "\n";
 			}
 			return { content: [{ type: "text", text }], details: { jobs: allJobs.map(serializeJobForDetails), running, total: allJobs.length } };
 		},
