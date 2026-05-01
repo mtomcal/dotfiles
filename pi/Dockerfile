@@ -18,6 +18,10 @@ ARG HOST_USER=mtomcal
 ARG HOST_UID=1000
 ARG HOST_GID=1000
 
+# Resolve the user's home directory for use in ENV and RUN instructions.
+# Docker ENV can reference ARGs defined in the same build stage.
+ENV USER_HOME="/home/${HOST_USER}"
+
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Use Arizona mirror instead of default Ubuntu repos (faster, avoids
@@ -53,49 +57,52 @@ RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
     && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
       > /etc/apt/sources.list.d/github-cli.list \
     && apt-get update && apt-get install -y gh \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/
 
-# Go 1.24+
+# Go 1.24+ (system-wide install to /usr/local/go)
 ARG GO_VERSION=1.24.2
 RUN ARCH=$(dpkg --print-architecture) \
     && curl -fsSL "https://go.dev/dl/go${GO_VERSION}.linux-${ARCH}.tar.gz" \
       | tar -C /usr/local -xz
 ENV PATH="/usr/local/go/bin:${PATH}"
-ENV GOPATH="/opt/go-workspace"
-ENV PATH="${GOPATH}/bin:${PATH}"
-
-# fnm + Node.js LTS + Pi coding agent
-# Installed under /opt so all users can access it (not locked behind /root/ 700 perms).
-# Combined into one RUN so fnm's PATH is available for npm install
-ENV FNM_DIR="/opt/fnm"
-RUN curl -fsSL https://fnm.vercel.app/install | bash -s -- --install-dir "${FNM_DIR}" --skip-shell \
-    && export PATH="${FNM_DIR}:${PATH}" \
-    && eval "$(fnm env --shell bash)" \
-    && fnm install --lts \
-    && fnm default lts-latest \
-    && npm install -g @mariozechner/pi-coding-agent@${PI_VERSION}
-
-# Resolve node binary path for subsequent layers and runtime.
-# fnm aliases/default/ IS the node installation root (contains bin/, lib/).
-# Docker ENV can't follow symlinks, so create a stable /usr/local/node link.
-RUN ln -sf "${FNM_DIR}/aliases/default" /usr/local/node
-ENV PATH="/usr/local/node/bin:${FNM_DIR}:${PATH}"
 
 # fd-find is installed as fdfind on Debian; alias it
 RUN ln -sf "$(which fdfind)" /usr/local/bin/fd
 
-# Create the host user inside the container so git, ssh, and other tools
-# that consult /etc/passwd work correctly. The pis wrapper passes --user
-# at runtime to match the host UID/GID, but this ensures the username exists.
-# Home directory structure is created as mount targets for Pi agent state.
-#
+# ===========================
+# Create the host user early so all tooling installs under their home
+# ===========================
 # Remove the default 'ubuntu' user/group first (ubuntu:24.04 creates
 # ubuntu:1000:1000) to avoid GID/UID conflicts when the host user is 1000.
 RUN userdel -r ubuntu 2>/dev/null; \
     groupdel ubuntu 2>/dev/null; \
     groupadd -g ${HOST_GID} ${HOST_USER} && \
     useradd -m -u ${HOST_UID} -g ${HOST_GID} -s /bin/zsh ${HOST_USER} && \
-    mkdir -p /home/${HOST_USER}/.pi/agent
+    mkdir -p ${USER_HOME}/.local/share ${USER_HOME}/.pi/agent ${USER_HOME}/go-workspace && \
+    chown -R ${HOST_USER}:${HOST_USER} ${USER_HOME}
+
+# Go workspace (user-local)
+ENV GOPATH="${USER_HOME}/go-workspace"
+ENV PATH="${GOPATH}/bin:${PATH}"
+
+# fnm + Node.js LTS + Pi coding agent
+# Installed under the user's home directory so the non-root container user
+# has full access. Combined into one RUN so fnm's PATH is available for
+# npm install. Files are chowned to the host user afterwards.
+ENV FNM_DIR="${USER_HOME}/.local/share/fnm"
+RUN curl -fsSL https://fnm.vercel.app/install | bash -s -- --install-dir "${FNM_DIR}" --skip-shell \
+    && export PATH="${FNM_DIR}:${PATH}" \
+    && eval "$(fnm env --shell bash)" \
+    && fnm install --lts \
+    && fnm default lts-latest \
+    && npm install -g @mariozechner/pi-coding-agent@${PI_VERSION} \
+    && chown -R ${HOST_USER}:${HOST_USER} ${USER_HOME}
+
+# Resolve node binary path for subsequent layers and runtime.
+# fnm aliases/default/ IS the node installation root (contains bin/, lib/).
+# Docker ENV can't follow symlinks, so create a stable /usr/local/node link.
+RUN ln -sf "${FNM_DIR}/aliases/default" /usr/local/node
+ENV PATH="/usr/local/node/bin:${FNM_DIR}:${PATH}"
 
 # Default working directory (overridden by pis script)
 # Stamp the resolved Pi version into the image metadata so the pis wrapper
