@@ -54,7 +54,10 @@ import {
 	renderJobStatusLine,
 	renderSingleResult,
 } from "./renderers.js";
+import { extractSummary, truncateForWidget } from "./summary.js";
 import { readRoutingTable, buildToolDescription } from "./routing.js";
+import { renderWidgetContent } from "./widget.js";
+import { SUBAGENT_WIDGET_DEBOUNCE_MS, SUBAGENT_WIDGET_DISMISS_DELAY_MS } from "./summary.js";
 
 // ─── Schema Definitions ───────────────────────────────────────────────
 
@@ -294,14 +297,10 @@ function spawnSubagentProcess(
 function emitCompletionNotification(pi: ExtensionAPI, job: AsyncJob): void {
 	if (job.status === "cancelled" || !job.result) return;
 	const result = job.result;
-	const finalOutput = getFinalOutput(result.messages);
 
-	const displayItems = getDisplayItems(result.messages);
-	let smartContent = "";
-	for (let i = displayItems.length - 1; i >= 0; i--) {
-		if (displayItems[i].type === "text") { smartContent = displayItems[i].text; break; }
-	}
-	if (!smartContent) smartContent = finalOutput || "(no output)";
+	// Use extractSummary for content selection (≥50 char threshold, backward scan)
+	const smartContent = extractSummary(result.messages) || getFinalOutput(result.messages) || "(no output)";
+	const truncatedContent = truncateForWidget(smartContent, 200);
 
 	const usageLine = formatUsageStats(result.usage, result.model, result.provider, result.thinking);
 	const statusEmoji = job.status === "completed" ? "✓" : "✗";
@@ -311,7 +310,7 @@ function emitCompletionNotification(pi: ExtensionAPI, job: AsyncJob): void {
 		`**Job:** \`${job.id}\``,
 		`**Task:** ${job.task}`,
 		"",
-		smartContent,
+		truncatedContent,
 		"",
 		usageLine ? `**Usage:** ${usageLine}` : "",
 	].join("\n");
@@ -327,9 +326,55 @@ function emitCompletionNotification(pi: ExtensionAPI, job: AsyncJob): void {
 				name: job.name,
 				task: job.task,
 				mode: "single",
-				summary: smartContent,
+				summary: truncatedContent,
 				usage: result.usage,
 				result,
+			},
+		},
+		{ triggerTurn: true, deliverAs: "steer" },
+	);
+}
+
+function emitCancellationNotification(pi: ExtensionAPI, job: AsyncJob): void {
+	const summary = job.result ? extractSummary(job.result.messages) : "";
+	const displayItems = job.result ? getDisplayItems(job.result.messages).filter(i => i.type === "toolCall") : [];
+	const lastToolCall = displayItems.length > 0 ? displayItems[displayItems.length - 1] : null;
+
+	const now = Date.now();
+	const elapsedMs = (job.completedAt ?? now) - job.startedAt;
+	const elapsed = elapsedMs < 1000 ? `${elapsedMs}ms`
+		: elapsedMs < 60000 ? `${Math.round(elapsedMs / 1000)}s`
+		: `${Math.floor(elapsedMs / 60000)}m ${Math.round((elapsedMs % 60000) / 1000)}s`;
+
+	let toolCallLine = "";
+	if (lastToolCall) {
+		toolCallLine = `\n→ ${formatToolCall(lastToolCall.name, lastToolCall.args, (_c: any, t: string) => t)}`;
+	}
+
+	const usageLine = job.result ? formatUsageStats(job.result.usage, job.result.model, job.result.provider, job.result.thinking) : "";
+
+	const notificationContent = [
+		`**⊘ Subagent Cancelled: \`${job.name}\`**`,
+		`**Job:** \`${job.id}\``,
+		`**Task:** ${job.task}`,
+		`**Elapsed:** ${elapsed}`,
+		usageLine ? `**Usage:** ${usageLine}` : "",
+		summary ? `\n${summary}${toolCallLine}` : "",
+	].filter(Boolean).join("\n");
+
+	pi.sendMessage(
+		{
+			customType: "subagent-result",
+			content: notificationContent,
+			display: true,
+			details: {
+				jobId: job.id,
+				status: "cancelled",
+				name: job.name,
+				task: job.task,
+				summary: summary || "(cancelled)",
+				usage: job.result?.usage,
+				result: job.result,
 			},
 		},
 		{ triggerTurn: true, deliverAs: "steer" },
@@ -476,8 +521,66 @@ export default function (pi: ExtensionAPI) {
 	const jobMgr: JobManager = pi.jobMgr ?? new JobManager();
 	if (!pi.jobMgr) pi.jobMgr = jobMgr;
 
+	// Wire up cancellation notification callback so cancelJob/cancelAll
+	// automatically send steer notifications when jobs are cancelled.
+	jobMgr.setOnCancel((job: AsyncJob) => {
+		try {
+			emitCancellationNotification(pi, job);
+		} catch { /* notification best-effort */ }
+	});
+
+	// Wire up partial result callback for live progress widget updates.
+	jobMgr.setOnPartialResult((_jobId: string, _partial: SingleResult) => {
+		scheduleWidgetUpdate(widgetCtx);
+	});
 	function persist() {
 		pi.appendEntry("subagent-job-state", jobMgr.serialize());
+	}
+
+	// ── Context reference for widget updates ─────────────────────────────
+	let widgetCtx: any = null;
+
+	// ── Widget management ────────────────────────────────────────────────
+	let widgetDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+	let widgetDismissTimer: ReturnType<typeof setTimeout> | null = null;
+
+	function updateWidget(ctx: any): void {
+		try {
+			const terminalWidth = process.stdout.columns || 80;
+			const jobs = jobMgr.listJobs();
+			const content = renderWidgetContent(jobs, terminalWidth);
+			if (ctx?.ui?.setWidget) {
+				ctx.ui.setWidget("subagent-jobs", content, { placement: "aboveEditor" });
+			}
+		} catch (err) {
+			// Widget render failure → log error, skip re-render (AIAGT-014)
+			console.error("[subagent-widget] render error:", err);
+		}
+	}
+
+	function scheduleWidgetUpdate(ctx: any): void {
+		if (widgetDebounceTimer) clearTimeout(widgetDebounceTimer);
+		widgetDebounceTimer = setTimeout(() => {
+			widgetDebounceTimer = null;
+			updateWidget(ctx);
+		}, SUBAGENT_WIDGET_DEBOUNCE_MS);
+	}
+
+	function scheduleWidgetDismiss(ctx: any): void {
+		if (widgetDismissTimer) clearTimeout(widgetDismissTimer);
+		widgetDismissTimer = setTimeout(() => {
+			widgetDismissTimer = null;
+			try {
+				if (ctx?.ui?.setWidget) {
+					ctx.ui.setWidget("subagent-jobs", undefined, { placement: "aboveEditor" });
+			}
+			} catch { /* best-effort */ }
+		}, SUBAGENT_WIDGET_DISMISS_DELAY_MS);
+	}
+
+	function cancelWidgetTimers(): void {
+		if (widgetDebounceTimer) { clearTimeout(widgetDebounceTimer); widgetDebounceTimer = null; }
+		if (widgetDismissTimer) { clearTimeout(widgetDismissTimer); widgetDismissTimer = null; }
 	}
 
 		// ── Read subagent model routing from settings ────────────────────
@@ -510,8 +613,9 @@ export default function (pi: ExtensionAPI) {
 	});
 
 	// ── Lifecycle ────────────────────────────────────────────────────
-	pi.on("session_shutdown", async () => { jobMgr.cancelAll(); persist(); });
+	pi.on("session_shutdown", async () => { cancelWidgetTimers(); widgetCtx = null; jobMgr.cancelAll(); persist(); });
 	pi.on("session_start", async (_event, ctx) => {
+		widgetCtx = ctx;
 		for (const entry of ctx.sessionManager.getEntries()) {
 			if (entry.type === "custom" && entry.customType === "subagent-job-state") {
 				jobMgr.deserialize(entry.data as any);
@@ -731,6 +835,7 @@ export default function (pi: ExtensionAPI) {
 			"Max 8 concurrent background jobs. Check with subagent_status before forking more.",
 			"Omit `systemPrompt` for the bare-task pattern: a default assistant in isolated context.",
 			"Use subagent_run when you need the result immediately. Use subagent_fork when you can work in parallel.",
+			"A TUI status widget is displayed above the editor while jobs are running, showing live progress. You'll also receive a completion notification when each job finishes.",
 		],
 
 		async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
@@ -850,6 +955,20 @@ export default function (pi: ExtensionAPI) {
 				const elapsed = elapsedMs < 1000 ? `${elapsedMs}ms` : elapsedMs < 60000 ? `${Math.round(elapsedMs / 1000)}s` : `${Math.floor(elapsedMs / 60000)}m ${Math.round((elapsedMs % 60000) / 1000)}s`;
 
 				let text = `**${icon} ${job.name}** — ${job.status}\n\n**Job ID:** \`${job.id}\`\n**Task:** ${job.task}\n**Elapsed:** ${elapsed}`;
+				if (job.status === "running" && job.result) {
+					// Progress section for running jobs with partial result data
+					const progressItems = getDisplayItems(job.result.messages);
+					const lastToolCall = progressItems.filter(i => i.type === "toolCall").pop();
+					const progressSummary = extractSummary(job.result.messages);
+					const progressUsage = formatUsageStats(job.result.usage, job.result.model, job.result.provider, job.result.thinking);
+					text += `\n\n**Progress:**`;
+					if (job.result.usage.turns) text += `\n- **Turns:** ${job.result.usage.turns}`;
+					if (progressUsage) text += `\n- **Usage:** ${progressUsage}`;
+					if (progressSummary) text += `\n- **Last text:** ${truncateForWidget(progressSummary, 120)}`;
+					if (lastToolCall) text += `\n- **Last tool call:** ${formatToolCall(lastToolCall.name, lastToolCall.args, (_c: any, t: string) => t)}`;
+				} else if (job.status === "running" && !job.result) {
+					text += `\n\n**Progress:** No progress data available yet`;
+				}
 				if (job.status === "completed" && job.result) {
 					const out = getFinalOutput(job.result.messages);
 					if (out) text += `\n\n**Summary:**\n${out.length > 500 ? out.slice(0, 500) + "\n\n... (truncated)" : out}`;
@@ -956,7 +1075,7 @@ export default function (pi: ExtensionAPI) {
 			"The timeout defaults to 300 seconds. Specify a longer timeout for heavy tasks.",
 		],
 
-		async execute(_toolCallId, params, signal, _onUpdate, _ctx) {
+		async execute(_toolCallId, params, signal, onUpdate, _ctx) {
 			const job = jobMgr.getJob(params.jobId);
 			if (!job) return { content: [{ type: "text", text: `Job "${params.jobId}" not found.` }], isError: true };
 
@@ -980,6 +1099,28 @@ export default function (pi: ExtensionAPI) {
 					return { content: [{ type: "text", text: `Job \`${params.jobId}\` (${current.name}) ${current.status}.\n${finalOutput ? `\n${finalOutput}\n` : ""}${usage ? `\n**Usage:** ${usage}` : ""}` }], details: { results: result ? [result] : [] } };
 				}
 				if (signal?.aborted) return { content: [{ type: "text", text: `Wait for job "${params.jobId}" was aborted.` }], isError: true };
+
+				// Stream progress if partial result is available
+				if (onUpdate && current.result) {
+					const progressItems = getDisplayItems(current.result.messages);
+					const lastToolCall = progressItems.filter(i => i.type === "toolCall").pop();
+					const summary = extractSummary(current.result.messages);
+					const now = Date.now();
+					const elapsedMs = now - current.startedAt;
+					const elapsed = elapsedMs < 1000 ? `${elapsedMs}ms` : elapsedMs < 60000 ? `${Math.round(elapsedMs / 1000)}s` : `${Math.floor(elapsedMs / 60000)}m ${Math.round((elapsedMs % 60000) / 1000)}`;
+					const usageLine = formatUsageStats(current.result.usage, current.result.model, current.result.provider, current.result.thinking);
+					let progressText = `\u23F3 ${current.name} (${elapsed})`;
+					if (usageLine) progressText += ` ${usageLine}`;
+					if (current.result.usage.turns) progressText += ` ${current.result.usage.turns} turns`;
+					let detailLine = "";
+					if (summary) detailLine = `\n  "${truncateForWidget(summary, 80)}"`;
+					if (lastToolCall) detailLine += ` \u2192 ${formatToolCall(lastToolCall.name, lastToolCall.args, (_c: any, t: string) => t)}`;
+					onUpdate({
+						content: [{ type: "text", text: progressText + detailLine }],
+						details: { results: [current.result] },
+					});
+				}
+
 				await new Promise((resolve) => setTimeout(resolve, 500));
 			}
 
@@ -1012,7 +1153,7 @@ export default function (pi: ExtensionAPI) {
 			"Completed and failed jobs cannot be cancelled.",
 		],
 
-		async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
+		async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
 			if (params.all) {
 				const running = jobMgr.listRunning();
 				const count = running.length;
@@ -1020,6 +1161,9 @@ export default function (pi: ExtensionAPI) {
 				if (count === 0) return { content: [{ type: "text", text: "No running jobs to cancel." }], details: { cancelled: 0 } };
 				jobMgr.cancelAll();
 				persist();
+				// Immediate widget update on cancellation (state transition)
+				updateWidget(ctx);
+				if (jobMgr.listRunning().length === 0) scheduleWidgetDismiss(ctx);
 				return { content: [{ type: "text", text: `Cancelled ${count} job${count > 1 ? "s" : ""}.` }], details: { cancelled: count } };
 			}
 
@@ -1029,6 +1173,9 @@ export default function (pi: ExtensionAPI) {
 				if (job.status !== "running") return { content: [{ type: "text", text: `Job "${params.jobId}" is not running (status: ${job.status}). Only running jobs can be cancelled.` }], isError: true };
 				jobMgr.cancelJob(params.jobId);
 				persist();
+				// Immediate widget update on cancellation (state transition)
+				updateWidget(ctx);
+				if (jobMgr.listRunning().length === 0) scheduleWidgetDismiss(ctx);
 				return { content: [{ type: "text", text: `Cancelled job "${params.jobId}" (${job.name}).` }], details: { cancelled: 1, jobId: params.jobId } };
 			}
 

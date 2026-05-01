@@ -62,6 +62,8 @@ export const MAX_RUNNING_JOBS = 8;
 
 export class JobManager {
 	private jobs = new Map<string, AsyncJob>();
+	private onCancel: ((job: AsyncJob) => void) | null = null;
+	private onPartialResult: ((jobId: string, partial: SingleResult) => void) | null = null;
 
 	createJob(name: string, task: string): AsyncJob {
 		const running = this.listRunning();
@@ -91,9 +93,27 @@ export class JobManager {
 		return job;
 	}
 
+	setOnCancel(callback: (job: AsyncJob) => void): void {
+		this.onCancel = callback;
+	}
+
+	setOnPartialResult(callback: (jobId: string, partial: SingleResult) => void): void {
+		this.onPartialResult = callback;
+	}
+
 	setProcess(jobId: string, proc: ChildProcess): void {
 		const job = this.jobs.get(jobId);
 		if (job) job.process = proc;
+	}
+
+	updatePartialResult(jobId: string, partial: SingleResult): void {
+		const job = this.jobs.get(jobId);
+		if (!job || job.status !== "running") return;
+
+		// spawnSubagentProcess sends accumulated snapshots (not deltas),
+		// so we simply replace the result with the latest state.
+		job.result = partial;
+		this.onPartialResult?.(jobId, partial);
 	}
 
 	completeJob(jobId: string, result: SingleResult): void {
@@ -138,11 +158,13 @@ export class JobManager {
 			}
 			job.status = "cancelled";
 			job.completedAt = Date.now();
+			this.onCancel?.(job);
 			job.process = null;
 		}
 	}
 
 	cancelAll(): void {
+		const cancelledJobs: AsyncJob[] = [];
 		for (const job of this.jobs.values()) {
 			if (job.status === "running") {
 				const proc = job.process;
@@ -155,7 +177,12 @@ export class JobManager {
 				job.status = "cancelled";
 				job.completedAt = Date.now();
 				job.process = null;
+				cancelledJobs.push(job);
 			}
+		}
+		// Notify after all cancellations to avoid concurrent modification
+		for (const job of cancelledJobs) {
+			this.onCancel?.(job);
 		}
 	}
 

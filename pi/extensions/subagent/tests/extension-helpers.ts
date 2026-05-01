@@ -53,18 +53,20 @@ export function createMockExtension(): {
 			pi.eventHandlers.get(event)!.push(handler);
 		},
 
-		emit(event: string, data?: any) {
+		emit(event: string, data?: any, ctx?: any) {
 			const handlers = pi.eventHandlers.get(event) || [];
+			const defaultCtx = {
+				ui: { confirm: vi.fn().mockResolvedValue(true), setWidget: vi.fn() },
+				cwd: "/test",
+				hasUI: true,
+				signal: undefined,
+				sessionManager: {
+					getEntries: () => [],
+				},
+			};
+			const handlerCtx = ctx || defaultCtx;
 			for (const handler of handlers) {
-				handler(data, {
-					ui: { confirm: vi.fn().mockResolvedValue(true) },
-					cwd: "/test",
-					hasUI: true,
-					signal: undefined,
-					sessionManager: {
-						getEntries: () => [],
-					},
-				});
+				handler(data, handlerCtx);
 			}
 		},
 
