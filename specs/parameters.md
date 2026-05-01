@@ -142,9 +142,15 @@ Parameters serve three purposes:
 | `SUBAGENT_ROUTING_IMPLEMENTER_MODEL` | glm-5.1 | string | Workhorse model for code generation; sufficient for most implementation tasks |
 | `SUBAGENT_ROUTING_IMPLEMENTER_PROVIDER` | ollama-cloud | string | Provider for implementer-tier subagent models |
 | `SUBAGENT_ROUTING_IMPLEMENTER_THINKING` | medium | enum: off, minimal, low, medium, high, xhigh | Medium thinking balances generation quality with cost |
-| `SUBAGENT_ROUTING_SPECIALIST_MODEL` | deepseek-v4-pro | string | Strongest reasoning model for deep domain problems: race conditions, security audits, complex debugging |
-| `SUBAGENT_ROUTING_SPECIALIST_PROVIDER` | ollama-cloud | string | Provider for specialist-tier subagent models |
-| `SUBAGENT_ROUTING_SPECIALIST_THINKING` | high | enum: off, minimal, low, medium, high, xhigh | Maximum reasoning depth for hardest problems |
+| `SUBAGENT_ROUTING_EXPERT_1ST_MODEL` | deepseek-v4-pro | string | Primary expert model for deep domain problems and first consultation when stuck |
+| `SUBAGENT_ROUTING_EXPERT_1ST_PROVIDER` | ollama-cloud | string | Provider for primary expert model |
+| `SUBAGENT_ROUTING_EXPERT_1ST_THINKING` | high | enum: off, minimal, low, medium, high, xhigh | Maximum reasoning depth for hardest problems |
+| `SUBAGENT_ROUTING_EXPERT_2ND_MODEL` | glm-5.1 | string | Fallback expert model for second consultation — different architectural perspective on same issue |
+| `SUBAGENT_ROUTING_EXPERT_2ND_PROVIDER` | ollama-cloud | string | Provider for second consultation expert model |
+| `SUBAGENT_ROUTING_EXPERT_2ND_THINKING` | high | enum: off, minimal, low, medium, high, xhigh | High thinking on GLM-5.1 provides deeper reasoning than the default medium used in main sessions |
+| `SUBAGENT_ROUTING_EXPERT_3RD_MODEL` | kimi-k2.6 | string | Final fallback expert model — third architecture for fresh perspective before user escalation |
+| `SUBAGENT_ROUTING_EXPERT_3RD_PROVIDER` | opencode-go | string | Provider for third consultation expert model |
+| `SUBAGENT_ROUTING_EXPERT_3RD_THINKING` | high | enum: off, minimal, low, medium, high, xhigh | High reasoning for final consultation attempt |
 
 ---
 

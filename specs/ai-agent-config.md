@@ -256,17 +256,62 @@ When selecting the text snippet for a completion notification, widget, or status
 
 ### Subagent Model Routing
 
-A prescriptive mapping from subagent intent categories to model, provider, and thinking level. The routing table is stored in Pi's `settings.json` as the `subagentModelRouting` key and injected into the `subagent_run` and `subagent_fork` tool descriptions by the subagent extension as a markdown table.
+A prescriptive mapping from subagent intent categories to model, provider, and thinking level. The routing table is stored in Pi's `settings.json` as the `subagentModelRouting` key and injected into the `subagent_run` and `subagent_fork` tool descriptions by the subagent extension as a markdown table. Categories `scout`, `planner`, `reviewer`, and `implementer` each map to a single model/provider/thinking combination; the `expert` category has an ordered fallback chain of three rows (`expert (1st)`, `expert (2nd)`, `expert (3rd)`), each consulted sequentially for the same file-scoped issue as prior consultations fail to resolve it.
 
 | Field | Type | Constraints | Description |
 |-------|------|-------------|-------------|
 | `subagentModelRouting` | map | Required in Pi settings; key is routing category name | Top-level key in Pi settings containing the routing table |
-| category key | string | Required; one of: `scout`, `planner`, `reviewer`, `implementer`, `specialist` | Intent category that classifies the subagent's task |
+| category key | string | Required; one of: `scout`, `planner`, `reviewer`, `implementer`, `expert (1st)`, `expert (2nd)`, `expert (3rd)` | Intent category that classifies the subagent's task; `expert` rows form an ordered fallback chain consulted sequentially for the same issue |
 | `description` | string | Required | Brief description of what counts as this category; helps the LLM classify tasks correctly |
 | `model` | string | Required | Model ID matching an entry in `models.json` |
 | `provider` | string | Required | Provider ID matching an entry in `models.json` |
 | `thinking` | enum | Required; one of: `off`, `minimal`, `low`, `medium`, `high`, `xhigh` | Thinking level for this category |
 | `rationale` | string | Required | One-line explanation of why this model/thinking pair was chosen for this category |
+
+### Expert Consultation Protocol
+
+The expert consultation protocol governs when and how the main model escalates to an expert-model subagent. It defines two consultation modes, loop-trigger detection, a three-row fallback chain, and five mandatory rules.
+
+#### Expert Consultation Modes
+
+| Mode | When | Input | Output |
+|------|------|-------|--------|
+| Delegate | Task is hard from the start — the model knows upfront that deep reasoning is required | Full problem description with context | Completed work |
+| Consult | Model hits a loop trigger after trying to solve something | Trigger ID + file + error + summary of attempts | Structured: MISCONCEPTION / PIVOT / EVIDENCE |
+
+#### Loop Triggers
+
+| Trigger ID | Name | Threshold | Detection |
+|------------|------|-----------|------------|
+| TR-REPEAT | Repeat edit | 3 edits to overlapping area (±20 lines) in same file with partial reverts or re-attempts | Review edit history for overlapping ranges |
+| TR-ERROR | Same error | 2 occurrences of the same error class after attempted fixes | Compare last 2 error outputs |
+| TR-PLATEAU | Tool call plateau | 6+ consecutive tool calls without substantive text response | Count tool calls since last response |
+| TR-RECYCLE | Approach recycling | Tried approach A, then B, then returned to A or near-variant | Review approach history |
+| TR-TURNS | Turn budget | 8+ turns on a single file-scoped issue without resolution | Count turns since issue started |
+
+#### Expert Fallback Chain
+
+| Consultation | Category Key | Model | Provider | Thinking | Condition |
+|-------------|-------------|-------|----------|----------|----------|
+| 1st | expert (1st) | deepseek-v4-pro | ollama-cloud | high | First consultation on any issue |
+| 2nd | expert (2nd) | glm-5.1 | ollama-cloud | high | Same issue (same file + same error class) persists after 1st consultation |
+| 3rd | expert (3rd) | kimi-k2.6 | opencode-go | high | Same issue persists after 2nd consultation |
+
+#### Expert Consultation Rules
+
+1. File-scoped issue tracking: same file + same error class = same issue; different file or different error = new issue (counter resets)
+2. Directive escalation: the main model MUST follow the expert's pivot, not second-guess it
+3. Maximum 3 consultations per issue; after 3 unsuccessful consultations, escalate to the user
+4. One consultation per model per issue — never consult the same model twice on the same issue
+5. Bite-sized payloads: trigger, file, error, summary of attempts only — not full conversation history
+
+#### Expert Consultation Output Format (Consult Mode Only)
+
+```
+MISCONCEPTION: What the main model is getting wrong
+PIVOT: The new direction to try
+EVIDENCE: Why this is right (1-3 lines, with file:line if possible)
+```
 
 ### Shared Skills Directory
 
@@ -397,8 +442,8 @@ The subagent extension registers six tools:
 
 **Model routing rules:**
 
-10. When `subagentModelRouting` is present in Pi's `settings.json`, the extension MUST read it and inject a markdown table into the tool descriptions of `subagent_run` and `subagent_fork`. The table MUST include columns for category, description, model, provider, thinking, and rationale.
-11. The LLM MUST select a routing category from the table and use the prescribed `model`, `provider`, and `thinking` values in the subagent call. Deviation from the routing table requires explicit justification in the call.
+10. When `subagentModelRouting` is present in Pi's `settings.json`, the extension MUST read it and inject a markdown table into the tool descriptions of `subagent_run` and `subagent_fork`. The table MUST include columns for category, description, model, provider, thinking, and rationale, INCLUDING the three expert rows (`expert (1st)`, `expert (2nd)`, `expert (3rd)`).
+11. The LLM MUST select a routing category from the table and use the prescribed `model`, `provider`, and `thinking` values in the subagent call. Valid categories are: `scout`, `planner`, `reviewer`, `implementer`, `expert (1st)`, `expert (2nd)`, `expert (3rd)`. For expert consultations, the LLM MUST select the row matching the consultation number (1st, 2nd, or 3rd) based on how many consultations have already been done on the same file-scoped issue. Deviation from the routing table requires explicit justification in the call.
 12. When `subagentModelRouting` is absent from `settings.json`, the extension MUST log a warning and fall back to the parent agent's default model and thinking level for all subagent calls.
 13. The routing table MUST NOT include fallback chains — each category maps to exactly one model/provider/thinking combination. When models change, the table MUST be updated manually in `settings.json`.
 
@@ -809,7 +854,7 @@ Expected Output: Agent reports that `playwright-cli` is not found and instructs 
 **TS-AIAGT-025**: Subagent model routing — prescriptive model selection
 Category: Unit
 Priority: Critical
-Preconditions: Pi settings.json contains `subagentModelRouting` with all five categories; the LLM invokes `subagent_run` with a scouting task
+Preconditions: Pi settings.json contains `subagentModelRouting` with all seven category rows (scout, planner, reviewer, implementer, expert (1st), expert (2nd), expert (3rd)); the LLM invokes `subagent_run` with a scouting task
 Input: LLM classifies task as "scout" and uses the prescribed model/provider/thinking from the routing table
 Expected Output: The subagent is launched with the exact model, provider, and thinking level specified in the routing table for the "scout" category; no deviation without explicit justification.
 
@@ -823,9 +868,9 @@ Expected Output: Extension logs a warning about missing routing configuration; s
 **TS-AIAGT-027**: Subagent model routing — routing table injected into tool descriptions
 Category: Unit
 Priority: High
-Preconditions: Pi settings.json contains `subagentModelRouting` with all five categories
+Preconditions: Pi settings.json contains `subagentModelRouting` with all seven category rows (scout, planner, reviewer, implementer, expert (1st), expert (2nd), expert (3rd))
 Input: Pi starts a new session
-Expected Output: The `subagent_run` and `subagent_fork` tool descriptions include a markdown table with columns: category, description, model, provider, thinking, rationale; the table contains entries for scout, planner, reviewer, implementer, and specialist.
+Expected Output: The `subagent_run` and `subagent_fork` tool descriptions include a markdown table with columns: category, description, model, provider, thinking, rationale; the table contains entries for scout, planner, reviewer, implementer, expert (1st), expert (2nd), and expert (3rd).
 
 **TS-AIAGT-028**: Subagent fork — summary extraction threshold
 Category: Unit
