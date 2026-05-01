@@ -20,7 +20,7 @@ export function isThinkingLevel(s: string): s is ThinkingLevel {
  * Prevents empty-string overrides from silently winning in priority chains.
  */
 export function normalizeOptional(s: string | undefined): string | undefined {
-	return s && s.trim() !== "" ? s : undefined;
+	return s && s.trim() !== "" ? s.trim() : undefined;
 }
 
 export interface AgentConfig {

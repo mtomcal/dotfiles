@@ -1,5 +1,8 @@
 # Async Subagent Extension — Implementation Plan
 
+> **Status: COMPLETE** — All 13 cycles implemented and tested. 122 tests pass across 13 test files.
+> Key implementation files: `index.ts` (all 6 tools + spawn logic), `job-manager.ts`, `agents.ts`, `renderers.ts`.
+
 Red/green TDD. Write the test first (red), make it pass (green), then refactor. Each section is a TDD cycle. Run tests after every green step to ensure nothing regresses.
 
 ## Architecture Overview
@@ -17,7 +20,7 @@ Red/green TDD. Write the test first (red), make it pass (green), then refactor. 
 
 **Key invariants:**
 - Max 8 concurrent async jobs
-- Job ID format: `{agentName}-{shortRandom}` (e.g. `code-reviewer-a3f2`)
+- Job ID format: `{agentName}-{shortRandom}` (e.g. `code-reviewer-a3f2b7`)
 - Blocking mode on `subagent_run` (current behavior, unchanged)
 - Fork always returns immediately
 - Completion notifications via `pi.sendMessage({ deliverAs: "steer", triggerTurn: true })`
@@ -1204,7 +1207,7 @@ Focus areas:
 - Schema consistency: do fork/run/status/results/wait/cancel use consistent parameter naming?
 - Error messages: when a tool returns isError, is the message actionable?
 - RenderCall/renderResult: do they give enough context in collapsed mode? Are expanded views useful?
-- Job ID collision: is {agentName}-{4hex} enough entropy? What's the collision probability?
+- Job ID collision: is {agentName}-{6hex} enough entropy? Now uses randomBytes(3) = 6 hex chars = 16M values (~0.00002% collision probability per session)
 - Notification format: is the customType message format extensible? Future-proof?
 - Backward compatibility: are there any scenarios where removing the old subagent tool could break saved sessions?
 - Does the extension load correctly? Are all imports resolved with .js extensions for ESM?

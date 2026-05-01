@@ -89,6 +89,15 @@ This dotfiles setup supports **Codex CLI**, **Claude Code**, **Pi**, **Gemini CL
 - Multi-provider cloud agent (Anthropic, OpenAI, Google, and 30+ others)
 - Extensible via TypeScript extensions, prompt templates, and themes
 - **Sandbox mode**: `pis` runs Pi inside an ephemeral Docker container with full toolchains (Node.js, Python, Go, tmux). CWD is mounted read-write; extra directories can be added as positional args (read-only by default, `-rw` for read-write).
+- **Subagent extension** (`pi/extensions/subagent/`): Six async-first tools replace the old single `subagent` tool:
+  - `subagent_run` — blocking: single, parallel, or chain mode
+  - `subagent_fork` — async: start background job(s), returns immediately, max 8 concurrent
+  - `subagent_status` — list all jobs or show specific job status
+  - `subagent_results` — full output of a completed job
+  - `subagent_wait` — block until a specific job completes (default 300s timeout)
+  - `subagent_cancel` — cancel one or all running jobs
+  - Job IDs: `{agentName}-{6hex}` format (e.g., `code-reviewer-a3f2b7`)
+  - Completion notifications via `pi.sendMessage({ deliverAs: "steer", triggerTurn: true })`
 
 **Gemini CLI**:
 - Configuration: `gemini/` directory (symlinked into `~/.gemini/`)

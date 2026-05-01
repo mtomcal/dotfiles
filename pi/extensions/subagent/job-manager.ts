@@ -71,7 +71,13 @@ export class JobManager {
 				`Maximum ${MAX_RUNNING_JOBS} concurrent async jobs. Cancel a job or wait for one to complete.`,
 			);
 		}
-		const id = `${agentName}-${randomBytes(2).toString("hex")}`;
+		// 3 bytes = 6 hex chars = 16M values per agent name (safe from birthday collisions)
+	let id: string;
+	let attempts = 0;
+	do {
+		id = `${agentName}-${randomBytes(3).toString("hex")}`;
+		attempts++;
+	} while (this.jobs.has(id) && attempts < 10);
 		const job: AsyncJob = {
 			id,
 			agent: agentName,
@@ -123,10 +129,15 @@ export class JobManager {
 	cancelJob(jobId: string): void {
 		const job = this.jobs.get(jobId);
 		if (job && job.status === "running") {
-			job.process?.kill("SIGTERM");
-			setTimeout(() => {
-				if (!job.process?.killed) job.process?.kill("SIGKILL");
-			}, 5000);
+			// Capture process reference BEFORE nullifying job.process,
+			// so the SIGKILL timeout closure can still access it.
+			const proc = job.process;
+			if (proc) {
+				proc.kill("SIGTERM");
+				setTimeout(() => {
+					if (!proc.killed) proc.kill("SIGKILL");
+				}, 5000);
+			}
 			job.status = "cancelled";
 			job.completedAt = Date.now();
 			job.process = null;
@@ -136,10 +147,13 @@ export class JobManager {
 	cancelAll(): void {
 		for (const job of this.jobs.values()) {
 			if (job.status === "running") {
-				job.process?.kill("SIGTERM");
-				setTimeout(() => {
-					if (!job.process?.killed) job.process?.kill("SIGKILL");
-				}, 5000);
+				const proc = job.process;
+				if (proc) {
+					proc.kill("SIGTERM");
+					setTimeout(() => {
+						if (!proc.killed) proc.kill("SIGKILL");
+					}, 5000);
+				}
 				job.status = "cancelled";
 				job.completedAt = Date.now();
 				job.process = null;
