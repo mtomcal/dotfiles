@@ -32,17 +32,16 @@ Detect brownfield when the project already has source files. Ask the user to con
 
 ### Step 1: Interview
 
-Ask these questions **one at a time**, resolving each before moving to the next. Each answer may prompt follow-up questions. Use the grill-me technique: one question, wait for answer, probe for completeness, then move on.
+Ask these **8 questions one at a time**, resolving each before moving to the next. Each answer may prompt follow-up questions. Use the grill-me technique: one question, wait for answer, probe for completeness, then move on.
 
 1. **"What is this project?"** — Domain, purpose, target user. One paragraph.
 2. **"What languages and frameworks are in the stack?"** — Build the technology dependencies table.
 3. **"Greenfield or brownfield?"** — Determines output mode. Brownfield if code exists.
-4. **"What are the major systems or modules?"** — Initial system list. Propose additions from domain heuristics.
-5. **"Where are the boundaries between these systems?"** — Surface bounded contexts. Ask: "Where does one part not need to know about another part's internals?" and "Are there terms that mean different things in different parts?"
-6. **"Are there terms that mean different things in different contexts?"** — Terminology collisions feed the ubiquitous language. Flag context-dependent definitions.
-7. **"Does this project have user-facing surfaces?"** — UI, CLI, API endpoints, etc. If yes, generate a design language preamble.
-8. **"What depends on what?"** — Build the dependency graph. "Which systems need to understand which other systems to function?"
-9. **"Which system should an implementing agent read first?"** — Establish reading order. Foundation systems first, leaf systems last.
+4. **"What are the major systems or modules?"** — User lists what they know. Skill proposes additions based on domain heuristics (e.g., a game needs a game loop; a SaaS needs auth; a CLI needs config). User confirms or adjusts.
+5. **"Any terms you suspect might be overloaded, or is it too early to tell?"** — Skill proposes suspected term collisions based on the domain and system list (e.g., "client" usually means different things in auth vs business logic; "state" in a game could be match state or player state). Accept "not sure yet" — ubiquitous language gets refined later.
+6. **"Does this project have user-facing surfaces?"** — UI, CLI, API endpoints, etc. If yes, generate a design language preamble.
+7. **"Any clear dependencies you already know about?"** — Skill proposes a dependency graph based on common patterns for the domain and system list. User confirms, adds, or removes edges. Accept "not sure" — dependencies can be refined as specs are authored.
+8. **"Which system should an implementing agent read first?"** — Skill proposes a reading order derived from the dependency graph (foundation systems first, leaf systems last). User confirms or adjusts.
 
 After all questions: propose the complete system list, dependency graph, and reading order. **Wait for user confirmation before generating.**
 

@@ -20,20 +20,21 @@ Greenfield — no code yet.
 **Q4: What are the major systems?**
 Hex map, territory, units, combat, matchmaking, turns, scoring.
 
-*Skill proposes additions: networking (real-time WebSocket), game loop (tick-based), player state. User confirms all.*
+*Skill recommends additions: networking (real-time game needs WebSocket sync), game loop (tick-based simulation), player state (identity and session). User confirms all.*
 
-**Q5: Where are the boundaries?**
-Hex map doesn't need to know about matchmaking. Territory doesn't need to know about unit types — it just tracks who owns each hex. Combat needs both units and the map. Matchmaking is fully isolated from gameplay.
+**Q5: Any terms you suspect might be overloaded?**
+*Skill recommends suspected collisions based on game domain:*
+- "Turn" — could mean matchmaking turn vs gameplay turn in this kind of project
+- "Unit" — could mean game piece vs network message unit
+- "State" — could mean match state vs player state vs game state
 
-**Q6: Are there terms that mean different things in different contexts?**
-"Turn" — in matchmaking it means "player's turn to find a game," but in gameplay it means "a time slice where players act." These are separate concepts.
+User confirms: "Turn" is overloaded (matchmaking vs gameplay). "Unit" only means game piece. "State" needs more thought — too early to pin down. Skill flags "Turn" in ubiquitous language and leaves "State" for later refinement.
 
-"Unit" — in combat it's a game piece, but in the networking code it could mean "a message unit." We'll call the networking concept a "packet" or "frame."
-
-**Q7: Does this project have user-facing surfaces?**
+**Q6: Does this project have user-facing surfaces?**
 Yes — a browser game UI with hex grid, player panels, and a match end screen.
 
-**Q8: What depends on what?**
+**Q7: Any clear dependencies?**
+*Skill recommends a dependency graph based on common game patterns:*
 - Hex map: foundation (no deps)
 - Territory: depends on hex map
 - Units: depends on hex map, parameters
@@ -45,13 +46,18 @@ Yes — a browser game UI with hex grid, player panels, and a match end screen.
 - Matchmaking: depends on networking, parameters
 - Player state: depends on parameters
 
-**Q9: Reading order?**
+User confirms. No adjustments.
+
+**Q8: Reading order?**
+*Skill recommends based on dependency graph (foundation first, leaves last):*
 1. Ubiquitous language, design language, parameters
 2. Hex map
 3. Territory, units, turns
 4. Combat, scoring
 5. Game loop, player state
 6. Networking, matchmaking
+
+User confirms.
 
 ### Generated files
 
@@ -135,21 +141,24 @@ Brownfield — there's an existing codebase at `./app/` with about 15k lines.
 **Q4: What are the major systems?**
 Auth, invoices, payments, clients, reports, notifications.
 
-*Skill proposes additions: audit logging (financial system), rate limiting. User confirms audit logging but says rate limiting is handled by an API gateway.*
+*Skill recommends additions: audit logging (financial system needs traceability), rate limiting. User confirms audit logging but declines rate limiting — handled by API gateway.*
 
-**Q5: Where are the boundaries?**
-Auth is fully isolated — it only issues and validates tokens. Invoices depends on clients (who you're billing) but NOT on payments (unpaid invoices are valid). Payments depends on invoices and a payment gateway. Notifications depends on events from multiple systems but doesn't affect business logic.
+**Q5: Any terms you suspect might be overloaded?**
+*Skill recommends suspected collisions based on SaaS domain:*
+- "Client" — commonly overloaded between auth (the calling application) and business logic (the company being invoiced)
+- "Payment" — could mean the internal record vs the actual money transfer
+- "Invoice" — might collide with "receipt" or "statement" depending on domain framing
 
-**Q6: Terms that mean different things in different contexts?**
-"Client" — in the auth system it means "the application making the API request," but in the business domain it means "the company being invoiced." We'll call the auth concept "API Consumer" and keep "Client" for the business concept.
+User confirms: "Client" is definitely overloaded — auth sense vs business sense. "Payment" is close — the internal record vs the money transfer are different things. "Invoice" is clear in this context.
 
-"Payment" — could mean the payment record in our system or the actual money transfer. We'll call the record a "Payment Transaction" and the money transfer a "Settlement."
+Skill flags "Client" (auth → "API Consumer", business → "Client") and "Payment" (record → "Payment Transaction", transfer → "Settlement") in ubiquitous language.
 
-**Q7: User-facing surfaces?**
+**Q6: Does this project have user-facing surfaces?**
 Yes — a REST API. No UI in this project, but the API IS the user-facing surface. Need naming conventions for endpoints, response shapes, error formats.
 
-**Q8: What depends on what?**
-- Auth: no deps (foundation)
+**Q7: Any clear dependencies?**
+*Skill recommends a dependency graph based on common SaaS patterns:*
+- Auth: foundation (no deps)
 - Clients: depends on auth, parameters
 - Invoices: depends on clients, parameters
 - Payments: depends on invoices, parameters
@@ -157,7 +166,10 @@ Yes — a REST API. No UI in this project, but the API IS the user-facing surfac
 - Reports: depends on invoices, payments, clients, parameters
 - Audit logging: depends on all systems (observer pattern)
 
-**Q9: Reading order?**
+User confirms. No adjustments.
+
+**Q8: Reading order?**
+*Skill recommends:*
 1. Ubiquitous language, design language, parameters
 2. Auth
 3. Clients
@@ -165,6 +177,8 @@ Yes — a REST API. No UI in this project, but the API IS the user-facing surfac
 5. Payments
 6. Notifications, reports
 7. Audit logging
+
+User confirms.
 
 ### Generated output
 
@@ -224,25 +238,31 @@ Greenfield.
 **Q4: What are the major systems?**
 Config, symlinks, profiles, conflict detection, sync.
 
-*Skill proposes additions: file watching. User declines — out of scope for v1.*
+*Skill recommends additions: file watching (for real-time sync). User declines — out of scope for v1.*
 
-**Q5: Boundaries?**
-Config knows about file paths but not symlinks. Symlinks knows about the filesystem but not profiles. Profiles is just a named subset of config entries. Conflict detection reads symlinks and config but doesn't modify either. Sync orchestrates config, symlinks, and conflict detection.
+**Q5: Any terms you suspect might be overloaded?**
+*Skill recommends suspected collisions based on CLI tool domain:*
+- "Config" — commonly overloaded between "the tool's own configuration" and "the dotfiles being managed"
+- "Profile" — usually unambiguous in this context (named preset)
+- "Conflict" — usually unambiguous (path collision)
 
-**Q6: Term collisions?**
-"Profile" is unambiguous in this context. "Conflict" means "two things trying to write to the same path" — no collision. "Config" could mean the tool's own config or the dotfile being managed — we'll call the tool's config "Manifest" and keep "Config" for dotfiles.
+User confirms: "Config" is overloaded. We'll call the tool's config "Manifest" and keep "Config" for dotfiles.
 
-**Q7: User-facing surfaces?**
+**Q6: Does this project have user-facing surfaces?**
 Yes — a CLI. Need naming conventions for flags, subcommands, and output formats.
 
-**Q8: Dependencies?**
+**Q7: Any clear dependencies?**
+*Skill recommends based on common CLI tool patterns:*
 - Manifest: foundation (no deps)
 - Profiles: depends on manifest
 - Symlinks: depends on manifest
 - Conflict detection: depends on symlinks, manifest
 - Sync: depends on manifest, symlinks, conflict detection, profiles
 
-**Q9: Reading order?**
+User confirms. No adjustments.
+
+**Q8: Reading order?**
+*Skill recommends:*
 1. Ubiquitous language, design language, parameters
 2. Manifest
 3. Profiles, symlinks
