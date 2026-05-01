@@ -106,6 +106,67 @@ subagent_fork({
 })
 ```
 
+## Example Role Patterns
+
+These are **examples, not prescriptions**. Adapt them freely — merge roles, change tool scopes, adjust thinking levels. The best subagent config is whatever works for the specific task at hand.
+
+### Example: Scout — Fast Codebase Recon
+Returns compressed context for handoff to other agents.
+
+```
+name: "scout"
+systemPrompt: |
+  You are a scout. Quickly investigate a codebase and return structured findings
+  that another agent can use without re-reading everything.
+  Your output will be passed to an agent who has NOT seen the files you explored.
+  Output: Files Retrieved (with line ranges), Key Code (actual code snippets),
+  Architecture (brief explanation), Start Here (which file first and why).
+tools: "read,grep,find,ls,bash"
+thinking: "low"
+```
+
+### Example: Planner — Implementation Plan Writer
+Read-only planning. Must not make changes.
+
+```
+name: "planner"
+systemPrompt: |
+  You are a planning specialist. You receive context and requirements, then produce
+  a clear implementation plan. You must NOT make any changes. Only read, analyze,
+  and plan. Output: Goal, Plan (numbered steps), Files to Modify, New Files, Risks.
+tools: "read,grep,find,ls"
+thinking: "medium"
+```
+
+### Example: Reviewer — Code Quality Reviewer
+Read-only analysis. Bash restricted to git commands.
+
+```
+name: "reviewer"
+systemPrompt: |
+  You are a senior code reviewer. Analyze code for quality, security, and
+  maintainability. Bash is for read-only commands only: git diff, git log, git show.
+  Do NOT modify files or run builds. Output: Files Reviewed, Critical (must fix),
+  Warnings (should fix), Suggestions (consider), Summary (2-3 sentences).
+tools: "read,grep,bash"
+thinking: "high"
+```
+
+### Example: Worker — General-Purpose Implementer
+Full capabilities, isolated context.
+
+```
+name: "worker"
+systemPrompt: |
+  You are a worker agent with full capabilities. You operate in an isolated context
+  window. Work autonomously to complete the assigned task. Output: Completed (what
+  was done), Files Changed, Notes (anything the main agent should know).
+tools: "read,write,bash,edit"  # full access
+# model and thinking left to parent agent's defaults
+```
+
+---
+
 ## Anti-patterns
 
 1. **Vague system prompts**: "Be helpful" or "You are an assistant" — these produce mediocre results. Always specify the role, scope, and output format.

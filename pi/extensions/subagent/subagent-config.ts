@@ -1,7 +1,7 @@
 /**
  * Subagent Config — Types, resolution, and utilities for ad-hoc subagent configuration.
  *
- * Replaces the old agent discovery system. No agent .md file lookup.
+ * Ad-hoc subagent configuration resolution.
  * Pure config resolution: per-item > top-level > default.
  */
 

@@ -15,7 +15,7 @@
  * - Fork always returns immediately
  * - Completion notifications via pi.sendMessage() with deliverAs: "steer"
  * - Running jobs killed on session_shutdown
- * - Ad-hoc config: no agent discovery, just task + systemPrompt + params
+ * - Ad-hoc configuration: task + systemPrompt + params, no .md file lookup
  */
 
 import { spawn, type ChildProcess } from "node:child_process";
