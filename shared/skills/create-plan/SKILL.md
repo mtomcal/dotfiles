@@ -149,32 +149,38 @@ This is the core of the plan. Each slice is a self-contained red/green/refactor 
 ```markdown
 ### Slice N: [Descriptive name]
 
-#### Red
+#### Red — Write tests first, no implementation code yet
 
-Tests to write **before** touching implementation code:
+Create the test file and write assertions for the behavior this slice requires. Do **not** create or modify any implementation source files at this stage.
 
 - Test file: `[path/to/test.file]`
 - What the test proves: [specific behavior]
 - Assertion strategy: [deterministic geometry / pure helper / state check — not snapshots]
 - Existing tests to rewrite: [any tests endorsing wrong behavior, or "none"]
 
-Run the test suite. You must see the test fail before writing any implementation code. If the test passes, it's not a red test — either the behavior already exists, or the test is not asserting what you think it is. Fix the test and re-run until it fails.
+Run the test suite. You must see the test fail. If the test passes, it's not a red test — either the behavior already exists, or the test is not asserting what you think it is. Fix the test and re-run until it fails.
 
-#### Green
+**Hard gate: Do not proceed to Green until you have created the test file, written the tests, run the test suite, and observed a failure.** No implementation source files should exist or be modified at this point.
 
-Implementation changes to make the red test pass (only after you have observed the red failure):
+#### Green — Make the red test pass, minimum change only
 
-- Source file: `[path/to/source.file]`
+Now — and only now — create or modify implementation source files to make the failing test pass. Write the smallest change that turns red to green.
+
+- Source file: `[path/to/source.file]` (create if it doesn't exist yet)
 - What to change: [specific function, class, or behavior]
 - Constraint: [minimal change — one sentence about what the green step must NOT do]
 - Decisions/spec delta this satisfies: [Q3 / spec item 2]
 
-#### Refactor
+Run the test suite again. The tests that were red must now pass. If they don't, you changed too much or too little — adjust and re-run.
+
+#### Refactor — Clean up while keeping tests green
 
 Optional cleanup after green:
 
 - [Extract helper / consolidate / rename — or "none needed"]
 - Keep separate: [what must not be merged]
+
+Run the test suite again to confirm everything is still green after refactoring.
 ```
 
 **Why the Red and Green sections must be separated:**
@@ -183,13 +189,15 @@ Optional cleanup after green:
 - Combining them creates ambiguity about whether a behavior is required (red) or accidental (green)
 - A future reader must be able to read the Red section alone and know exactly what the system must do
 - A future implementer must be able to read the Green section alone and know exactly what to change
+- There is a **hard gate** between Red and Green: the test file must be created, tests written, the suite run, and a failure observed before any implementation source file is touched. This gate is what makes TDD work — it proves the test actually tests something that didn't exist before.
 
 **Slicing rules:**
 - Each slice addresses one vertical concern — a coherent set of behaviors
-- Red always comes first — write the test, **run it, observe the failure**, then proceed to Green. Writing a test without running it is not red — it's untested intent.
+- **Red writes tests first. No implementation source files are created or modified until Red is complete.** The test file is the only file that should be created or changed during the Red phase.
+- Red must be confirmed failing before Green begins. Write the test, **run the suite, observe the failure** — only then proceed to Green. Writing a test without running it is not red — it's untested intent.
 - Every Red section must name the test file and what the test proves
-- Every Green section must name the source file and the specific change
-- Green begins only after you have seen the red test fail. If you skip running the test, you might implement against a test that doesn't actually assert the right thing.
+- Every Green section must name the source file and the specific change. If the source file doesn't exist yet, say "Create" explicitly.
+- Green makes the smallest change that turns red to green. Do not add functionality that the red test doesn't require.
 - Existing tests that endorse wrong behavior must be rewritten in the Red section, not retained alongside
 - Prefer assertions against deterministic geometry or pure helpers over brittle snapshot checks
 - Slices are ordered by dependency — earlier slices create foundations later slices build on
