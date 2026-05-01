@@ -20,7 +20,7 @@ beforeAll(async () => {
 describe("completion notification", () => {
 	test("subagent-result message renderer is registered", () => {
 		// registerMessageRenderer was called with "subagent-result"
-		expect(mockPi.messageRenderers?.has?.("subagent-result") ?? true).toBe(true);
+		expect(mockPi.messageRenderers.has("subagent-result")).toBe(true);
 		// All 6 tools are registered
 		expect(registeredTools.has("subagent_fork")).toBe(true);
 		expect(registeredTools.has("subagent_status")).toBe(true);
@@ -40,8 +40,9 @@ describe("completion notification", () => {
 		} as any;
 
 		const result = await forkTool.execute("cf1", { agent: "test-agent", task: "Test task" }, undefined, undefined, mockCtx);
-		expect(result.details.jobs).toBeDefined();
-		expect(result.details.jobs.length).toBeGreaterThanOrEqual(1);
+		expect(result.details.jobs).toHaveLength(1);
+		expect(result.details.jobs[0].agent).toBe("test-agent");
+		expect(result.details.jobs[0].status).toBeDefined();
 	});
 
 	test("session_start handler is registered (doesn't crash)", async () => {

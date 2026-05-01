@@ -124,7 +124,8 @@ describe("integration: full async workflow", () => {
 		// Running count may have changed depending on agent availability
 		// Jobs are created first, process runs after
 		const jobCount = mockPi.jobMgr.listJobs().length;
-		expect(jobCount).toBeGreaterThanOrEqual(0);
+		// Two tasks were submitted — jobs must be tracked
+		expect(jobCount).toBeGreaterThanOrEqual(2);
 	});
 
 	test("cancel clears job without sending notification", async () => {
@@ -173,19 +174,30 @@ describe("integration: full async workflow", () => {
 			all: true,
 		}, undefined, undefined, mockCtx);
 
-		expect(result).toBeDefined();
-		expect(result.content[0].text).toBeTruthy();
+		expect(result.content[0].text).toMatch(/cancel/i);
 		// Should either say "no running" or show a count
 		expect(result.content[0].text).toMatch(/no running|cancelled/i);
 	});
 
-	test("appendEntry is called after fork", () => {
-		// The last appendEntry should contain job state
+	test("appendEntry is called after fork", async () => {
+		const forkTool = registeredTools.get("subagent_fork");
+		const mockCtx = {
+			cwd: "/test",
+			hasUI: false,
+			signal: undefined,
+			ui: { confirm: vi.fn() },
+		} as any;
+
+		// Fork directly in this test so the appendEntries are not cleared by afterEach
+		await forkTool.execute("int-fork-persist", {
+			agent: "persist-agent",
+			task: "Persist test",
+		}, undefined, undefined, mockCtx);
+
 		const stateEntries = mockPi.appendEntries.filter(
 			(e: any) => e.customType === "subagent-job-state",
 		);
-		// At least one persist call was made during fork tests
-		expect(stateEntries.length).toBeGreaterThanOrEqual(0);
+		expect(stateEntries.length).toBeGreaterThan(0);
 	});
 
 	test("results tool handles unknown job gracefully", async () => {
@@ -244,7 +256,7 @@ describe("integration: full async workflow", () => {
 			timeout: 5,
 		}, undefined, undefined, mockCtx);
 
-		expect(waitResult).toBeDefined();
+		expect(waitResult.content[0].text).toMatch(/fail|complet/i);
 		// Should not say "still running" since it already failed
 		expect(waitResult.content[0].text).not.toMatch(/still running/i);
 	});

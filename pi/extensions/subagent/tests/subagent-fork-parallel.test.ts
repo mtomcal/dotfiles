@@ -217,6 +217,9 @@ describe("subagent_fork per-task overrides", () => {
 		);
 
 		expect(result.details.jobs).toHaveLength(2);
+		// Verify provider overrides were applied to each job
+		expect(result.details.jobs[0].provider).toBe("anthropic");
+		expect(result.details.jobs[1].provider).toBe("openai");
 	});
 
 	test("per-task thinking override", async () => {
@@ -235,6 +238,9 @@ describe("subagent_fork per-task overrides", () => {
 		);
 
 		expect(result.details.jobs).toHaveLength(2);
+		// Verify thinking overrides were applied to each job
+		expect(result.details.jobs[0].thinking).toBe("high");
+		expect(result.details.jobs[1].thinking).toBe("off");
 	});
 
 	test("top-level provider/thinking applies to all tasks when per-task not set", async () => {
@@ -255,6 +261,11 @@ describe("subagent_fork per-task overrides", () => {
 		);
 
 		expect(result.details.jobs).toHaveLength(2);
+		// Both jobs should inherit the top-level provider/thinking
+		expect(result.details.jobs[0].provider).toBe("anthropic");
+		expect(result.details.jobs[0].thinking).toBe("high");
+		expect(result.details.jobs[1].provider).toBe("anthropic");
+		expect(result.details.jobs[1].thinking).toBe("high");
 	});
 
 	test("per-task overrides take precedence over top-level", async () => {
@@ -275,5 +286,11 @@ describe("subagent_fork per-task overrides", () => {
 		);
 
 		expect(result.details.jobs).toHaveLength(2);
+		// Job 0: provider override wins over top-level, thinking inherits top-level
+		expect(result.details.jobs[0].provider).toBe("anthropic");
+		expect(result.details.jobs[0].thinking).toBe("low");
+		// Job 1: thinking override wins over top-level, provider inherits top-level
+		expect(result.details.jobs[1].provider).toBe("openai");
+		expect(result.details.jobs[1].thinking).toBe("high");
 	});
 });

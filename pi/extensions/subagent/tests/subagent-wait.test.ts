@@ -33,8 +33,9 @@ beforeAll(async () => {
 });
 
 describe("subagent_wait", () => {
-	test("is registered as a tool", () => {
+	test("waitTool is registered as subagent_wait", () => {
 		expect(waitTool).toBeDefined();
+		expect(waitTool.name).toBe("subagent_wait");
 	});
 
 	test("returns error for unknown jobId", async () => {
@@ -48,8 +49,8 @@ describe("subagent_wait", () => {
 		const jobId = forkResult.details.jobs[0].id;
 
 		const result = await waitTool.execute("w2", { jobId, timeout: 5 }, undefined, undefined, mockCtx);
-		expect(result).toBeDefined();
 		expect(result.content[0].text).not.toMatch(/still running/i);
+		expect(result.content[0].text).toMatch(/fail|complet|cancel/i);
 	});
 
 	test("timeout returns isError: true so LLM knows to poll or extend", async () => {
@@ -68,8 +69,9 @@ describe("subagent_wait", () => {
 });
 
 describe("subagent_cancel", () => {
-	test("is registered as a tool", () => {
+	test("cancelTool is registered as subagent_cancel", () => {
 		expect(cancelTool).toBeDefined();
+		expect(cancelTool.name).toBe("subagent_cancel");
 	});
 
 	test("cancels a specific job by ID", async () => {
@@ -77,8 +79,7 @@ describe("subagent_cancel", () => {
 		const jobId = forkResult.details.jobs[0].id;
 
 		const result = await cancelTool.execute("c1", { jobId }, undefined, undefined, mockCtx);
-		// Should either cancel or say already completed
-		expect(result.content[0].text).toBeTruthy();
+		expect(result.content[0].text).toMatch(/cancel|already|fail/i);
 	});
 
 	test("cancel all: handles empty case gracefully", async () => {

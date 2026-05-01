@@ -70,14 +70,16 @@ describe("subagent-result message renderer registration", () => {
 });
 
 describe("subagent-result message renderer output", () => {
-	test("returns a component (not undefined) for valid message", () => {
+	test("returns a component with text for valid message", () => {
 		const renderer = mockPi.messageRenderers.get("subagent-result");
 		const component = renderer(
 			fakeNotificationMessage(),
 			{ expanded: false },
 			getMockTheme(),
 		);
-		expect(component).toBeDefined();
+		const text = component?.text ?? "";
+		expect(text).toContain("code-reviewer");
+		expect(text).toContain("completed");
 	});
 
 	test("collapsed mode includes agent name", () => {
@@ -135,7 +137,8 @@ describe("subagent-result message renderer output", () => {
 		});
 		// Should not throw
 		const component = renderer(message, { expanded: false }, getMockTheme());
-		expect(component === undefined || component !== undefined).toBe(true);
+		expect(() => renderer(message, { expanded: false }, getMockTheme())).not.toThrow();
+		expect(component).toBeDefined();
 	});
 
 	test("includes usage stats in output when available", () => {
@@ -146,8 +149,9 @@ describe("subagent-result message renderer output", () => {
 			getMockTheme(),
 		);
 		const text = component?.text ?? "";
-		// Should contain formatted usage (turns, cost, etc.)
-		expect(text).toBeTruthy();
+		// Should contain formatted usage (turns count, cost)
+		expect(text).toMatch(/3|turn/i);
+		expect(text).toMatch(/0\.03/i);
 	});
 
 	test("task truncation in collapsed mode for long tasks", () => {

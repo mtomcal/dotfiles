@@ -48,8 +48,9 @@ describe("tool registration", () => {
 });
 
 describe("subagent_run", () => {
-	test("is registered as a tool", () => {
+	test("runTool is registered as subagent_run", () => {
 		expect(runTool).toBeDefined();
+		expect(runTool.name).toBe("subagent_run");
 	});
 
 	test("returns error for missing agent", async () => {

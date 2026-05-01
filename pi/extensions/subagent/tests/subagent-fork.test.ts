@@ -32,8 +32,9 @@ beforeAll(async () => {
 });
 
 describe("subagent_fork", () => {
-	test("is registered as a tool", () => {
+	test("is registered as subagent_fork", () => {
 		expect(forkTool).toBeDefined();
+		expect(forkTool.name).toBe("subagent_fork");
 	});
 
 	test("spawns single background job and returns job ID", async () => {
@@ -77,7 +78,7 @@ describe("subagent_fork", () => {
 		expect(result.content[0].text).toMatch(/\d+\/8/);
 	});
 
-	test("per-task provider/thinking overrides", async () => {
+	test("per-task provider/thinking overrides are applied", async () => {
 		const result = await forkTool.execute(
 			"call-4",
 			{
@@ -93,11 +94,14 @@ describe("subagent_fork", () => {
 
 		expect(result.content[0].text).toMatch(/forked/i);
 		expect(result.details.jobs).toHaveLength(2);
+		expect(result.details.jobs[0].provider).toBe("anthropic");
+		expect(result.details.jobs[1].thinking).toBe("high");
 	});
 
 	test("returns error for invalid params (no agent or tasks)", async () => {
 		const result = await forkTool.execute("call-5", {}, undefined, undefined, mockCtx);
 		expect(result.isError).toBe(true);
+		expect(result.content[0].text).toMatch(/agent|task|provide/i);
 	});
 
 	test("each spawned job has id, agent, task, and status fields", async () => {

@@ -37,7 +37,6 @@ describe("renderCall for subagent_run", () => {
 			getMockTheme(),
 			{},
 		);
-		expect(component).toBeDefined();
 		const text = component?.text ?? "";
 		expect(text).toContain("reviewer");
 		expect(text).toContain("Review the auth module");
@@ -98,7 +97,6 @@ describe("renderCall for subagent_fork", () => {
 			getMockTheme(),
 			{},
 		);
-		expect(component).toBeDefined();
 		const text = component?.text ?? "";
 		expect(text).toContain("fork");
 		expect(text).toContain("reviewer");
@@ -130,7 +128,6 @@ describe("renderCall for subagent_fork", () => {
 			{},
 		);
 		const text = component?.text ?? "";
-		expect(text).toBeTruthy();
 		expect(text).toContain("reviewer");
 	});
 });
@@ -231,7 +228,8 @@ describe("renderResult", () => {
 			getMockTheme(),
 			{},
 		);
-		expect(rendered).toBeDefined();
+		const text = rendered?.text ?? "";
+		expect(text).toContain("reviewer");
 	});
 
 	test("subagent_status renderResult handles empty status", () => {
@@ -245,7 +243,8 @@ describe("renderResult", () => {
 			getMockTheme(),
 			{},
 		);
-		expect(rendered).toBeDefined();
+		const text = rendered?.text ?? "";
+		expect(text).toMatch(/no subagent|0/i);
 	});
 
 	test("subagent_results renderResult renders result content", () => {
@@ -259,7 +258,8 @@ describe("renderResult", () => {
 			getMockTheme(),
 			{},
 		);
-		expect(rendered).toBeDefined();
+		const text = rendered?.text ?? "";
+		expect(text).toContain("reviewer");
 	});
 
 	test("subagent_fork renderResult shows fork prefix", () => {

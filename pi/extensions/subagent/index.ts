@@ -763,7 +763,7 @@ export default function (pi: ExtensionAPI) {
 				return { content: [{ type: "text", text: `Maximum ${MAX_RUNNING_JOBS} concurrent async jobs (${jobMgr.runningCount()} running). Cancel a job or wait for one to complete.` }], details: { jobs: [] }, isError: true };
 			}
 
-			const spawnedJobs: Array<{ id: string; agent: string; task: string; status: string }> = [];
+			const spawnedJobs: Array<{ id: string; agent: string; task: string; status: string; provider?: string; thinking?: string }> = [];
 
 			for (const t of tasks) {
 				// Always create job entry first so it counts against the cap.
@@ -780,11 +780,11 @@ export default function (pi: ExtensionAPI) {
 					// Agent not found — immediately fail the job
 					const errorResult = agentToTaskError(t.agent, agents);
 					jobMgr.failJob(job.id, errorResult.errorMessage!);
-					spawnedJobs.push({ id: job.id, agent: t.agent, task: t.task, status: "failed" });
+					spawnedJobs.push({ id: job.id, agent: t.agent, task: t.task, status: "failed", provider: t.provider || params.provider, thinking: (t.thinking ?? params.thinking) as string | undefined });
 					continue;
 				}
 				const taskPreview = t.task.length > 60 ? `${t.task.slice(0, 60)}...` : t.task;
-				spawnedJobs.push({ id: job.id, agent: t.agent, task: taskPreview, status: "running" });
+				spawnedJobs.push({ id: job.id, agent: t.agent, task: taskPreview, status: "running", provider: t.provider || params.provider, thinking: (t.thinking ?? params.thinking) as string | undefined });
 
 				const { proc, resultPromise } = spawnSubagentProcess(agents, t.agent, t.task, t.cwd, ctx.cwd, undefined, t.provider || params.provider, t.thinking || (params.thinking as ThinkingLevel | undefined), undefined, undefined, undefined);
 				jobMgr.setProcess(job.id, proc);

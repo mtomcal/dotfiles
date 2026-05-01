@@ -33,8 +33,9 @@ beforeAll(async () => {
 });
 
 describe("subagent_status", () => {
-	test("is registered as a tool", () => {
+	test("statusTool is registered as subagent_status", () => {
 		expect(statusTool).toBeDefined();
+		expect(statusTool.name).toBe("subagent_status");
 	});
 
 	test("lists all jobs when no jobId provided (even if empty)", async () => {
@@ -65,25 +66,20 @@ describe("subagent_status", () => {
 });
 
 describe("subagent_results", () => {
-	test("is registered as a tool", () => {
+	test("resultsTool is registered as subagent_results", () => {
 		expect(resultsTool).toBeDefined();
+		expect(resultsTool.name).toBe("subagent_results");
 	});
 
 	test("returns error for still-running job", async () => {
-		// Fork a job that was created (even if it failed immediately)
-		const forkTool = registeredTools.get("subagent_fork");
-		const forkResult = await forkTool.execute("f3", { agent: "yet-another", task: "Test" }, undefined, undefined, mockCtx);
-		const jobId = forkResult.details.jobs[0].id;
+		// Create a running job directly so we control its state
+		const job = mockPi.jobMgr.createJob("test-running", "Running task");
+		const jobId = job.id;
 
 		const result = await resultsTool.execute("r1", { jobId }, undefined, undefined, mockCtx);
-		// Since agent is not found, job was failed immediately
-		expect(result.details.results).toBeDefined();
-		if (result.isError) {
-			// If error, should mention why
-			expect(result.content[0].text).toBeTruthy();
-		} else {
-			expect(result.content[0].text).toContain(jobId);
-		}
+		// Job is running with no result yet — should error
+		expect(result.isError).toBe(true);
+		expect(result.content[0].text).toMatch(/running|no result|not complet/i);
 	});
 
 	test("returns error for unknown jobId", async () => {
