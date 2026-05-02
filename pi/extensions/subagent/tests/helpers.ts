@@ -2,6 +2,7 @@
  * Test helpers for subagent extension tests.
  */
 
+import type { Message } from "@mariozechner/pi-ai";
 import { JobManager, type SingleResult } from "../job-manager.js";
 
 export function fakeUsageStats(): SingleResult["usage"] {
@@ -16,16 +17,59 @@ export function fakeUsageStats(): SingleResult["usage"] {
 	};
 }
 
+/**
+ * Create a minimal AssistantMessage that satisfies the Message type.
+ * Tests that need text content should use fakeMessage() instead of raw objects.
+ */
+export function fakeMessage(text: string, extra?: Partial<{ role: "assistant"; content: any[]; api: string; provider: string; model: string; usage: any; stopReason: string }>): Message {
+	return {
+		role: "assistant",
+		content: [{ type: "text", text }],
+		api: "test" as any,
+		provider: "test",
+		model: "test-model",
+		usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } },
+		stopReason: "stop",
+		...extra,
+	} as Message;
+}
+
+/**
+ * Create a minimal AssistantMessage with both text and tool calls.
+ * Content items should use fakeToolCall() or { type: "text", text: "..." } objects.
+ * The `content` parameter is an array of content items that will be typed correctly.
+ */
+export function fakeMessageWith(content: Array<{ type: "text"; text: string } | { type: "toolCall"; id: string; name: string; arguments: Record<string, any> }>): Message {
+	return {
+		role: "assistant",
+		content,
+		api: "test" as any,
+		provider: "test",
+		model: "test-model",
+		usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } },
+		stopReason: "stop",
+	} as Message;
+}
+
+/**
+ * Create a minimal ToolCall content item that satisfies the ToolCall type.
+ */
+export function fakeToolCall(name: string, args: Record<string, any> = {}): { type: "toolCall"; id: string; name: string; arguments: Record<string, any> } {
+	return {
+		type: "toolCall",
+		id: `call_${Math.random().toString(36).slice(2, 10)}`,
+		name,
+		arguments: args,
+	};
+}
+
 export function fakeSingleResult(overrides: Partial<SingleResult> = {}): SingleResult {
 	return {
 		name: "reviewer",
 		task: "Review the auth module",
 		exitCode: 0,
 		messages: [
-			{
-				role: "assistant",
-				content: [{ type: "text", text: "Here is my review: looks good." }],
-			},
+			fakeMessage("Here is my review: looks good."),
 		],
 		stderr: "",
 		usage: fakeUsageStats(),

@@ -3,7 +3,7 @@
  */
 
 import { describe, test, expect, vi } from "vitest";
-import { JobManager } from "../job-manager.js";
+import { JobManager, type SingleResult } from "../job-manager.js";
 import { fakeSingleResult, setupJobManager } from "./helpers.js";
 
 describe("JobManager", () => {

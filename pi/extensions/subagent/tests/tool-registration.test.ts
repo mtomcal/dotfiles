@@ -155,7 +155,7 @@ describe("tool registration", () => {
 	test("each tool has a label", () => {
 		for (const name of TOOL_NAMES) {
 			const tool = registeredTools.get(name);
-			expect(typeof tool.label).toBe("string", `${name} should have a label`);
+			expect(typeof tool.label).toBe("string");
 		}
 	});
 

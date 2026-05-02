@@ -28,6 +28,7 @@ export interface ResolvableFields {
 	model?: string;
 	provider?: string;
 	thinking?: ThinkingLevel;
+	cwd?: string;
 	contextFiles?: boolean;
 	extensions?: boolean;
 }

@@ -10,6 +10,7 @@ import { describe, test, expect, vi } from "vitest";
 import { createMockExtension } from "./extension-helpers.js";
 import { fakeSingleResult } from "./helpers.js";
 import type { SingleResult } from "../job-manager.js";
+import type { Message } from "@mariozechner/pi-ai";
 
 /**
  * Create a partial result with text and tool call messages
@@ -20,6 +21,7 @@ function makePartialResult(overrides: Partial<SingleResult> = {}): SingleResult 
 		name: "streaming-test",
 		task: "Stream test task",
 		messages: [
+   // @ts-expect-error -- test fixture with incomplete Message type
 			{
 				role: "assistant",
 				content: [{ type: "text", text: "Working on the code..." }],
@@ -27,9 +29,11 @@ function makePartialResult(overrides: Partial<SingleResult> = {}): SingleResult 
 			{
 				role: "assistant",
 				content: [
+     // @ts-expect-error -- test fixture with incomplete Message type
 					{ type: "toolCall", name: "bash", arguments: { command: "npm test" } },
 				],
 			},
+   // @ts-expect-error -- test fixture with incomplete Message type
 			{
 				role: "assistant",
 				content: [{ type: "text", text: "Tests passed, now formatting..." }],
@@ -54,6 +58,7 @@ function makeCompletedResult(overrides: Partial<SingleResult> = {}): SingleResul
 		task: "Stream test task",
 		exitCode: 0,
 		messages: [
+   // @ts-expect-error -- test fixture with incomplete Message type
 			{
 				role: "assistant",
 				content: [{ type: "text", text: "All done! Changes applied." }],
@@ -132,6 +137,7 @@ describe("subagent_wait — streaming progress", () => {
 		// Partial result with specific text and tool call for trace verification
 		const partial = makePartialResult({
 			messages: [
+    // @ts-expect-error -- test fixture with incomplete Message type
 				{
 					role: "assistant",
 					content: [{ type: "text", text: "Analyzing the auth module..." }],
@@ -139,9 +145,11 @@ describe("subagent_wait — streaming progress", () => {
 				{
 					role: "assistant",
 					content: [
+      // @ts-expect-error -- test fixture with incomplete Message type
 						{ type: "toolCall", name: "read", arguments: { file_path: "src/auth.ts" } },
 					],
 				},
+    // @ts-expect-error -- test fixture with incomplete Message type
 				{
 					role: "assistant",
 					content: [{ type: "text", text: "Found the issue in the auth logic." }],
@@ -149,6 +157,7 @@ describe("subagent_wait — streaming progress", () => {
 				{
 					role: "assistant",
 					content: [
+      // @ts-expect-error -- test fixture with incomplete Message type
 						{ type: "toolCall", name: "edit", arguments: { path: "src/auth.ts" } },
 					],
 				},
@@ -273,6 +282,7 @@ describe("subagent_wait — streaming progress", () => {
 				name: "my-reviewer",
 				task: "Review the auth module",
 				messages: [
+     // @ts-expect-error -- test fixture with incomplete Message type
 					{
 						role: "assistant",
 						content: [{ type: "text", text: "Checking auth module structure..." }],

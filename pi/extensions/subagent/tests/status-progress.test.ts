@@ -8,6 +8,7 @@
 import { describe, test, expect, vi, beforeAll, beforeEach, afterEach } from "vitest";
 import { createMockExtension } from "./extension-helpers.js";
 import type { SingleResult } from "../job-manager.js";
+import type { Message } from "@mariozechner/pi-ai";
 
 let registeredTools: Map<string, any>;
 let mockPi: any;
@@ -57,12 +58,14 @@ function makePartialResult(overrides: Partial<SingleResult> = {}): SingleResult 
 		task: "Running task with progress",
 		exitCode: -1, // still running
 		messages: [
+   // @ts-expect-error -- test fixture with incomplete Message type
 			{
 				role: "assistant",
 				content: [{ type: "text", text: "This is a sufficiently long text block that exceeds the fifty character threshold for summary extraction." }],
 			},
 			{
 				role: "assistant",
+    // @ts-expect-error -- test fixture with incomplete Message type
 				content: [{ type: "toolCall", name: "bash", arguments: { command: "npm test" } }],
 			},
 		],
@@ -135,8 +138,8 @@ describe("subagent_status Progress section for running jobs", () => {
 	test("Progress section shows last text snippet using extractSummary (skipping blocks under 50 chars)", async () => {
 		const partial = makePartialResult({
 			messages: [
-				{ role: "assistant", content: [{ type: "text", text: "Short." }] }, // < 50 chars, should be skipped
-				{ role: "assistant", content: [{ type: "text", text: "Here is a substantive progress update that clearly exceeds the fifty character minimum threshold." }] }, // ≥ 50 chars
+				{ role: "assistant", content: [{ type: "text", text: "Short." }] } as Message, // < 50 chars, should be skipped
+				{ role: "assistant", content: [{ type: "text", text: "Here is a substantive progress update that clearly exceeds the fifty character minimum threshold." }] } as Message, // ≥ 50 chars
 			],
 		});
 		const jobId = createRunningJob("progress-test", "Running task with progress", partial);
@@ -152,8 +155,9 @@ describe("subagent_status Progress section for running jobs", () => {
 	test("Progress section shows last tool call from completed messages", async () => {
 		const partial = makePartialResult({
 			messages: [
-				{ role: "assistant", content: [{ type: "text", text: "This is a long enough text block to pass the fifty character threshold for display." }] },
-				{ role: "assistant", content: [{ type: "toolCall", name: "bash", arguments: { command: "npm test" } }] },
+				{ role: "assistant", content: [{ type: "text", text: "This is a long enough text block to pass the fifty character threshold for display." }] } as Message,
+    // @ts-expect-error -- test fixture with incomplete Message type
+				{ role: "assistant", content: [{ type: "toolCall", name: "bash", arguments: { command: "npm test" } }] } as Message,
 			],
 		});
 		const jobId = createRunningJob("progress-test", "Running task with progress", partial);
@@ -172,8 +176,9 @@ describe("subagent_status Progress section for running jobs", () => {
 		// (which only contains completed messages), not from any live stream.
 		const partial = makePartialResult({
 			messages: [
-				{ role: "assistant", content: [{ type: "text", text: "Completed analysis of the codebase, found several issues worth addressing." }] },
-				{ role: "assistant", content: [{ type: "toolCall", name: "bash", arguments: { command: "npm test" } }] },
+				{ role: "assistant", content: [{ type: "text", text: "Completed analysis of the codebase, found several issues worth addressing." }] } as Message,
+    // @ts-expect-error -- test fixture with incomplete Message type
+				{ role: "assistant", content: [{ type: "toolCall", name: "bash", arguments: { command: "npm test" } }] } as Message,
 				// No mid-stream tool_result messages — only completed message entries
 			],
 		});
@@ -221,7 +226,7 @@ describe("subagent_status Progress section — completed jobs should NOT have it
 			name: "completed-name",
 			task: "Finished work",
 			exitCode: 0,
-			messages: [{ role: "assistant", content: [{ type: "text", text: "Done successfully" }] }],
+			messages: [{ role: "assistant", content: [{ type: "text", text: "Done successfully" }] } as Message],
 			stderr: "",
 			usage: { input: 100, output: 50, cacheRead: 0, cacheWrite: 0, cost: 0.01, contextTokens: 500, turns: 1 },
 		});

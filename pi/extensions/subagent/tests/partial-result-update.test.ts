@@ -6,6 +6,7 @@
  */
 
 import { describe, test, expect, vi } from "vitest";
+import type { Message } from "@mariozechner/pi-ai";
 import { JobManager, type SingleResult } from "../job-manager.js";
 import { fakeUsageStats, fakeSingleResult } from "./helpers.js";
 
@@ -78,12 +79,12 @@ describe("updatePartialResult", () => {
 		const jobMgr = new JobManager();
 		const job = jobMgr.createJob("reviewer", "Review auth module");
 
-		const msg1 = { role: "assistant" as const, content: [{ type: "text" as const, text: "First message" }] };
+		const msg1 = { role: "assistant" as const, content: [{ type: "text" as const, text: "First message" }] } as Message;
 		const firstPartial = fakeSingleResult({ messages: [msg1] });
 		jobMgr.updatePartialResult(job.id, firstPartial);
 
 		// Second snapshot includes both messages (accumulated)
-		const msg2 = { role: "assistant" as const, content: [{ type: "text" as const, text: "Second message" }] };
+		const msg2 = { role: "assistant" as const, content: [{ type: "text" as const, text: "Second message" }] } as Message;
 		const secondPartial = fakeSingleResult({ messages: [msg1, msg2] });
 		jobMgr.updatePartialResult(job.id, secondPartial);
 

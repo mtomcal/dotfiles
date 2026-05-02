@@ -27,10 +27,11 @@ import type { Message } from "@mariozechner/pi-ai";
 import { StringEnum } from "@mariozechner/pi-ai";
 import {
 	type ExtensionAPI,
+	type ExtensionCommandContext,
 	getMarkdownTheme,
 	withFileMutationQueue,
 } from "@mariozechner/pi-coding-agent";
-import { Container, Markdown, Spacer, Text } from "@mariozechner/pi-tui";
+import { Container, Markdown, Spacer, Text, type Component } from "@mariozechner/pi-tui";
 import { Type } from "typebox";
 import {
 	type SubagentConfig,
@@ -252,13 +253,13 @@ function spawnSubagentProcess(
 			}
 		};
 
-		proc.stdout.on("data", (data) => {
+		proc.stdout!.on("data", (data) => {
 			buffer += data.toString();
 			const lines = buffer.split("\n");
 			buffer = lines.pop() || "";
 			for (const line of lines) processLine(line);
 		});
-		proc.stderr.on("data", (data) => { currentResult.stderr += data.toString(); });
+		proc.stderr!.on("data", (data) => { currentResult.stderr += data.toString(); });
 
 		proc.on("close", (code) => {
 			if (buffer.trim()) processLine(buffer);
@@ -518,8 +519,8 @@ function renderDisplayItemsCollapsed(items: ReturnType<typeof getDisplayItems>, 
 // ═════════════════════════════════════════════════════════════════════════
 
 export default function (pi: ExtensionAPI) {
-	const jobMgr: JobManager = pi.jobMgr ?? new JobManager();
-	if (!pi.jobMgr) pi.jobMgr = jobMgr;
+	const jobMgr: JobManager = (pi as any).jobMgr ?? new JobManager();
+	if (!(pi as any).jobMgr) (pi as any).jobMgr = jobMgr;
 
 	// Wire up cancellation notification callback so cancelJob/cancelAll
 	// automatically send steer notifications when jobs are cancelled.
@@ -598,10 +599,8 @@ export default function (pi: ExtensionAPI) {
 	// tool descriptions. To apply routing changes to tool descriptions, run `/reload`
 	// (full pi extension reload) after `/reload-routing`.
 	pi.registerCommand("reload-routing", {
-		label: "Reload subagent routing",
-		help: "Reload the subagent model routing table from settings.json (use /reload after to update tool descriptions)",
-		autoConfirm: false,
-		handler: async () => {
+		description: "Reload the subagent model routing table from settings.json (use /reload after to update tool descriptions)",
+		handler: async (_args: string, _ctx: ExtensionCommandContext) => {
 			const { reloadRoutingTable } = await import("./routing.js");
 			const updated = reloadRoutingTable(settingsPath);
 			const count = updated ? updated.length : 0;
@@ -881,7 +880,10 @@ export default function (pi: ExtensionAPI) {
 				const taskPreview = t.task.length > 60 ? `${t.task.slice(0, 60)}...` : t.task;
 				spawnedJobs.push({ id: job.id, name: t.config.name, task: taskPreview, status: "running", provider: t.config.provider, thinking: t.config.thinking as string | undefined });
 
-				const { proc, resultPromise } = spawnSubagentProcess(t.config, t.task, t.cwd, ctx.cwd, undefined, undefined);
+				const { proc, resultPromise } = spawnSubagentProcess(
+					t.config, t.task, t.cwd, ctx.cwd, undefined, undefined,
+					(partial: SingleResult) => { jobMgr.updatePartialResult(job.id, partial); },
+				);
 				jobMgr.setProcess(job.id, proc);
 
 				// Handle completion asynchronously
@@ -890,10 +892,16 @@ export default function (pi: ExtensionAPI) {
 					else jobMgr.failJob(job.id, result.errorMessage || result.stderr || "Process failed");
 					persist();
 					try { emitCompletionNotification(pi, jobMgr.getJob(job.id)!); } catch { /* notification best-effort */ }
+					// Immediate widget update on state transition (bypasses debounce)
+					updateWidget(ctx);
+					if (jobMgr.listRunning().length === 0) scheduleWidgetDismiss(ctx);
 				}).catch((err) => {
 					jobMgr.failJob(job.id, (err as Error).message);
 					persist();
 					try { emitCompletionNotification(pi, jobMgr.getJob(job.id)!); } catch { /* notification best-effort */ }
+					// Immediate widget update on state transition (bypasses debounce)
+					updateWidget(ctx);
+					if (jobMgr.listRunning().length === 0) scheduleWidgetDismiss(ctx);
 				});
 			}
 
@@ -946,7 +954,7 @@ export default function (pi: ExtensionAPI) {
 		async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
 			if (params.jobId) {
 				const job = jobMgr.getJob(params.jobId);
-				if (!job) return { content: [{ type: "text", text: `Job "${params.jobId}" not found.` }], isError: true };
+				if (!job) return { content: [{ type: "text", text: `Job "${params.jobId}" not found.` }], details: {} as any, isError: true };
 
 				const statusIcons: Record<string, string> = { running: "⏳", completed: "✓", failed: "✗", cancelled: "⊘" };
 				const icon = statusIcons[job.status] || "?";
@@ -1023,9 +1031,9 @@ export default function (pi: ExtensionAPI) {
 
 		async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
 			const job = jobMgr.getJob(params.jobId);
-			if (!job) return { content: [{ type: "text", text: `Job "${params.jobId}" not found.` }], isError: true };
-			if (job.status === "running") return { content: [{ type: "text", text: `Job "${params.jobId}" is still running. Use subagent_wait to wait for completion, or subagent_status to check progress.` }], isError: true };
-			if (!job.result) return { content: [{ type: "text", text: `Job "${params.jobId}" has no result data.` }], isError: true };
+			if (!job) return { content: [{ type: "text", text: `Job "${params.jobId}" not found.` }], details: {} as any, isError: true };
+			if (job.status === "running") return { content: [{ type: "text", text: `Job "${params.jobId}" is still running. Use subagent_wait to wait for completion, or subagent_status to check progress.` }], details: {} as any, isError: true };
+			if (!job.result) return { content: [{ type: "text", text: `Job "${params.jobId}" has no result data.` }], details: {} as any, isError: true };
 
 			const displayItems = getDisplayItems(job.result.messages);
 			const finalOutput = getFinalOutput(job.result.messages);
@@ -1077,7 +1085,7 @@ export default function (pi: ExtensionAPI) {
 
 		async execute(_toolCallId, params, signal, onUpdate, _ctx) {
 			const job = jobMgr.getJob(params.jobId);
-			if (!job) return { content: [{ type: "text", text: `Job "${params.jobId}" not found.` }], isError: true };
+			if (!job) return { content: [{ type: "text", text: `Job "${params.jobId}" not found.` }], details: {} as any, isError: true };
 
 			if (job.status !== "running") {
 				const result = job.result;
@@ -1091,14 +1099,14 @@ export default function (pi: ExtensionAPI) {
 
 			while (Date.now() - startTime < timeoutMs) {
 				const current = jobMgr.getJob(params.jobId);
-				if (!current) return { content: [{ type: "text", text: `Job "${params.jobId}" was removed.` }], isError: true };
+				if (!current) return { content: [{ type: "text", text: `Job "${params.jobId}" was removed.` }], details: {} as any, isError: true };
 				if (current.status !== "running") {
 					const result = current.result;
 					const finalOutput = result ? getFinalOutput(result.messages) : "(no output)";
 					const usage = result ? formatUsageStats(result.usage, result.model, result.provider, result.thinking) : "";
 					return { content: [{ type: "text", text: `Job \`${params.jobId}\` (${current.name}) ${current.status}.\n${finalOutput ? `\n${finalOutput}\n` : ""}${usage ? `\n**Usage:** ${usage}` : ""}` }], details: { results: result ? [result] : [] } };
 				}
-				if (signal?.aborted) return { content: [{ type: "text", text: `Wait for job "${params.jobId}" was aborted.` }], isError: true };
+				if (signal?.aborted) return { content: [{ type: "text", text: `Wait for job "${params.jobId}" was aborted.` }], details: {} as any, isError: true };
 
 				// Stream progress if partial result is available
 				if (onUpdate && current.result) {
@@ -1169,8 +1177,8 @@ export default function (pi: ExtensionAPI) {
 
 			if (params.jobId) {
 				const job = jobMgr.getJob(params.jobId);
-				if (!job) return { content: [{ type: "text", text: `Job "${params.jobId}" not found.` }], isError: true };
-				if (job.status !== "running") return { content: [{ type: "text", text: `Job "${params.jobId}" is not running (status: ${job.status}). Only running jobs can be cancelled.` }], isError: true };
+				if (!job) return { content: [{ type: "text", text: `Job "${params.jobId}" not found.` }], details: {} as any, isError: true };
+				if (job.status !== "running") return { content: [{ type: "text", text: `Job "${params.jobId}" is not running (status: ${job.status}). Only running jobs can be cancelled.` }], details: {} as any, isError: true };
 				jobMgr.cancelJob(params.jobId);
 				persist();
 				// Immediate widget update on cancellation (state transition)
@@ -1179,7 +1187,7 @@ export default function (pi: ExtensionAPI) {
 				return { content: [{ type: "text", text: `Cancelled job "${params.jobId}" (${job.name}).` }], details: { cancelled: 1, jobId: params.jobId } };
 			}
 
-			return { content: [{ type: "text", text: "Provide jobId to cancel a specific job, or all: true to cancel all running jobs." }], isError: true };
+			return { content: [{ type: "text", text: "Provide jobId to cancel a specific job, or all: true to cancel all running jobs." }], details: {} as any, isError: true };
 		},
 
 		renderCall(args, _theme, _context) {

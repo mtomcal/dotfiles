@@ -31,12 +31,13 @@ export function extractSummary(messages: Message[]): string {
 	const items = getDisplayItems(messages);
 	let lastTextBlock = "";
 	for (let i = items.length - 1; i >= 0; i--) {
-		if (items[i].type === "text") {
-			if (items[i].text.length >= SUBAGENT_SUMMARY_MIN_LENGTH) {
-				return items[i].text;
+		const item = items[i];
+		if (item.type === "text") {
+			if (item.text.length >= SUBAGENT_SUMMARY_MIN_LENGTH) {
+				return item.text;
 			}
 			if (!lastTextBlock) {
-				lastTextBlock = items[i].text;
+				lastTextBlock = item.text;
 			}
 		}
 	}

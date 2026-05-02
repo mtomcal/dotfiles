@@ -6,6 +6,7 @@
  */
 
 import { describe, test, expect, vi } from "vitest";
+import type { Message } from "@mariozechner/pi-ai";
 import type { AsyncJob, SingleResult } from "../job-manager.js";
 import { renderWidgetContent } from "../widget.js";
 import {
@@ -39,7 +40,7 @@ function fakeSingleResult(overrides: Partial<SingleResult> = {}): SingleResult {
 			{
 				role: "assistant",
 				content: [{ type: "text", text: "Here is my review: looks good." }],
-			},
+			} as Message,
 		],
 		stderr: "",
 		usage: fakeUsageStats(),
@@ -78,7 +79,7 @@ function makeCompletedJob(overrides: Partial<AsyncJob> = {}): AsyncJob {
 				{
 					role: "assistant",
 					content: [{ type: "text", text: "The code looks great, just a few minor suggestions." }],
-				},
+				} as Message,
 			],
 		}),
 		...overrides,
@@ -255,7 +256,7 @@ describe("renderWidgetContent", () => {
 							text: "This is a very long result text that should definitely be truncated when rendered in a narrow terminal window to ensure the widget doesn't overflow the status bar",
 						},
 					],
-				},
+				} as Message,
 			],
 		});
 		const jobs: AsyncJob[] = [
@@ -289,7 +290,7 @@ describe("renderWidgetContent", () => {
 							text: "Line one\nLine two\nLine three",
 						},
 					],
-				},
+				} as Message,
 			],
 		});
 		const jobs: AsyncJob[] = [

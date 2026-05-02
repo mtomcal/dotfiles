@@ -11,8 +11,9 @@
 
 import { describe, test, expect, vi, beforeAll, afterEach } from "vitest";
 import { createMockExtension } from "./extension-helpers.js";
-import { fakeSingleResult, fakeUsageStats } from "./helpers.js";
+import { fakeSingleResult, fakeUsageStats, fakeMessage, fakeMessageWith, fakeToolCall } from "./helpers.js";
 import type { SingleResult } from "../job-manager.js";
+import type { Message } from "@mariozechner/pi-ai";
 
 let registeredTools: Map<string, any>;
 let mockPi: any;
@@ -57,28 +58,15 @@ function makePartialResult(overrides: Partial<SingleResult> = {}): SingleResult 
 		task: "Review the auth module",
 		exitCode: 0,
 		messages: [
-			{
-				role: "assistant",
-				content: [
-					{ type: "text", text: "I've reviewed the auth module. The login function looks correct but the token refresh logic has a race condition." },
-				],
-			},
-			{
-				role: "assistant",
-				content: [
-					{
-						type: "toolCall",
-						name: "read",
-						arguments: { file_path: "/src/auth.ts", offset: 1, limit: 50 },
-					},
-				],
-			},
-			{
-				role: "assistant",
-				content: [
-					{ type: "text", text: "The token refresh at line 42 needs a mutex to prevent concurrent refresh attempts." },
-				],
-			},
+			fakeMessageWith([
+				{ type: "text", text: "I've reviewed the auth module. The login function looks correct but the token refresh logic has a race condition." },
+			]) as Message,
+			fakeMessageWith([
+				fakeToolCall("read", { file_path: "/src/auth.ts", offset: 1, limit: 50 }),
+			]) as Message,
+			fakeMessageWith([
+				{ type: "text", text: "The token refresh at line 42 needs a mutex to prevent concurrent refresh attempts." },
+			]) as Message,
 		],
 		usage: fakeUsageStats(),
 		...overrides,
@@ -342,10 +330,12 @@ describe("cancellation notification — content selection", () => {
 			task: "Review the auth module",
 			exitCode: 0,
 			messages: [
+    // @ts-expect-error -- test fixture with incomplete Message type
 				{
 					role: "assistant",
 					content: [{ type: "text", text: "ok" }], // too short — < 50 chars
 				},
+    // @ts-expect-error -- test fixture with incomplete Message type
 				{
 					role: "assistant",
 					content: [
@@ -379,6 +369,7 @@ describe("cancellation notification — content selection", () => {
 			task: "Quick review",
 			exitCode: 0,
 			messages: [
+    // @ts-expect-error -- test fixture with incomplete Message type
 				{
 					role: "assistant",
 					content: [{ type: "text", text: "Looks fine, approved." }],

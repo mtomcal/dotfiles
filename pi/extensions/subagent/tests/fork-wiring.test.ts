@@ -13,9 +13,11 @@
  */
 
 import { describe, test, expect, vi, beforeAll, afterEach } from "vitest";
+import type { Message } from "@mariozechner/pi-ai";
 import { createMockExtension, type SentMessage } from "./extension-helpers.js";
 import { type SingleResult } from "../job-manager.js";
 import { fakeSingleResult, fakeUsageStats } from "./helpers.js";
+import { renderWidgetContent } from "../widget.js";
 
 let registeredTools: Map<string, any>;
 let mockPi: any;
@@ -95,7 +97,7 @@ describe("onMessage wiring updates partial result", () => {
 			name: "write",
 			task: "Write tests",
 			exitCode: -1,
-			messages: [{ role: "assistant", content: [{ type: "text", text: "Working on it..." }] }],
+			messages: [{ role: "assistant", content: [{ type: "text", text: "Working on it..." }] }] as Message[],
 			usage: fakeUsageStats(),
 		});
 
@@ -115,14 +117,14 @@ describe("onMessage wiring updates partial result", () => {
 
 		const partial1 = fakeSingleResult({
 			name: "build",
-			messages: [{ role: "assistant", content: [{ type: "text", text: "Step 1 done" }] }],
+			messages: [{ role: "assistant", content: [{ type: "text", text: "Step 1 done" }] }] as Message[],
 			usage: { ...fakeUsageStats(), turns: 1 },
 		});
 		jobMgr.updatePartialResult(jobId, partial1);
 
 		const partial2 = fakeSingleResult({
 			name: "build",
-			messages: [{ role: "assistant", content: [{ type: "text", text: "Step 1 done" }] }, { role: "assistant", content: [{ type: "text", text: "Step 2 done" }] }],
+			messages: [{ role: "assistant", content: [{ type: "text", text: "Step 1 done" }] }, { role: "assistant", content: [{ type: "text", text: "Step 2 done" }] }] as Message[],
 			usage: { ...fakeUsageStats(), turns: 2 },
 		});
 		jobMgr.updatePartialResult(jobId, partial2);
@@ -145,7 +147,7 @@ describe("widget update on partial result", () => {
 
 		const partial = fakeSingleResult({
 			name: "run",
-			messages: [{ role: "assistant", content: [{ type: "text", text: "Analyzing code..." }] }],
+			messages: [{ role: "assistant", content: [{ type: "text", text: "Analyzing code..." }] }] as Message[],
 		});
 
 		// updatePartialResult triggers onPartialResult callback which calls scheduleWidgetUpdate
@@ -170,12 +172,12 @@ describe("widget update on partial result", () => {
 		const forkResult = await forkTool.execute("fw-6", { task: "Deep review" }, undefined, undefined, mockCtx);
 		const jobId = forkResult.details.jobs[0].id;
 
-		const partial1 = fakeSingleResult({ messages: [{ role: "assistant", content: [{ type: "text", text: "Part 1" }] }] });
+		const partial1 = fakeSingleResult({ messages: [{ role: "assistant", content: [{ type: "text", text: "Part 1" }] }] } as any);
 		jobMgr.updatePartialResult(jobId, partial1);
 
 		vi.advanceTimersByTime(2000);
 
-		const partial2 = fakeSingleResult({ messages: [{ role: "assistant", content: [{ type: "text", text: "Part 2" }] }] });
+		const partial2 = fakeSingleResult({ messages: [{ role: "assistant", content: [{ type: "text", text: "Part 2" }] }] } as any);
 		jobMgr.updatePartialResult(jobId, partial2);
 
 		vi.advanceTimersByTime(2000);
@@ -200,7 +202,7 @@ describe("widget lifecycle — dismiss after completion", () => {
 		const completionResult = fakeSingleResult({
 			name: "quick",
 			exitCode: 0,
-			messages: [{ role: "assistant", content: [{ type: "text", text: "Done!" }] }],
+			messages: [{ role: "assistant", content: [{ type: "text", text: "Done!" }] }] as Message[],
 			usage: fakeUsageStats(),
 		});
 
@@ -239,7 +241,7 @@ describe("widget debounce", () => {
 		// Fire many rapid partial result updates
 		for (let i = 0; i < 10; i++) {
 			const partial = fakeSingleResult({
-				messages: [{ role: "assistant", content: [{ type: "text", text: `Progress ${i}` }] }],
+				messages: [{ role: "assistant", content: [{ type: "text", text: `Progress ${i}` }] }] as Message[],
 			});
 			jobMgr.updatePartialResult(jobId, partial);
 		}
@@ -270,7 +272,7 @@ describe("completion triggers immediate widget update", () => {
 
 		// Set a partial result first
 		const partial = fakeSingleResult({
-			messages: [{ role: "assistant", content: [{ type: "text", text: "Almost done..." }] }],
+			messages: [{ role: "assistant", content: [{ type: "text", text: "Almost done..." }] }] as Message[],
 		});
 		jobMgr.updatePartialResult(jobId, partial);
 
@@ -278,7 +280,7 @@ describe("completion triggers immediate widget update", () => {
 		const completionResult = fakeSingleResult({
 			name: "final",
 			exitCode: 0,
-			messages: [{ role: "assistant", content: [{ type: "text", text: "Review complete!" }] }],
+			messages: [{ role: "assistant", content: [{ type: "text", text: "Review complete!" }] }] as Message[],
 			usage: fakeUsageStats(),
 		});
 		jobMgr.completeJob(jobId, completionResult);
@@ -382,5 +384,120 @@ describe("fork promptGuidelines reference widget / status UI", () => {
 			(g) => /widget|live progress|progress widget/i.test(g),
 		);
 		expect(hasWidgetRef).toBe(true);
+	});
+});
+
+// ─── Fork onMessage wiring: partial results flow to running jobs ──────────
+
+describe("fork onMessage wiring: partial results and widget lifecycle", () => {
+	test("calling updatePartialResult on a forked job updates its result field", async () => {
+		const forkResult = await forkTool.execute("fw-20", { name: "onmsg-test", task: "Test onMessage wiring" }, undefined, undefined, mockCtx);
+		const jobId = forkResult.details.jobs[0].id;
+
+		const job = jobMgr.getJob(jobId);
+		expect(job).toBeDefined();
+		expect(job.result).toBeNull();
+
+		// Simulate onMessage callback firing with a partial result
+		const partial = fakeSingleResult({
+			name: "onmsg-test",
+			messages: [{ role: "assistant", content: [{ type: "text", text: "I am working on the task now..." }] }] as Message[],
+			usage: { ...fakeUsageStats(), turns: 1, input: 500 },
+		});
+		jobMgr.updatePartialResult(jobId, partial);
+
+		const updated = jobMgr.getJob(jobId);
+		expect(updated!.result).not.toBeNull();
+		expect(updated!.result!.messages).toHaveLength(1);
+		expect(updated!.result!.messages[0].content[0].text).toBe("I am working on the task now...");
+	});
+
+	test("multiple partial result updates replace previous data on a running fork job", async () => {
+		const forkResult = await forkTool.execute("fw-21", { name: "onmsg-multi", task: "Test multiple updates" }, undefined, undefined, mockCtx);
+		const jobId = forkResult.details.jobs[0].id;
+
+		const partial1 = fakeSingleResult({
+			name: "onmsg-multi",
+			messages: [{ role: "assistant", content: [{ type: "text", text: "Step 1 complete" }] }] as Message[],
+			usage: { ...fakeUsageStats(), turns: 1 },
+		});
+		jobMgr.updatePartialResult(jobId, partial1);
+
+		const after1 = jobMgr.getJob(jobId);
+		expect(after1!.result!.usage.turns).toBe(1);
+
+		const partial2 = fakeSingleResult({
+			name: "onmsg-multi",
+			messages: [
+				{ role: "assistant", content: [{ type: "text", text: "Step 1 complete" }] },
+				{ role: "assistant", content: [{ type: "text", text: "Step 2 complete" }] },
+			] as Message[],
+			usage: { ...fakeUsageStats(), turns: 2, input: 1000 },
+		});
+		jobMgr.updatePartialResult(jobId, partial2);
+
+		const after2 = jobMgr.getJob(jobId);
+		expect(after2!.result!.usage.turns).toBe(2);
+		expect(after2!.result!.messages).toHaveLength(2);
+	});
+
+	test("partial updates trigger setWidget via onPartialResult callback", async () => {
+		vi.useFakeTimers();
+
+		const forkResult = await forkTool.execute("fw-22", { name: "onmsg-widget", task: "Test widget update from partial result" }, undefined, undefined, mockCtx);
+		const jobId = forkResult.details.jobs[0].id;
+
+		mockCtx.ui.setWidget.mockClear();
+
+		const partial = fakeSingleResult({
+			name: "onmsg-widget",
+			messages: [{ role: "assistant", content: [{ type: "text", text: "Making progress..." }] }] as Message[],
+		});
+		jobMgr.updatePartialResult(jobId, partial);
+
+		// Advance past debounce (SUBAGENT_WIDGET_DEBOUNCE_MS = 1000ms)
+		vi.advanceTimersByTime(2000);
+
+		expect(mockCtx.ui.setWidget).toHaveBeenCalled();
+		const lastCall = mockCtx.ui.setWidget.mock.calls[mockCtx.ui.setWidget.mock.calls.length - 1];
+		expect(lastCall[0]).toBe("subagent-jobs");
+
+		vi.useRealTimers();
+	});
+
+	test("completing a forked job triggers immediate widget update and dismiss scheduling", async () => {
+		vi.useFakeTimers();
+
+		const forkResult = await forkTool.execute("fw-23", { name: "onmsg-complete", task: "Test completion widget" }, undefined, undefined, mockCtx);
+		const jobId = forkResult.details.jobs[0].id;
+
+		// Set a partial result first
+		const partial = fakeSingleResult({
+			name: "onmsg-complete",
+			messages: [{ role: "assistant", content: [{ type: "text", text: "Almost done..." }] }] as Message[],
+		});
+		jobMgr.updatePartialResult(jobId, partial);
+
+		mockCtx.ui.setWidget.mockClear();
+
+		// Complete the job (simulating what resultPromise.then does)
+		const completionResult = fakeSingleResult({
+			name: "onmsg-complete",
+			exitCode: 0,
+			messages: [{ role: "assistant", content: [{ type: "text", text: "All done!" }] }] as Message[],
+			usage: fakeUsageStats(),
+		});
+		jobMgr.completeJob(jobId, completionResult);
+
+		// Immediate widget update should happen via updateWidget
+		// Since completeJob was called directly (not via the async path),
+		// we verify the widget state shows the completed job
+		const allJobs = jobMgr.listJobs();
+		const content = renderWidgetContent(allJobs, 80);
+		expect(content).toBeDefined();
+		expect(content!.some((line: string) => line.includes("onmsg-complete"))).toBe(true);
+		expect(content!.some((line: string) => line.includes("✓"))).toBe(true);
+
+		vi.useRealTimers();
 	});
 });

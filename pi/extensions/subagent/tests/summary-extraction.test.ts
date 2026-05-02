@@ -21,7 +21,7 @@ function assistantMsg(...texts: string[]): Message {
 	return {
 		role: "assistant",
 		content: texts.map((t) => ({ type: "text" as const, text: t })),
-	};
+	} as Message;
 }
 
 /** Build a user Message (used to ensure extractSummary skips non-assistant). */
@@ -29,6 +29,7 @@ function userMsg(text: string): Message {
 	return {
 		role: "user",
 		content: [{ type: "text", text }],
+		timestamp: Date.now(),
 	};
 }
 
@@ -36,8 +37,8 @@ function userMsg(text: string): Message {
 function toolCallMsg(name: string): Message {
 	return {
 		role: "assistant",
-		content: [{ type: "toolCall", name, arguments: {} }],
-	};
+		content: [{ type: "toolCall", name, arguments: {}, id: "tc-1" }],
+	} as Message;
 }
 
 // ── Constants ──────────────────────────────────────────────────────────────

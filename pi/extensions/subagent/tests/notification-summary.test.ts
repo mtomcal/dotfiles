@@ -6,6 +6,7 @@
  */
 
 import { describe, test, expect, vi, beforeAll, afterEach } from "vitest";
+import type { Message } from "@mariozechner/pi-ai";
 import { createMockExtension } from "./extension-helpers.js";
 import { type SingleResult } from "../job-manager.js";
 
@@ -56,8 +57,8 @@ describe("Completion notification summary enhancement", () => {
 			task: "Summary extraction test",
 			exitCode: 0,
 			messages: [
-				{ role: "assistant", content: [{ type: "text", text: longText }] },
-				{ role: "assistant", content: [{ type: "text", text: shortText }] },
+				{ role: "assistant", content: [{ type: "text", text: longText }] } as Message,
+				{ role: "assistant", content: [{ type: "text", text: shortText }] } as Message,
 			],
 			stderr: "",
 			usage: { input: 100, output: 50, cacheRead: 0, cacheWrite: 0, cost: 0.01, contextTokens: 500, turns: 2 },
@@ -89,9 +90,9 @@ describe("Completion notification summary enhancement", () => {
 	test("when all assistant text blocks are < 50 chars, fallback to last text block", async () => {
 		const { extractSummary } = await import("../summary.js");
 
-		const messages = [
-			{ role: "assistant", content: [{ type: "text", text: "Short text" }] },
-			{ role: "assistant", content: [{ type: "text", text: "Also brief" }] },
+		const messages: Message[] = [
+			{ role: "assistant", content: [{ type: "text", text: "Short text" }] } as Message,
+			{ role: "assistant", content: [{ type: "text", text: "Also brief" }] } as Message,
 		];
 
 		const summary = extractSummary(messages);
@@ -108,7 +109,7 @@ describe("Completion notification summary enhancement", () => {
 			task: "Notification test",
 			exitCode: 0,
 			messages: [
-				{ role: "assistant", content: [{ type: "text", text: longText }] },
+				{ role: "assistant", content: [{ type: "text", text: longText }] } as Message,
 			],
 			stderr: "",
 			usage: { input: 100, output: 50, cacheRead: 0, cacheWrite: 0, cost: 0.01, contextTokens: 500, turns: 1 },
