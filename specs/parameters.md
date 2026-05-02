@@ -151,6 +151,9 @@ Parameters serve three purposes:
 | `SUBAGENT_ROUTING_EXPERT_3RD_MODEL` | kimi-k2.6 | string | Final fallback expert model — third architecture for fresh perspective before user escalation |
 | `SUBAGENT_ROUTING_EXPERT_3RD_PROVIDER` | opencode-go | string | Provider for third consultation expert model |
 | `SUBAGENT_ROUTING_EXPERT_3RD_THINKING` | high | enum: off, minimal, low, medium, high, xhigh | High reasoning for final consultation attempt |
+| `SUBAGENT_TOOLS_BRACKET_MAX_CHARS` | 30 | characters | Maximum character length for the `[tools]` bracket in display surfaces; brackets exceeding this length are truncated with `+N` overflow showing the count of remaining tools |
+| `SUBAGENT_TOOLS_DISPLAY_STATUS_FORMAT` | `**Tools:** tool1, tool2, ...` | format | Format for displaying tools in `subagent_status` and `subagent_results` markdown output; comma-separated with spaces for readability |
+| `SUBAGENT_TOOLS_DISPLAY_UNDEFINED` | omit | behavior | When `tools` is `undefined` (all default tools), no tool bracket or label is displayed on any surface; absence indicates unrestricted access |
 
 ---
 

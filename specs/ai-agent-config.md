@@ -1,7 +1,7 @@
 # AI Agent Configuration Specification
 
-> **Version**: 1.2.0
-> **Last Updated**: 2026-05-01
+> **Version**: 1.4.0
+> **Last Updated**: 2026-05-02
 > **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md), [Design Language](DESIGN_LANGUAGE.md)
 > **Depended By**: Install Orchestrator (INSTL)
 > **Prefix**: AIAGT
@@ -208,6 +208,7 @@ An async background subagent job managed by the Pi subagent extension.
 | `provider` | string | Optional | Provider override for the subagent |
 | `model` | string | Optional | Model override for the subagent |
 | `thinking` | enum | `off`, `minimal`, `low`, `medium`, `high`, `xhigh` | Thinking level override |
+| `tools` | list of strings | Optional | Resolved tool allowlist for the subagent. `undefined` means all default tools. Displayed as a comma-separated bracket (e.g. `[read,grep]`) when defined; omitted from display when `undefined` |
 
 ### Subagent Live Progress
 
@@ -227,15 +228,19 @@ A TUI widget displayed above the editor while any forked job is running. The wid
 **Widget format (running job — two lines):**
 
 ```
-⏳ {name} ({elapsed}) {usage} {turns} turns
+⏳ {name} [{tools}] ({elapsed}) {usage} {turns} turns
   "{last text snippet}"  → {last tool call}
 ```
+
+The `[{tools}]` bracket is shown only when `tools` is defined (custom tool allowlist). When `tools` is `undefined` (all default tools), the bracket is omitted entirely. The bracket content is truncated at the first newline boundary and then clipped to 30 characters; if truncation is needed, the format is `[tool1,tool2,... +N]` where `N` is the count of remaining tools.
 
 **Widget format (completed/failed job — one line):**
 
 ```
-✓ {name} ({elapsed}) {usage} "{truncated result}"
+✓ {name} [{tools}] ({elapsed}) {usage} "{truncated result}"
 ```
+
+The `[{tools}]` bracket follows the same display rules as the running format: shown only when `tools` is defined, truncated at 30 characters with `+N` overflow.
 
 **Widget header line (always shown):**
 
@@ -439,6 +444,35 @@ The subagent extension registers six tools:
 18. Notification content for cancelled jobs MUST include partial usage stats (tokens consumed before cancellation) and a partial trace showing the last completed assistant text and last completed tool call at the time of cancellation. Only completed messages MUST be shown — partial/mid-stream data MUST NOT appear.
 19. The `subagent_fork` `promptGuidelines` MUST mention that a status widget is shown while jobs are running.
 20. The status widget MUST be display-only with no keyboard input. Cancelling jobs goes through `subagent_cancel`.
+
+**Tools display rules:**
+
+21. The resolved tool allowlist (`SubagentConfig.tools`) MUST be stored on both `AsyncJob` and `SingleResult` as a `tools?: string[]` field. When `tools` is `undefined`, it means all default tools are available — this MUST NOT be displayed. When `tools` is a non-empty array, it MUST be displayed as a comma-separated bracket `[tool1,tool2,...]`.
+
+22. The bracket convention MUST use square brackets `[...]` for tool scope and parentheses `(...)` for model/provider/thinking config. These two visual delimiters distinguish config metadata: parentheses for model identity, brackets for capability scope.
+
+23. Tool brackets MUST be truncated at 30 characters. When truncation is needed, the format MUST be `[tool1,tool2,... +N]` where `N` is the count of remaining tools that don't fit. Example: `[read,write,bash,edit,grep,find,ls]` (39 chars) becomes `[read,write,bash,edit,grep,find +1]` (29 chars).
+
+24. The `tools` field MUST appear on the following display surfaces when `tools` is defined (and MUST be omitted when `tools` is `undefined`):
+    a. **Widget**: After the job name on line 1 of both running and completed/failed job lines. NOT on line 2 (snippet + tool call line). NOT in the header line.
+    b. **`subagent_status` single job**: As a `**Tools:**` line after `**Task:**`, comma-separated with spaces for readability (e.g. `**Tools:** read, grep`).
+    c. **`subagent_results`**: As a `**Tools:**` line after `**Task:**`, same format as status.
+    d. **`subagent_wait` progress**: After the job name on the progress line, same bracket format as the widget.
+    e. **`renderCall()`**: After model/provider/thinking parentheses, before task preview. Format: `(model/thinking) [tool1,tool2]`.
+    f. **`renderSingleResult()`**: On the identity line in both expanded and collapsed views. Format: `(provider/model) [tool1,tool2]`.
+    g. **`renderJobStatusLine()`**: After the job name. Format: `✓ name [tool1,tool2] (elapsed) task...`.
+    h. **`subagent_run` text output**: In per-task headings for parallel and chain results. Format: `## name [tool1,tool2] (completed)`.
+    i. **`subagent_fork` response text**: In per-job lines. Format: `**name** [tool1,tool2] — task (running)`.
+
+25. The `tools` field MUST NOT appear on the following surfaces:
+    a. Completion notifications (steer messages)
+    b. Cancellation notifications
+    c. Widget line 2 (snippet + tool call)
+    d. Widget header line (summary counts)
+
+26. The `tools` field on `AsyncJob` MUST be persisted in `SerializedJob` for session persistence. On deserialization, a missing `tools` field (from older data) MUST be treated as `undefined` (all default tools), consistent with the display rule that `undefined` = omitted from display.
+
+27. The `tools` field on `SingleResult` MUST be set in `spawnSubagentProcess()` alongside `provider`, `model`, and `thinking`, from the resolved `SubagentConfig`. The `tools` field on `AsyncJob` MUST be set after job creation via `job.tools = config.tools`, before spawning the process.
 
 **Model routing rules:**
 
@@ -886,6 +920,92 @@ Preconditions: A running subagent's last text output contains newlines
 Input: `subagent_fork` with a job producing multi-line text
 Expected Output: Widget shows the text truncated at the first newline boundary, then clipped to fit remaining terminal width. No line-wrapping occurs in the widget.
 
+### Tools Display
+
+**TS-AIAGT-030**: Tools display — custom toolset shown as bracket
+Category: Unit
+Priority: High
+Preconditions: A subagent is spawned with `tools: "read,grep"`
+Input: Check widget, status, results, and call rendering for the job
+Expected Output: Every display surface shows `[read,grep]` after the job/model name. Bracket content is comma-separated without spaces.
+
+**TS-AIAGT-031**: Tools display — undefined tools means all defaults, no display
+Category: Unit
+Priority: High
+Preconditions: A subagent is spawned without `tools` parameter (undefined)
+Input: Check widget, status, results, and call rendering for the job
+Expected Output: No tool bracket appears on any display surface. The absence of `[...]` indicates all default tools are available.
+
+**TS-AIAGT-032**: Tools display — bracket convention distinguishes scope from model config
+Category: Unit
+Priority: Medium
+Preconditions: A subagent is spawned with `provider: "ollama-cloud"`, `model: "deepseek-v4-pro"`, `thinking: "high"`, `tools: "read,grep"`
+Input: Check call rendering and expanded result view
+Expected Output: Model config appears in parentheses: `(ollama-cloud/deepseek-v4-flash, think:high)`. Tool scope appears in brackets: `[read,grep]`. The full line shows both: `name (ollama-cloud/deepseek-v4-flash, think:high) [read,grep]`.
+
+**TS-AIAGT-033**: Tools display — long tool list truncated at 30 chars
+Category: Unit
+Priority: Medium
+Preconditions: A subagent is spawned with `tools: "read,write,bash,edit,grep,find,ls"`
+Input: Check any display surface for the job
+Expected Output: Bracket is truncated at 30 chars with `+N` overflow: `[read,write,bash,edit,grep,find +1]`. The count `+1` represents the number of tools that didn't fit (ls).
+
+**TS-AIAGT-034**: Tools display — widget shows tools on line 1 only
+Category: Unit
+Priority: High
+Preconditions: A forked subagent is running with `tools: "read,grep"`
+Input: Check the widget content for the running job
+Expected Output: Line 1 shows: `⏳ {name} [read,grep] ({elapsed}) {usage}`. Line 2 (snippet + tool call) does NOT show the tools bracket.
+
+**TS-AIAGT-035**: Tools display — status shows Tools line after Task
+Category: Unit
+Priority: High
+Preconditions: A completed job with `tools: "read,write,bash"`
+Input: `subagent_status` with the job ID
+Expected Output: Output includes `**Task:** {task}` followed by `**Tools:** read, write, bash` (comma-separated with spaces for readability in markdown output).
+
+**TS-AIAGT-036**: Tools display — results shows Tools line after Task
+Category: Unit
+Priority: High
+Preconditions: A completed job with `tools: "read,grep"`
+Input: `subagent_results` with the job ID
+Expected Output: Output includes `**Task:** {task}` followed by `**Tools:** read, grep`.
+
+**TS-AIAGT-037**: Tools display — notifications do NOT show tools
+Category: Unit
+Priority: Medium
+Preconditions: A forked job with `tools: "read,grep"` completes
+Input: Check the completion notification (steer message)
+Expected Output: Notification includes `**Job:**`, `**Task:**`, summary text, and usage — but does NOT include a `**Tools:**` line.
+
+**TS-AIAGT-038**: Tools display — renderCall shows bracket after model config
+Category: Unit
+Priority: High
+Preconditions: `subagent_run` is called with `provider: "ollama-cloud"`, `model: "glm-5.1"`, `thinking: "medium"` (default), `tools: "read,write,bash,edit"`
+Input: Check the `renderCall()` output for the tool call
+Expected Output: Call rendering shows: `subagent_run {name} (ollama-cloud/glm-5.1) [read,write,bash,edit]` followed by task preview. The `think:medium` is omitted (it's the default), and the tool bracket appears after the model parentheses.
+
+**TS-AIAGT-039**: Tools display — fork response shows bracket per job
+Category: Unit
+Priority: High
+Preconditions: `subagent_fork` spawns 2 parallel jobs, one with `tools: "read,grep"` and one with all defaults
+Input: Check the fork response text
+Expected Output: The job with custom tools shows: `**scout** [read,grep] — {task} (running)`. The job with default tools shows: `**implementer** — {task} (running)` (no bracket).
+
+**TS-AIAGT-040**: Tools display — parallel/chain result text headings include brackets
+Category: Unit
+Priority: Medium
+Preconditions: `subagent_run` with parallel tasks, one scoped to `tools: "read,grep"`, one with all defaults
+Input: Check the parallel result text output
+Expected Output: The scoped task heading shows: `## scout [read,grep] (completed)`. The default task heading shows: `## implementer (completed)` (no bracket).
+
+**TS-AIAGT-041**: Tools display — deserialization treats missing tools as undefined
+Category: Unit
+Priority: Medium
+Preconditions: A job was serialized in an older version that did not include the `tools` field
+Input: Deserialize the job and check `subagent_status`
+Expected Output: `tools` is `undefined`; no tool bracket appears in any display surface. The job is treated as having all default tools, consistent with the display rule.
+
 ---
 
 ## Changelog
@@ -896,3 +1016,4 @@ Expected Output: Widget shows the text truncated at the first newline boundary, 
 | 1.1.0 | 2026-05-01 | Added subagent model routing: prescriptive model selection via `subagentModelRouting` in Pi settings, injected into subagent tool descriptions. Added data structure, behavior rules, error handling, and test scenarios. |
 | 1.3.0 | 2026-05-01 | Added subagent live progress: TUI status widget for forked jobs, partial result updates on running jobs, cancellation notifications, `subagent_status` progress section, `subagent_wait` streaming updates, improved summary extraction (skip short text blocks), widget debounce and dismiss delay. |
 | 1.2.0 | 2026-05-01 | Pi sandbox runs as host user (not root): Dockerfile creates host user via build args, `pis` script passes `--user` flag and mounts agent state under `/home/{HOST_USER}/`. Files written by the container are now owned by the host user. |
+| 1.4.0 | 2026-05-02 | Added tools display: resolved tool allowlist shown as `[tool1,tool2,...]` brackets across all subagent display surfaces. Added `tools?: string[]` to `AsyncJob`, `SingleResult`, and `SerializedJob` data structures. Brackets use `()` for model config and `[]` for tool scope. Undefined tools (all defaults) omitted from display. Truncation at 30 chars with `+N` overflow. Notifications and widget line 2 exclude tools. Added 12 test scenarios (TS-AIAGT-030 through TS-AIAGT-041). |
