@@ -81,19 +81,56 @@ Constraint: Only touch the specified rendering surfaces. Do NOT change `formatTo
 
 ## Progress
 
-- [ ] **RED** — Create test file `tests/tools-widget-renderers.test.ts`, write all widget/renderer test assertions
-- [ ] **RED** — Run `npx vitest run tests/tools-widget-renderers.test.ts`, observe failures
-- [ ] **GREEN** — Update `renderWidgetContent()` in `widget.ts` to include tools bracket on line 1
-- [ ] **GREEN** — Update `renderSingleResult()` in `renderers.ts` to include tools bracket on identity line
-- [ ] **GREEN** — Update `renderJobStatusLine()` in `renderers.ts` to include tools bracket after name
-- [ ] **GREEN** — Run `npx vitest run tests/tools-widget-renderers.test.ts`, observe all pass
-- [ ] **GREEN** — Run `npx vitest run`, observe existing widget/renderer tests still pass
-- [ ] **REFACTOR** — Verify consistent bracket positioning (after `()`, before `elapsed`)
-- [ ] **REFACTOR** — Run `npx vitest run`, confirm still green
+- [x] **RED** — Create test file `tests/tools-widget-renderers.test.ts`, write all widget/renderer test assertions
+- [x] **RED** — Run `npx vitest run tests/tools-widget-renderers.test.ts`, observe failures
+- [x] **GREEN** — Update `renderWidgetContent()` in `widget.ts` to include tools bracket on line 1
+- [x] **GREEN** — Update `renderSingleResult()` in `renderers.ts` to include tools bracket on identity line
+- [x] **GREEN** — Update `renderJobStatusLine()` in `renderers.ts` to include tools bracket after name
+- [x] **GREEN** — Run `npx vitest run tests/tools-widget-renderers.test.ts`, observe all pass
+- [x] **GREEN** — Run `npx vitest run`, observe existing widget/renderer tests still pass
+- [x] **REFACTOR** — Verify consistent bracket positioning (after `()`, before `elapsed`)
+- [x] **REFACTOR** — Run `npx vitest run`, confirm still green
 
 ## Review
 
-[Review agents write their verdicts here as they complete each review pass]
+### ✅ PASS — Slice 3: Widget and Renderers — Tools Display
+
+**Reviewer**: Code Review Agent  
+**Date**: 2026-05-02
+
+#### Test Results
+- `npx vitest run tests/tools-widget-renderers.test.ts`: **16 tests passed** (1 file)
+- `npx vitest run` (full suite): **411 tests passed** (27 files, 0 failures)
+
+#### Requirements Verified
+
+| # | Requirement | Status |
+|---|-------------|--------|
+| 24a | Widget line 1: `[tools]` after name (running) | ✅ |
+| 24a | Widget line 1: `[tools]` after name (completed) | ✅ |
+| 24a | Widget line 1: `[tools]` after name (failed) | ✅ |
+| 24f | `renderSingleResult()` expanded: `(provider/model) [tools]` | ✅ |
+| 24f | `renderSingleResult()` collapsed: `(provider/model) [tools]` | ✅ |
+| 24g | `renderJobStatusLine()`: `✓ name [tools] (elapsed) task...` | ✅ |
+| 25c | Widget line 2: NO tools bracket | ✅ |
+| 25d | Widget header: NO tools bracket | ✅ |
+| — | Tools bracket omitted when `tools` is undefined/empty | ✅ |
+| — | Mixed jobs (some with tools, some without) display correctly | ✅ |
+| — | `formatToolsBracket` as single source of truth (no inline bracket construction) | ✅ |
+
+#### Implementation Notes
+- `widget.ts`: Uses `formatToolsBracket(job.tools)` from `AsyncJob` on all relevant status lines (running, completed, failed). Line 2 and header are correctly excluded.
+- `renderers.ts`: `renderSingleResult()` appends bracket after `(provider/model)` in both expanded (Container-based) and collapsed (Text-based) views. `renderJobStatusLine()` adds `tools?: string[]` to the parameter type and uses `formatToolsBracket(job.tools ?? job.result?.tools)` for fallback.
+- `formatToolCall` and other rendering logic were not modified (per constraint).
+- All bracket positioning matches the spec: `[]` after model parentheses, before elapsed time.
+
+#### Edge Cases Covered
+- Undefined/empty tools → bracket omitted
+- Tools defined but no provider/model → bracket still shows
+- Mixed jobs with varying tools state → per-job correct display
+- Expanded vs collapsed views both show bracket consistently
+- Failed and running jobs with tools show bracket correctly
+
 
 ## Course Corrections
 

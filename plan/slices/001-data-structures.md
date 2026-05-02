@@ -73,3 +73,37 @@ Constraint: Minimal type additions only. No rendering changes. No formatting uti
 ## Course Corrections
 
 [Orchestrator appends here when re-delegating — what went wrong, what to try differently]
+## ✅ PASS — Review Pass 1 (Data Structures)
+
+**Reviewer**: Code Review Agent
+**Date**: 2026-05-02
+
+### Implementation Check
+
+| Green Step | Status | Notes |
+|---|---|---|
+| `tools?: string[]` on `SingleResult` | ✅ | `job-manager.ts:25`, after `thinking` |
+| `tools?: string[]` on `AsyncJob` | ✅ | `job-manager.ts:39`, after `completedAt` |
+| `tools?: string[]` on `SerializedJob` | ✅ | `job-manager.ts:49`, after `completedAt` |
+| `serialize()` includes `tools` | ✅ | `job-manager.ts:124`: `tools: j.tools` |
+| `deserialize()` reads `tools` | ✅ | `job-manager.ts:151`: `tools: d.tools` |
+| `tools?: string[]` in `renderers.ts` | ✅ | `renderers.ts:34`, in sync with job-manager |
+| No rendering changes | ✅ | No tool-related rendering added |
+| Consistent typing (`string[] \| undefined`, not `null`) | ✅ | All interfaces use `tools?: string[]` |
+
+### Test Results
+
+| Suite | Result |
+|---|---|
+| `tests/tools-data-structures.test.ts` | **11/11 pass** |
+| Full test suite (24 files) | **352/352 pass** |
+
+### Backward Compatibility
+
+- `deserialize()` with legacy data missing `tools` → `tools: undefined` ✅
+- `serialize()` on job without tools → `tools: undefined` ✅
+- All existing tests continue to pass with zero changes ✅
+
+### Verdict: ✅ PASS
+
+All 11 assertions pass. Implementation matches the Green steps exactly. No regressions in existing tests. Ready for Slice 2.

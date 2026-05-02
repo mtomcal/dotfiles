@@ -86,3 +86,47 @@ export function setupJobManager(): TestContext {
 		jobMgr: new JobManager(),
 	};
 }
+
+/**
+ * Create a minimal AsyncJob for widget/renderer tests.
+ */
+export function makeAsyncJob(overrides: {
+	name?: string;
+	task?: string;
+	status?: "running" | "completed" | "failed" | "cancelled";
+	tools?: string[];
+	messages?: Message[];
+	resultOverrides?: Partial<SingleResult>;
+} = {}): any {
+	const id = `test-${Math.random().toString(36).slice(2, 8)}`;
+	const status = overrides.status ?? "running";
+	const now = Date.now();
+	const startedAt = now - 5000;
+	const completedAt = status !== "running" ? now - 1000 : null;
+
+	let result: SingleResult | null = null;
+	if (status !== "running" && overrides.messages) {
+		result = {
+			name: overrides.name ?? "test",
+			task: overrides.task ?? "test task",
+			exitCode: status === "completed" ? 0 : status === "failed" ? 1 : 0,
+			messages: overrides.messages,
+			stderr: "",
+			usage: fakeUsageStats(),
+			tools: overrides.tools,
+			...overrides.resultOverrides,
+		};
+	}
+
+	return {
+		id,
+		name: overrides.name ?? "test",
+		task: overrides.task ?? "test task",
+		status,
+		process: null,
+		startedAt,
+		completedAt,
+		result,
+		tools: overrides.tools,
+	};
+}

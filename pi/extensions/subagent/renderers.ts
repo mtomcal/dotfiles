@@ -34,6 +34,7 @@ export interface SingleResult {
 	provider?: string;
 	model?: string;
 	thinking?: ThinkingLevel;
+	tools?: string[];
 	stopReason?: string;
 	errorMessage?: string;
 	step?: number;
@@ -48,12 +49,77 @@ export interface SubagentDetails {
 export const MAX_PARALLEL_TASKS = 8;
 export const MAX_CONCURRENCY = 4;
 export const COLLAPSED_ITEM_COUNT = 10;
+export const SUBAGENT_TOOLS_BRACKET_MAX_CHARS = 30;
 
 export function formatTokens(count: number): string {
 	if (count < 1000) return count.toString();
 	if (count < 10000) return `${(count / 1000).toFixed(1)}k`;
 	if (count < 1000000) return `${Math.round(count / 1000)}k`;
 	return `${(count / 1000000).toFixed(1)}M`;
+}
+
+/**
+ * Format tools array as a bracket string with truncation at 30 chars.
+ * Returns "" for undefined or empty arrays.
+ *
+ * Rule 21: tools displayed as comma-separated bracket [t1,t2,...] when defined
+ * Rule 22: bracket convention uses [] for tool scope
+ * Rule 23: truncation at 30 chars with +N overflow
+ */
+export function formatToolsBracket(tools: string[] | undefined): string {
+	if (!tools || tools.length === 0) return "";
+	// Build comma-separated string without spaces
+	const joined = tools.join(",");
+	const fullBracket = `[${joined}]`;
+
+	// If full bracket fits within limit, return as-is
+	if (fullBracket.length <= SUBAGENT_TOOLS_BRACKET_MAX_CHARS) {
+		return fullBracket;
+	}
+
+	// Truncate: include as many complete tool names as fit, append +N for overflow
+	// Greedy: include tools while the full result (with overflow suffix) fits ≤ 30 chars
+	let included = 0;
+	let previousBracket = "[";
+
+	for (let i = 0; i < tools.length; i++) {
+		const tool = tools[i];
+		const candidate = included === 0 ? `[${tool}` : `${previousBracket},${tool}`;
+		const remaining = tools.length - (included + 1);
+		// Check if the full bracket with this tool AND its overflow suffix fits ≤ 30 chars
+		const overflowSuffix = remaining > 0 ? ` +${remaining}]` : "]";
+		const fullBracketLen = candidate.length + overflowSuffix.length;
+
+		if (fullBracketLen <= SUBAGENT_TOOLS_BRACKET_MAX_CHARS) {
+			// Tool fits with its overflow suffix, include it
+			previousBracket = candidate;
+			included++;
+		} else {
+			// This tool doesn't fit with overflow, stop here
+			break;
+		}
+	}
+
+	// Build the final output with overflow count
+	const remaining = tools.length - included;
+	// Final check: if result exceeds limit, backtrack one tool
+	const fullResult = previousBracket + (remaining > 0 ? ` +${remaining}]` : "]");
+	if (fullResult.length > SUBAGENT_TOOLS_BRACKET_MAX_CHARS && included > 0) {
+		included--;
+		previousBracket = previousBracket.replace(/,[^,]+$/, "");
+	}
+	const finalRemaining = tools.length - included;
+	return previousBracket + (finalRemaining > 0 ? ` +${finalRemaining}]` : "]");
+}
+
+/**
+ * Format tools array as a markdown label string.
+ * Returns "" for undefined or empty arrays.
+ * No truncation — this is for full markdown output.
+ */
+export function formatToolsLabel(tools: string[] | undefined): string {
+	if (!tools || tools.length === 0) return "";
+	return `**Tools:** ${tools.join(", ")}`;
 }
 
 export function formatUsageStats(
@@ -227,6 +293,8 @@ export function renderSingleResult(
 		let header = `${icon} ${theme.fg("toolTitle", theme.bold(r.name))}`;
 		if (r.provider && r.model) header += theme.fg("muted", ` (${r.provider}/${r.model})`);
 		else if (r.model) header += theme.fg("muted", ` (${r.model})`);
+		const expandedTools = formatToolsBracket(r.tools);
+		if (expandedTools) header += ` ${expandedTools}`;
 		if (isError && r.stopReason) header += ` ${theme.fg("error", `[${r.stopReason}]`)}`;
 		container.addChild(new Text(header, 0, 0));
 		if (isError && r.errorMessage)
@@ -265,6 +333,8 @@ export function renderSingleResult(
 	let text = `${icon} ${theme.fg("toolTitle", theme.bold(r.name))}`;
 	if (r.provider && r.model) text += theme.fg("muted", ` (${r.provider}/${r.model})`);
 	else if (r.model) text += theme.fg("muted", ` (${r.model})`);
+	const collapsedTools = formatToolsBracket(r.tools);
+	if (collapsedTools) text += ` ${collapsedTools}`;
 	if (isError && r.stopReason) text += ` ${theme.fg("error", `[${r.stopReason}]`)}`;
 	if (isError && r.errorMessage) text += `\n${theme.fg("error", `Error: ${r.errorMessage}`)}`;
 	else if (displayItems.length === 0) text += `\n${theme.fg("muted", "(no output)")}`;
@@ -279,7 +349,7 @@ export function renderSingleResult(
 
 /** Render a job status line for the job table */
 export function renderJobStatusLine(
-	job: { id: string; name: string; task: string; status: string; startedAt: number; completedAt: number | null; result?: SingleResult | null },
+	job: { id: string; name: string; task: string; status: string; startedAt: number; completedAt: number | null; result?: SingleResult | null; tools?: string[] },
 	theme: Theme,
 ): string {
 	const statusIcons: Record<string, string> = {
@@ -290,6 +360,8 @@ export function renderJobStatusLine(
 	};
 	const icon = statusIcons[job.status] || theme.fg("muted", "?");
 	const nameStr = theme.fg("accent", job.name);
+	const toolsStr = formatToolsBracket(job.tools ?? job.result?.tools);
+	const toolsSuffix = toolsStr ? ` ${toolsStr}` : "";
 
 	// Elapsed time
 	const now = Date.now();
@@ -315,5 +387,5 @@ export function renderJobStatusLine(
 		summary = summary.length > 80 ? summary.slice(0, 80) + "..." : summary;
 	}
 
-	return `${icon} ${nameStr} ${theme.fg("dim", `(${elapsed})`)} ${theme.fg("muted", taskPreview)}${summary}`;
+	return `${icon} ${nameStr}${toolsSuffix} ${theme.fg("dim", `(${elapsed})`)} ${theme.fg("muted", taskPreview)}${summary}`;
 }

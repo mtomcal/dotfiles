@@ -10,7 +10,7 @@ import {
 	SUBAGENT_WIDGET_DEBOUNCE_MS,
 	SUBAGENT_WIDGET_DISMISS_DELAY_MS,
 } from "./summary.js";
-import { formatUsageStats, getDisplayItems, formatToolCall } from "./renderers.js";
+import { formatUsageStats, getDisplayItems, formatToolCall, formatToolsBracket } from "./renderers.js";
 
 /** Plain-text theme function: strips color, returns text as-is. */
 const plainTheme = (_color: any, text: string): string => text;
@@ -48,8 +48,9 @@ export function renderWidgetContent(jobs: AsyncJob[], terminalWidth?: number): s
 			const elapsed = formatElapsed((job.completedAt ?? Date.now()) - job.startedAt);
 
 			if (job.status === "running") {
-				// Line 1: status, name, elapsed, usage (which includes turns)
-				let line1 = `⏳ ${job.name} (${elapsed})`;
+				// Line 1: status, name, tools bracket, elapsed, usage (which includes turns)
+				const toolsBracket = formatToolsBracket(job.tools);
+				let line1 = `⏳ ${job.name}${toolsBracket ? ` ${toolsBracket}` : ""} (${elapsed})`;
 				if (job.result) {
 					const usage = formatUsageStats(
 						job.result.usage,
@@ -99,7 +100,8 @@ export function renderWidgetContent(jobs: AsyncJob[], terminalWidth?: number): s
 					);
 				}
 
-				let line = `✓ ${job.name} (${elapsed})`;
+				const completedToolsBracket = formatToolsBracket(job.tools);
+				let line = `✓ ${job.name}${completedToolsBracket ? ` ${completedToolsBracket}` : ""} (${elapsed})`;
 				if (usageStr) line += ` ${usageStr}`;
 				line += ` "${summary}"`;
 				if (line.length > width) line = line.slice(0, width);
@@ -110,7 +112,8 @@ export function renderWidgetContent(jobs: AsyncJob[], terminalWidth?: number): s
 					errorText = job.result.errorMessage;
 				}
 				const truncated = truncateForWidget(errorText, width);
-				let line = `✗ ${job.name} (${elapsed}) ${truncated}`;
+				const failedToolsBracket = formatToolsBracket(job.tools);
+				let line = `✗ ${job.name}${failedToolsBracket ? ` ${failedToolsBracket}` : ""} (${elapsed}) ${truncated}`;
 				if (line.length > width) line = line.slice(0, width);
 				lines.push(line);
 			} else if (job.status === "cancelled") {

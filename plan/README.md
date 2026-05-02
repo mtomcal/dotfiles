@@ -48,11 +48,11 @@ Add a `tools?: string[]` field to `AsyncJob`, `SingleResult`, and `SerializedJob
 
 | # | Slice | File | Status | Model | Provider | Thinking | Review Model | Review Provider | Reviews | Dependency |
 |---|-------|------|--------|-------|----------|----------|--------------|-----------------|---------|-------------|
-| 1 | Data structures: add `tools` field | `slices/001-data-structures.md` | ⏳ not-started | minimax-m2.7 | ollama-cloud | medium | deepseek-v4-pro | opencode-go | test | — |
-| 2 | Formatting utilities | `slices/002-formatting-utilities.md` | ⏳ not-started | minimax-m2.7 | ollama-cloud | medium | deepseek-v4-pro | opencode-go | test | 1 |
-| 3 | Widget + renderers | `slices/003-widget-renderers.md` | ⏳ not-started | glm-5.1 | opencode-go | high | deepseek-v4-pro | opencode-go | test, quality | 1, 2 |
-| 4 | Index.ts: status, results, wait, run, fork | `slices/004-index-surfaces.md` | ⏳ not-started | glm-5.1 | opencode-go | high | deepseek-v4-pro | opencode-go | test, quality | 1, 2 |
-| 5 | Notifications exclusion + integrations | `slices/005-notification-exclusion-integration.md` | ⏳ not-started | minimax-m2.7 | ollama-cloud | medium | deepseek-v4-pro | opencode-go | test, quality, security | 3, 4 |
+| 1 | Data structures: add `tools` field | `slices/001-data-structures.md` | ✅ done | minimax-m2.7 | ollama-cloud | medium | deepseek-v4-pro | opencode-go | test | — |
+| 2 | Formatting utilities | `slices/002-formatting-utilities.md` | ✅ done | minimax-m2.7 | ollama-cloud | medium | deepseek-v4-pro | opencode-go | test | 1 |
+| 3 | Widget + renderers | `slices/003-widget-renderers.md` | ✅ done | glm-5.1 | opencode-go | high | deepseek-v4-pro | opencode-go | test, quality | 1, 2 |
+| 4 | Index.ts: status, results, wait, run, fork | `slices/004-index-surfaces.md` | ✅ done | glm-5.1 | opencode-go | high | deepseek-v4-pro | opencode-go | test, quality | 1, 2 |
+| 5 | Notifications exclusion + integrations | `slices/005-notification-exclusion-integration.md` | ✅ done | minimax-m2.7 | ollama-cloud | medium | deepseek-v4-pro | opencode-go | test, quality, security | 3, 4 |
 
 Status values: `not-started`, `blocked`, `in-progress`, `review`, `needs-fix`, `done`
 
@@ -81,15 +81,27 @@ Your job is to:
 
 You do NOT write code, edit files, or run tests.
 
-### Execution Loop
+#Review pass types: **test** = brief assertions pass, no vague/weak tests; **quality** = code structure, naming, consistency, adherence to spec; **security** = no new attack surface, input validation, data exposure. Each type is a **separate** review sub-agent call — do not combine them.
+
+## Pre-flight
+
+Before delegating any slice, confirm the baseline is clean:
+
+- [ ] `cd pi/extensions/subagent && npx vitest run` — all existing tests pass
+- [ ] Dev dependencies are installed
+- [ ] No unrelated changes in the working tree
+
+Run this as a `subagent_run` with `tools: "read,bash"` if needed. Do not proceed until the baseline is green.
+
+## Execution Loop
 
 1. Read this manifest. Identify slices whose dependencies are met and status is `not-started`.
 2. For serial slices: use `subagent_run` with the model, provider, and thinking level specified.
 3. Slices 1 and 2 can run in sequence (2 depends on 1). Slices 3 and 4 can potentially run in parallel after 2 completes. Slice 5 depends on 3 and 4.
-4. When an implementation sub-agent completes, **you must delegate a review sub-agent next.** This is not optional. Every slice must pass review before it can be marked `done`.
-5. Review sub-agent uses deepseek-v4-pro on opencode-go with tools `read,bash` (never `write,edit`).
-6. If reviewer writes ✅ PASS: update manifest status to `done`.
-7. If reviewer writes ❌ NEEDS-FIX: update manifest status to `needs-fix`, begin escalation.
+4. When an implementation sub-agent completes → update manifest status to `review`, then **delegate review sub-agents (one per review type)**. This is not optional. Every slice must pass review before it can be marked `done`.
+5. Review sub-agents use deepseek-v4-pro on opencode-go with `thinking: "high"` and tools `read,bash` (never `write,edit`). Each review type is a **separate** `subagent_run` call.
+6. After all review types pass with ✅ PASS → update manifest status to `done`.
+7. If any reviewer writes ❌ NEEDS-FIX → update manifest status to `needs-fix`, begin escalation.
 8. When all slices are `done`, run the verification sequence.
 
 ### Parallelization
@@ -100,7 +112,7 @@ You do NOT write code, edit files, or run tests.
 
 ### Review Policy
 
-**Review is mandatory. No slice may be marked `done` without a review sub-agent call.** Each slice gets the review passes specified in its Reviews column. Review blocks downstream slices that depend on it. You cannot skip review because the implementation "looked good" — review is a separate delegation step.
+**Review is mandatory. No slice may be marked `done` without a review sub-agent call.** Each review type in the Reviews column is a **separate** sub-agent call. Review blocks downstream slices that depend on it. You cannot skip review because the implementation "looked good" — review is a separate delegation step.
 
 ### Sub-agent Delegation Format
 
@@ -131,8 +143,9 @@ tools: "read,bash"
 3. **🔴 Using scout sub-agents.** Do not spawn "scout" or "research" sub-agents to explore code before delegating. The slice brief inlines all context. The implementation sub-agent reads the slice file and then reads/writes code. Scouting is the sub-agent's job, not yours.
 4. **Marking a slice done without review.** The status flow is `not-started → in-progress → review → done`. You cannot jump from `in-progress` to `done`.
 5. **Giving review sub-agents write/edit tools.** Reviewers read code and run tests. They never modify source files.
+6. **Combining review types into one call.** Each review type (test, quality, security) is a separate sub-agent call with a focused system prompt. Do not combine them.
 
-### Escalation Protocol
+## Escalation Protocol
 
 1. **Provider switch** — same model, different provider (e.g., ollama-cloud → openrouter)
 2. **Course correction** — append guidance to slice's Course Corrections section, re-delegate same model+provider
@@ -141,6 +154,19 @@ tools: "read,bash"
 5. **Orchestrator takeover** — you implement directly (last resort only)
 
 Never skip tiers. Try the cheap thing first.
+
+## Turn-Count Heuristics
+
+If a sub-agent exceeds these turn counts with no progress on the checklist, begin escalation:
+
+| Model tier | Caution (check progress) | Escalate (switch to stronger model) |
+|------------|--------------------------|---------------------------|
+| routine (minimax-m2.7) | 40 turns | 60 turns |
+| standard (minimax-m2.7) | 50 turns | 70 turns |
+| tricky (glm-5.1) | 50 turns | 80 turns |
+
+**Caution**: Read the slice file's Progress section. If checkboxes are being checked, let it ride. If no progress in 10 turns, course-correct.
+**Escalate**: Switch provider (tier 1). If still no progress after 15 more turns, course-correct (tier 2).
 
 ## Acceptance Criteria
 

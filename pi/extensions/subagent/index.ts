@@ -38,6 +38,7 @@ import {
 	type ResolvableFields,
 	buildSpawnArgs,
 	deriveName,
+	parseTools,
 	resolveConfig,
 	BARE_TASK_INJECTION,
 } from "./subagent-config.js";
@@ -47,6 +48,8 @@ import {
 	aggregateUsage,
 	COLLAPSED_ITEM_COUNT,
 	formatToolCall,
+	formatToolsBracket,
+	formatToolsLabel,
 	formatUsageStats,
 	getDisplayItems,
 	getFinalOutput,
@@ -188,6 +191,7 @@ function spawnSubagentProcess(
 		provider: config.provider,
 		model: config.model,
 		thinking: config.thinking,
+		tools: config.tools,
 		step,
 	};
 
@@ -392,6 +396,7 @@ function serializeJobForDetails(job: AsyncJob) {
 		status: job.status,
 		startedAt: job.startedAt,
 		completedAt: job.completedAt,
+		tools: job.tools ?? job.result?.tools,
 		result: job.result
 			? { name: job.result.name, task: job.result.task, exitCode: job.result.exitCode, usage: job.result.usage, errorMessage: job.result.errorMessage }
 			: null,
@@ -721,7 +726,9 @@ export default function (pi: ExtensionAPI) {
 				const summaries = results.map((r) => {
 					const output = getFinalOutput(r.messages);
 					const truncated = output.length > 500 ? output.slice(0, 500) + "\n\n*(...truncated, full output in details)*" : output;
-					return `## ${r.name} (${r.exitCode === 0 ? "completed" : "failed"})\n\n${truncated || "(no output)"}`;
+					const toolsBracket = formatToolsBracket(r.tools);
+					const bracketStr = toolsBracket ? ` ${toolsBracket}` : "";
+					return `## ${r.name}${bracketStr} (${r.exitCode === 0 ? "completed" : "failed"})\n\n${truncated || "(no output)"}`;
 				});
 				return { content: [{ type: "text", text: `Parallel: ${successCount}/${results.length} succeeded\n\n${summaries.join("\n\n---\n\n")}` }], details: makeDetails("parallel")(results) };
 			}
@@ -759,6 +766,8 @@ export default function (pi: ExtensionAPI) {
 					if (step.model) meta.push(step.model);
 					if (step.thinking && step.thinking !== "medium") meta.push(`think:${step.thinking}`);
 					if (meta.length > 0) text += theme.fg("muted", ` (${meta.join(", ")})`);
+					const chainToolsBracket = step.tools ? formatToolsBracket(parseTools(step.tools)) : "";
+					if (chainToolsBracket) text += theme.fg("dim", ` ${chainToolsBracket}`);
 					text += theme.fg("dim", ` ${cleanTask.length > 40 ? cleanTask.slice(0, 40) + "..." : cleanTask}`);
 				}
 				if (args.chain.length > 3) text += `\n  ${theme.fg("muted", `... +${args.chain.length - 3} more`)}`;
@@ -774,6 +783,8 @@ export default function (pi: ExtensionAPI) {
 					if (t.model) meta.push(t.model);
 					if (t.thinking && t.thinking !== "medium") meta.push(`think:${t.thinking}`);
 					if (meta.length > 0) text += theme.fg("muted", ` (${meta.join(", ")})`);
+					const taskToolsBracket = t.tools ? formatToolsBracket(parseTools(t.tools)) : "";
+					if (taskToolsBracket) text += theme.fg("dim", ` ${taskToolsBracket}`);
 					text += theme.fg("dim", ` ${t.task.length > 40 ? t.task.slice(0, 40) + "..." : t.task}`);
 				}
 				if (args.tasks.length > 3) text += `\n  ${theme.fg("muted", `... +${args.tasks.length - 3} more`)}`;
@@ -789,6 +800,8 @@ export default function (pi: ExtensionAPI) {
 				if (args.thinking && args.thinking !== "medium") meta.push(`think:${args.thinking}`);
 				if (meta.length > 0) text += theme.fg("muted", ` (${meta.join(", ")})`);
 			}
+			const singleToolsBracket = args.tools ? formatToolsBracket(parseTools(args.tools)) : "";
+			if (singleToolsBracket) text += theme.fg("dim", ` ${singleToolsBracket}`);
 			text += `\n  ${theme.fg("dim", preview)}`;
 			return new Text(text, 0, 0);
 		},
@@ -866,7 +879,7 @@ export default function (pi: ExtensionAPI) {
 				return { content: [{ type: "text", text: `Maximum ${MAX_RUNNING_JOBS} concurrent async jobs (${jobMgr.runningCount()} running). Cancel a job or wait for one to complete.` }], details: { jobs: [] }, isError: true };
 			}
 
-			const spawnedJobs: Array<{ id: string; name: string; task: string; status: string; provider?: string; thinking?: string }> = [];
+			const spawnedJobs: Array<{ id: string; name: string; task: string; status: string; provider?: string; thinking?: string; tools?: string[] }> = [];
 
 			for (const t of tasks) {
 				// Always create job entry first so it counts against the cap.
@@ -876,9 +889,10 @@ export default function (pi: ExtensionAPI) {
 					// Cap hit mid-batch
 					return { content: [{ type: "text", text: `Maximum ${MAX_RUNNING_JOBS} concurrent async jobs (${jobMgr.runningCount()} running). Cancel a job or wait for one to complete.` }], details: { jobs: spawnedJobs }, isError: true };
 				}
+				job.tools = t.config.tools;
 
 				const taskPreview = t.task.length > 60 ? `${t.task.slice(0, 60)}...` : t.task;
-				spawnedJobs.push({ id: job.id, name: t.config.name, task: taskPreview, status: "running", provider: t.config.provider, thinking: t.config.thinking as string | undefined });
+				spawnedJobs.push({ id: job.id, name: t.config.name, task: taskPreview, status: "running", provider: t.config.provider, thinking: t.config.thinking as string | undefined, tools: t.config.tools });
 
 				const { proc, resultPromise } = spawnSubagentProcess(
 					t.config, t.task, t.cwd, ctx.cwd, undefined, undefined,
@@ -908,7 +922,11 @@ export default function (pi: ExtensionAPI) {
 			persist();
 
 			const running = jobMgr.runningCount();
-			const jobLines = spawnedJobs.map((j) => `- \`${j.id}\`: **${j.name}** — ${j.task} (${j.status})`).join("\n");
+			const jobLines = spawnedJobs.map((j) => {
+				const bracket = j.tools ? formatToolsBracket(j.tools) : "";
+				const bracketStr = bracket ? ` ${bracket}` : "";
+				return `- \`${j.id}\`: **${j.name}**${bracketStr} — ${j.task} (${j.status})`;
+			}).join("\n");
 			return {
 				content: [{ type: "text", text: `Forked ${spawnedJobs.length} job${spawnedJobs.length > 1 ? "s" : ""} (${running}/${MAX_RUNNING_JOBS} running)\n\n${jobLines}` }],
 				details: { jobs: spawnedJobs },
@@ -920,14 +938,18 @@ export default function (pi: ExtensionAPI) {
 				let text = theme.fg("toolTitle", theme.bold("subagent_fork ")) + theme.fg("accent", `${args.tasks.length} jobs`);
 				for (const t of args.tasks.slice(0, 3)) {
 					const displayName = t.name || deriveName(t.task);
-					text += `\n  ${theme.fg("accent", displayName)}${theme.fg("dim", ` ${t.task.length > 40 ? t.task.slice(0, 40) + "..." : t.task}`)}`;
+					const forkToolsBracket = t.tools ? formatToolsBracket(parseTools(t.tools)) : "";
+					const bracketStr = forkToolsBracket ? `${forkToolsBracket} ` : "";
+					text += `\n  ${theme.fg("accent", displayName)} ${theme.fg("dim", `${bracketStr}${t.task.length > 40 ? t.task.slice(0, 40) + "..." : t.task}`)}`;
 				}
 				if (args.tasks.length > 3) text += `\n  ${theme.fg("muted", `... +${args.tasks.length - 3} more`)}`;
 				return new Text(text, 0, 0);
 			}
 			const displayName = args.name || (args.task ? deriveName(args.task) : "...");
 			const preview = args.task ? (args.task.length > 60 ? `${args.task.slice(0, 60)}...` : args.task) : "...";
-			return new Text(theme.fg("toolTitle", theme.bold("subagent_fork ")) + theme.fg("accent", displayName) + theme.fg("dim", ` ${preview}`), 0, 0);
+			const forkSingleBracket = args.tools ? formatToolsBracket(parseTools(args.tools)) : "";
+			const bracketStr = forkSingleBracket ? ` ${forkSingleBracket}` : "";
+			return new Text(theme.fg("toolTitle", theme.bold("subagent_fork ")) + theme.fg("accent", displayName) + theme.fg("dim", `${bracketStr} ${preview}`), 0, 0);
 		},
 
 		renderResult(result, _options, theme, _context) {
@@ -962,7 +984,10 @@ export default function (pi: ExtensionAPI) {
 				const elapsedMs = (job.completedAt ?? now) - job.startedAt;
 				const elapsed = elapsedMs < 1000 ? `${elapsedMs}ms` : elapsedMs < 60000 ? `${Math.round(elapsedMs / 1000)}s` : `${Math.floor(elapsedMs / 60000)}m ${Math.round((elapsedMs % 60000) / 1000)}s`;
 
-				let text = `**${icon} ${job.name}** — ${job.status}\n\n**Job ID:** \`${job.id}\`\n**Task:** ${job.task}\n**Elapsed:** ${elapsed}`;
+				let text = `**${icon} ${job.name}** — ${job.status}\n\n**Job ID:** \`${job.id}\`\n**Task:** ${job.task}`;
+				const toolsLabel = formatToolsLabel(job.tools ?? job.result?.tools);
+				if (toolsLabel) text += `\n${toolsLabel}`;
+				text += `\n**Elapsed:** ${elapsed}`;
 				if (job.status === "running" && job.result) {
 					// Progress section for running jobs with partial result data
 					const progressItems = getDisplayItems(job.result.messages);
@@ -1040,6 +1065,8 @@ export default function (pi: ExtensionAPI) {
 			const usage = formatUsageStats(job.result.usage, job.result.model, job.result.provider, job.result.thinking);
 
 			let text = `**Results for \`${params.jobId}\` (${job.name} — ${job.status})**\n\n**Task:** ${job.task}\n`;
+			const toolsLabel = formatToolsLabel(job.result.tools ?? job.tools);
+			if (toolsLabel) text += `${toolsLabel}\n`;
 			if (job.result.errorMessage) text += `\n**Error:** ${job.result.errorMessage}\n`;
 			if (displayItems.length > 0) {
 				text += "\n**Messages:**\n\n";
@@ -1117,7 +1144,7 @@ export default function (pi: ExtensionAPI) {
 					const elapsedMs = now - current.startedAt;
 					const elapsed = elapsedMs < 1000 ? `${elapsedMs}ms` : elapsedMs < 60000 ? `${Math.round(elapsedMs / 1000)}s` : `${Math.floor(elapsedMs / 60000)}m ${Math.round((elapsedMs % 60000) / 1000)}`;
 					const usageLine = formatUsageStats(current.result.usage, current.result.model, current.result.provider, current.result.thinking);
-					let progressText = `\u23F3 ${current.name} (${elapsed})`;
+					let progressText = `\u23F3 ${current.name}${formatToolsBracket(current.tools ?? current.result?.tools)} (${elapsed})`;
 					if (usageLine) progressText += ` ${usageLine}`;
 					if (current.result.usage.turns) progressText += ` ${current.result.usage.turns} turns`;
 					let detailLine = "";

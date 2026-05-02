@@ -37,6 +37,12 @@ To prevent these failures, your plan must include:
 
 The [REFERENCE.md](REFERENCE.md) template embeds all of these guardrails. Use it as-is — don't strip the role assertion, status flow, or anti-patterns when writing your plan.
 
+## Slice Sizing
+
+A slice's Green section should have **no more than ~6 distinct implementation points** (individual "change X in file Y" items). If a slice has more than 6, split it. Oversized slices burn excessive sub-agent turns, create merge conflicts with parallel slices, and make review harder.
+
+When writing the Green section, count the bullet points. If you see 8+ "change X in file Y" items, find a seam and split into two slices.
+
 ## Process
 
 1. **Identify context engine** — spec-driven, research-driven, decision-driven, or hybrid (same taxonomy as `create-plan`)

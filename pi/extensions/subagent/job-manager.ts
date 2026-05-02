@@ -30,6 +30,7 @@ export interface SingleResult {
 	provider?: string;
 	model?: string;
 	thinking?: ThinkingLevel;
+	tools?: string[];
 	stopReason?: string;
 	errorMessage?: string;
 	step?: number;
@@ -46,6 +47,7 @@ export interface AsyncJob {
 	result: SingleResult | null;
 	startedAt: number;
 	completedAt: number | null;
+	tools?: string[];
 }
 
 export interface SerializedJob {
@@ -56,6 +58,7 @@ export interface SerializedJob {
 	result: SingleResult | null;
 	startedAt: number;
 	completedAt: number | null;
+	tools?: string[];
 }
 
 export const MAX_RUNNING_JOBS = 8;
@@ -207,6 +210,7 @@ export class JobManager {
 			result: j.result,
 			startedAt: j.startedAt,
 			completedAt: j.completedAt,
+			tools: j.tools,
 		}));
 	}
 
@@ -229,6 +233,7 @@ export class JobManager {
 				result,
 				startedAt: d.startedAt,
 				completedAt: d.completedAt,
+				tools: d.tools,
 			};
 			this.jobs.set(d.id, job);
 		}

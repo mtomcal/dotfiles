@@ -63,13 +63,13 @@ Constraint: These are pure functions with no side effects. No rendering surface 
 
 ## Progress
 
-- [ ] **RED** — Create test file `tests/tools-formatting.test.ts`, write all test assertions
-- [ ] **RED** — Run `npx vitest run tests/tools-formatting.test.ts`, observe failures
-- [ ] **GREEN** — Add `SUBAGENT_TOOLS_BRACKET_MAX_CHARS`, `formatToolsBracket`, `formatToolsLabel` to `renderers.ts`
-- [ ] **GREEN** — Run `npx vitest run tests/tools-formatting.test.ts`, observe all pass
-- [ ] **GREEN** — Run `npx vitest run`, observe existing tests still pass
-- [ ] **REFACTOR** — Verify naming consistency with existing exports
-- [ ] **REFACTOR** — Run `npx vitest run`, confirm still green
+- [x] **RED** — Create test file `tests/tools-formatting.test.ts`, write all test assertions
+- [x] **RED** — Run `npx vitest run tests/tools-formatting.test.ts`, observe failures
+- [x] **GREEN** — Add `SUBAGENT_TOOLS_BRACKET_MAX_CHARS`, `formatToolsBracket`, `formatToolsLabel` to `renderers.ts`
+- [x] **GREEN** — Run `npx vitest run tests/tools-formatting.test.ts`, observe all pass
+- [x] **GREEN** — Run `npx vitest run`, observe existing tests still pass
+- [x] **REFACTOR** — Verify naming consistency with existing exports
+- [x] **REFACTOR** — Run `npx vitest run`, confirm still green
 
 ## Review
 
@@ -78,3 +78,36 @@ Constraint: These are pure functions with no side effects. No rendering surface 
 ## Course Corrections
 
 [Orchestrator appends here when re-delegating — what went wrong, what to try differently]
+✅ **PASS** — Code Review (2026-05-02)
+
+**Test execution**:
+- `npx vitest run tests/tools-formatting.test.ts`: **13/13 passed** (776ms)
+- `npx vitest run` full suite: **365/365 passed across 25 files** (7.45s)
+
+**Verification against slice brief**:
+
+| # | Assertion | Result |
+|---|-----------|--------|
+| 1 | `formatToolsBracket(["read","grep"])` → `"[read,grep]"` | ✅ |
+| 2 | `formatToolsBracket(undefined)` → `""` | ✅ |
+| 3 | `formatToolsBracket([])` → `""` | ✅ |
+| 4 | 7-tool truncation → `"[read,write,bash,edit,grep +2]"` (≤30 chars) | ✅ |
+| 5 | `formatToolsBracket(["bash"])` → `"[bash]"` | ✅ |
+| 6 | short names stay ≤30 chars | ✅ |
+| 7 | `formatToolsBracket(["subagent_run"])` → `"[subagent_run]"` | ✅ |
+| 8 | long names trigger truncation with `+N` suffix | ✅ |
+| 9 | `formatToolsLabel(["read","grep"])` → `"**Tools:** read, grep"` | ✅ |
+| 10 | `formatToolsLabel(undefined)` → `""` | ✅ |
+| 11 | `formatToolsLabel([])` → `""` | ✅ |
+| 12 | `formatToolsLabel(["read","write","bash"])` → no truncation | ✅ |
+| 13 | `SUBAGENT_TOOLS_BRACKET_MAX_CHARS` = 30 | ✅ |
+
+**Implementation quality**:
+- Pure functions, no side effects — conforms to constraint
+- Constants at module scope, exported — conforms to constraint
+- Naming consistent with existing `formatUsageStats` pattern — REFACTOR check passes
+- JSDoc references AIAGT rules 21–23 — good traceability
+- No rendering surface changes — conforms to constraint
+- Truncation algorithm is greedy with backtrack, matching the spec's expected output for the 7-tool case
+
+**Verdict**: ✅ PASS — implementation is complete, correct, and consistent with the slice brief. All tests pass in isolation and alongside the full suite.

@@ -108,21 +108,47 @@ Constraint: Do NOT change notification functions (`emitCompletionNotification`, 
 
 ## Progress
 
-- [ ] **RED** — Create test file `tests/tools-index-surfaces.test.ts`, write all test assertions
-- [ ] **RED** — Run `npx vitest run tests/tools-index-surfaces.test.ts`, observe failures
-- [ ] **GREEN** — Set `tools: config.tools` in `spawnSubagentProcess()` `currentResult`
-- [ ] **GREEN** — Set `job.tools = config.tools` after `jobMgr.createJob()` in fork
-- [ ] **GREEN** — Add `**Tools:**` line in `subagent_status` and `subagent_results` outputs
-- [ ] **GREEN** — Add bracket in `subagent_wait` progress line
-- [ ] **GREEN** — Add bracket in `subagent_run` parallel/chain headings
-- [ ] **GREEN** — Add bracket in `subagent_fork` response lines and renderCall
-- [ ] **GREEN** — Update `renderCall` for `subagent_run` and `subagent_fork` to show tools bracket
-- [ ] **GREEN** — Run `npx vitest run tests/tools-index-surfaces.test.ts`, observe all pass
-- [ ] **GREEN** — Run `npx vitest run`, observe existing tests still pass
-- [ ] **REFACTOR** — Verify consistent tools resolution via `parseTools` in renderCall
-- [ ] **REFACTOR** — Run `npx vitest run`, confirm still green
+- [x] **RED** — Create test file `tests/tools-index-surfaces.test.ts`, write all test assertions
+- [x] **RED** — Run `npx vitest run tests/tools-index-surfaces.test.ts`, observe failures
+- [x] **GREEN** — Set `tools: config.tools` in `spawnSubagentProcess()` `currentResult`
+- [x] **GREEN** — Set `job.tools = config.tools` after `jobMgr.createJob()` in fork
+- [x] **GREEN** — Add `**Tools:**` line in `subagent_status` and `subagent_results` outputs
+- [x] **GREEN** — Add bracket in `subagent_wait` progress line
+- [x] **GREEN** — Add bracket in `subagent_run` parallel/chain headings
+- [x] **GREEN** — Add bracket in `subagent_fork` response lines and renderCall
+- [x] **GREEN** — Update `renderCall` for `subagent_run` and `subagent_fork` to show tools bracket
+- [x] **GREEN** — Run `npx vitest run tests/tools-index-surfaces.test.ts`, observe all pass
+- [x] **GREEN** — Run `npx vitest run`, observe existing tests still pass
+- [x] **REFACTOR** — Verify consistent tools resolution via `parseTools` in renderCall
+- [x] **REFACTOR** — Run `npx vitest run`, confirm still green
 
 ## Review
+
+✅ **PASS** — Slice 4 review complete. All implementation items verified against the slice brief:
+
+
+- **spawnSubagentProcess**: `tools: config.tools` set on `currentResult` (line ~136)
+
+- **AsyncJob.tools**: `job.tools = t.config.tools` set after `createJob()` in fork execute (line ~375)
+
+- **subagent_status**: `formatToolsLabel(job.tools ?? job.result?.tools)` line after Task (line ~616)
+
+- **subagent_results**: `formatToolsLabel(job.result.tools ?? job.tools)` line after Task (line ~666)
+
+- **subagent_wait**: `formatToolsBracket(current.tools ?? current.result?.tools)` on progress line (line ~737)
+
+- **subagent_run parallel**: `formatToolsBracket(r.tools)` in `## name` headings (line ~478)
+
+- **subagent_fork**: `tools` in spawnedJobs detail (line ~373) and `formatToolsBracket(j.tools)` in jobLines (line ~389)
+
+- **renderCall**: `parseTools(args.tools)` used consistently in subagent_run single/parallel/chain and subagent_fork
+
+- **serializeJobForDetails**: `tools: job.tools ?? job.result?.tools` included (line ~298)
+
+- **Notifications**: unchanged (constraint respected — slice 5 handles those)
+
+
+**Test results**: 30/30 slice tests pass, 411/411 full suite passes (27 test files). Zero regressions.
 
 [Review agents write their verdicts here as they complete each review pass]
 

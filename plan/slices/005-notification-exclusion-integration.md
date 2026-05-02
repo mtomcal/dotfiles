@@ -81,18 +81,18 @@ Constraint: This slice should primarily ADD tests, not change implementation. If
 
 ## Progress
 
-- [ ] **RED** — Create `tests/tools-notification-exclusion.test.ts` with notification exclusion assertions
-- [ ] **RED** — Create `tests/tools-integration.test.ts` with TS-AIAGT-030 through TS-AIAGT-041 scenarios
-- [ ] **RED** — Run `npx vitest run tests/tools-notification-exclusion.test.ts tests/tools-integration.test.ts`, observe failures
-- [ ] **GREEN** — Verify no tools in completion/cancellation notifications
-- [ ] **GREEN** — Verify no tools in widget line 2 or header
-- [ ] **GREEN** — Verify `job.tools` is set in fork flow
-- [ ] **GREEN** — Add `tools` to spawnedJobs detail in fork response
-- [ ] **GREEN** — Run `npx vitest run tests/tools-notification-exclusion.test.ts`, observe all pass
-- [ ] **GREEN** — Run `npx vitest run tests/tools-integration.test.ts`, observe all pass
-- [ ] **GREEN** — Run `npx vitest run`, observe ALL tests pass (existing + new)
-- [ ] **REFACTOR** — Remove redundant test assertions
-- [ ] **REFACTOR** — Run `npx vitest run`, confirm still green
+- [x] **RED** — Create `tests/tools-notification-exclusion.test.ts` with notification exclusion assertions
+- [x] **RED** — Create `tests/tools-integration.test.ts` with TS-AIAGT-030 through TS-AIAGT-041 scenarios
+- [x] **RED** — Run `npx vitest run tests/tools-notification-exclusion.test.ts tests/tools-integration.test.ts`, observe failures
+- [x] **GREEN** — Verify no tools in completion/cancellation notifications
+- [x] **GREEN** — Verify no tools in widget line 2 or header
+- [x] **GREEN** — Verify `job.tools` is set in fork flow
+- [x] **GREEN** — Add `tools` to spawnedJobs detail in fork response
+- [x] **GREEN** — Run `npx vitest run tests/tools-notification-exclusion.test.ts`, observe all pass
+- [x] **GREEN** — Run `npx vitest run tests/tools-integration.test.ts`, observe all pass
+- [x] **GREEN** — Run `npx vitest run`, observe ALL tests pass (existing + new)
+- [x] **REFACTOR** — Remove redundant test assertions
+- [x] **REFACTOR** — Run `npx vitest run`, confirm still green
 
 ## Review
 
@@ -101,3 +101,38 @@ Constraint: This slice should primarily ADD tests, not change implementation. If
 ## Course Corrections
 
 [Orchestrator appends here when re-delegating — what went wrong, what to try differently]
+### Review Pass: test ✅
+
+- `npx vitest run tests/tools-notification-exclusion.test.ts tests/tools-integration.test.ts` → **48 tests passed** (2 files, 0 failures)
+- `npx vitest run` (full suite) → **459 tests passed** (29 files, 0 failures)
+- All 12 spec test scenarios (TS-AIAGT-030 through TS-AIAGT-041) are covered and passing
+- All acceptance criteria from the manifest verified via dedicated tests:
+  - AC13: Completion/cancellation notifications do NOT show tools ✅
+  - AC14: Widget header line and line 2 do NOT show tools ✅
+  - AC15: Deserialization treats missing `tools` as `undefined` ✅
+  - AC16: All existing tests continue to pass ✅
+
+### Review Pass: quality ✅
+
+- **Rule 25a (completion exclusion)**: `emitCompletionNotification()` (index.ts:302-341) constructs notification with `**Job:**`, `**Task:**`, summary, usage — NO `**Tools:**` line. Confirmed by 4 dedicated tests.
+- **Rule 25b (cancellation exclusion)**: `emitCancellationNotification()` (index.ts:343-386) — NO `**Tools:**` line. Confirmed by 4 dedicated tests.
+- **Rule 25c (widget line 2 exclusion)**: widget.ts:79-89 renders snippet + last tool call, NO tools bracket. Confirmed by TS-AIAGT-034 tests.
+- **Rule 25d (widget header exclusion)**: widget.ts:44 renders just `⏳ Subagents: N running, M done`, NO tools bracket. Confirmed.
+- **Rule 27 (fork tools plumbing)**: `job.tools = t.config.tools` at index.ts:889. `spawnedJobs.push({..., tools: t.config.tools})` at index.ts:895. Confirmed by dedicated tests.
+- **Rule 26 (backward compat)**: Deserialization treats missing tools as `undefined`. Confirmed by TS-AIAGT-041 tests.
+- Minimal implementation changes — primarily tests verifying exclusion surfaces already implemented in slices 3-4.
+- Code is clean: clear separation between notification functions and rendering surfaces. No duplication of exclusion logic.
+
+### Review Pass: security ✅
+
+- No sensitive data exposure: notification and widget content passes through `truncateForWidget` and `extractSummary` — output is sanitized/summarized
+- Tools display is purely cosmetic — no privilege escalation, no new attack surface
+- No new dependencies, no file system access changes
+- No new network calls or IPC introduced
+- `emitCompletionNotification` and `emitCancellationNotification` are best-effort (wrapped in try/catch at call sites) — notification failure does not crash the job pipeline
+
+---
+
+## ✅ PASS — Slice 5 is complete
+
+All three review passes (test, quality, security) pass. The implementation correctly verifies that completion and cancellation notifications do **NOT** display tools (Rules 25a, 25b), that widget line 2 and header do **NOT** display tools (Rules 25c, 25d), that `job.tools` is correctly plumbed in the fork flow (Rule 27), and that deserialization is backward-compatible (Rule 26). Full test suite: 459/459 passing.

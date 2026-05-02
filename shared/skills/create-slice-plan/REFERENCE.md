@@ -64,6 +64,16 @@ WRONG:  implement slice → mark done → next slice
 RIGHT:  implement slice → mark review → delegate review → reviewer passes → mark done → next slice
 ```
 
+## Pre-flight
+
+Before delegating any slice, confirm the baseline is clean:
+
+- [ ] `cd [project-dir] && [test-command]` — all existing tests pass
+- [ ] Dev dependencies are installed
+- [ ] No unrelated changes in the working tree
+
+Run this as a `subagent_run` with `tools: "read,bash"` if needed. Do not proceed until the baseline is green.
+
 ## Overview
 [One paragraph: what this plan implements and why]
 
@@ -95,6 +105,8 @@ Status values: `not-started`, `blocked`, `in-progress`, `review`, `needs-fix`, `
 
 The **File** column is mandatory. Every sub-agent task must reference the slice file path.
 
+Review pass types: **test** = brief assertions pass, no vague/weak tests; **quality** = code structure, naming, consistency, adherence to spec; **security** = no new attack surface, input validation, data exposure. Each type is a **separate** review sub-agent call — do not combine them.
+
 ## Execution Loop
 
 Repeat until all slices are `done`:
@@ -115,31 +127,40 @@ Repeat until all slices are `done`:
    ```
    After the sub-agent completes → update manifest status to `review`.
 
-3. **Delegate review.** **This step is mandatory. It is not optional.** For slices with status `review`, call `subagent_run`:
+3. **Delegate review.** **This step is mandatory. It is not optional.** Each review type is a separate sub-agent call. For a slice with `test, quality` reviews, you make two calls:
    ```
-   systemPrompt: "You are a code reviewer. Evaluate the implementation against the slice brief. Run the tests. Write your verdict in the Review section of the slice file."
-   task: "Review slice N at plan/slices/NNN-[name].md. Read the implementation files referenced in the slice. Run all tests. Check each Review pass type listed in the manifest (test, quality, security). Write your verdict with ✅ PASS or ❌ NEEDS-FIX in the Review section."
+   # test review
+   systemPrompt: "You are a test reviewer. Verify that the brief's test assertions pass and there are no vague or weak tests."
+   task: "Review slice N at plan/slices/NNN-[name].md. Run the test suite. Verify each test assertion from the RED section passes. Check for vague assertions that would pass even if the implementation is wrong. Write your verdict with ✅ PASS or ❌ NEEDS-FIX in the Review section."
+   model: [from manifest Review Model column]
+   provider: [from manifest Review Provider column]
+   thinking: "high"
+   tools: "read,bash"
+
+   # quality review (separate call)
+   systemPrompt: "You are a code quality reviewer. Check code structure, naming, consistency, and adherence to the spec."
+   task: "Review slice N at plan/slices/NNN-[name].md. Evaluate the implementation for code quality: naming, structure, coupling, adherence to the spec constraints. Write your verdict with ✅ PASS or ❌ NEEDS-FIX in the Review section."
    model: [from manifest Review Model column]
    provider: [from manifest Review Provider column]
    thinking: "high"
    tools: "read,bash"
    ```
    Review sub-agents must NOT have `write` or `edit` tools.
-   After review completes → read the Review section:
-   - ✅ PASS → update manifest status to `done`
-   - ❌ NEEDS-FIX → update manifest status to `needs-fix`, begin escalation
+   After all review types pass → update manifest status to `done`.
+   If any review type returns ❌ NEEDS-FIX → update manifest status to `needs-fix`, begin escalation.
 
-4. **Process needs-fix.** Append a course correction to the slice file, re-delegate implementation, then re-review.
+4. **Process needs-fix.** Append a course correction to the slice file, re-delegate implementation, then re-review all types.
 
 5. **When all slices are `done`**, run the verification sequence from the Verification section.
 
 ## Anti-Patterns — DO NOT DO THESE
 
 1. **🔴 Implementing code yourself.** You are an orchestrator. You delegate. You never write code, edit files, or run tests. If you're about to write code — delegate a sub-agent instead.
-2. **🔴 Skipping review.** Every slice MUST go through a review sub-agent before `done`. You cannot mark a slice `done` after implementation without a reviewer's ✅ PASS verdict. Review is a separate delegation step with a different model and different tools.
+2. **🔴 Skipping review.** Every slice MUST go through a review sub-agent before `done`. You cannot mark a slice `done` after implementation without a reviewer's ✅ PASS verdict. Each review type is a **separate** sub-agent call.
 3. **🔴 Using scout sub-agents.** Do not spawn "scout" or "research" sub-agents to explore code before delegating. The slice brief inlines all context. The implementation sub-agent reads the slice file and then reads/writes code. Scouting is the sub-agent's job, not yours.
 4. **Marking a slice done without review.** The status flow is `not-started → in-progress → review → done`. You cannot jump from `in-progress` to `done`.
 5. **Giving review sub-agents write/edit tools.** Reviewers read code and run tests. They never modify source files.
+6. **Combining review types into one call.** Each review type (test, quality, security) is a separate sub-agent call with a focused system prompt. Do not combine them.
 
 ## Escalation Protocol
 
@@ -151,8 +172,21 @@ Repeat until all slices are `done`:
 
 Never skip tiers. Try the cheap thing first.
 
+## Turn-Count Heuristics
+
+If a sub-agent exceeds these turn counts with no progress on the checklist, begin escalation:
+
+| Model tier | Caution (check progress) | Escalate (switch to stronger model) |
+|------------|--------------------------|---------------------------|
+| routine (minimax-m2.7) | 40 turns | 60 turns |
+| standard (minimax-m2.7) | 50 turns | 70 turns |
+| tricky (glm-5.1) | 50 turns | 80 turns |
+
+**Caution**: Read the slice file's Progress section. If checkboxes are being checked, let it ride. If no progress in 10 turns, course-correct.
+**Escalate**: Switch provider (tier 1). If still no progress after 15 more turns, course-correct (tier 2).
+
 ## Orchestration Notes
-[Any plan-specific notes about which slices can run in parallel, risk tier assignments, budget constraints, provider preferences]
+[Any plan-specific notes about which slices can run in parallel, risk tier assignments, budget constraints, provider preferences, shared-file warnings]
 
 ## Acceptance Criteria
 [Numbered list of testable conditions]
@@ -191,14 +225,49 @@ Each slice file is self-contained. A sub-agent on a weak model should open this 
 **Current code state**: [Only what this slice touches — what's already correct, what's out of alignment]
 **Dependency**: [Which slices must be done first, or "none"]
 
+## Files
+
+List every file this slice touches, with full paths from project root and what action you'll take:
+
+- Modify: `path/to/existing-file.ts` — [what you'll change: e.g., "add tools field to interface"]
+- Create: `path/to/new-file.test.ts` — [what you'll create: e.g., "test file for formatToolsBracket"]
+- Read: `path/to/reference-file.ts` — [why you need it: e.g., "reference for SubagentConfig.tools type"]
+
+If this slice shares a file with another slice, add a ⚠️ warning:
+
+- Modify: `path/to/shared-file.ts` ⚠️ **Shared with Slice M** (different functions, low merge risk) — or — ⚠️ **Shared with Slice M** (overlapping edits, sequence this slice after M)
+
+## Green — Scope
+
+**Implementation points** (target: ≤6 per slice; if more, consider splitting):
+
+1. [Change X in file Y]
+2. [Change X in file Y]
+3. [Change X in file Y]
+4. [Change X in file Y]
+5. [Change X in file Y]
+6. [Change X in file Y]
+
+If you find yourself writing 8+ implementation points, split this slice in two.
+
 ## Red — Write Tests First
 
 Create the test file and write assertions for the behavior this slice requires. Do **not** create or modify any implementation source files at this stage.
 
-- Test file: `[path/to/test.file]`
+Expected: **~[min]–[max] tests** (range allows ±2 flexibility)
+
+- Test file: `path/to/test.file`
 - What the test proves: [specific behavior]
 - Assertion strategy: [deterministic / pure helper / state check — not snapshots]
 - Existing tests to rewrite: [any tests endorsing wrong behavior, or "none"]
+
+For non-trivial logic (formatting, parsing, truncation), provide **3–4 input/output examples** in a table so the implementer can verify their algorithm:
+
+| Input | Expected output | Why |
+|-------|----------------|-----|
+| [input] | [output] | [edge case this covers] |
+| [input] | [output] | [edge case this covers] |
+| [input] | [output] | [edge case this covers] |
 
 Run the test suite. You must see the test fail. If the test passes, it's not a red test.
 
@@ -208,7 +277,7 @@ Run the test suite. You must see the test fail. If the test passes, it's not a r
 
 Now create or modify implementation source files to make the failing test pass. Write the smallest change that turns red to green.
 
-- Source file: `[path/to/source.file]` (create if it doesn't exist yet)
+- Source file: `path/to/source.file` (create if it doesn't exist yet)
 - What to change: [specific function, class, or behavior]
 - Constraint: [minimal change — one sentence about what the green step must NOT do]
 - Decisions/spec delta this satisfies: [Q3 / spec item 2]
@@ -220,9 +289,9 @@ Now create or modify implementation source files to make the failing test pass. 
 
 ## Progress
 
-- [ ] **RED** — Create test file `[path]`, write tests for [behavior]
+- [ ] **RED** — Create test file `path`, write tests for [behavior]
 - [ ] **RED** — Run `[test command]`, observe failure for [test names]
-- [ ] **GREEN** — Implement [specific change] in `[source file]`
+- [ ] **GREEN** — Implement [specific change] in `source file`
 - [ ] **GREEN** — Run `[test command]`, observe pass for [test names]
 - [ ] **REFACTOR** — [refactor action, or "none needed"]
 - [ ] **REFACTOR** — Run `[test command]`, confirm still green
@@ -245,12 +314,20 @@ When writing a slice plan, verify these before finalizing:
 - [ ] README contains the role assertion ("YOU ARE AN ORCHESTRATOR — YOU DO NOT IMPLEMENT CODE")
 - [ ] README contains the mandatory status flow diagram with hard gates
 - [ ] README contains the anti-patterns section (especially: don't implement, don't skip review, don't use scouts)
-- [ ] README contains the execution loop with explicit review delegation step
-- [ ] README contains the sub-agent delegation format for both implementation and review
+- [ ] README contains the execution loop with explicit review delegation step (separate per review type)
+- [ ] README contains review pass type definitions (test, quality, security)
+- [ ] README contains pre-flight checks
+- [ ] README contains turn-count escalation heuristics
 - [ ] Manifest table has a File column with slice file paths
+- [ ] Every slice brief has a `## Files` section with full paths and Modify/Create/Read verbs
+- [ ] Shared files between parallel slices have ⚠️ warnings with merge-risk assessment
 - [ ] Every slice brief inlines its own context (no "see README" or "see spec" links)
 - [ ] Every slice brief has specific file paths for test files and source files
+- [ ] Every slice RED section has an expected test count range
+- [ ] Slice briefs with non-trivial logic have 3–4 input/output example table
+- [ ] No slice has more than ~6 Green implementation points (split if more)
 - [ ] Progress checklists follow RED → GREEN → REFACTOR cycle (not flat task lists)
+- [ ] Orchestration Notes call out shared-file warnings and parallel/serial decisions
 
 ---
 
@@ -291,16 +368,18 @@ Each escalation is recorded in the slice file's Course Corrections section with:
 
 ## Review Pass Types
 
-Each slice's Reviews column specifies which passes it requires. The three pass types:
+Each review type listed in a slice's Reviews column triggers a **separate** review sub-agent call. Do not combine review types into a single call.
 
-- **test** — Run `test-quality-verifier` skill on the slice's test files. Prompt focus: identify weak assertions, missing edge cases, tests that would pass even if the implementation is wrong.
-- **quality** — Code quality review via sub-agent. Prompt focus: architecture, naming, coupling, adherence to spec, code smells.
-- **security** — Security review via sub-agent. Prompt focus: input validation, auth boundaries, data exposure, dependency vulnerabilities.
+**Definitions** (also included in the manifest legend):
+
+- **test** — Verify brief's test assertions pass. Identify vague or weak assertions that would pass even if the implementation is wrong. Check expected test count range is met.
+- **quality** — Code structure, naming, consistency, coupling. Verify adherence to spec constraints in the slice brief.
+- **security** — Input validation, auth boundaries, data exposure. Check for new attack surfaces introduced by the slice's changes.
 
 A review pass is a `subagent_run` call with the review model and provider from the manifest. The reviewer reads the slice file, examines the relevant code files, and writes a verdict into the slice file's Review section:
 
 ```
-### test review — deepseek-v4-pro — ✅ PASS / ❌ NEEDS-FIX
+### [type] review — deepseek-v4-pro — ✅ PASS / ❌ NEEDS-FIX
 
 [Verdict details: what was checked, what passed, what needs fixing]
 
@@ -318,7 +397,7 @@ A review pass is a `subagent_run` call with the review model and provider from t
 | **Best for** | Single capable agent (Claude, Codex) | Multi-model orchestration on Pi |
 | **Output** | Single PLAN.md | plan/ directory with README + slice files |
 | **Model routing** | Not needed — one agent | Manifest specifies model + provider per slice |
-| **Review** | Optional subagent passes | Mandatory per-slice review gates |
-| **Escalation** | Not built in | 5-tier escalation ladder |
+| **Review** | Optional subagent passes | Mandatory per-slice review gates (separate per type) |
+| **Escalation** | Not built in | 5-tier escalation ladder with turn-count heuristics |
 | **Durable state** | Single document | Per-slice files survive sub-agent context resets |
 | **Parallelization** | N/A — single agent | Default serial, opt-in parallel |
