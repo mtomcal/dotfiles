@@ -198,7 +198,7 @@ You are a [role]. [Scope definition].
 
 ## Recommended Configuration
 - **tools**: [Tool list]
-- **routing category**: [scout | planner | reviewer | implementer | expert (1st) | expert (2nd) | expert (3rd)]
+- **routing category**: [scout | planner | reviewer | implementer
 - **Single or parallel**: [When to use single vs parallel vs chain]
 
 ## Example Usage

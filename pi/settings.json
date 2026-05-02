@@ -1,6 +1,6 @@
 {
   "enableSkillCommands": true,
-  "lastChangelogVersion": "0.71.1",
+  "lastChangelogVersion": "0.72.1",
   "defaultProvider": "ollama-cloud",
   "defaultModel": "glm-5.1",
   "defaultThinkingLevel": "medium",
@@ -32,27 +32,6 @@
       "provider": "ollama-cloud",
       "thinking": "medium",
       "rationale": "Workhorse model for most implementation tasks, medium thinking balances quality and cost"
-    },
-    "expert (1st)": {
-      "description": "Deep domain reasoning — delegate hard problems or consult when stuck. Primary expert.",
-      "model": "deepseek-v4-pro",
-      "provider": "ollama-cloud",
-      "thinking": "high",
-      "rationale": "Strongest reasoner for deep domain problems and primary consultation when stuck"
-    },
-    "expert (2nd)": {
-      "description": "Expert consultation fallback — same issue, different perspective. Second consultation.",
-      "model": "glm-5.1",
-      "provider": "ollama-cloud",
-      "thinking": "high",
-      "rationale": "High-thinking GLM-5.1 provides a different architectural perspective on second consultation"
-    },
-    "expert (3rd)": {
-      "description": "Expert consultation fallback — same issue, third architecture. Final consultation before user escalation.",
-      "model": "kimi-k2.6",
-      "provider": "opencode-go",
-      "thinking": "high",
-      "rationale": "Yet another architecture for a fresh perspective; final consultation before user escalation"
     }
   }
 }
