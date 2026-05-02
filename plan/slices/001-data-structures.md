@@ -56,15 +56,15 @@ Constraint: Minimal type additions only. No rendering changes. No formatting uti
 
 ## Progress
 
-- [ ] **RED** — Create test file `tests/tools-data-structures.test.ts`, write tests for tools field presence
-- [ ] **RED** — Run `npx vitest run tests/tools-data-structures.test.ts`, observe type/assertion failures
-- [ ] **GREEN** — Add `tools?: string[]` to `SingleResult`, `AsyncJob`, `SerializedJob` in `job-manager.ts`
-- [ ] **GREEN** — Update `serialize()` and `deserialize()` to handle `tools` field
-- [ ] **GREEN** — Add `tools?: string[]` to `SingleResult` in `renderers.ts` (local interface)
-- [ ] **GREEN** — Run `npx vitest run tests/tools-data-structures.test.ts`, observe all pass
-- [ ] **GREEN** — Run `npx vitest run`, observe existing tests still pass
-- [ ] **REFACTOR** — Verify consistent `string[] | undefined` typing, not `string[] | null`
-- [ ] **REFACTOR** — Run `npx vitest run`, confirm still green
+- [x] **RED** — Create test file `tests/tools-data-structures.test.ts`, write tests for tools field presence
+- [x] **RED** — Run `npx vitest run tests/tools-data-structures.test.ts`, observe type/assertion failures
+- [x] **GREEN** — Add `tools?: string[]` to `SingleResult`, `AsyncJob`, `SerializedJob` in `job-manager.ts`
+- [x] **GREEN** — Update `serialize()` and `deserialize()` to handle `tools` field
+- [x] **GREEN** — Add `tools?: string[]` to `SingleResult` in `renderers.ts` (local interface)
+- [x] **GREEN** — Run `npx vitest run tests/tools-data-structures.test.ts`, observe all pass
+- [x] **GREEN** — Run `npx vitest run`, observe existing tests still pass
+- [x] **REFACTOR** — Verify consistent `string[] | undefined` typing, not `string[] | null`
+- [x] **REFACTOR** — Run `npx vitest run`, confirm still green
 
 ## Review
 

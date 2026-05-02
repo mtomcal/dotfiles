@@ -46,27 +46,51 @@ Add a `tools?: string[]` field to `AsyncJob`, `SingleResult`, and `SerializedJob
 
 ## Manifest
 
-| # | Slice | Status | Model | Provider | Thinking | Review Model | Review Provider | Reviews | Dependency |
-|---|-------|--------|-------|----------|----------|--------------|-----------------|---------|-------------|
-| 1 | Data structures: add `tools` field | ⏳ not-started | minimax-m2.7 | ollama-cloud | medium | deepseek-v4-pro | opencode-go | test | — |
-| 2 | Formatting utilities | ⏳ not-started | minimax-m2.7 | ollama-cloud | medium | deepseek-v4-pro | opencode-go | test | 1 |
-| 3 | Widget + renderers | ⏳ not-started | glm-5.1 | opencode-go | high | deepseek-v4-pro | opencode-go | test, quality | 1, 2 |
-| 4 | Index.ts: status, results, wait, run, fork | ⏳ not-started | glm-5.1 | opencode-go | high | deepseek-v4-pro | opencode-go | test, quality | 1, 2 |
-| 5 | Notifications exclusion + integrations | ⏳ not-started | minimax-m2.7 | ollama-cloud | medium | deepseek-v4-pro | opencode-go | test, quality, security | 3, 4 |
+| # | Slice | File | Status | Model | Provider | Thinking | Review Model | Review Provider | Reviews | Dependency |
+|---|-------|------|--------|-------|----------|----------|--------------|-----------------|---------|-------------|
+| 1 | Data structures: add `tools` field | `slices/001-data-structures.md` | ⏳ not-started | minimax-m2.7 | ollama-cloud | medium | deepseek-v4-pro | opencode-go | test | — |
+| 2 | Formatting utilities | `slices/002-formatting-utilities.md` | ⏳ not-started | minimax-m2.7 | ollama-cloud | medium | deepseek-v4-pro | opencode-go | test | 1 |
+| 3 | Widget + renderers | `slices/003-widget-renderers.md` | ⏳ not-started | glm-5.1 | opencode-go | high | deepseek-v4-pro | opencode-go | test, quality | 1, 2 |
+| 4 | Index.ts: status, results, wait, run, fork | `slices/004-index-surfaces.md` | ⏳ not-started | glm-5.1 | opencode-go | high | deepseek-v4-pro | opencode-go | test, quality | 1, 2 |
+| 5 | Notifications exclusion + integrations | `slices/005-notification-exclusion-integration.md` | ⏳ not-started | minimax-m2.7 | ollama-cloud | medium | deepseek-v4-pro | opencode-go | test, quality, security | 3, 4 |
 
 Status values: `not-started`, `blocked`, `in-progress`, `review`, `needs-fix`, `done`
 
+**Mandatory lifecycle — no status may be skipped:**
+
+```
+not-started → in-progress → review → done
+                                  ↑         ↓
+                              needs-fix ← (escalation)
+```
+
+- `review` → `done` requires a completed review sub-agent with ✅ PASS verdict. You CANNOT mark a slice `done` directly after implementation.
+- A slice in `review` blocks all downstream slices that depend on it.
+
+**The File column is mandatory.** Every sub-agent delegation must reference the slice file path.
+
 ## Orchestrator Instructions
+
+### ⚠️ YOU ARE AN ORCHESTRATOR — YOU DO NOT IMPLEMENT CODE
+
+Your job is to:
+1. Delegate implementation to sub-agents
+2. Delegate review to sub-agents **(mandatory — not optional)**
+3. Update manifest status
+4. Escalate when sub-agents get stuck
+
+You do NOT write code, edit files, or run tests.
 
 ### Execution Loop
 
 1. Read this manifest. Identify slices whose dependencies are met and status is `not-started`.
 2. For serial slices: use `subagent_run` with the model, provider, and thinking level specified.
 3. Slices 1 and 2 can run in sequence (2 depends on 1). Slices 3 and 4 can potentially run in parallel after 2 completes. Slice 5 depends on 3 and 4.
-4. When a sub-agent completes, delegate a review agent to evaluate the slice file.
-5. If reviewer marks `done`: update manifest status to `done`.
-6. If reviewer marks `needs-fix`: append course correction, re-delegate same model+provider, then escalate.
-7. When all slices are `done`, run the verification sequence.
+4. When an implementation sub-agent completes, **you must delegate a review sub-agent next.** This is not optional. Every slice must pass review before it can be marked `done`.
+5. Review sub-agent uses deepseek-v4-pro on opencode-go with tools `read,bash` (never `write,edit`).
+6. If reviewer writes ✅ PASS: update manifest status to `done`.
+7. If reviewer writes ❌ NEEDS-FIX: update manifest status to `needs-fix`, begin escalation.
+8. When all slices are `done`, run the verification sequence.
 
 ### Parallelization
 
@@ -76,7 +100,47 @@ Status values: `not-started`, `blocked`, `in-progress`, `review`, `needs-fix`, `
 
 ### Review Policy
 
-Each slice gets the review passes specified in its Reviews column. Review blocks downstream slices that depend on it.
+**Review is mandatory. No slice may be marked `done` without a review sub-agent call.** Each slice gets the review passes specified in its Reviews column. Review blocks downstream slices that depend on it. You cannot skip review because the implementation "looked good" — review is a separate delegation step.
+
+### Sub-agent Delegation Format
+
+**Implementation sub-agent:**
+```
+systemPrompt: "You are an implementation agent. Follow the TDD brief in your assigned slice file exactly. Execute RED, GREEN, REFACTOR cycle. Update checkboxes as you complete each step."
+task: "Read the slice brief at plan/slices/NNN-[name].md. Execute the RED, GREEN, REFACTOR cycle. Update checkboxes as you complete each step."
+model: [from manifest]
+provider: [from manifest]
+thinking: [from manifest]
+tools: "read,write,bash,edit"
+```
+
+**Review sub-agent:**
+```
+systemPrompt: "You are a code reviewer. Evaluate the implementation against the slice brief. Run the tests. Write your verdict in the Review section of the slice file."
+task: "Review slice N at plan/slices/NNN-[name].md. Read the implementation files referenced in the slice. Run all tests. Check each Review pass type listed in the manifest (test, quality, security). Write your verdict with ✅ PASS or ❌ NEEDS-FIX in the Review section."
+model: [from manifest Review Model column]
+provider: [from manifest Review Provider column]
+thinking: "high"
+tools: "read,bash"
+```
+
+### Anti-Patterns — DO NOT DO THESE
+
+1. **🔴 Implementing code yourself.** You are an orchestrator. You delegate. You never write code, edit files, or run tests. If you're about to write code — delegate a sub-agent instead.
+2. **🔴 Skipping review.** Every slice MUST go through a review sub-agent before `done`. You cannot mark a slice `done` after implementation without a reviewer's ✅ PASS verdict. Review is a separate delegation step with a different model and different tools.
+3. **🔴 Using scout sub-agents.** Do not spawn "scout" or "research" sub-agents to explore code before delegating. The slice brief inlines all context. The implementation sub-agent reads the slice file and then reads/writes code. Scouting is the sub-agent's job, not yours.
+4. **Marking a slice done without review.** The status flow is `not-started → in-progress → review → done`. You cannot jump from `in-progress` to `done`.
+5. **Giving review sub-agents write/edit tools.** Reviewers read code and run tests. They never modify source files.
+
+### Escalation Protocol
+
+1. **Provider switch** — same model, different provider (e.g., ollama-cloud → openrouter)
+2. **Course correction** — append guidance to slice's Course Corrections section, re-delegate same model+provider
+3. **Model bump** — escalate to stronger model or higher thinking
+4. **Expert consultation** — use `expert-consultation` skill
+5. **Orchestrator takeover** — you implement directly (last resort only)
+
+Never skip tiers. Try the cheap thing first.
 
 ## Acceptance Criteria
 

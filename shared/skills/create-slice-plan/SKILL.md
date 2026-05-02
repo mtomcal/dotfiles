@@ -18,13 +18,32 @@ Produce a `plan/` directory with an orchestrator manifest (README.md) and per-sl
 - Any plan where you need model routing, review gates, and escalation strategies
 - When you want durable state that survives sub-agent context resets
 
+## Authoring Principles
+
+The plan you write will be read by an orchestrator agent at execution time. That orchestrator will be a model like GLM, Kimi, or DeepSeek — capable but prone to:
+
+1. **Implementing code itself** instead of delegating to sub-agents
+2. **Skipping review** and marking slices done after implementation
+3. **Using scout sub-agents** instead of delegating slice briefs as tasks
+4. **Losing track of status** and re-doing work or skipping dependencies
+
+To prevent these failures, your plan must include:
+
+- **Explicit role assertion** in the README telling the orchestrator "YOU ARE AN ORCHESTRATOR, YOU DO NOT IMPLEMENT"
+- **Mandatory status flow** showing `review → done` requires a review sub-agent call, not self-approval
+- **Slice file paths** in the manifest table so the orchestrator knows exactly what to delegate
+- **Anti-patterns section** in the README listing exactly what NOT to do
+- **Inline context** in every slice brief so sub-agents don't need to scout
+
+The [REFERENCE.md](REFERENCE.md) template embeds all of these guardrails. Use it as-is — don't strip the role assertion, status flow, or anti-patterns when writing your plan.
+
 ## Process
 
 1. **Identify context engine** — spec-driven, research-driven, decision-driven, or hybrid (same taxonomy as `create-plan`)
 2. **Gather context** — read specs, research, or decision outcomes; read current code
 3. **Grill Phase 1: Scope and content** — what are we building, what slices, what TDD briefs, what dependency order. Use `grill-me` skill if needed.
 4. **Grill Phase 2: Orchestration** — structural decisions (parallelization, risk tiers), then per-slice decisions (model assignment, review gates, providers, budget). All grill questions have **recommended defaults**.
-5. **Write artifacts** — `plan/README.md` (manifest, context, orchestrator instructions) and `plan/slices/001-*.md` through `plan/slices/N-*.md` (full brief + checklist per slice)
+5. **Write artifacts** — `plan/README.md` (from the REFERENCE.md template — keep all guardrails intact) and `plan/slices/001-*.md` through `plan/slices/N-*.md` (from the slice template)
 
 ## Grill Phase 2 — Orchestration Defaults
 
@@ -57,4 +76,4 @@ Every orchestration decision has a recommended default. Present defaults, let th
 | Provider fallback | openrouter for slow providers, same model |
 | Budget strategy | Prefer cheapest provider per model; fall back to alternatives if slow |
 
-See [REFERENCE.md](REFERENCE.md) for full artifact templates, manifest schema, slice file structure, escalation protocol, and anti-patterns.
+See [REFERENCE.md](REFERENCE.md) for the full README template, slice file template, escalation protocol, and anti-patterns.

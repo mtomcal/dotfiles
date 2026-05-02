@@ -1,10 +1,12 @@
 # Create Slice Plan — Reference
 
+This file contains the templates and reference material for creating a slice plan. The **README.md Template** below is what the orchestrator agent reads at execution time. It must contain all guardrails, role assertions, and anti-patterns directly — do not assume the orchestrator will read this REFERENCE.md.
+
 ## File Structure
 
 ```
 plan/
-├── README.md              # Manifest, context, orchestrator instructions
+├── README.md              # Manifest, context, orchestrator instructions (the orchestrator reads THIS)
 └── slices/
     ├── 001-setup-types.md
     ├── 002-config-resolution.md
@@ -17,10 +19,50 @@ No sprawl. All slice state lives in one file per slice.
 
 ## README.md Template
 
-The README is the orchestrator's single source of truth. It contains global context, the manifest table, and the execution instructions.
+> **This is the single most important artifact.** The orchestrator agent reads this file and follows its instructions at execution time. Every guardrail — role assertion, status flow, review gates, anti-patterns — must be in THIS file. Do not assume the orchestrator will read any other document.
+
+Copy this template and fill in the bracketed sections. **Do not remove the role assertion, status flow, anti-patterns, or delegation format sections** — these are the guardrails that prevent common orchestrator failure modes.
 
 ```markdown
 # [Feature Name] Slice Plan
+
+## ⚠️ YOU ARE AN ORCHESTRATOR — YOU DO NOT IMPLEMENT CODE
+
+This plan is executed by delegating work to sub-agents. Your role:
+
+1. **Delegate implementation** to sub-agents via `subagent_run` / `subagent_fork`
+2. **Delegate review** to review sub-agents (mandatory — not optional)
+3. **Update manifest status** after each delegation
+4. **Escalate** when sub-agents get stuck
+
+You do NOT:
+- Write, edit, or modify implementation source files
+- Write, edit, or modify test files
+- Run tests yourself
+- Scout or explore code before delegating — the slice brief has all context inlined
+- Mark a slice `done` without a passing review from a review sub-agent
+
+If you find yourself about to write code or edit a file — STOP. Delegate the slice to an implementation sub-agent instead. Orchestrator takeover is the absolute last resort (tier 5 escalation) after all other tiers have failed.
+
+## Mandatory Status Flow
+
+Every slice follows this lifecycle. **No status may be skipped.**
+
+```
+not-started → in-progress → review → done
+                                  ↑         ↓
+                              needs-fix ← (escalation)
+```
+
+**Hard gates:**
+- `review` → `done` requires a **review sub-agent call** that writes ✅ PASS in the slice file. You cannot mark a slice `done` yourself after implementation.
+- `needs-fix` → `review` requires a re-implementation call followed by a re-review call.
+- A slice in `review` status **blocks** all downstream slices that depend on it.
+
+```
+WRONG:  implement slice → mark done → next slice
+RIGHT:  implement slice → mark review → delegate review → reviewer passes → mark done → next slice
+```
 
 ## Overview
 [One paragraph: what this plan implements and why]
@@ -43,52 +85,77 @@ The README is the orchestrator's single source of truth. It contains global cont
 
 ## Manifest
 
-| # | Slice | Status | Model | Provider | Thinking | Review Model | Review Provider | Reviews | Dependency |
-|---|-------|--------|-------|----------|----------|--------------|-----------------|---------|-------------|
-| 1 | Setup types | ⏳ not-started | minimax-m2.7 | ollama-cloud | medium | deepseek-v4-pro | opencode-go | test | — |
-| 2 | Config resolution | ⏳ not-started | minimax-m2.7 | ollama-cloud | medium | deepseek-v4-pro | opencode-go | test, quality | 1 |
-| 3 | Core logic | ⏳ not-started | glm-5.1 | opencode-go | high | deepseek-v4-pro | opencode-go | test, quality, security | 1, 2 |
+| # | Slice | File | Status | Model | Provider | Thinking | Review Model | Review Provider | Reviews | Dependency |
+|---|-------|------|--------|-------|----------|----------|--------------|-----------------|---------|-------------|
+| 1 | Setup types | `slices/001-setup-types.md` | ⏳ not-started | minimax-m2.7 | ollama-cloud | medium | deepseek-v4-pro | opencode-go | test | — |
+| 2 | Config resolution | `slices/002-config-resolution.md` | ⏳ not-started | minimax-m2.7 | ollama-cloud | medium | deepseek-v4-pro | opencode-go | test, quality | 1 |
+| 3 | Core logic | `slices/003-core-logic.md` | ⏳ not-started | glm-5.1 | opencode-go | high | deepseek-v4-pro | opencode-go | test, quality, security | 1, 2 |
 
 Status values: `not-started`, `blocked`, `in-progress`, `review`, `needs-fix`, `done`
 
-## Orchestrator Instructions
+The **File** column is mandatory. Every sub-agent task must reference the slice file path.
 
-### Execution Loop
+## Execution Loop
 
-1. Read this manifest. Identify slices whose dependencies are met and status is `not-started`.
-2. For serial slices: use `subagent_run` with the model, provider, and thinking level specified.
-3. For parallelizable slices (marked in orchestrator notes): use `subagent_fork`, then monitor completion.
-4. When a sub-agent completes, delegate a review agent to evaluate the slice file.
-5. If reviewer marks `done`: update manifest status to `done`.
-6. If reviewer marks `needs-fix`:
-   - **First retry**: append course correction to slice file, re-delegate same model+provider.
-   - **Second retry**: bump model in manifest, re-delegate.
-   - **Third retry**: escalate via expert-consultation skill.
-   - **Final resort**: orchestrator takes over the slice directly.
-7. When all slices are `done`, run the verification sequence.
-8. Mark plan complete.
+Repeat until all slices are `done`:
 
-### Provider Fallback
+1. **Read this manifest.** Find the next eligible action:
+   - If any slice has status `review` → **delegate a review sub-agent before doing anything else.** Review is the highest priority.
+   - If any slice has status `not-started` and all dependencies are `done` → delegate implementation.
+   - If no slices are eligible → wait for running sub-agents or escalate `needs-fix` slices.
 
-If a provider is slow or unresponsive, switch to the same model on a different provider before escalating the model. Provider switch is the cheapest escalation.
+2. **Delegate implementation.** For each ready slice, call `subagent_run` or `subagent_fork`:
+   ```
+   systemPrompt: "You are an implementation agent. Follow the TDD brief in your assigned slice file exactly. Execute RED, GREEN, REFACTOR cycle. Update checkboxes as you complete each step."
+   task: "Read the slice brief at plan/slices/NNN-[name].md. Execute the RED, GREEN, REFACTOR cycle. Update checkboxes as you complete each step."
+   model: [from manifest]
+   provider: [from manifest]
+   thinking: [from manifest]
+   tools: "read,write,bash,edit"
+   ```
+   After the sub-agent completes → update manifest status to `review`.
 
-### Stall Detection
+3. **Delegate review.** **This step is mandatory. It is not optional.** For slices with status `review`, call `subagent_run`:
+   ```
+   systemPrompt: "You are a code reviewer. Evaluate the implementation against the slice brief. Run the tests. Write your verdict in the Review section of the slice file."
+   task: "Review slice N at plan/slices/NNN-[name].md. Read the implementation files referenced in the slice. Run all tests. Check each Review pass type listed in the manifest (test, quality, security). Write your verdict with ✅ PASS or ❌ NEEDS-FIX in the Review section."
+   model: [from manifest Review Model column]
+   provider: [from manifest Review Provider column]
+   thinking: "high"
+   tools: "read,bash"
+   ```
+   Review sub-agents must NOT have `write` or `edit` tools.
+   After review completes → read the Review section:
+   - ✅ PASS → update manifest status to `done`
+   - ❌ NEEDS-FIX → update manifest status to `needs-fix`, begin escalation
 
-Check slice file checklists after delegation. If no new checkbox has been checked after a reasonable interval, treat as stalled and begin escalation.
+4. **Process needs-fix.** Append a course correction to the slice file, re-delegate implementation, then re-review.
 
-### Parallelization
+5. **When all slices are `done`**, run the verification sequence from the Verification section.
 
-Default serial execution. Only run slices in parallel when the manifest's orchestrator notes explicitly allow it and dependencies are met.
+## Anti-Patterns — DO NOT DO THESE
 
-### Review Policy
+1. **🔴 Implementing code yourself.** You are an orchestrator. You delegate. You never write code, edit files, or run tests. If you're about to write code — delegate a sub-agent instead.
+2. **🔴 Skipping review.** Every slice MUST go through a review sub-agent before `done`. You cannot mark a slice `done` after implementation without a reviewer's ✅ PASS verdict. Review is a separate delegation step with a different model and different tools.
+3. **🔴 Using scout sub-agents.** Do not spawn "scout" or "research" sub-agents to explore code before delegating. The slice brief inlines all context. The implementation sub-agent reads the slice file and then reads/writes code. Scouting is the sub-agent's job, not yours.
+4. **Marking a slice done without review.** The status flow is `not-started → in-progress → review → done`. You cannot jump from `in-progress` to `done`.
+5. **Giving review sub-agents write/edit tools.** Reviewers read code and run tests. They never modify source files.
 
-Every slice gets the review passes specified in its Reviews column. Review blocks downstream slices that depend on it.
+## Escalation Protocol
+
+1. **Provider switch** — same model, different provider (e.g., ollama-cloud → openrouter)
+2. **Course correction** — append guidance to slice's Course Corrections section, re-delegate same model+provider
+3. **Model bump** — escalate to stronger model or higher thinking
+4. **Expert consultation** — use `expert-consultation` skill
+5. **Orchestrator takeover** — you implement directly (last resort only)
+
+Never skip tiers. Try the cheap thing first.
 
 ## Orchestration Notes
 [Any plan-specific notes about which slices can run in parallel, risk tier assignments, budget constraints, provider preferences]
 
 ## Acceptance Criteria
-[Numbered list of testable conditions — same format as create-plan]
+[Numbered list of testable conditions]
 
 1. [Specific measurable behavior]
 2. [Tolerance or constraint]
@@ -112,7 +179,7 @@ Every slice gets the review passes specified in its Reviews column. Review block
 
 ## Slice File Template
 
-Each slice file is self-contained. A sub-agent on a weak model should open this ONE file and have everything it needs.
+Each slice file is self-contained. A sub-agent on a weak model should open this ONE file and have everything it needs. **Inline all context — do not link to external files.**
 
 ```markdown
 # Slice N: [Descriptive Name]
@@ -171,6 +238,22 @@ Now create or modify implementation source files to make the failing test pass. 
 
 ---
 
+## Authoring Quality Checklist
+
+When writing a slice plan, verify these before finalizing:
+
+- [ ] README contains the role assertion ("YOU ARE AN ORCHESTRATOR — YOU DO NOT IMPLEMENT CODE")
+- [ ] README contains the mandatory status flow diagram with hard gates
+- [ ] README contains the anti-patterns section (especially: don't implement, don't skip review, don't use scouts)
+- [ ] README contains the execution loop with explicit review delegation step
+- [ ] README contains the sub-agent delegation format for both implementation and review
+- [ ] Manifest table has a File column with slice file paths
+- [ ] Every slice brief inlines its own context (no "see README" or "see spec" links)
+- [ ] Every slice brief has specific file paths for test files and source files
+- [ ] Progress checklists follow RED → GREEN → REFACTOR cycle (not flat task lists)
+
+---
+
 ## Escalation Protocol
 
 Full 5-tier escalation ladder, tried in order:
@@ -223,21 +306,6 @@ A review pass is a `subagent_run` call with the review model and provider from t
 
 [If NEEDS-FIX: specific items that must be addressed]
 ```
-
----
-
-## Anti-patterns
-
-1. **Vague slices** — "Add tests for the player" is not a slice. Name the file, name the assertion, name the expected behavior.
-2. **Slice files without inlined context** — A weak model following a link to the README will lose focus. Inline the relevant spec excerpts and decision rows directly in the slice file.
-3. **Skipping the manifest** — The orchestrator must be able to read ONE table to know what's next, what model to use, and what reviews to run. If status isn't in the manifest, the orchestrator is flying blind.
-4. **Review verdicts in separate files** — All state for a slice lives in the slice file. Reviewers write there, orchestrators read there, sub-agents get corrections there.
-5. **Parallel without explicit opt-in** — Never assume slices can run in parallel. The plan must explicitly mark which slices are safe to parallelize.
-6. **Skipping escalation tiers** — Never go straight to model bump when a provider switch might fix it. Never consult an expert when a course correction might fix it. Try the cheap thing first.
-7. **Course corrections that don't explain what went wrong** — Every correction must explain why the previous attempt failed and what to try differently. "Try again" is not a course correction.
-8. **Manifest without provider column** — Models have different availability and speed on different providers. The orchestrator needs to know both.
-9. **Flat checklist** — The Progress checklist must follow RED → GREEN → REFACTOR cycle per slice, not batch all tests then all implementation.
-10. **Orchestrator implementing instead of delegating** — The orchestrator's job is to delegate, monitor, review, and escalate. Orchestrator takeover is the last resort, not the default.
 
 ---
 
