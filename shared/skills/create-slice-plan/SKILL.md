@@ -81,5 +81,17 @@ Every orchestration decision has a recommended default. Present defaults, let th
 | Provider preference | ollama-cloud for implementation, ollama-cloud for review |
 | Provider fallback | openrouter for slow providers, same model |
 | Budget strategy | Prefer cheapest provider per model; fall back to alternatives if slow |
+| Guardrail defaults | Per risk tier (see table below) |
+
+**Guardrail defaults per risk tier** — thresholds that kill a sub-agent when exceeded:
+
+| Guardrail | routine | standard | tricky |
+|-----------|---------|----------|--------|
+| maxTurns | 20 | 30 | 50 |
+| maxCost ($USD) | 0.10 | 0.30 | 1.00 |
+| maxTokens | 100000 | 200000 | 500000 |
+| maxTime (seconds) | 120 | 300 | 600 |
+
+These are starting points. Grill the user on budget tolerance and adjust per slice. When a sub-agent exceeds a threshold it is killed and returns a partial result with `stopReason: "guardrail"`.
 
 See [REFERENCE.md](REFERENCE.md) for the full README template, slice file template, escalation protocol, and anti-patterns.

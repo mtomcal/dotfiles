@@ -95,11 +95,13 @@ Run this as a `subagent_run` with `tools: "read,bash"` if needed. Do not proceed
 
 ## Manifest
 
-| # | Slice | File | Status | Model | Provider | Thinking | Review Model | Review Provider | Reviews | Dependency |
-|---|-------|------|--------|-------|----------|----------|--------------|-----------------|---------|-------------|
-| 1 | Setup types | `slices/001-setup-types.md` | ⏳ not-started | minimax-m2.7 | ollama-cloud | medium | deepseek-v4-pro | opencode-go | test | — |
-| 2 | Config resolution | `slices/002-config-resolution.md` | ⏳ not-started | minimax-m2.7 | ollama-cloud | medium | deepseek-v4-pro | opencode-go | test, quality | 1 |
-| 3 | Core logic | `slices/003-core-logic.md` | ⏳ not-started | glm-5.1 | opencode-go | high | deepseek-v4-pro | opencode-go | test, quality, security | 1, 2 |
+| # | Slice | File | Status | Model | Provider | Thinking | Guardrails | Review Model | Review Provider | Reviews | Dependency |
+|---|-------|------|--------|-------|----------|----------|------------|--------------|-----------------|---------|-------------|
+| 1 | Setup types | `slices/001-setup-types.md` | ⏳ not-started | minimax-m2.7 | ollama-cloud | medium | 20T $0.10 100K 2m | deepseek-v4-pro | opencode-go | test | — |
+| 2 | Config resolution | `slices/002-config-resolution.md` | ⏳ not-started | minimax-m2.7 | ollama-cloud | medium | 30T $0.30 200K 5m | deepseek-v4-pro | opencode-go | test, quality | 1 |
+| 3 | Core logic | `slices/003-core-logic.md` | ⏳ not-started | glm-5.1 | opencode-go | high | 50T $1.00 500K 10m | deepseek-v4-pro | opencode-go | test, quality, security | 1, 2 |
+
+Guardrails column format: `maxTurns`T `maxCost` `maxTokens` maxTime (e.g., `20T $0.10 100K 2m`). Passed as `maxTurns`, `maxCost`, `maxTokens`, `maxTime` params to `subagent_run` / `subagent_fork`.
 
 Status values: `not-started`, `blocked`, `in-progress`, `review`, `needs-fix`, `done`
 
@@ -124,6 +126,10 @@ Repeat until all slices are `done`:
    provider: [from manifest]
    thinking: [from manifest]
    tools: "read,write,bash,edit"
+   maxTurns: [from manifest Guardrails column]
+   maxCost: [from manifest Guardrails column]
+   maxTokens: [from manifest Guardrails column]
+   maxTime: [from manifest Guardrails column, in seconds]
    ```
    After the sub-agent completes → update manifest status to `review`.
 
@@ -136,6 +142,10 @@ Repeat until all slices are `done`:
    provider: [from manifest Review Provider column]
    thinking: "high"
    tools: "read,bash"
+   maxTurns: 10
+   maxCost: 0.10
+   maxTime: 120
+   ```
 
    # quality review (separate call)
    systemPrompt: "You are a code quality reviewer. Check code structure, naming, consistency, and adherence to the spec."
@@ -144,6 +154,9 @@ Repeat until all slices are `done`:
    provider: [from manifest Review Provider column]
    thinking: "high"
    tools: "read,bash"
+   maxTurns: 10
+   maxCost: 0.10
+   maxTime: 120
    ```
    Review sub-agents must NOT have `write` or `edit` tools.
    After all review types pass → update manifest status to `done`.
@@ -160,7 +173,9 @@ Repeat until all slices are `done`:
 3. **🔴 Using scout sub-agents.** Do not spawn "scout" or "research" sub-agents to explore code before delegating. The slice brief inlines all context. The implementation sub-agent reads the slice file and then reads/writes code. Scouting is the sub-agent's job, not yours.
 4. **Marking a slice done without review.** The status flow is `not-started → in-progress → review → done`. You cannot jump from `in-progress` to `done`.
 5. **Giving review sub-agents write/edit tools.** Reviewers read code and run tests. They never modify source files.
+6. **Giving review sub-agents write/edit tools.** Reviewers read code and run tests. They never modify source files.
 6. **Combining review types into one call.** Each review type (test, quality, security) is a separate sub-agent call with a focused system prompt. Do not combine them.
+7. **Omitting guardrails on sub-agent calls.** Every `subagent_run` and `subagent_fork` call must include `maxTurns`, `maxCost`, `maxTokens`, and `maxTime` from the manifest. Without guardrails, a stuck sub-agent burns resources indefinitely.
 
 ## Escalation Protocol
 
@@ -174,16 +189,17 @@ Never skip tiers. Try the cheap thing first.
 
 ## Turn-Count Heuristics
 
-If a sub-agent exceeds these turn counts with no progress on the checklist, begin escalation:
+These are **soft heuristics** for the orchestrator to monitor progress. They are separate from **hard guardrails** (maxTurns, maxCost, maxTokens, maxTime) which kill the sub-agent automatically when exceeded.
 
-| Model tier | Caution (check progress) | Escalate (switch to stronger model) |
-|------------|--------------------------|---------------------------|
-| routine (minimax-m2.7) | 40 turns | 60 turns |
-| standard (minimax-m2.7) | 50 turns | 70 turns |
-| tricky (glm-5.1) | 50 turns | 80 turns |
+- **Caution**: Read the slice file's Progress section. If checkboxes are being checked, let it ride. If no progress in 10 turns, course-correct.
+- **Escalate**: Switch provider (tier 1). If still no progress after 15 more turns, course-correct (tier 2).
+- **Guardrails** handle the hard kill: a sub-agent that exceeds its maxTurns/maxCost/maxTokens/maxTime threshold is terminated automatically. The orchestrator does not need to monitor for hard limits — only for soft "no progress" signals below the guardrail threshold.
 
-**Caution**: Read the slice file's Progress section. If checkboxes are being checked, let it ride. If no progress in 10 turns, course-correct.
-**Escalate**: Switch provider (tier 1). If still no progress after 15 more turns, course-correct (tier 2).
+| Model tier | Caution (check progress) | Escalate (switch to stronger model) | Hard kill (maxTurns guardrail) |
+|------------|--------------------------|-------------------------------------|-------------------------------|
+| routine (minimax-m2.7) | 15 turns | 20 turns | 20T |
+| standard (minimax-m2.7) | 20 turns | 30 turns | 30T |
+| tricky (glm-5.1) | 30 turns | 40 turns | 50T |
 
 ## Orchestration Notes
 [Any plan-specific notes about which slices can run in parallel, risk tier assignments, budget constraints, provider preferences, shared-file warnings]
@@ -319,6 +335,8 @@ When writing a slice plan, verify these before finalizing:
 - [ ] README contains pre-flight checks
 - [ ] README contains turn-count escalation heuristics
 - [ ] Manifest table has a File column with slice file paths
+- [ ] Manifest table has a Guardrails column with per-slice thresholds (maxTurns, maxCost, maxTokens, maxTime)
+- [ ] Every `subagent_run` / `subagent_fork` call in the execution loop includes guardrails from the manifest
 - [ ] Every slice brief has a `## Files` section with full paths and Modify/Create/Read verbs
 - [ ] Shared files between parallel slices have ⚠️ warnings with merge-risk assessment
 - [ ] Every slice brief inlines its own context (no "see README" or "see spec" links)
@@ -357,9 +375,11 @@ Each escalation is recorded in the slice file's Course Corrections section with:
 | Implementation model | minimax-m2.7 | minimax-m2.7 | glm-5.1 |
 | Implementation thinking | medium | medium | high |
 | Implementation provider | ollama-cloud | ollama-cloud | opencode-go |
+| Implementation guardrails | 20T $0.10 100K 2m | 30T $0.30 200K 5m | 50T $1.00 500K 10m |
 | Review model | deepseek-v4-pro | deepseek-v4-pro | deepseek-v4-pro |
 | Review thinking | high | high | high |
 | Review provider | opencode-go | opencode-go | opencode-go |
+| Review guardrails | 10T $0.10 50K 2m | 10T $0.10 50K 2m | 10T $0.10 50K 2m |
 | Review gates | test | test, quality | test, quality, security |
 | Escalation retries | 2 | 2 | 3 |
 | Final escalation | expert consultation | expert consultation | orchestrator takeover |
