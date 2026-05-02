@@ -144,6 +144,14 @@ DOCKER_ARGS=(
     -e HOME="${CONTAINER_HOME}"
     -w "$HOST_CWD"
 
+    # Locale and terminal — forward from host for emoji and wide char support.
+    # The Dockerfile sets LANG/LC_ALL=C.UTF-8 as defaults;
+    # forwarding the host TERM ensures tmux can negotiate capabilities
+    # with the outer terminal emulator (true color, Unicode, etc.).
+    -e TERM=${TERM:-xterm-256color}
+    -e LANG=${LANG:-C.UTF-8}
+    -e LC_ALL=${LC_ALL:-C.UTF-8}
+
     # Project directory (read-write)
     -v "${HOST_CWD}:${HOST_CWD}:rw"
 

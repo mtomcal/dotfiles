@@ -23,6 +23,13 @@ ARG HOST_GID=1000
 ENV USER_HOME="/home/${HOST_USER}"
 
 ENV DEBIAN_FRONTEND=noninteractive
+ENV LANG=C.UTF-8
+ENV LC_ALL=C.UTF-8
+
+# Write locale defaults into /etc/environment so login shells and SSH
+# sessions also pick up UTF-8, not just the Docker ENV layer.
+RUN echo "LANG=C.UTF-8" >> /etc/environment \
+    && echo "LC_ALL=C.UTF-8" >> /etc/environment
 
 # Use Arizona mirror instead of default Ubuntu repos (faster, avoids
 # security.ubuntu.com hangs on some networks).
@@ -33,7 +40,7 @@ RUN sed -i 's|http://archive.ubuntu.com/ubuntu/|http://mirror.arizona.edu/ubuntu
     && sed -i 's|http://mirror.arizona.edu/|https://mirror.arizona.edu/|g' /etc/apt/sources.list.d/ubuntu.sources \
     && rm -rf /var/lib/apt/lists/*
 
-# Base dev tools
+# Base dev tools + locale support
 RUN apt-get update && apt-get install -y \
     git \
     curl \
@@ -49,7 +56,13 @@ RUN apt-get update && apt-get install -y \
     python3-venv \
     ca-certificates \
     unzip \
+    locales \
     && rm -rf /var/lib/apt/lists/*
+
+# Generate UTF-8 locale (en_US.UTF-8 as the full locale, C.UTF-8 as fallback)
+# Both are needed: some programs (e.g. Python) specifically look for
+# en_US.UTF-8, while C.UTF-8 is always available as a minimal locale.
+RUN sed -i '/en_US\.UTF-8/s/^# //g' /etc/locale.gen && locale-gen en_US.UTF-8
 
 # GitHub CLI
 RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
