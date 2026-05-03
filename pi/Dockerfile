@@ -31,13 +31,19 @@ ENV LC_ALL=C.UTF-8
 RUN echo "LANG=C.UTF-8" >> /etc/environment \
     && echo "LC_ALL=C.UTF-8" >> /etc/environment
 
-# Use Arizona mirror instead of default Ubuntu repos (faster, avoids
-# security.ubuntu.com hangs on some networks).
+# Use Arizona mirror on amd64 (faster, avoids security.ubuntu.com hangs).
+# On arm64, skip the mirror — Arizona doesn't carry ubuntu-ports, so we keep
+# the default ports.ubuntu.com repos which work out of the box.
 # Step 1: switch to HTTP (ca-certificates not yet installed), install certs,
-# then upgrade to HTTPS.
-RUN sed -i 's|http://archive.ubuntu.com/ubuntu/|http://mirror.arizona.edu/ubuntu/|g; s|http://security.ubuntu.com/ubuntu/|http://mirror.arizona.edu/ubuntu/|g; s|http://ports.ubuntu.com/ubuntu-ports/|http://mirror.arizona.edu/ubuntu-ports/|g' /etc/apt/sources.list.d/ubuntu.sources \
+# then upgrade the mirror URLs to HTTPS on amd64 only.
+RUN ARCH=$(dpkg --print-architecture) \
+    && if [ "$ARCH" = "amd64" ]; then \
+        sed -i 's|http://archive.ubuntu.com/ubuntu/|http://mirror.arizona.edu/ubuntu/|g; s|http://security.ubuntu.com/ubuntu/|http://mirror.arizona.edu/ubuntu/|g' /etc/apt/sources.list.d/ubuntu.sources; \
+    fi \
     && apt-get update && apt-get install -y ca-certificates \
-    && sed -i 's|http://mirror.arizona.edu/|https://mirror.arizona.edu/|g' /etc/apt/sources.list.d/ubuntu.sources \
+    && if [ "$ARCH" = "amd64" ]; then \
+        sed -i 's|http://mirror.arizona.edu/|https://mirror.arizona.edu/|g' /etc/apt/sources.list.d/ubuntu.sources; \
+    fi \
     && rm -rf /var/lib/apt/lists/*
 
 # Base dev tools + locale support
@@ -79,8 +85,9 @@ RUN ARCH=$(dpkg --print-architecture) \
       | tar -C /usr/local -xz
 ENV PATH="/usr/local/go/bin:${PATH}"
 
-# fd-find is installed as fdfind on Debian; alias it
-RUN ln -sf "$(which fdfind)" /usr/local/bin/fd
+# fd-find is installed as fdfind on Debian/Ubuntu; alias it to fd.
+# Use the absolute path since the package installs to /usr/bin/fdfind.
+RUN ln -sf /usr/bin/fdfind /usr/local/bin/fd
 
 # ===========================
 # Create the host user early so all tooling installs under their home
@@ -103,13 +110,15 @@ ENV PATH="${GOPATH}/bin:${PATH}"
 # has full access. Combined into one RUN so fnm's PATH is available for
 # npm install. Files are chowned to the host user afterwards.
 ENV FNM_DIR="${USER_HOME}/.local/share/fnm"
-RUN curl -fsSL https://fnm.vercel.app/install | bash -s -- --install-dir "${FNM_DIR}" --skip-shell \
+RUN ARCH=$(dpkg --print-architecture) \
+    && curl -fsSL https://fnm.vercel.app/install | bash -s -- --install-dir "${FNM_DIR}" --skip-shell \
     && export PATH="${FNM_DIR}:${PATH}" \
     && eval "$(fnm env --shell bash)" \
     && fnm install --lts \
     && fnm default lts-latest \
     && npm install -g @mariozechner/pi-coding-agent@${PI_VERSION} \
-    && chown -R ${HOST_USER}:${HOST_USER} ${USER_HOME}
+    && chown -R ${HOST_USER}:${HOST_USER} ${USER_HOME} \
+    && echo "Installed Pi on ${ARCH} ($(node -e 'console.log(process.arch)'))"
 
 # Resolve node binary path for subsequent layers and runtime.
 # fnm aliases/default/ IS the node installation root (contains bin/, lib/).
