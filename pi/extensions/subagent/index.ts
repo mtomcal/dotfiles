@@ -42,7 +42,8 @@ import {
 	resolveConfig,
 	BARE_TASK_INJECTION,
 } from "./subagent-config.js";
-import { JobManager, type AsyncJob, type SingleResult, MAX_RUNNING_JOBS } from "./job-manager.js";
+import { JobManager, type AsyncJob, type SingleResult, MAX_RUNNING_JOBS, terminateProcess } from "./job-manager.js";
+import { checkGuardrails, formatGuardrailLine, formatGuardrailProgress, type Guardrails } from "./guardrails.js";
 import {
 	type SubagentDetails,
 	aggregateUsage,
@@ -88,6 +89,10 @@ const ItemConfig = Type.Object({
 	cwd: Type.Optional(Type.String({ description: "Working directory for the subagent process" })),
 	contextFiles: Type.Optional(Type.Boolean({ description: "Load project context files (AGENTS.md etc). Default: true." })),
 	extensions: Type.Optional(Type.Boolean({ description: "Load extensions in subagent. Default: false." })),
+	maxTurns: Type.Optional(Type.Number({ description: "Maximum conversation turns before guardrail kill" })),
+	maxCost: Type.Optional(Type.Number({ description: "Maximum cost in dollars before guardrail kill" })),
+	maxTokens: Type.Optional(Type.Number({ description: "Maximum context tokens before guardrail kill" })),
+	maxTime: Type.Optional(Type.Number({ description: "Maximum wall-clock time in seconds before guardrail kill" })),
 });
 
 // ─── Helpers ──────────────────────────────────────────────────────────
@@ -197,6 +202,11 @@ function spawnSubagentProcess(
 
 	const emitUpdate = () => { if (onMessage) onMessage({ ...currentResult }); };
 
+	// Guardrail enforcement
+	const startTime = Date.now();
+	let maxTimeTimer: ReturnType<typeof setTimeout> | null = null;
+	const effectiveGuardrails = config.guardrails;
+
 	let proc: ChildProcess = nullProc;
 	const resultPromise = new Promise<SingleResult>(async (resolve) => {
 		try {
@@ -223,6 +233,16 @@ function spawnSubagentProcess(
 			shell: false,
 			stdio: ["ignore", "pipe", "pipe"],
 		});
+
+		// Set maxTime timeout if configured
+		if (effectiveGuardrails.maxTime) {
+			maxTimeTimer = setTimeout(() => {
+				currentResult.stopReason = "guardrail";
+				currentResult.errorMessage = `Subagent killed: exceeded maxTime (${effectiveGuardrails.maxTime}s)`;
+				terminateProcess(proc);
+			}, effectiveGuardrails.maxTime * 1000);
+		}
+
 		let buffer = "";
 		let wasAborted = false;
 
@@ -248,6 +268,15 @@ function spawnSubagentProcess(
 					if (!currentResult.model && msg.model) currentResult.model = msg.model;
 					if (msg.stopReason) currentResult.stopReason = msg.stopReason;
 					if (msg.errorMessage) currentResult.errorMessage = msg.errorMessage;
+
+					// Guardrail check after usage accumulation
+					const breach = checkGuardrails(currentResult.usage, effectiveGuardrails, Date.now() - startTime);
+					if (breach) {
+						if (maxTimeTimer) clearTimeout(maxTimeTimer);
+						currentResult.stopReason = "guardrail";
+						currentResult.errorMessage = `Subagent killed: ${breach.reason}`;
+						terminateProcess(proc);
+					}
 				}
 				emitUpdate();
 			}
@@ -266,10 +295,13 @@ function spawnSubagentProcess(
 		proc.stderr!.on("data", (data) => { currentResult.stderr += data.toString(); });
 
 		proc.on("close", (code) => {
+			if (maxTimeTimer) clearTimeout(maxTimeTimer);
 			if (buffer.trim()) processLine(buffer);
 			cleanupTempFiles([{ dir: tmpPromptDir, filePath: tmpPromptPath }]);
 			currentResult.exitCode = code ?? 0;
-			if (wasAborted) {
+			if (currentResult.stopReason === "guardrail") {
+				currentResult.exitCode = 1;
+			} else if (wasAborted) {
 				currentResult.exitCode = 1;
 				currentResult.errorMessage = "Subagent was aborted";
 			}
@@ -277,6 +309,7 @@ function spawnSubagentProcess(
 			resolve(currentResult);
 		});
 		proc.on("error", () => {
+			if (maxTimeTimer) clearTimeout(maxTimeTimer);
 			cleanupTempFiles([{ dir: tmpPromptDir, filePath: tmpPromptPath }]);
 			currentResult.exitCode = 1;
 			currentResult.errorMessage = "Failed to spawn subagent process";
@@ -286,6 +319,7 @@ function spawnSubagentProcess(
 		if (signal) {
 			const killProc = () => {
 				wasAborted = true;
+				if (maxTimeTimer) clearTimeout(maxTimeTimer);
 				proc.kill("SIGTERM");
 				setTimeout(() => { if (!proc.killed) proc.kill("SIGKILL"); }, 5000);
 			};
@@ -310,20 +344,36 @@ function emitCompletionNotification(pi: ExtensionAPI, job: AsyncJob): void {
 	const usageLine = formatUsageStats(result.usage, result.model, result.provider, result.thinking);
 	const statusEmoji = job.status === "completed" ? "✓" : "✗";
 
-	const notificationContent = [
-		`**Subagent ${statusEmoji}: \`${job.name}\` — ${job.status}**`,
-		`**Job:** \`${job.id}\``,
-		`**Task:** ${job.task}`,
-		"",
-		truncatedContent,
-		"",
-		usageLine ? `**Usage:** ${usageLine}` : "",
-	].join("\n");
+	let notificationContent: string[];
+	if (result.stopReason === "guardrail") {
+		// Guardrail kill notification with specific reason and usage
+		const guardrailReason = result.errorMessage || "Subagent killed by guardrail";
+		notificationContent = [
+			`**Subagent ${statusEmoji}: \`${job.name}\` — ${job.status}**`,
+			`**Job:** \`${job.id}\``,
+			`**Task:** ${job.task}`,
+			`**Error:** ${guardrailReason}`,
+			"",
+			truncatedContent,
+			"",
+			usageLine ? `**Usage:** ${usageLine}` : "",
+		].filter(Boolean);
+	} else {
+		notificationContent = [
+			`**Subagent ${statusEmoji}: \`${job.name}\` — ${job.status}**`,
+			`**Job:** \`${job.id}\``,
+			`**Task:** ${job.task}`,
+			"",
+			truncatedContent,
+			"",
+			usageLine ? `**Usage:** ${usageLine}` : "",
+		].filter(Boolean);
+	}
 
 	pi.sendMessage(
 		{
 			customType: "subagent-result",
-			content: notificationContent,
+			content: notificationContent.join("\n"),
 			display: true,
 			details: {
 				jobId: job.id,
@@ -647,6 +697,10 @@ export default function (pi: ExtensionAPI) {
 			cwd: Type.Optional(Type.String({ description: "Working directory for the subagent process" })),
 			contextFiles: Type.Optional(Type.Boolean({ description: "Load project context files (AGENTS.md etc). Default: true.", default: true })),
 			extensions: Type.Optional(Type.Boolean({ description: "Load extensions in subagent. Default: false.", default: false })),
+			maxTurns: Type.Optional(Type.Number({ description: "Maximum conversation turns before guardrail kill" })),
+			maxCost: Type.Optional(Type.Number({ description: "Maximum cost in dollars before guardrail kill" })),
+			maxTokens: Type.Optional(Type.Number({ description: "Maximum context tokens before guardrail kill" })),
+			maxTime: Type.Optional(Type.Number({ description: "Maximum wall-clock time in seconds before guardrail kill" })),
 			tasks: Type.Optional(Type.Array(ItemConfig, { description: "Array of items for parallel execution" })),
 			chain: Type.Optional(Type.Array(ItemConfig, { description: "Array of items for sequential execution with {previous}" })),
 		}),
@@ -657,6 +711,7 @@ export default function (pi: ExtensionAPI) {
 			"Omit `systemPrompt` and `name` for a bare-task pattern: a default assistant in an isolated context. Useful for running a task in a fresh context window.",
 			"Use `model` and `thinking` to control the subagent's capability: fast models for lookup, powerful models for complex tasks.",
 			"Use subagent_fork for background execution. Use subagent_run when you need the result before continuing.",
+			"Set guardrails (maxTurns, maxCost, maxTokens, maxTime) to limit subagent resource usage. The subagent is killed with stopReason=guardrail if any threshold is exceeded.",
 		],
 
 		async execute(_toolCallId, params, signal, onUpdate, ctx) {
@@ -674,8 +729,8 @@ export default function (pi: ExtensionAPI) {
 			}
 
 			// Build top-level resolvable fields for inheritance
-			const topLevel: ResolvableFields | undefined = (params.provider || params.thinking || params.model || params.systemPrompt || params.tools || params.contextFiles !== undefined || params.extensions !== undefined)
-				? { task: params.task ?? "", provider: params.provider, thinking: params.thinking as ThinkingLevel | undefined, model: params.model, systemPrompt: params.systemPrompt, tools: params.tools, contextFiles: params.contextFiles, extensions: params.extensions }
+			const topLevel: ResolvableFields | undefined = (params.provider || params.thinking || params.model || params.systemPrompt || params.tools || params.contextFiles !== undefined || params.extensions !== undefined || params.maxTurns !== undefined || params.maxCost !== undefined || params.maxTokens !== undefined || params.maxTime !== undefined)
+				? { task: params.task ?? "", provider: params.provider, thinking: params.thinking as ThinkingLevel | undefined, model: params.model, systemPrompt: params.systemPrompt, tools: params.tools, contextFiles: params.contextFiles, extensions: params.extensions, maxTurns: params.maxTurns, maxCost: params.maxCost, maxTokens: params.maxTokens, maxTime: params.maxTime }
 				: undefined;
 
 			if (params.chain && params.chain.length > 0) {
@@ -685,7 +740,7 @@ export default function (pi: ExtensionAPI) {
 					const step = params.chain[i];
 					const taskWithContext = step.task.replace(/\{previous\}/g, previousOutput);
 					const config = resolveConfig(
-						{ task: taskWithContext, name: step.name, systemPrompt: step.systemPrompt, tools: step.tools, model: step.model, provider: step.provider, thinking: step.thinking as ThinkingLevel | undefined, cwd: step.cwd, contextFiles: step.contextFiles, extensions: step.extensions },
+						{ task: taskWithContext, name: step.name, systemPrompt: step.systemPrompt, tools: step.tools, model: step.model, provider: step.provider, thinking: step.thinking as ThinkingLevel | undefined, cwd: step.cwd, contextFiles: step.contextFiles, extensions: step.extensions, maxTurns: step.maxTurns, maxCost: step.maxCost, maxTokens: step.maxTokens, maxTime: step.maxTime },
 						topLevel,
 					);
 					const { resultPromise } = spawnSubagentProcess(
@@ -713,7 +768,7 @@ export default function (pi: ExtensionAPI) {
 				const emitParallelUpdate = () => { if (onUpdate) { onUpdate({ content: [{ type: "text", text: `Parallel: ${allResults.filter((r) => r.exitCode !== -1).length}/${allResults.length} done...` }], details: makeDetails("parallel")([...allResults]) }); } };
 				const results = await mapWithConcurrencyLimit(params.tasks, MAX_CONCURRENCY, async (t, index) => {
 					const config = resolveConfig(
-						{ task: t.task, name: t.name, systemPrompt: t.systemPrompt, tools: t.tools, model: t.model, provider: t.provider, thinking: t.thinking as ThinkingLevel | undefined, cwd: t.cwd, contextFiles: t.contextFiles, extensions: t.extensions },
+						{ task: t.task, name: t.name, systemPrompt: t.systemPrompt, tools: t.tools, model: t.model, provider: t.provider, thinking: t.thinking as ThinkingLevel | undefined, cwd: t.cwd, contextFiles: t.contextFiles, extensions: t.extensions, maxTurns: t.maxTurns, maxCost: t.maxCost, maxTokens: t.maxTokens, maxTime: t.maxTime },
 						topLevel,
 					);
 					const { resultPromise } = spawnSubagentProcess(config, t.task, t.cwd ?? params.cwd, ctx.cwd, signal, undefined, (partial) => { allResults[index] = partial; emitParallelUpdate(); });
@@ -735,7 +790,7 @@ export default function (pi: ExtensionAPI) {
 
 			if (params.task && params.task.trim()) {
 				const config = resolveConfig(
-					{ task: params.task.trim(), name: params.name, systemPrompt: params.systemPrompt, tools: params.tools, model: params.model, provider: params.provider, thinking: params.thinking as ThinkingLevel | undefined, cwd: params.cwd, contextFiles: params.contextFiles, extensions: params.extensions },
+					{ task: params.task.trim(), name: params.name, systemPrompt: params.systemPrompt, tools: params.tools, model: params.model, provider: params.provider, thinking: params.thinking as ThinkingLevel | undefined, cwd: params.cwd, contextFiles: params.contextFiles, extensions: params.extensions, maxTurns: params.maxTurns, maxCost: params.maxCost, maxTokens: params.maxTokens, maxTime: params.maxTime },
 				);
 				const { resultPromise } = spawnSubagentProcess(
 					config, params.task.trim(), params.cwd, ctx.cwd, signal, undefined,
@@ -837,6 +892,10 @@ export default function (pi: ExtensionAPI) {
 			cwd: Type.Optional(Type.String({ description: "Working directory for the subagent process (single mode)" })),
 			contextFiles: Type.Optional(Type.Boolean({ description: "Load project context files. Default: true.", default: true })),
 			extensions: Type.Optional(Type.Boolean({ description: "Load extensions in subagent. Default: false.", default: false })),
+			maxTurns: Type.Optional(Type.Number({ description: "Maximum conversation turns before guardrail kill" })),
+			maxCost: Type.Optional(Type.Number({ description: "Maximum cost in dollars before guardrail kill" })),
+			maxTokens: Type.Optional(Type.Number({ description: "Maximum context tokens before guardrail kill" })),
+			maxTime: Type.Optional(Type.Number({ description: "Maximum wall-clock time in seconds before guardrail kill" })),
 			tasks: Type.Optional(Type.Array(ItemConfig, { description: "Array of items for parallel fork" })),
 		}),
 		promptSnippet: "Fork background subagent jobs, continue working while they run",
@@ -848,6 +907,7 @@ export default function (pi: ExtensionAPI) {
 			"Omit `systemPrompt` for the bare-task pattern: a default assistant in isolated context.",
 			"Use subagent_run when you need the result immediately. Use subagent_fork when you can work in parallel.",
 			"A TUI status widget is displayed above the editor while jobs are running, showing live progress. You'll also receive a completion notification when each job finishes.",
+		"Set guardrails (maxTurns, maxCost, maxTokens, maxTime) to limit subagent resource usage. The subagent is killed with stopReason=guardrail if any threshold is exceeded.",
 		],
 
 		async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
@@ -855,7 +915,7 @@ export default function (pi: ExtensionAPI) {
 
 			if (params.task && params.task.trim()) {
 				const config = resolveConfig(
-					{ task: params.task.trim(), name: params.name, systemPrompt: params.systemPrompt, tools: params.tools, model: params.model, provider: params.provider, thinking: params.thinking as ThinkingLevel | undefined, cwd: params.cwd, contextFiles: params.contextFiles, extensions: params.extensions },
+					{ task: params.task.trim(), name: params.name, systemPrompt: params.systemPrompt, tools: params.tools, model: params.model, provider: params.provider, thinking: params.thinking as ThinkingLevel | undefined, cwd: params.cwd, contextFiles: params.contextFiles, extensions: params.extensions, maxTurns: params.maxTurns, maxCost: params.maxCost, maxTokens: params.maxTokens, maxTime: params.maxTime },
 				);
 				tasks.push({ config, task: params.task.trim(), cwd: params.cwd });
 			} else if (params.tasks && params.tasks.length > 0) {
@@ -864,8 +924,8 @@ export default function (pi: ExtensionAPI) {
 						return { content: [{ type: "text", text: `Task for "${t.name || deriveName(t.task)}" must not be empty.` }], details: { jobs: [] }, isError: true };
 					}
 					const config = resolveConfig(
-						{ task: t.task.trim(), name: t.name, systemPrompt: t.systemPrompt, tools: t.tools, model: t.model, provider: t.provider, thinking: t.thinking as ThinkingLevel | undefined, cwd: t.cwd, contextFiles: t.contextFiles, extensions: t.extensions },
-						{ task: params.task ?? "", provider: params.provider, thinking: params.thinking as ThinkingLevel | undefined, model: params.model, systemPrompt: params.systemPrompt, tools: params.tools, contextFiles: params.contextFiles, extensions: params.extensions },
+						{ task: t.task.trim(), name: t.name, systemPrompt: t.systemPrompt, tools: t.tools, model: t.model, provider: t.provider, thinking: t.thinking as ThinkingLevel | undefined, cwd: t.cwd, contextFiles: t.contextFiles, extensions: t.extensions, maxTurns: t.maxTurns, maxCost: t.maxCost, maxTokens: t.maxTokens, maxTime: t.maxTime },
+						{ task: params.task ?? "", provider: params.provider, thinking: params.thinking as ThinkingLevel | undefined, model: params.model, systemPrompt: params.systemPrompt, tools: params.tools, contextFiles: params.contextFiles, extensions: params.extensions, maxTurns: params.maxTurns, maxCost: params.maxCost, maxTokens: params.maxTokens, maxTime: params.maxTime },
 					);
 					tasks.push({ config, task: t.task.trim(), cwd: t.cwd ?? params.cwd });
 				}
@@ -879,12 +939,12 @@ export default function (pi: ExtensionAPI) {
 				return { content: [{ type: "text", text: `Maximum ${MAX_RUNNING_JOBS} concurrent async jobs (${jobMgr.runningCount()} running). Cancel a job or wait for one to complete.` }], details: { jobs: [] }, isError: true };
 			}
 
-			const spawnedJobs: Array<{ id: string; name: string; task: string; status: string; provider?: string; thinking?: string; tools?: string[] }> = [];
+			const spawnedJobs: Array<{ id: string; name: string; task: string; status: string; provider?: string; thinking?: string; tools?: string[]; guardrails?: import("./guardrails.js").Guardrails }> = [];
 
 			for (const t of tasks) {
 				// Always create job entry first so it counts against the cap.
 				let job;
-				try { job = jobMgr.createJob(t.config.name, t.task); }
+				try { job = jobMgr.createJob(t.config.name, t.task, t.config.guardrails); }
 				catch (err) {
 					// Cap hit mid-batch
 					return { content: [{ type: "text", text: `Maximum ${MAX_RUNNING_JOBS} concurrent async jobs (${jobMgr.runningCount()} running). Cancel a job or wait for one to complete.` }], details: { jobs: spawnedJobs }, isError: true };
@@ -892,7 +952,7 @@ export default function (pi: ExtensionAPI) {
 				job.tools = t.config.tools;
 
 				const taskPreview = t.task.length > 60 ? `${t.task.slice(0, 60)}...` : t.task;
-				spawnedJobs.push({ id: job.id, name: t.config.name, task: taskPreview, status: "running", provider: t.config.provider, thinking: t.config.thinking as string | undefined, tools: t.config.tools });
+				spawnedJobs.push({ id: job.id, name: t.config.name, task: taskPreview, status: "running", provider: t.config.provider, thinking: t.config.thinking as string | undefined, tools: t.config.tools, guardrails: t.config.guardrails });
 
 				const { proc, resultPromise } = spawnSubagentProcess(
 					t.config, t.task, t.cwd, ctx.cwd, undefined, undefined,
@@ -925,7 +985,12 @@ export default function (pi: ExtensionAPI) {
 			const jobLines = spawnedJobs.map((j) => {
 				const bracket = j.tools ? formatToolsBracket(j.tools) : "";
 				const bracketStr = bracket ? ` ${bracket}` : "";
-				return `- \`${j.id}\`: **${j.name}**${bracketStr} — ${j.task} (${j.status})`;
+				let line = `- \`${j.id}\`: **${j.name}**${bracketStr} — ${j.task} (${j.status})`;
+				if (j.guardrails) {
+					const guardrailLine = formatGuardrailLine(j.guardrails);
+					if (guardrailLine) line += `\n  Guardrails: ${guardrailLine}`;
+				}
+				return line;
 			}).join("\n");
 			return {
 				content: [{ type: "text", text: `Forked ${spawnedJobs.length} job${spawnedJobs.length > 1 ? "s" : ""} (${running}/${MAX_RUNNING_JOBS} running)\n\n${jobLines}` }],
@@ -995,10 +1060,34 @@ export default function (pi: ExtensionAPI) {
 					const progressSummary = extractSummary(job.result.messages);
 					const progressUsage = formatUsageStats(job.result.usage, job.result.model, job.result.provider, job.result.thinking);
 					text += `\n\n**Progress:**`;
-					if (job.result.usage.turns) text += `\n- **Turns:** ${job.result.usage.turns}`;
-					if (progressUsage) text += `\n- **Usage:** ${progressUsage}`;
-					if (progressSummary) text += `\n- **Last text:** ${truncateForWidget(progressSummary, 120)}`;
-					if (lastToolCall) text += `\n- **Last tool call:** ${formatToolCall(lastToolCall.name, lastToolCall.args, (_c: any, t: string) => t)}`;
+					// Show guardrail-specific progress if guardrails are set
+					if (job.guardrails) {
+						const guardrailProgress = formatGuardrailProgress(job.result.usage, job.guardrails, elapsedMs);
+						if (guardrailProgress) {
+							// Parse the progress string to format individual lines
+							const parts = guardrailProgress.split(" ");
+							if (job.guardrails.maxTurns) {
+								const turnPart = parts.find(p => p.includes("/T"));
+								if (turnPart) text += `\n- **Turns:** ${turnPart}`;
+							}
+							const costPart = parts.find(p => p.startsWith("$"));
+							if (costPart) text += `\n- **Cost:** ${costPart}`;
+							const tokenPart = parts.find(p => p.match(/^\d+/));
+							if (tokenPart && !tokenPart.includes("/T") && !tokenPart.startsWith("$")) {
+								text += `\n- **Tokens:** ${tokenPart}`;
+							}
+							const timePart = parts.find(p => p.includes("/"));
+							if (timePart && timePart.includes("m") || timePart?.includes("s")) {
+								text += `\n- **Time:** ${timePart}`;
+							}
+						}
+						} else {
+							// No guardrails: show turns and full usage stats
+							if (job.result.usage.turns) text += `\n- **Turns:** ${job.result.usage.turns}`;
+							if (progressUsage) text += `\n- **Usage:** ${progressUsage}`;
+						}
+						if (progressSummary) text += `\n- **Last text:** ${truncateForWidget(progressSummary, 120)}`;
+						if (lastToolCall) text += `\n- **Last tool call:** ${formatToolCall(lastToolCall.name, lastToolCall.args, (_c: any, t: string) => t)}`;
 				} else if (job.status === "running" && !job.result) {
 					text += `\n\n**Progress:** No progress data available yet`;
 				}

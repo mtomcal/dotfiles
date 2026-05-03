@@ -4,6 +4,12 @@
   "defaultProvider": "ollama-cloud",
   "defaultModel": "glm-5.1",
   "defaultThinkingLevel": "medium",
+  "subagentGuardrails": {
+    "maxTurns": 50,
+    "maxCost": 1.00,
+    "maxTokens": 500000,
+    "maxTime": 600
+  },
   "subagentModelRouting": {
     "scout": {
       "description": "Fast codebase recon, return compressed context",

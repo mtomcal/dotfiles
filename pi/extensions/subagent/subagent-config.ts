@@ -6,6 +6,8 @@
  */
 
 import type { ThinkingLevel } from "@mariozechner/pi-agent-core";
+import type { Guardrails } from "./guardrails.js";
+import { resolveGuardrails } from "./guardrails.js";
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -18,6 +20,7 @@ export interface SubagentConfig {
 	thinking: ThinkingLevel;
 	contextFiles: boolean;
 	extensions: boolean;
+	guardrails: Guardrails;
 }
 
 export interface ResolvableFields {
@@ -31,6 +34,10 @@ export interface ResolvableFields {
 	cwd?: string;
 	contextFiles?: boolean;
 	extensions?: boolean;
+	maxTurns?: number;
+	maxCost?: number;
+	maxTokens?: number;
+	maxTime?: number;
 }
 
 // ─── Constants ───────────────────────────────────────────────────────
@@ -104,7 +111,9 @@ export function parseTools(toolsStr: string): string[] {
 
 export function resolveConfig(
 	perItem: ResolvableFields,
-	topLevel?: ResolvableFields,
+	topLevel?: Partial<ResolvableFields>,
+	_settingsPath?: string,
+	globalDefaults?: Guardrails | null,
 ): SubagentConfig {
 	const task = perItem.task;
 	const name = perItem.name ?? deriveName(task);
@@ -155,6 +164,15 @@ export function resolveConfig(
 	// Extensions: per-item > top-level > default false
 	const extensions = perItem.extensions ?? topLevel?.extensions ?? false;
 
+	// Guardrails: per-call > top-level > global defaults
+	const perCallGuardrails: Guardrails = {
+		maxTurns: perItem.maxTurns ?? topLevel?.maxTurns,
+		maxCost: perItem.maxCost ?? topLevel?.maxCost,
+		maxTokens: perItem.maxTokens ?? topLevel?.maxTokens,
+		maxTime: perItem.maxTime ?? topLevel?.maxTime,
+	};
+	const resolvedGuardrails = resolveGuardrails(perCallGuardrails, globalDefaults ?? null);
+
 	return {
 		name,
 		systemPrompt: effectiveSystemPrompt,
@@ -164,6 +182,7 @@ export function resolveConfig(
 		thinking,
 		contextFiles,
 		extensions,
+		guardrails: resolvedGuardrails,
 	};
 }
 

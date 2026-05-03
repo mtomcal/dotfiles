@@ -286,7 +286,7 @@ describe("cancellation notification — Rule 25b: NO tools display", () => {
 			tools: ["read", "grep"],
 			messages: [
 				fakeMessage("Scanning files..."),
-				fakeToolCall("grep", { pattern: "TODO", path: "/src" }),
+				fakeToolCall("grep", { pattern: "TODO", path: "/src" }) as any,
 			],
 		});
 		(jobMgr.getJob(job.id) as any).result = result;

@@ -9,6 +9,7 @@ import { describe, test, expect, vi } from "vitest";
 import type { Message } from "@mariozechner/pi-ai";
 import type { AsyncJob, SingleResult } from "../job-manager.js";
 import { renderWidgetContent } from "../widget.js";
+import { formatGuardrailProgress } from "../guardrails.js";
 import {
 	SUBAGENT_WIDGET_DEBOUNCE_MS,
 	SUBAGENT_WIDGET_DISMISS_DELAY_MS,
@@ -365,6 +366,107 @@ describe("renderWidgetContent", () => {
 		expect(header).toMatch(/2\s*running/);
 		// Should show done count (2 done = completed + failed)
 		expect(header).toMatch(/\d+\s*done/);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Guardrail Progress Tests (Slice 4)
+// ----------------------------------------------------------------------------
+
+describe("renderWidgetContent guardrail progress", () => {
+	function makeRunningJobWithGuardrails(overrides: Partial<AsyncJob> = {}): AsyncJob {
+		return {
+			id: "codegen-a3f2b7",
+			name: "codegen",
+			task: "Refactor auth module",
+			status: "running",
+			process: null,
+			startedAt: Date.now() - 150000, // 2m30s ago
+			completedAt: null,
+			result: {
+				name: "codegen",
+				task: "Refactor auth module",
+				exitCode: 0,
+				messages: [],
+				stderr: "",
+				usage: {
+					input: 100000,
+					output: 50000,
+					cacheRead: 10000,
+					cacheWrite: 5000,
+					cost: 0.32,
+					contextTokens: 84000,
+					turns: 18,
+				},
+			},
+			guardrails: { maxTurns: 25, maxCost: 0.50, maxTokens: 200000, maxTime: 300 },
+			tools: ["read", "write", "bash", "edit"],
+			...overrides,
+		};
+	}
+
+	test("renderWidgetContent with a running job that has guardrails shows progress line", () => {
+		const jobs: AsyncJob[] = [makeRunningJobWithGuardrails()];
+		const result = renderWidgetContent(jobs, 120);
+		expect(result).toBeDefined();
+		expect(result!.length).toBeGreaterThanOrEqual(3);
+
+		// Check that guardrail progress is present
+		const output = result!.join(" ");
+		expect(output).toContain("18/25T");
+		expect(output).toContain("$0.32/$0.50");
+	});
+
+	test("renderWidgetContent with a running job that has no guardrails shows no progress line", () => {
+		const jobs: AsyncJob[] = [
+			makeRunningJob({
+				name: "review",
+				task: "Review the code",
+				guardrails: undefined,
+				result: fakeSingleResult({
+					usage: { input: 5000, output: 1200, cacheRead: 3000, cacheWrite: 800, cost: 0.0342, contextTokens: 6000, turns: 3 },
+				}),
+			}),
+		];
+		const result = renderWidgetContent(jobs, 120);
+		expect(result).toBeDefined();
+
+		// No guardrail progress indicators
+		const output = result!.join(" ");
+		expect(output).not.toContain("/25T");
+		expect(output).not.toContain("/$0.");
+	});
+
+	test("formatGuardrailProgress with full guardrails returns correct format", () => {
+		const usage = {
+			input: 100000,
+			output: 50000,
+			cacheRead: 10000,
+			cacheWrite: 5000,
+			cost: 0.32,
+			contextTokens: 84000,
+			turns: 18,
+		};
+		const guardrails = { maxTurns: 25, maxCost: 0.50, maxTokens: 200000, maxTime: 300 };
+		const elapsedMs = 150000; // 2m30s
+		const result = formatGuardrailProgress(usage, guardrails, elapsedMs);
+		expect(result).toContain("18/25T");
+		expect(result).toContain("$0.32/$0.50");
+		expect(result).toContain("84k/200k");
+		expect(result).toContain("2m30s/5m");
+	});
+
+	test("formatGuardrailProgress with partial guardrails returns only configured fields", () => {
+		const usage = { input: 100000, output: 50000, cacheRead: 10000, cacheWrite: 5000, cost: 0.32, contextTokens: 84000, turns: 18 };
+		const guardrails = { maxTurns: 25, maxCost: 0.50 };
+		const result = formatGuardrailProgress(usage, guardrails, 150000);
+		expect(result).toBe("18/25T $0.32/$0.50");
+	});
+
+	test("formatGuardrailProgress with undefined guardrails returns empty string", () => {
+		const usage = { input: 100000, output: 50000, cacheRead: 10000, cacheWrite: 5000, cost: 0.32, contextTokens: 84000, turns: 18 };
+		const result = formatGuardrailProgress(usage, undefined, 150000);
+		expect(result).toBe("");
 	});
 });
 

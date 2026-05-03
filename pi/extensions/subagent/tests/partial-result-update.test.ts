@@ -8,7 +8,7 @@
 import { describe, test, expect, vi } from "vitest";
 import type { Message } from "@mariozechner/pi-ai";
 import { JobManager, type SingleResult } from "../job-manager.js";
-import { fakeUsageStats, fakeSingleResult } from "./helpers.js";
+import { fakeUsageStats, fakeSingleResult, fakeChildProcess } from "./helpers.js";
 
 describe("updatePartialResult", () => {
 	test("creating a job leaves result as null (baseline)", () => {
@@ -98,7 +98,7 @@ describe("updatePartialResult", () => {
 
 	test("updatePartialResult for a cancelled job does not update (frozen state)", () => {
 		const jobMgr = new JobManager();
-		const mockProc = { kill: vi.fn(), killed: false } as any;
+		const mockProc = fakeChildProcess();
 		const job = jobMgr.createJob("reviewer", "Review auth module");
 		jobMgr.setProcess(job.id, mockProc);
 

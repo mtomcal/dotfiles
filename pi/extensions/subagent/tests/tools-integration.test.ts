@@ -774,7 +774,7 @@ describe("TS-AIAGT-041: Deserialization treats missing tools as undefined (Rule 
 			id: "test-job-001",
 			name: "reviewer",
 			task: "Review the auth module",
-			status: "completed",
+			status: "completed" as const,
 			startedAt: Date.now() - 30000,
 			completedAt: Date.now() - 10000,
 			result: {
@@ -825,7 +825,7 @@ describe("TS-AIAGT-041: Deserialization treats missing tools as undefined (Rule 
 		expect(serialized.length).toBeGreaterThan(0);
 		const reviewerJob = serialized.find((j: any) => j.id === job.id);
 		expect(reviewerJob).toBeDefined();
-		expect(reviewerJob.tools).toEqual(["read", "grep"]);
+		expect(reviewerJob!.tools).toEqual(["read", "grep"]);
 	});
 
 	test("serializeJobForDetails handles undefined tools (backward compat)", () => {
@@ -845,7 +845,7 @@ describe("TS-AIAGT-041: Deserialization treats missing tools as undefined (Rule 
 		expect(workerJob).toBeDefined();
 		// If tools is undefined, it should not appear in serialized form
 		// OR it should be null/undefined (both are acceptable per Rule 26)
-		expect(workerJob.tools === undefined || workerJob.tools === null).toBe(true);
+		expect(workerJob!.tools === undefined || workerJob!.tools === null).toBe(true);
 	});
 });
 

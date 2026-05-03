@@ -2,7 +2,7 @@
  * Cycle 1: subagent-config — Config resolution, deriveName, parseTools, parseModelField
  */
 
-import { describe, test, expect } from "vitest";
+import { describe, test, expect, vi } from "vitest";
 import {
 	resolveConfig,
 	deriveName,
@@ -11,6 +11,107 @@ import {
 	buildSpawnArgs,
 	BARE_TASK_INJECTION,
 } from "../subagent-config.js";
+import type { Guardrails } from "../guardrails.js";
+
+describe("resolveConfig guardrails", () => {
+	describe("guardrails field on SubagentConfig", () => {
+		test("config.guardrails is present as a Guardrails object", () => {
+			const config = resolveConfig({ task: "Review" });
+			expect(config.guardrails).toBeDefined();
+			expect(typeof config.guardrails).toBe("object");
+		});
+
+		test("per-call maxTurns wins over global defaults", () => {
+			const config = resolveConfig(
+				{ task: "Review", maxTurns: 20 },
+				undefined,
+				"fake-settings.json",
+				{ maxTurns: 50, maxCost: 1.00 } as Guardrails,
+			);
+			expect(config.guardrails.maxTurns).toBe(20);
+			expect(config.guardrails.maxCost).toBe(1.00);
+		});
+
+		test("per-call maxCost overrides global maxCost, maxTurns from globals", () => {
+			const config = resolveConfig(
+				{ task: "Review" },
+				undefined,
+				"fake-settings.json",
+				{ maxTurns: 50, maxCost: 1.00 } as Guardrails,
+			);
+			expect(config.guardrails.maxTurns).toBe(50);
+			expect(config.guardrails.maxCost).toBe(1.00);
+		});
+
+		test("per-call takes maxCost, top-level takes maxTurns from globals", () => {
+			const config = resolveConfig(
+				{ task: "Review", maxCost: 0.30 },
+				{ maxTurns: 40 },
+				"fake-settings.json",
+				{ maxTurns: 50, maxCost: 1.00 } as Guardrails,
+			);
+			expect(config.guardrails.maxTurns).toBe(40); // top-level wins over globals
+			expect(config.guardrails.maxCost).toBe(0.30); // per-call wins
+		});
+
+
+		test("null global defaults yields per-call values only", () => {
+			const config = resolveConfig(
+				{ task: "Review", maxTurns: 20 },
+				undefined,
+				"fake-settings.json",
+				null,
+			);
+			expect(config.guardrails.maxTurns).toBe(20);
+			expect(config.guardrails.maxCost).toBeUndefined();
+		});
+
+		test("empty global defaults returns empty guardrails object", () => {
+			const config = resolveConfig(
+				{ task: "Review" },
+				undefined,
+				"fake-settings.json",
+				null,
+			);
+			expect(config.guardrails).toEqual({});
+		});
+
+		test("per-call wins over top-level wins over globals: maxTurns=10, maxTokens=100000", () => {
+			const config = resolveConfig(
+				{ task: "Review", maxTurns: 10, maxTokens: 100000 },
+				{ maxTurns: 30 },
+				"fake-settings.json",
+				{ maxTurns: 50, maxTokens: 500000 } as Guardrails,
+			);
+			expect(config.guardrails.maxTurns).toBe(10); // per-call wins
+			expect(config.guardrails.maxTokens).toBe(100000); // per-call wins
+			expect(config.guardrails.maxCost).toBeUndefined(); // no default
+		});
+
+		test("guardrails field defaults to empty object when no fields set", () => {
+			const config = resolveConfig(
+				{ task: "Review" },
+				undefined,
+				"fake-settings.json",
+				null,
+			);
+			expect(config.guardrails).toEqual({});
+		});
+
+		test("all four guardrail fields resolved correctly", () => {
+			const config = resolveConfig(
+				{ task: "Review", maxTurns: 10, maxCost: 0.25 },
+				{ maxTime: 300 },
+				"fake-settings.json",
+				{ maxTurns: 50, maxCost: 1.00, maxTokens: 500000, maxTime: 600 } as Guardrails,
+			);
+			expect(config.guardrails.maxTurns).toBe(10);
+			expect(config.guardrails.maxCost).toBe(0.25);
+			expect(config.guardrails.maxTokens).toBe(500000);
+			expect(config.guardrails.maxTime).toBe(300);
+		});
+	});
+});
 
 describe("subagent-config", () => {
 	describe("resolveConfig", () => {

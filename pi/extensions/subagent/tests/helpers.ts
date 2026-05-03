@@ -2,6 +2,7 @@
  * Test helpers for subagent extension tests.
  */
 
+import { vi } from "vitest";
 import type { Message } from "@mariozechner/pi-ai";
 import { JobManager, type SingleResult } from "../job-manager.js";
 
@@ -73,6 +74,23 @@ export function fakeSingleResult(overrides: Partial<SingleResult> = {}): SingleR
 		],
 		stderr: "",
 		usage: fakeUsageStats(),
+		...overrides,
+	};
+}
+
+/**
+ * Create a minimal mock ChildProcess for cancel/terminateProcess tests.
+ * Includes kill, killed, and on stubs.
+ */
+export function fakeChildProcess(overrides: Partial<{
+	kill: ReturnType<typeof vi.fn>;
+	killed: boolean;
+	on: ReturnType<typeof vi.fn>;
+}> = {}): any {
+	return {
+		kill: vi.fn(),
+		killed: false,
+		on: vi.fn(),
 		...overrides,
 	};
 }

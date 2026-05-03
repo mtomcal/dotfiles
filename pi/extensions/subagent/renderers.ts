@@ -11,6 +11,7 @@ import type { Message } from "@mariozechner/pi-ai";
 import { getMarkdownTheme } from "@mariozechner/pi-coding-agent";
 import { Container, Markdown, Spacer, Text, type Component } from "@mariozechner/pi-tui";
 import type { Theme } from "@mariozechner/pi-coding-agent";
+import { formatGuardrailProgress } from "./guardrails.js";
 
 /** Usage statistics for a subagent run */
 export interface UsageStats {
@@ -282,7 +283,7 @@ export function renderSingleResult(
 	theme: Theme,
 	expanded: boolean,
 ): Component {
-	const isError = r.exitCode !== 0 || r.stopReason === "error" || r.stopReason === "aborted";
+	const isError = r.exitCode !== 0 || r.stopReason === "error" || r.stopReason === "aborted" || r.stopReason === "guardrail";
 	const icon = isError ? theme.fg("error", "✗") : theme.fg("success", "✓");
 	const displayItems = getDisplayItems(r.messages);
 	const finalOutput = getFinalOutput(r.messages);
@@ -349,7 +350,7 @@ export function renderSingleResult(
 
 /** Render a job status line for the job table */
 export function renderJobStatusLine(
-	job: { id: string; name: string; task: string; status: string; startedAt: number; completedAt: number | null; result?: SingleResult | null; tools?: string[] },
+	job: { id: string; name: string; task: string; status: string; startedAt: number; completedAt: number | null; result?: SingleResult | null; tools?: string[]; guardrails?: import("./guardrails.js").Guardrails },
 	theme: Theme,
 ): string {
 	const statusIcons: Record<string, string> = {
@@ -387,5 +388,13 @@ export function renderJobStatusLine(
 		summary = summary.length > 80 ? summary.slice(0, 80) + "..." : summary;
 	}
 
-	return `${icon} ${nameStr}${toolsSuffix} ${theme.fg("dim", `(${elapsed})`)} ${theme.fg("muted", taskPreview)}${summary}`;
+	let result = `${icon} ${nameStr}${toolsSuffix} ${theme.fg("dim", `(${elapsed})`)} ${theme.fg("muted", taskPreview)}${summary}`;
+
+	// Guardrail progress for running jobs
+	if (job.status === "running" && job.result && job.guardrails) {
+		const progress = formatGuardrailProgress(job.result.usage, job.guardrails, elapsedMs);
+		if (progress) result += ` ${theme.fg("warning", progress)}`;
+	}
+
+	return result;
 }

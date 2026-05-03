@@ -42,9 +42,9 @@ RIGHT:  implement slice → mark review → delegate review → reviewer passes 
 
 Before delegating any slice, confirm the baseline is clean:
 
-- [ ] `cd ~/.pi/agent/extensions/subagent && npx vitest run` — all existing tests pass
-- [ ] `tsc --noEmit` — typecheck passes
-- [ ] No unrelated changes in the working tree
+- [x] `cd ~/.pi/agent/extensions/subagent && npx vitest run` — all existing tests pass
+- [x] `tsc --noEmit` — typecheck passes
+- [x] No unrelated changes in the working tree
 
 Run this as a `subagent_run` with `tools: "read,bash"` if needed. Do not proceed until the baseline is green.
 
@@ -90,10 +90,10 @@ Add a new `guardrails.ts` module with types, resolution, checking, and formattin
 
 | # | Slice | File | Status | Model | Provider | Thinking | Guardrails | Review Model | Review Provider | Reviews | Dependency |
 |---|-------|------|--------|-------|----------|----------|------------|--------------|-----------------|---------|-------------|
-| 1 | Pure guardrails module | `slices/001-pure-guardrails.md` | ⏳ not-started | minimax-m2.7 | ollama-cloud | medium | 20T $0.10 100K 2m | deepseek-v4-pro | ollama-cloud | test | — |
-| 2 | Config and job wiring | `slices/002-config-job-wiring.md` | ⏳ not-started | minimax-m2.7 | ollama-cloud | medium | 30T $0.30 200K 5m | deepseek-v4-pro | ollama-cloud | test, quality | 1 |
-| 3 | Enforcement and process kill | `slices/003-enforcement-kill.md` | ⏳ not-started | deepseek-v4-pro | ollama-cloud | high | 50T $1.00 500K 10m | deepseek-v4-pro | ollama-cloud | test, quality, security | 1, 2 |
-| 4 | Display updates | `slices/004-display-updates.md` | ⏳ not-started | minimax-m2.7 | ollama-cloud | medium | 30T $0.30 200K 5m | deepseek-v4-pro | ollama-cloud | test, quality | 1, 3 |
+| 1 | Pure guardrails module | `slices/001-pure-guardrails.md` | ✅ done | minimax-m2.7 | ollama-cloud | medium | 20T $0.10 100K 2m | deepseek-v4-pro | ollama-cloud | test | — |
+| 2 | Config and job wiring | `slices/002-config-job-wiring.md` | ✅ done | minimax-m2.7 | ollama-cloud | medium | 30T $0.30 200K 5m | deepseek-v4-pro | ollama-cloud | test, quality | 1 |
+| 3 | Enforcement and process kill | `slices/003-enforcement-kill.md` | ✅ done | deepseek-v4-pro | ollama-cloud | high | 50T $1.00 500K 10m | deepseek-v4-pro | ollama-cloud | test, quality, security | 1, 2 |
+| 4 | Display updates | `slices/004-display-updates.md` | ✅ done | minimax-m2.7 | ollama-cloud | medium | 30T $0.30 200K 5m | deepseek-v4-pro | ollama-cloud | test, quality | 1, 3 |
 
 Guardrails column format: `maxTurns`T `maxCost` `maxTokens` maxTime (e.g., `20T $0.10 100K 2m`). Passed as `maxTurns`, `maxCost`, `maxTokens`, `maxTime` params to `subagent_run` / `subagent_fork`.
 

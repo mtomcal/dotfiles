@@ -187,17 +187,17 @@ Add inside the existing JSON object:
 
 ## Progress
 
-- [ ] **RED** — Extend `tests/subagent-config.test.ts` with guardrails resolution tests
-- [ ] **RED** — Extend `tests/job-manager.test.ts` with guardrails field and terminateProcess tests
-- [ ] **RED** — Run `npx vitest run tests/subagent-config.test.ts tests/job-manager.test.ts`, observe failures
-- [ ] **GREEN** — Add guardrail fields to `ResolvableFields`, `SubagentConfig`, `AsyncJob`, `SerializedJob`
-- [ ] **GREEN** — Update `resolveConfig()` to resolve guardrails with `readGuardrailDefaults`
-- [ ] **GREEN** — Extract `terminateProcess` from `cancelJob`/`cancelAll`
-- [ ] **GREEN** — Add `subagentGuardrails` to `settings.json`
-- [ ] **GREEN** — Run `npx vitest run tests/subagent-config.test.ts tests/job-manager.test.ts`, observe passes
-- [ ] **GREEN** — Run `npx vitest run` (full suite), confirm no regressions
-- [ ] **REFACTOR** — Verify existing cancelJob/cancelAll tests still pass
-- [ ] **REFACTOR** — Run `npx vitest run`, confirm still green
+- [x] **RED** — Extend `tests/subagent-config.test.ts` with guardrails resolution tests
+- [x] **RED** — Extend `tests/job-manager.test.ts` with guardrails field and terminateProcess tests
+- [x] **RED** — Run `npx vitest run tests/subagent-config.test.ts tests/job-manager.test.ts`, observe failures
+- [x] **GREEN** — Add guardrail fields to `ResolvableFields`, `SubagentConfig`, `AsyncJob`, `SerializedJob`
+- [x] **GREEN** — Update `resolveConfig()` to resolve guardrails with `readGuardrailDefaults`
+- [x] **GREEN** — Extract `terminateProcess` from `cancelJob`/`cancelAll`
+- [x] **GREEN** — Add `subagentGuardrails` to `settings.json`
+- [x] **GREEN** — Run `npx vitest run tests/subagent-config.test.ts tests/job-manager.test.ts`, observe passes
+- [x] **GREEN** — Run `npx vitest run` (full suite), confirm no regressions
+- [x] **REFACTOR** — Verify existing cancelJob/cancelAll tests still pass
+- [x] **REFACTOR** — Run `npx vitest run`, confirm still green
 
 ## Review
 
@@ -206,3 +206,34 @@ Add inside the existing JSON object:
 ## Course Corrections
 
 [Orchestrator appends here when re-delegating — what went wrong, what to try differently]
+**✅ PASS** — Code quality review by QA agent (2026-05-02)
+
+| Criteria | Verdict | Notes |
+|----------|---------|-------|
+| Naming | ✅ | `maxTurns`/`maxCost`/`maxTokens`/`maxTime` match `Guardrails` interface; `guardrails` key consistent across `SubagentConfig`, `AsyncJob`, `SerializedJob`; `terminateProcess(proc)` follows codebase conventions |
+| Structure | ✅ | `terminateProcess` cleanly extracted as standalone export; `cancelJob` and `cancelAll` both capture `proc` ref before nullifying `job.process`, consistent between callers |
+| Coupling | ✅ | `guardrails` on `AsyncJob` is intentional — Slice 3 uses it for guardrail kill enforcement; bidirectional type imports (`Guardrails` ↔ `UsageStats`) are type-level only, zero runtime circular deps |
+| Adherence to spec | ⚠️ minor | `_settingsPath` param on `resolveConfig` is dead code (underscore-prefixed but unused); `readGuardrailDefaults` is never called from production `index.ts` — global defaults from `settings.json` don't flow into `resolveConfig` calls yet; appears to be a scope boundary (index.ts not listed in this slice's files-to-modify) |
+| Imports | ✅ | No circular runtime deps; all cross-module imports are `type`-only; third-party imports clean |
+| Path handling | ✅ | `readGuardrailDefaults` mirrors `readRoutingTable` pattern (ENOENT → warn → null, invalid JSON → warn → null, same `[subagent-routing]` prefix); intentional silent null for absent/empty section (guardrails optional, unlike routing) |
+| Tests | ✅ | 78/78 pass; 9 new guardrails config resolution tests cover all spec combinations; 8 new job-manager tests cover guardrails field + serialize/deserialize + terminateProcess with fake timers |
+
+**Recommendation:** Remove the dead `_settingsPath` parameter from `resolveConfig` (or add a `// TODO: wire up in Slice N` comment) to avoid confusion. The feature is correctly implemented but half-wired — the missing `index.ts` integration is a scope decision, not a bug.
+
+**✅ PASS** — Test assertions review (2026-05-02)
+
+All 78 targeted tests pass (527 full suite). Each RED assertion is substantively verified:
+
+| RED Assertion | Tests Found | Vague/Weak? |
+|---|---|---|
+| `ResolvableFields` + `SubagentConfig` guardrail fields | Fields present (lines 23, 42-45 of `subagent-config.ts`) | No |
+| `resolveConfig` merges per-call/top-level/globals | 4 of 4 matrix rows covered (Row 2 indirectly) | Minor: Row 2 (`maxCost` top-level-only) lacks explicit test, but precedence chain tested adjacent |
+| `AsyncJob` guardrails through create/serialize/deserialize | 5 tests: create/store, create/undefined, serialize, deserialize, serialize-undefined | No — all use exact equality checks |
+| `terminateProcess` SIGTERM→SIGKILL after 5s | 2 tests: fake-timers sequence verification + already-killed short-circuit | No — precise mock assertions with `vi.advanceTimersByTime(5000)` |
+| `cancelJob`/`cancelAll` use `terminateProcess` | 4 tests: basic cancel, cancelAll, captured-ref escalation (×2) | No — SIGKILL escalation validated via separate captured-ref tests |
+| `settings.json`: `subagentGuardrails` defaults | File present with `{maxTurns:50, maxCost:1.00, maxTokens:500000, maxTime:600}` | No — values match spec exactly |
+
+**Vague assertion audit**: The smoke test `"config.guardrails is present as a Guardrails object"` uses `toBeDefined()` + `typeof "object"` — would pass for any object. Acceptable as a gate-keeper; the 9 specific field-resolution tests below it provide the real coverage.
+
+**Gap noted (non-blocking)**: No integration test verifies `readGuardrailDefaults` → `resolveConfig` data flow in production `index.ts`. The `_settingsPath` parameter on `resolveConfig` is dead code. This is a scope boundary decision (index.ts not in this slice's file list), not a bug.
+

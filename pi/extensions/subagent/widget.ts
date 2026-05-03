@@ -11,6 +11,7 @@ import {
 	SUBAGENT_WIDGET_DISMISS_DELAY_MS,
 } from "./summary.js";
 import { formatUsageStats, getDisplayItems, formatToolCall, formatToolsBracket } from "./renderers.js";
+import { formatGuardrailProgress } from "./guardrails.js";
 
 /** Plain-text theme function: strips color, returns text as-is. */
 const plainTheme = (_color: any, text: string): string => text;
@@ -62,6 +63,13 @@ export function renderWidgetContent(jobs: AsyncJob[], terminalWidth?: number): s
 				} else {
 					line1 += ` 0 turns`;
 				}
+
+				// Add guardrail progress if job has guardrails
+				if (job.guardrails && job.result) {
+					const progress = formatGuardrailProgress(job.result.usage, job.guardrails, Date.now() - job.startedAt);
+					if (progress) line1 += ` ${progress}`;
+				}
+
 				if (line1.length > width) line1 = line1.slice(0, width);
 				lines.push(line1);
 

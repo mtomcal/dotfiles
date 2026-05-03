@@ -9,6 +9,7 @@ import { randomBytes } from "node:crypto";
 import type { ChildProcess } from "node:child_process";
 import type { Message } from "@mariozechner/pi-ai";
 import type { ThinkingLevel } from "@mariozechner/pi-agent-core";
+import type { Guardrails } from "./guardrails.js";
 
 export interface UsageStats {
 	input: number;
@@ -48,6 +49,7 @@ export interface AsyncJob {
 	startedAt: number;
 	completedAt: number | null;
 	tools?: string[];
+	guardrails?: Guardrails;
 }
 
 export interface SerializedJob {
@@ -59,16 +61,37 @@ export interface SerializedJob {
 	startedAt: number;
 	completedAt: number | null;
 	tools?: string[];
+	guardrails?: Guardrails;
 }
 
 export const MAX_RUNNING_JOBS = 8;
+
+/**
+ * terminateProcess — shared SIGTERM/SIGKILL logic.
+ *
+ * Sends SIGTERM, waits up to 5s, sends SIGKILL if process hasn't exited.
+ * Resolves immediately if the process is already killed.
+ */
+export function terminateProcess(proc: ChildProcess): Promise<void> {
+	return new Promise((resolve) => {
+		if (proc.killed) { resolve(); return; }
+		proc.kill("SIGTERM");
+		const timeout = setTimeout(() => {
+			if (!proc.killed) proc.kill("SIGKILL");
+		}, 5000);
+		proc.on("close", () => {
+			clearTimeout(timeout);
+			resolve();
+		});
+	});
+}
 
 export class JobManager {
 	private jobs = new Map<string, AsyncJob>();
 	private onCancel: ((job: AsyncJob) => void) | null = null;
 	private onPartialResult: ((jobId: string, partial: SingleResult) => void) | null = null;
 
-	createJob(name: string, task: string): AsyncJob {
+	createJob(name: string, task: string, guardrails?: Guardrails): AsyncJob {
 		const running = this.listRunning();
 		if (running.length >= MAX_RUNNING_JOBS) {
 			throw new Error(
@@ -91,6 +114,7 @@ export class JobManager {
 			result: null,
 			startedAt: Date.now(),
 			completedAt: null,
+			guardrails,
 		};
 		this.jobs.set(id, job);
 		return job;
@@ -154,10 +178,7 @@ export class JobManager {
 			// so the SIGKILL timeout closure can still access it.
 			const proc = job.process;
 			if (proc) {
-				proc.kill("SIGTERM");
-				setTimeout(() => {
-					if (!proc.killed) proc.kill("SIGKILL");
-				}, 5000);
+				terminateProcess(proc); // fire and forget — don't await
 			}
 			job.status = "cancelled";
 			job.completedAt = Date.now();
@@ -172,10 +193,7 @@ export class JobManager {
 			if (job.status === "running") {
 				const proc = job.process;
 				if (proc) {
-					proc.kill("SIGTERM");
-					setTimeout(() => {
-						if (!proc.killed) proc.kill("SIGKILL");
-					}, 5000);
+					terminateProcess(proc); // fire and forget — don't await
 				}
 				job.status = "cancelled";
 				job.completedAt = Date.now();
@@ -211,6 +229,7 @@ export class JobManager {
 			startedAt: j.startedAt,
 			completedAt: j.completedAt,
 			tools: j.tools,
+			guardrails: j.guardrails,
 		}));
 	}
 
@@ -234,6 +253,7 @@ export class JobManager {
 				startedAt: d.startedAt,
 				completedAt: d.completedAt,
 				tools: d.tools,
+				guardrails: d.guardrails,
 			};
 			this.jobs.set(d.id, job);
 		}

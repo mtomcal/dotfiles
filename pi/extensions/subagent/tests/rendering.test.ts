@@ -6,6 +6,8 @@
 import { describe, test, expect, beforeAll } from "vitest";
 import { createMockExtension } from "./extension-helpers.js";
 import { fakeSingleResult } from "./helpers.js";
+import { formatGuardrailLine, type Guardrails } from "../guardrails.js";
+import { renderJobStatusLine, renderSingleResult, formatToolsBracket } from "../renderers.js";
 
 let registeredTools: Map<string, any>;
 
@@ -23,6 +25,146 @@ function getMockTheme() {
 		bold: (s: string) => s,
 	};
 }
+
+describe("formatGuardrailLine", () => {
+	const guardrails: Guardrails = { maxTurns: 25, maxCost: 0.50, maxTokens: 200000, maxTime: 300 };
+
+	test("formatGuardrailLine with full guardrails shows guardrail values", () => {
+		const result = formatGuardrailLine(guardrails);
+		expect(result).toContain("25 turns");
+		expect(result).toContain("$0.50");
+		expect(result).toContain("tokens");
+		expect(result).toContain("5m");
+	});
+
+	test("formatGuardrailLine with partial guardrails omits missing fields", () => {
+		const partial: Guardrails = { maxTurns: 10, maxCost: 1.00 };
+		const result = formatGuardrailLine(partial);
+		expect(result).toBe("10 turns, $1.00");
+	});
+
+	test("formatGuardrailLine with undefined returns empty string", () => {
+		const result = formatGuardrailLine(undefined);
+		expect(result).toBe("");
+	});
+
+	test("formatGuardrailLine with empty guardrails returns empty string", () => {
+		const result = formatGuardrailLine({});
+		expect(result).toBe("");
+	});
+});
+
+describe("renderJobStatusLine", () => {
+	function getMockTheme() {
+		return {
+			fg: (color: string, text: string) => text,
+			bold: (s: string) => s,
+		};
+	}
+
+	test("renderJobStatusLine with a running job that has guardrails shows guardrail progress", () => {
+		const job = {
+			id: "codegen-a3f2b7",
+			name: "codegen",
+			task: "Refactor auth module",
+			status: "running",
+			startedAt: Date.now() - 150000, // 2m30s ago
+			completedAt: null,
+			tools: ["read", "write", "bash", "edit"],
+			guardrails: { maxTurns: 25, maxCost: 0.50 },
+			result: {
+				name: "codegen",
+				task: "Refactor auth module",
+				exitCode: 0,
+				messages: [],
+				stderr: "",
+				usage: {
+					input: 100000,
+					output: 50000,
+					cacheRead: 10000,
+					cacheWrite: 5000,
+					cost: 0.32,
+					contextTokens: 84000,
+					turns: 18,
+				},
+			},
+		};
+		const result = renderJobStatusLine(job as any, getMockTheme() as any);
+		expect(result).toContain("⏳");
+		expect(result).toContain("codegen");
+		expect(result).toContain("18/25T");
+		expect(result).toContain("$0.32/$0.50");
+	});
+
+	test("renderJobStatusLine with a running job that has no guardrails shows no guardrail progress", () => {
+		const job = {
+			id: "review-def456",
+			name: "review",
+			task: "Review the code",
+			status: "running",
+			startedAt: Date.now() - 30000,
+			completedAt: null,
+			tools: ["read", "grep"],
+			result: {
+				name: "review",
+				task: "Review the code",
+				exitCode: 0,
+				messages: [],
+				stderr: "",
+				usage: {
+					input: 5000,
+					output: 1200,
+					cacheRead: 3000,
+					cacheWrite: 800,
+					cost: 0.0342,
+					contextTokens: 6000,
+					turns: 3,
+				},
+			},
+		};
+		const result = renderJobStatusLine(job as any, getMockTheme() as any);
+		expect(result).toContain("⏳");
+		expect(result).toContain("review");
+		expect(result).not.toContain("/T");
+		expect(result).not.toContain("/$");
+	});
+});
+
+describe("renderSingleResult guardrail stopReason", () => {
+	function getMockTheme() {
+		return {
+			fg: (color: string, text: string) => text,
+			bold: (s: string) => s,
+		};
+	}
+
+	test('renderSingleResult with stopReason: "guardrail" shows [guardrail] tag', () => {
+		const result = fakeSingleResult({
+			name: "codegen",
+			task: "Refactor auth module",
+			exitCode: 1,
+			stopReason: "guardrail",
+			errorMessage: "Subagent killed: exceeded maxTurns (25)",
+			usage: { input: 100000, output: 50000, cacheRead: 10000, cacheWrite: 5000, cost: 0.38, contextTokens: 142000, turns: 24 },
+		});
+		const rendered = renderSingleResult(result, getMockTheme() as any, false);
+		const text = (rendered as any).text ?? (typeof rendered === "string" ? rendered : "");
+		expect(text).toContain("[guardrail]");
+	});
+
+	test('renderSingleResult with stopReason: "guardrail" renders with error styling', () => {
+		const result = fakeSingleResult({
+			name: "builder",
+			task: "Build the project",
+			exitCode: 1,
+			stopReason: "guardrail",
+			errorMessage: "exceeded maxCost ($0.50)",
+		});
+		const rendered = renderSingleResult(result, getMockTheme() as any, false);
+		const text = (rendered as any).text ?? (typeof rendered === "string" ? rendered : "");
+		expect(text).toContain("✗");
+	});
+});
 
 describe("renderCall for subagent_run", () => {
 	test("single mode shows name and task", () => {

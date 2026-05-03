@@ -557,7 +557,7 @@ describe("AsyncJob.tools is set from config.tools in fork", () => {
 });
 
 describe("subagent_status list includes bracket in renderJobStatusLine", () => {
-	const plainTheme = { fg: (_c: any, s: string) => s, bold: (s: string) => s };
+	const plainTheme = { fg: (_c: any, s: string) => s, bold: (s: string) => s } as any;
 
 	test("renderJobStatusLine includes tools bracket when job has tools", () => {
 		const job = jobMgr.createJob("scout", "Search codebase");

@@ -2,11 +2,97 @@
  * Cycle 2: Job Manager — name terminology, remove agentSource, backward compat
  */
 
-import { describe, test, expect, vi } from "vitest";
-import { JobManager, type SingleResult } from "../job-manager.js";
-import { fakeSingleResult, setupJobManager } from "./helpers.js";
+import { describe, test, expect, vi, beforeEach } from "vitest";
+import { JobManager, type SingleResult, type AsyncJob, terminateProcess } from "../job-manager.js";
+import type { Guardrails } from "../guardrails.js";
+import { fakeSingleResult, setupJobManager, fakeChildProcess } from "./helpers.js";
 
 describe("JobManager", () => {
+	describe("createJob guardrails", () => {
+		test("createJob with guardrails stores them on the job", () => {
+			const { jobMgr } = setupJobManager();
+			const guardrails: Guardrails = { maxTurns: 25, maxCost: 0.50 };
+			const job = jobMgr.createJob("review", "Review auth", guardrails);
+			expect(job.guardrails).toEqual(guardrails);
+		});
+
+		test("createJob without guardrails leaves guardrails undefined", () => {
+			const { jobMgr } = setupJobManager();
+			const job = jobMgr.createJob("review", "Review auth");
+			expect(job.guardrails).toBeUndefined();
+		});
+	});
+
+	describe("serialize/deserialize guardrails", () => {
+		test("serialize preserves guardrails field", () => {
+			const { jobMgr } = setupJobManager();
+			const guardrails: Guardrails = { maxTurns: 30, maxCost: 1.00, maxTokens: 500000, maxTime: 600 };
+			jobMgr.createJob("review", "Review auth", guardrails);
+			const data = jobMgr.serialize();
+			expect(data[0].guardrails).toEqual(guardrails);
+		});
+
+		test("deserialize restores guardrails field", () => {
+			const { jobMgr } = setupJobManager();
+			const guardrails: Guardrails = { maxTurns: 30, maxCost: 1.00, maxTokens: 500000 };
+			jobMgr.createJob("review", "Review auth", guardrails);
+			const data = jobMgr.serialize();
+			const mgr2 = new JobManager();
+			mgr2.deserialize(data);
+			expect(mgr2.getJob(data[0].id)!.guardrails).toEqual(guardrails);
+		});
+
+		test("serialize without guardrails produces undefined guardrails field", () => {
+			const { jobMgr } = setupJobManager();
+			jobMgr.createJob("review", "Review auth");
+			const data = jobMgr.serialize();
+			expect(data[0].guardrails).toBeUndefined();
+		});
+	});
+
+	describe("terminateProcess", () => {
+		test("sends SIGTERM, then SIGKILL after 5s timeout if process doesn't exit", async () => {
+			vi.useFakeTimers();
+			const closeCallbacks: Array<() => void> = [];
+			const mockProc = {
+				kill: vi.fn(),
+				killed: false,
+				on: vi.fn((event: string, cb: () => void) => {
+					if (event === "close") closeCallbacks.push(cb);
+				}),
+			} as any;
+			const promise = terminateProcess(mockProc);
+
+			expect(mockProc.kill).toHaveBeenCalledWith("SIGTERM");
+
+			// Advance timers past 5 seconds without emitting close
+			mockProc.killed = false;
+			vi.advanceTimersByTime(5000);
+			expect(mockProc.kill).toHaveBeenCalledWith("SIGKILL");
+
+			// Simulate process exiting
+			closeCallbacks.forEach((cb) => cb());
+			vi.advanceTimersByTime(0);
+
+			await promise;
+			vi.useRealTimers();
+		});
+
+		test("resolves immediately if process already exited (killed=true)", async () => {
+			const closeCallbacks: Array<() => void> = [];
+			const mockProc = {
+				kill: vi.fn(),
+				killed: true, // already exited
+				on: vi.fn((event: string, cb: () => void) => {
+					if (event === "close") closeCallbacks.push(cb);
+				}),
+			} as any;
+			const promise = terminateProcess(mockProc);
+
+			expect(mockProc.kill).not.toHaveBeenCalled();
+			await promise;
+		});
+	});
 	test("createJob uses name-based ID", () => {
 		const { jobMgr } = setupJobManager();
 		const job = jobMgr.createJob("review", "Review auth module");
@@ -46,7 +132,7 @@ describe("JobManager", () => {
 
 	test("cancelJob sends SIGTERM and marks cancelled", () => {
 		const { jobMgr } = setupJobManager();
-		const mockProc = { kill: vi.fn(), killed: false } as any;
+		const mockProc = fakeChildProcess();
 		const job = jobMgr.createJob("reviewer", "Review");
 		jobMgr.setProcess(job.id, mockProc);
 		jobMgr.cancelJob(job.id);
@@ -154,7 +240,7 @@ describe("JobManager", () => {
 	test("cancelJob captures process ref before nulling for SIGKILL escalation", () => {
 		vi.useFakeTimers();
 		const { jobMgr } = setupJobManager();
-		const mockProc = { kill: vi.fn(), killed: false } as any;
+		const mockProc = fakeChildProcess();
 		const job = jobMgr.createJob("reviewer", "Review");
 		jobMgr.setProcess(job.id, mockProc);
 		jobMgr.cancelJob(job.id);
@@ -175,8 +261,8 @@ describe("JobManager", () => {
 	test("cancelAll captures process refs before nulling for SIGKILL fallback", () => {
 		vi.useFakeTimers();
 		const { jobMgr } = setupJobManager();
-		const mockProc1 = { kill: vi.fn(), killed: false } as any;
-		const mockProc2 = { kill: vi.fn(), killed: false } as any;
+		const mockProc1 = fakeChildProcess();
+		const mockProc2 = fakeChildProcess();
 		const job1 = jobMgr.createJob("a", "task1");
 		const job2 = jobMgr.createJob("b", "task2");
 		jobMgr.setProcess(job1.id, mockProc1);
