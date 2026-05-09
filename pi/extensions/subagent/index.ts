@@ -15,7 +15,7 @@
  * - Fork always returns immediately
  * - Completion notifications via pi.sendMessage() with deliverAs: "steer"
  * - Running jobs killed on session_shutdown
- * - Ad-hoc configuration: task + systemPrompt + params, no .md file lookup
+ * - Ad-hoc configuration: task + systemPrompt + params, with optional named agent .md file lookup
  */
 
 import { spawn, type ChildProcess } from "node:child_process";
@@ -61,6 +61,7 @@ import {
 } from "./renderers.js";
 import { extractSummary, truncateForWidget } from "./summary.js";
 import { readRoutingTable, buildToolDescription } from "./routing.js";
+import { loadAgentFile, listAgentFiles, getDefaultAgentsDir } from "./agent-loading.js";
 import { renderWidgetContent } from "./widget.js";
 import { SUBAGENT_WIDGET_DEBOUNCE_MS, SUBAGENT_WIDGET_DISMISS_DELAY_MS } from "./summary.js";
 
@@ -687,6 +688,7 @@ export default function (pi: ExtensionAPI) {
 			"ad-hoc subagents: each call configures the subagent inline.",
 		].join(" "), routingTable),
 		parameters: Type.Object({
+			agent: Type.Optional(Type.String({ description: "Named agent to use from ~/.pi/agent/agents/. Loads .md file with frontmatter defaults. Per-call params override agent defaults." })),
 			name: Type.Optional(Type.String({ description: "Display label. Auto-derived from task text if omitted." })),
 			task: Type.Optional(Type.String({ description: "Task to delegate (single mode)" })),
 			systemPrompt: Type.Optional(Type.String({ description: "System prompt — defines the subagent's role and behavior" })),
@@ -706,6 +708,7 @@ export default function (pi: ExtensionAPI) {
 		}),
 		promptSnippet: "Run subagent tasks and get results immediately",
 		promptGuidelines: [
+			"Use the `agent` parameter to reference a named agent definition (e.g. 'implementer', 'test-reviewer'). The agent .md file provides defaults for system prompt, tools, model, and guardrails.",
 			"Provide `systemPrompt` to define the subagent's behavior, and `name` for a readable job label.",
 			"For the best results, scope `tools` to what the subagent needs (e.g. 'read,grep' for review, 'read,write,bash,edit' for implementation).",
 			"Omit `systemPrompt` and `name` for a bare-task pattern: a default assistant in an isolated context. Useful for running a task in a fresh context window.",
@@ -715,6 +718,10 @@ export default function (pi: ExtensionAPI) {
 		],
 
 		async execute(_toolCallId, params, signal, onUpdate, ctx) {
+			// Load agent file if agent param is specified
+			const agentsDir = getDefaultAgentsDir();
+			const agentFile = params.agent ? loadAgentFile(params.agent, agentsDir) : null;
+
 			const hasChain = (params.chain?.length ?? 0) > 0;
 			const hasTasks = (params.tasks?.length ?? 0) > 0;
 			const hasSingle = Boolean(params.task && params.task.trim());
@@ -791,6 +798,10 @@ export default function (pi: ExtensionAPI) {
 			if (params.task && params.task.trim()) {
 				const config = resolveConfig(
 					{ task: params.task.trim(), name: params.name, systemPrompt: params.systemPrompt, tools: params.tools, model: params.model, provider: params.provider, thinking: params.thinking as ThinkingLevel | undefined, cwd: params.cwd, contextFiles: params.contextFiles, extensions: params.extensions, maxTurns: params.maxTurns, maxCost: params.maxCost, maxTokens: params.maxTokens, maxTime: params.maxTime },
+					undefined,
+					undefined,
+					null,
+					agentFile,
 				);
 				const { resultPromise } = spawnSubagentProcess(
 					config, params.task.trim(), params.cwd, ctx.cwd, signal, undefined,
@@ -882,6 +893,7 @@ export default function (pi: ExtensionAPI) {
 			"ad-hoc subagents: each call configures the subagent inline.",
 		].join(" "), routingTable),
 		parameters: Type.Object({
+			agent: Type.Optional(Type.String({ description: "Named agent to use from ~/.pi/agent/agents/. Loads .md file with frontmatter defaults. Per-call params override agent defaults." })),
 			name: Type.Optional(Type.String({ description: "Display label. Auto-derived from task text if omitted." })),
 			task: Type.Optional(Type.String({ description: "Task to delegate (for single mode)" })),
 			systemPrompt: Type.Optional(Type.String({ description: "System prompt — defines the subagent's role and behavior" })),
@@ -900,6 +912,7 @@ export default function (pi: ExtensionAPI) {
 		}),
 		promptSnippet: "Fork background subagent jobs, continue working while they run",
 		promptGuidelines: [
+			"Use the `agent` parameter to reference a named agent definition (e.g. 'implementer', 'test-reviewer'). The agent .md file provides defaults for system prompt, tools, model, and guardrails.",
 			"Provide `systemPrompt` to define the subagent's behavior, and `name` for a readable job label.",
 			"After forking, continue your work. You'll receive a completion notification with a summary and usage stats.",
 			"When you receive a notification, call subagent_results with the jobId only if you need more detail.",
@@ -911,11 +924,19 @@ export default function (pi: ExtensionAPI) {
 		],
 
 		async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+			// Load agent file if agent param is specified
+			const agentsDir = getDefaultAgentsDir();
+			const agentFile = params.agent ? loadAgentFile(params.agent, agentsDir) : null;
+
 			const tasks: Array<{ config: SubagentConfig; task: string; cwd?: string }> = [];
 
 			if (params.task && params.task.trim()) {
 				const config = resolveConfig(
 					{ task: params.task.trim(), name: params.name, systemPrompt: params.systemPrompt, tools: params.tools, model: params.model, provider: params.provider, thinking: params.thinking as ThinkingLevel | undefined, cwd: params.cwd, contextFiles: params.contextFiles, extensions: params.extensions, maxTurns: params.maxTurns, maxCost: params.maxCost, maxTokens: params.maxTokens, maxTime: params.maxTime },
+					undefined,
+					undefined,
+					null,
+					agentFile,
 				);
 				tasks.push({ config, task: params.task.trim(), cwd: params.cwd });
 			} else if (params.tasks && params.tasks.length > 0) {
@@ -926,6 +947,9 @@ export default function (pi: ExtensionAPI) {
 					const config = resolveConfig(
 						{ task: t.task.trim(), name: t.name, systemPrompt: t.systemPrompt, tools: t.tools, model: t.model, provider: t.provider, thinking: t.thinking as ThinkingLevel | undefined, cwd: t.cwd, contextFiles: t.contextFiles, extensions: t.extensions, maxTurns: t.maxTurns, maxCost: t.maxCost, maxTokens: t.maxTokens, maxTime: t.maxTime },
 						{ task: params.task ?? "", provider: params.provider, thinking: params.thinking as ThinkingLevel | undefined, model: params.model, systemPrompt: params.systemPrompt, tools: params.tools, contextFiles: params.contextFiles, extensions: params.extensions, maxTurns: params.maxTurns, maxCost: params.maxCost, maxTokens: params.maxTokens, maxTime: params.maxTime },
+						undefined,
+						null,
+						agentFile,
 					);
 					tasks.push({ config, task: t.task.trim(), cwd: t.cwd ?? params.cwd });
 				}

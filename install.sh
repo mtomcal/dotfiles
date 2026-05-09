@@ -990,6 +990,15 @@ install_pi() {
         ln -s "$DOTFILES_DIR/pi/models.json" "$HOME/.pi/agent/models.json"
     fi
 
+    # Link agents directory
+    if [ -L "$HOME/.pi/agent/agents" ]; then
+        rm "$HOME/.pi/agent/agents"
+    elif [ -d "$HOME/.pi/agent/agents" ]; then
+        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+        mv "$HOME/.pi/agent/agents" "$HOME/.pi/agent/agents.backup.$TIMESTAMP"
+    fi
+    ln -s "$DOTFILES_DIR/pi/agents" "$HOME/.pi/agent/agents"
+
     # Link subagent extension
     if [ -L "$HOME/.pi/agent/extensions/subagent" ]; then
         rm "$HOME/.pi/agent/extensions/subagent"

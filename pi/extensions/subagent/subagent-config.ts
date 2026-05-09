@@ -2,12 +2,13 @@
  * Subagent Config — Types, resolution, and utilities for ad-hoc subagent configuration.
  *
  * Ad-hoc subagent configuration resolution.
- * Pure config resolution: per-item > top-level > default.
+ * Pure config resolution: per-item > top-level > agent file > default.
  */
 
 import type { ThinkingLevel } from "@mariozechner/pi-agent-core";
 import type { Guardrails } from "./guardrails.js";
 import { resolveGuardrails } from "./guardrails.js";
+import type { AgentFileConfig } from "./agent-loading.js";
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -109,25 +110,36 @@ export function parseTools(toolsStr: string): string[] {
 
 // ─── Config Resolution ───────────────────────────────────────────────
 
+/**
+ * Resolve a SubagentConfig from multiple layers.
+ *
+ * Resolution order (earlier wins):
+ *   perItem > topLevel > agentFile > hardcoded defaults
+ *
+ * agentFile is loaded from an agent .md file when the caller specifies
+ * an `agent` name. It provides reusable defaults for system prompt,
+ * tools, model, provider, thinking, and guardrails.
+ */
 export function resolveConfig(
 	perItem: ResolvableFields,
 	topLevel?: Partial<ResolvableFields>,
 	_settingsPath?: string,
 	globalDefaults?: Guardrails | null,
+	agentFile?: AgentFileConfig | null,
 ): SubagentConfig {
 	const task = perItem.task;
-	const name = perItem.name ?? deriveName(task);
+	const name = perItem.name ?? agentFile?.name ?? deriveName(task);
 
-	// System prompt: per-item > top-level > bare-task injection
-	const systemPrompt = perItem.systemPrompt ?? topLevel?.systemPrompt ?? undefined;
+	// System prompt: per-item > top-level > agent file > bare-task injection
+	const systemPrompt = perItem.systemPrompt ?? topLevel?.systemPrompt ?? agentFile?.systemPrompt ?? undefined;
 	const effectiveSystemPrompt = systemPrompt ?? BARE_TASK_INJECTION;
 
-	// Tools: per-item > top-level > undefined (all tools)
-	const toolsStr = perItem.tools ?? topLevel?.tools;
+	// Tools: per-item > top-level > agent file > undefined (all tools)
+	const toolsStr = perItem.tools ?? topLevel?.tools ?? agentFile?.tools;
 	const tools = toolsStr ? parseTools(toolsStr) : undefined;
 
-	// Model: per-item > top-level. Parse shorthand.
-	const rawModel = perItem.model ?? topLevel?.model;
+	// Model: per-item > top-level > agent file. Parse shorthand.
+	const rawModel = perItem.model ?? topLevel?.model ?? agentFile?.model;
 	let model: string | undefined;
 	let shorthandProvider: string | undefined;
 	let shorthandThinking: ThinkingLevel | undefined;
@@ -138,7 +150,7 @@ export function resolveConfig(
 		shorthandThinking = parsed.thinking;
 	}
 
-	// Provider: explicit > shorthand from model > top-level explicit > top-level shorthand
+	// Provider: explicit > shorthand from model > top-level explicit > top-level shorthand > agent file
 	// Note: shorthand components from per-item model replace top-level entirely.
 	// If per-item model lacks a shorthand provider, the top-level model's shorthand
 	// provider is NOT automatically inherited — use top-level `provider` param instead.
@@ -148,14 +160,16 @@ export function resolveConfig(
 		(shorthandProvider ? shorthandProvider : undefined) ??
 		normalizeOptional(topLevel?.provider) ??
 		(topLevelParsed?.provider ? topLevelParsed.provider : undefined) ??
+		agentFile?.provider ??
 		undefined;
 
-	// Thinking: explicit > shorthand from model > top-level > top-level shorthand > default "medium"
+	// Thinking: explicit > shorthand from model > top-level > top-level shorthand > agent file > default "medium"
 	const thinking =
 		perItem.thinking ??
 		shorthandThinking ??
 		topLevel?.thinking ??
 		(topLevelParsed?.thinking ? topLevelParsed.thinking : undefined) ??
+		agentFile?.thinking ??
 		"medium";
 
 	// Context files: per-item > top-level > default true
@@ -164,12 +178,12 @@ export function resolveConfig(
 	// Extensions: per-item > top-level > default false
 	const extensions = perItem.extensions ?? topLevel?.extensions ?? false;
 
-	// Guardrails: per-call > top-level > global defaults
+	// Guardrails: per-call > top-level > agent file > global defaults
 	const perCallGuardrails: Guardrails = {
-		maxTurns: perItem.maxTurns ?? topLevel?.maxTurns,
-		maxCost: perItem.maxCost ?? topLevel?.maxCost,
-		maxTokens: perItem.maxTokens ?? topLevel?.maxTokens,
-		maxTime: perItem.maxTime ?? topLevel?.maxTime,
+		maxTurns: perItem.maxTurns ?? topLevel?.maxTurns ?? agentFile?.maxTurns,
+		maxCost: perItem.maxCost ?? topLevel?.maxCost ?? agentFile?.maxCost,
+		maxTokens: perItem.maxTokens ?? topLevel?.maxTokens ?? agentFile?.maxTokens,
+		maxTime: perItem.maxTime ?? topLevel?.maxTime ?? agentFile?.maxTime,
 	};
 	const resolvedGuardrails = resolveGuardrails(perCallGuardrails, globalDefaults ?? null);
 

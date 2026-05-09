@@ -120,45 +120,39 @@ Repeat until all slices are `done`:
 
 2. **Delegate implementation.** For each ready slice, call `subagent_run` or `subagent_fork`:
    ```
-   systemPrompt: "You are an implementation agent. Follow the TDD brief in your assigned slice file exactly. Execute RED, GREEN, REFACTOR cycle. Update checkboxes as you complete each step."
+   agent: "implementer"
    task: "Read the slice brief at plan/slices/NNN-[name].md. Execute the RED, GREEN, REFACTOR cycle. Update checkboxes as you complete each step."
-   model: [from manifest]
-   provider: [from manifest]
-   thinking: [from manifest]
-   tools: "read,write,bash,edit"
    maxTurns: [from manifest Guardrails column]
    maxCost: [from manifest Guardrails column]
    maxTokens: [from manifest Guardrails column]
    maxTime: [from manifest Guardrails column, in seconds]
    ```
+   The implementer agent file in ~/.pi/agent/agents/implementer.md provides the system prompt, tools, model, and thinking level. Only per-slice guardrails are overridden.
+
    After the sub-agent completes → update manifest status to `review`.
 
-3. **Delegate review.** **This step is mandatory. It is not optional.** Each review type is a separate sub-agent call. For a slice with `test, quality` reviews, you make two calls:
+3. **Delegate review.** **This step is mandatory. It is not optional.** Each review type is a separate sub-agent call. For a slice with `test, quality` reviews:
    ```
    # test review
-   systemPrompt: "You are a test reviewer. Verify that the brief's test assertions pass and there are no vague or weak tests."
-   task: "Review slice N at plan/slices/NNN-[name].md. Run the test suite. Verify each test assertion from the RED section passes. Check for vague assertions that would pass even if the implementation is wrong. Write your verdict with ✅ PASS or ❌ NEEDS-FIX in the Review section."
+   agent: "test-reviewer"
+   task: "Review slice N at plan/slices/NNN-[name].md. Run the test suite. Verify each test assertion from the RED section passes. Check for vague assertions. Write your verdict with ✅ PASS or ❌ NEEDS-FIX in the Review section."
    model: [from manifest Review Model column]
    provider: [from manifest Review Provider column]
-   thinking: "high"
-   tools: "read,bash"
+   maxTurns: 10
+   maxCost: 0.10
+   maxTime: 120
+
+   # quality review (separate call)
+   agent: "quality-reviewer"
+   task: "Review slice N at plan/slices/NNN-[name].md. Evaluate implementation for code quality: naming, structure, coupling, adherence to spec constraints. Write your verdict with ✅ PASS or ❌ NEEDS-FIX in the Review section."
+   model: [from manifest Review Model column]
+   provider: [from manifest Review Provider column]
    maxTurns: 10
    maxCost: 0.10
    maxTime: 120
    ```
 
-   # quality review (separate call)
-   systemPrompt: "You are a code quality reviewer. Check code structure, naming, consistency, and adherence to the spec."
-   task: "Review slice N at plan/slices/NNN-[name].md. Evaluate the implementation for code quality: naming, structure, coupling, adherence to the spec constraints. Write your verdict with ✅ PASS or ❌ NEEDS-FIX in the Review section."
-   model: [from manifest Review Model column]
-   provider: [from manifest Review Provider column]
-   thinking: "high"
-   tools: "read,bash"
-   maxTurns: 10
-   maxCost: 0.10
-   maxTime: 120
-   ```
-   Review sub-agents must NOT have `write` or `edit` tools.
+   For security review, use `agent: "security-reviewer"` with a similar pattern. The agent .md files in ~/.pi/agent/agents/ provide the system prompts and tool scoping. Review agent files already scope tools to read+bash — do not override.
    After all review types pass → update manifest status to `done`.
    If any review type returns ❌ NEEDS-FIX → update manifest status to `needs-fix`, begin escalation.
 
@@ -172,9 +166,8 @@ Repeat until all slices are `done`:
 2. **🔴 Skipping review.** Every slice MUST go through a review sub-agent before `done`. You cannot mark a slice `done` after implementation without a reviewer's ✅ PASS verdict. Each review type is a **separate** sub-agent call.
 3. **🔴 Using scout sub-agents.** Do not spawn "scout" or "research" sub-agents to explore code before delegating. The slice brief inlines all context. The implementation sub-agent reads the slice file and then reads/writes code. Scouting is the sub-agent's job, not yours.
 4. **Marking a slice done without review.** The status flow is `not-started → in-progress → review → done`. You cannot jump from `in-progress` to `done`.
-5. **Giving review sub-agents write/edit tools.** Reviewers read code and run tests. They never modify source files.
-6. **Giving review sub-agents write/edit tools.** Reviewers read code and run tests. They never modify source files.
-6. **Combining review types into one call.** Each review type (test, quality, security) is a separate sub-agent call with a focused system prompt. Do not combine them.
+5. **Overriding review agent tool scopes.** Review agent files (test-reviewer, quality-reviewer, security-reviewer) already scope tools to read+bash. Do not add `write` or `edit` to review sub-agent calls.
+6. **Combining review types into one call.** Each review type (test, quality, security) is a separate sub-agent call with its own named agent. Do not combine them.
 7. **Omitting guardrails on sub-agent calls.** Every `subagent_run` and `subagent_fork` call must include `maxTurns`, `maxCost`, `maxTokens`, and `maxTime` from the manifest. Without guardrails, a stuck sub-agent burns resources indefinitely.
 
 ## Escalation Protocol

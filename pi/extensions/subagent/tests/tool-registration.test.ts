@@ -89,24 +89,19 @@ describe("tool registration", () => {
 		expect(schema.properties.extensions).toBeDefined();
 	});
 
-	test("subagent_run parameters do NOT include agent, agentScope, confirmProjectAgents", () => {
+	test("subagent_run parameters include agent but NOT agentScope, confirmProjectAgents", () => {
 		const schema = registeredTools.get("subagent_run")!.parameters;
-		expect(schema.properties.agent).toBeUndefined();
+		expect(schema.properties.agent).toBeDefined();
 		expect(schema.properties.agentScope).toBeUndefined();
 		expect(schema.properties.confirmProjectAgents).toBeUndefined();
 	});
 
-	test("subagent_fork parameters include name, systemPrompt, tasks", () => {
+	test("subagent_fork parameters include agent, name, systemPrompt, tasks", () => {
 		const schema = registeredTools.get("subagent_fork")!.parameters;
+		expect(schema.properties.agent).toBeDefined();
 		expect(schema.properties.name).toBeDefined();
 		expect(schema.properties.systemPrompt).toBeDefined();
 		expect(schema.properties.tasks).toBeDefined();
-	});
-
-	test("subagent_fork parameters do NOT include agent, agentScope", () => {
-		const schema = registeredTools.get("subagent_fork")!.parameters;
-		expect(schema.properties.agent).toBeUndefined();
-		expect(schema.properties.agentScope).toBeUndefined();
 	});
 
 	test("promptGuidelines teach the primary path", () => {

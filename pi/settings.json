@@ -1,43 +1,7 @@
 {
   "enableSkillCommands": true,
-  "lastChangelogVersion": "0.72.1",
+  "lastChangelogVersion": "0.73.1",
   "defaultProvider": "ollama-cloud",
-  "defaultModel": "glm-5.1",
-  "defaultThinkingLevel": "medium",
-  "subagentGuardrails": {
-    "maxTurns": 50,
-    "maxCost": 1.00,
-    "maxTokens": 500000,
-    "maxTime": 600
-  },
-  "subagentModelRouting": {
-    "scout": {
-      "description": "Fast codebase recon, return compressed context",
-      "model": "deepseek-v4-flash",
-      "provider": "ollama-cloud",
-      "thinking": "low",
-      "rationale": "Flash model for speed, low thinking because scouting needs retrieval not reasoning"
-    },
-    "planner": {
-      "description": "Read-only analysis and implementation planning",
-      "model": "glm-5.1",
-      "provider": "ollama-cloud",
-      "thinking": "medium",
-      "rationale": "Good instruction-following and breadth, medium thinking balances depth and cost"
-    },
-    "reviewer": {
-      "description": "Code quality, security, and architecture analysis",
-      "model": "deepseek-v4-pro",
-      "provider": "ollama-cloud",
-      "thinking": "high",
-      "rationale": "Deep reasoning required for catching subtle bugs and security issues"
-    },
-    "implementer": {
-      "description": "Writing or modifying code autonomously",
-      "model": "glm-5.1",
-      "provider": "ollama-cloud",
-      "thinking": "medium",
-      "rationale": "Workhorse model for most implementation tasks, medium thinking balances quality and cost"
-    }
-  }
+  "defaultModel": "deepseek-v4-pro",
+  "defaultThinkingLevel": "medium"
 }

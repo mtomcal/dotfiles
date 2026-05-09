@@ -12,6 +12,7 @@ import {
 	BARE_TASK_INJECTION,
 } from "../subagent-config.js";
 import type { Guardrails } from "../guardrails.js";
+import type { AgentFileConfig } from "../agent-loading.js";
 
 describe("resolveConfig guardrails", () => {
 	describe("guardrails field on SubagentConfig", () => {
@@ -414,6 +415,180 @@ describe("subagent-config", () => {
 			expect(args).toContain("anthropic");
 			expect(args).toContain("--model");
 			expect(args).toContain("claude-sonnet-4-5");
+		});
+	});
+
+	describe("resolveConfig with agent file", () => {
+		const baseAgent: AgentFileConfig = {
+			name: "implementer",
+			description: "TDD agent",
+			tools: "read, write, bash, edit",
+			model: "glm-5.1",
+			provider: "ollama-cloud",
+			thinking: "medium",
+			systemPrompt: "You are an implementation agent.",
+		};
+
+		test("agent file provides defaults that per-call overrides can punch through", () => {
+			const config = resolveConfig(
+				{ task: "Fix bug" },
+				undefined,
+				undefined,
+				null,
+				baseAgent,
+			);
+			expect(config.name).toBe("implementer"); // from agent file (overrides task-derived)
+			expect(config.systemPrompt).toBe("You are an implementation agent."); // from agent file
+			expect(config.model).toBe("glm-5.1"); // from agent file
+			expect(config.provider).toBe("ollama-cloud"); // from agent file
+			expect(config.thinking).toBe("medium"); // from agent file
+			expect(config.tools).toEqual(["read", "write", "bash", "edit"]); // from agent file
+		});
+
+		test("per-call model overrides agent file model", () => {
+			const config = resolveConfig(
+				{ task: "Fix bug", model: "deepseek-v4-pro" },
+				undefined,
+				undefined,
+				null,
+				baseAgent,
+			);
+			expect(config.model).toBe("deepseek-v4-pro"); // per-call wins
+			expect(config.systemPrompt).toBe("You are an implementation agent."); // from agent file (not overridden)
+		});
+
+		test("per-call systemPrompt overrides agent file systemPrompt", () => {
+			const config = resolveConfig(
+				{ task: "Fix bug", systemPrompt: "Custom prompt" },
+				undefined,
+				undefined,
+				null,
+				baseAgent,
+			);
+			expect(config.systemPrompt).toBe("Custom prompt"); // per-call wins
+			expect(config.tools).toEqual(["read", "write", "bash", "edit"]); // from agent file (not overridden)
+		});
+
+		test("per-call tools override agent file tools", () => {
+			const config = resolveConfig(
+				{ task: "Fix bug", tools: "read, bash" },
+				undefined,
+				undefined,
+				null,
+				baseAgent,
+			);
+			expect(config.tools).toEqual(["read", "bash"]); // per-call wins
+		});
+
+		test("agent file guardrails used when per-call guardrails absent", () => {
+			const agentWithGuardrails: AgentFileConfig = {
+				...baseAgent,
+				maxTurns: 30,
+				maxCost: 0.30,
+				maxTokens: 200000,
+				maxTime: 300,
+			};
+			const config = resolveConfig(
+				{ task: "Fix bug" },
+				undefined,
+				undefined,
+				null,
+				agentWithGuardrails,
+			);
+			expect(config.guardrails.maxTurns).toBe(30);
+			expect(config.guardrails.maxCost).toBe(0.30);
+			expect(config.guardrails.maxTokens).toBe(200000);
+			expect(config.guardrails.maxTime).toBe(300);
+		});
+
+		test("per-call guardrails override agent file guardrails", () => {
+			const agentWithGuardrails: AgentFileConfig = {
+				...baseAgent,
+				maxTurns: 30,
+			};
+			const config = resolveConfig(
+				{ task: "Fix bug", maxTurns: 50 },
+				undefined,
+				undefined,
+				null,
+				agentWithGuardrails,
+			);
+			expect(config.guardrails.maxTurns).toBe(50); // per-call wins
+		});
+
+		test("agent file without optional fields leaves them undefined", () => {
+			const minimalAgent: AgentFileConfig = {
+				name: "minimal",
+				description: "Minimal agent",
+				systemPrompt: "Minimal prompt",
+			};
+			const config = resolveConfig(
+				{ task: "Fix bug" },
+				undefined,
+				undefined,
+				null,
+				minimalAgent,
+			);
+			expect(config.systemPrompt).toBe("Minimal prompt");
+			expect(config.model).toBeUndefined();
+			expect(config.provider).toBeUndefined();
+			expect(config.tools).toBeUndefined();
+		});
+
+		test("top-level values override agent file but not per-call", () => {
+			const config = resolveConfig(
+				{ task: "Fix bug" },
+				{ task: "Top", provider: "openrouter" },
+				undefined,
+				null,
+				baseAgent,
+			);
+			expect(config.provider).toBe("openrouter"); // top-level overrides agent file
+			expect(config.model).toBe("glm-5.1"); // from agent file (top-level didn't override)
+		});
+
+		test("null agent file behaves like no agent file (bare task)", () => {
+			const config = resolveConfig(
+				{ task: "Fix bug" },
+				undefined,
+				undefined,
+				null,
+				null,
+			);
+			expect(config.systemPrompt).toContain("subagent"); // BARE_TASK_INJECTION
+			expect(config.model).toBeUndefined();
+		});
+
+		test("agent file without systemPrompt still has bare task style", () => {
+			const noPromptAgent: AgentFileConfig = {
+				name: "worker",
+				description: "Worker agent",
+				systemPrompt: "",
+			};
+			const config = resolveConfig(
+				{ task: "Fix bug" },
+				undefined,
+				undefined,
+				null,
+				noPromptAgent,
+			);
+			// Empty systemPrompt from agent should still be used (explicit empty beats default)
+			expect(config.systemPrompt).toBe("");
+		});
+
+		test("agent file thinking level is passed through", () => {
+			const highThinkAgent: AgentFileConfig = {
+				...baseAgent,
+				thinking: "high",
+			};
+			const config = resolveConfig(
+				{ task: "Fix bug" },
+				undefined,
+				undefined,
+				null,
+				highThinkAgent,
+			);
+			expect(config.thinking).toBe("high");
 		});
 	});
 });

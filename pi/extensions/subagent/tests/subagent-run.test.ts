@@ -53,8 +53,8 @@ describe("tool registration", () => {
 		expect(runTool.description).toContain("ad-hoc");
 	});
 
-	test("subagent_run description does NOT mention agent discovery", () => {
-		expect(runTool.description).not.toContain("agent file");
+	test("subagent_run description may mention agent discovery", () => {
+		expect(runTool.description).toContain("agent");
 	});
 });
 
@@ -86,9 +86,9 @@ describe("subagent_run", () => {
 		expect(schema.properties.extensions).toBeDefined();
 	});
 
-	test("does NOT have agent param", () => {
+	test("has agent param for named agent lookup", () => {
 		const schema = runTool.parameters;
-		expect(schema.properties.agent).toBeUndefined();
+		expect(schema.properties.agent).toBeDefined(); // named agent lookup
 	});
 
 	test("subagent_fork has promptGuidelines mentioning systemPrompt", () => {

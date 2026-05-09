@@ -50,6 +50,7 @@ The primary entry point is `./install.sh`, which:
   - `~/.pi/agent/skills/` → `~/dotfiles/shared/skills/`
   - `~/.pi/agent/settings.json` → `~/dotfiles/pi/settings.json`
   - `~/.pi/agent/models.json` → `~/dotfiles/pi/models.json`
+  - `~/.pi/agent/agents/` → `~/dotfiles/pi/agents/`
 - **Gemini CLI**:
   - `~/.gemini/settings.json` → `~/dotfiles/gemini/settings.json`
   - `~/.gemini/commands/` → `~/dotfiles/gemini/commands/`
@@ -85,6 +86,7 @@ This dotfiles setup supports **Codex CLI**, **Claude Code**, **Pi**, **Gemini CL
 - Skills: `shared/skills/` (symlinked to `~/.pi/agent/skills/`)
 - Settings: `pi/settings.json` (symlinked to `~/.pi/agent/settings.json`)
 - Models: `pi/models.json` (symlinked to `~/.pi/agent/models.json`)
+- Agents: `pi/agents/` (symlinked to `~/.pi/agent/agents/`) — agent MD files are used by the subagent extension for named agent lookup with frontmatter configuration
 - Installed via npm to `~/.local` (same pattern as Codex/Gemini)
 - Multi-provider cloud agent (Anthropic, OpenAI, Google, and 30+ others)
 - Extensible via TypeScript extensions, prompt templates, and themes
