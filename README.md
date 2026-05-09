@@ -246,8 +246,8 @@ dotfiles/
 | Key | Action |
 |-----|--------|
 | `Ctrl-a c` | New window (adjacent to current) |
-| `Ctrl-a \|` | Split vertically |
-| `Ctrl-a -` | Split horizontally |
+| `Ctrl-a \|` | Split into side-by-side panes (left/right) |
+| `Ctrl-a -` | Split into stacked panes (top/bottom) |
 | `Ctrl-a h/j/k/l` | Navigate panes (vim-style) |
 | `Ctrl-a H/J/K/L` | Resize panes |
 | `Ctrl-a Ctrl-h` | Previous window |
