@@ -81,15 +81,15 @@ Immediately fork review sub-agents per slice risk tier:
 |-----------|-------------|
 | routine | test |
 | standard | test, quality |
-| standard + UI | test, quality, design |
+| standard + UI | test, quality, design, visual-qa |
 | tricky | test, quality, security |
-| tricky + UI | test, quality, security, design |
+| tricky + UI | test, quality, security, design, visual-qa |
 
 Each review type is a **separate** sub-agent call:
 
 ```
 subagent_fork {
-  agent: "[test-reviewer|quality-reviewer|security-reviewer|design-reviewer]"
+  agent: "[test-reviewer|quality-reviewer|security-reviewer|design-reviewer|visual-qa]"
   task: "Review slice N: [slice context]. Write ✅ PASS or ❌ NEEDS-FIX."
   maxTurns: 10, maxCost: 0.10, maxTokens: 50000, maxTime: 120
 }
@@ -101,6 +101,29 @@ subagent_fork {
   agent: "design-reviewer"
   task: "Review slice N: [slice context]. Write verdict card with screenshots."
   maxTurns: 30, maxCost: 0.50, maxTokens: 150000, maxTime: 360
+}
+```
+
+### Visual QA (interactive slices only)
+
+Visual-qa fires **only when the slice's acceptance criteria contain interactive keywords**: `click`, `submit`, `navigate`, `form`, `modal`, `flow`, `toggle`, `drag`, `select`, `type`, `fill`, `upload`. If none are present, skip visual-qa — the design-reviewer already covers static visual checks.
+
+Construct the checklist task from the slice's acceptance criteria. Map each user-facing interaction into a step with action and expected outcome:
+
+```
+subagent_fork {
+  agent: "visual-qa"
+  task: "Run visual QA on slice N: [name].
+
+Checklist:
+1. Navigate to [URL from acceptance criteria] — Expected: [describe what should load]
+2. [Action from acceptance criteria] — Expected: [outcome from acceptance criteria]
+...
+
+Final: Take full-page screenshot, check console for errors, check network for failed requests.
+
+Report per-step pass/fail with evidence. Write ✅ PASS or ❌ NEEDS-FIX."
+  maxTurns: 40, maxCost: 0.75, maxTokens: 200000, maxTime: 480
 }
 ```
 
