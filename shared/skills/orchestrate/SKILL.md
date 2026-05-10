@@ -49,9 +49,10 @@ Scan your own conversation messages for slice status records. Reconstruct: which
 
 Priority order:
 1. **Pending reviews** — any slice in `review` status → fork review sub-agents NOW.
-2. **Ready slices** — any slice `not-started` with all dependencies `done` → fork implementation.
-3. **Stuck slices** — any slice in `needs-fix` → escalate.
-4. **All slices done** → proceed to Completion.
+2. **Guardrail kills** — any slice killed by guardrail (`stopReason: "guardrail"`) → handle before forking new implementations.
+3. **Ready slices** — any slice `not-started` with all dependencies `done` → fork implementation.
+4. **Stuck slices** — any slice in `needs-fix` → escalate.
+5. **All slices done** → proceed to Completion.
 
 ### Step 3 — Fork implementation (async)
 
@@ -95,7 +96,7 @@ subagent_fork {
 ### Step 5 — Process review results
 
 - **All ✅ PASS** → mark slice `done`. Write milestone: `✅ Slice N: [name] — done. Unblocked: [slice IDs].`
-- **Any ❌ NEEDS-FIX** → mark `needs-fix`, enter escalation.
+- **Any ❌ NEEDS-FIX** → determine cause (guardrail kill, impl failure, or review rejection). Mark `needs-fix`, enter appropriate escalation track.
 
 ### Step 6 — Check for newly unblocked slices
 
@@ -110,18 +111,46 @@ Re-scan after each `done` — slices whose last dependency completed are now rea
 5. **🔴 Combining review types.** Each review type (test, quality, security) is a separate sub-agent call.
 6. **🔴 Omitting guardrails.** Every sub-agent call must include maxTurns, maxCost, maxTokens, maxTime.
 7. **🔴 Blocking on subagent_run.** Use `subagent_fork` for parallelism. Use `subagent_run` only for pre-flight and completion.
+8. **🔴 Escalating without cause.** Don't escalate blindly. Read stopReason, read review verdict. Apply the right track.
 
 ## Escalation Protocol
 
-Never skip tiers. Try the cheap thing first. Record each tier attempted in context so the next iteration knows where it left off.
+When a subagent returns ❌ NEEDS-FIX, determine the cause before escalating. Check the completion notification for `stopReason` and review verdicts.
 
-| Tier | Action | Details |
-|------|--------|---------|
-| 1 | **Provider switch** | Same model, different provider. Override provider on next fork. |
-| 2 | **Course correction** | Append specific guidance into next fork task. State what failed and what to try differently. |
-| 3 | **Model bump** | Escalate to stronger model or higher thinking. Override model/thinking on next fork. |
-| 4 | **Expert consultation** | Use `expert-consultation` skill's 3-tier chain. Provide slice context + all prior attempts. |
-| 5 | **Orchestrator takeover** | Implement the slice yourself via subagent_run. Last resort. |
+### Track 1: Guardrail kill
+
+Subagent was terminated by Pi (exceeded maxTurns, maxCost, maxTokens, or maxTime). `stopReason: "guardrail"`.
+
+1. **Bump guardrails + retry** — double the offending threshold, re-fork same agent + model + provider. If the subagent produced partial output, include it as context.
+2. **Provider switch** — same model, different provider. Retry with bumped guardrails.
+3. **Model bump** — escalate to stronger model or higher thinking. Override model/thinking on next fork.
+4. **Expert consultation** — use `expert-consultation` skill. Provide slice context + all prior attempts.
+5. **Strongest subagent** — delegate to deepest model available with max guardrails (`maxTurns: 60, maxCost: 2.00, maxTokens: 500000, maxTime: 600`).
+
+### Track 2: Implementation failure
+
+Subagent completed but produced broken code (tests fail, won't compile, or returned an error). No guardrail kill.
+
+1. **Provider switch** — same model, different provider. Re-fork with same guardrails.
+2. **Course correction** — orchestrator appends specific guidance to the task text. State what failed and what to try differently. Re-fork same agent + model + provider.
+3. **Model bump** — escalate to stronger model or higher thinking.
+4. **Expert consultation** — `expert-consultation` skill with slice context + prior attempts.
+5. **Strongest subagent** — deepest model available with max guardrails (`maxTurns: 60, maxCost: 2.00, maxTokens: 500000, maxTime: 600`).
+
+### Track 3: Review rejection
+
+Implementation compiled and tests passed, but a reviewer returned ❌ NEEDS-FIX with specific feedback.
+
+1. **Re-implement with verdict** — pass the reviewer's verdict as guidance to the implementer: "Previous attempt rejected. Reviewer feedback: [verdict]. Fix these issues and re-submit." Re-fork implementer.
+2. **If still rejected** — escalate the implementer: provider switch → course correction → model bump → expert → strongest subagent (Track 2, tiers 1-5).
+3. **If a different reviewer rejects** (e.g., test passed but security now fails) — re-implement with the new verdict. Only escalate if the same issue persists.
+
+### General rules
+
+- Never skip tiers. Try the cheap thing first.
+- Record each tier attempted in context so the next iteration knows where it left off.
+- After each escalation tier, the slice returns to `review` status — reviewers re-evaluate.
+- If escalation hits tier 5 and still fails, write: `🚨 Slice N: [name] — all escalation tiers exhausted. Human intervention needed.`
 
 ## Guardrail Defaults
 
