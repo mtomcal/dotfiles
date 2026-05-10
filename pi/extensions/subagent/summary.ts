@@ -6,7 +6,7 @@
  * and truncate it for display in a TUI widget.
  */
 
-import type { Message } from "@mariozechner/pi-ai";
+import type { Message } from "@earendil-works/pi-ai";
 import { getDisplayItems } from "./renderers.js";
 
 /** Minimum character length for a text block to be considered a substantive summary. */

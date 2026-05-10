@@ -116,7 +116,7 @@ RUN ARCH=$(dpkg --print-architecture) \
     && eval "$(fnm env --shell bash)" \
     && fnm install --lts \
     && fnm default lts-latest \
-    && npm install -g @mariozechner/pi-coding-agent@${PI_VERSION} \
+    && npm install -g @earendil-works/pi-coding-agent@${PI_VERSION} \
     && chown -R ${HOST_USER}:${HOST_USER} ${USER_HOME} \
     && echo "Installed Pi on ${ARCH} ($(node -e 'console.log(process.arch)'))"
 

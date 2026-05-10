@@ -5,7 +5,7 @@
  * Pure config resolution: per-item > top-level > agent file > default.
  */
 
-import type { ThinkingLevel } from "@mariozechner/pi-agent-core";
+import type { ThinkingLevel } from "@earendil-works/pi-agent-core";
 import type { Guardrails } from "./guardrails.js";
 import { resolveGuardrails } from "./guardrails.js";
 import type { AgentFileConfig } from "./agent-loading.js";

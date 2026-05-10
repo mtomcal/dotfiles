@@ -1,7 +1,7 @@
 {
   "enableSkillCommands": true,
-  "lastChangelogVersion": "0.73.1",
-  "defaultProvider": "ollama-cloud",
+  "lastChangelogVersion": "0.74.0",
+  "defaultProvider": "opencode-go",
   "defaultModel": "deepseek-v4-pro",
   "defaultThinkingLevel": "medium"
 }

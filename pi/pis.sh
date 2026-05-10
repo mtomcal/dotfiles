@@ -89,7 +89,7 @@ build_image() {
     # This ensures Docker cache is invalidated when the version changes and
     # the pi.version label matches the installed package.
     local pi_ver
-    pi_ver=$(npm view @mariozechner/pi-coding-agent version 2>/dev/null || echo "latest")
+    pi_ver=$(npm view @earendil-works/pi-coding-agent version 2>/dev/null || echo "latest")
     echo -e "${GREEN}[pis]${NC} Building Docker image ${IMAGE_NAME} (Pi @${pi_ver})..."
     docker build \
         --build-arg PI_VERSION="$pi_ver" \
@@ -113,7 +113,7 @@ elif [[ "$NO_REBUILD" != true ]]; then
     # The pi.version label is set at build time, so docker image inspect is
     # instant (no container startup needed).
     image_pi=$(docker image inspect "$IMAGE_NAME" --format '{{ index .Config.Labels "pi.version" }}' 2>/dev/null)
-    latest_pi=$(npm view @mariozechner/pi-coding-agent version 2>/dev/null)
+    latest_pi=$(npm view @earendil-works/pi-coding-agent version 2>/dev/null)
 
     if [[ -n "$latest_pi" && ( -z "$image_pi" || "$image_pi" != "$latest_pi" ) ]]; then
         if [[ -z "$image_pi" ]]; then

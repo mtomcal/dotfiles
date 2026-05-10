@@ -13,7 +13,7 @@
  */
 
 import { describe, test, expect, vi } from "vitest";
-import type { Message } from "@mariozechner/pi-ai";
+import type { Message } from "@earendil-works/pi-ai";
 import type { AsyncJob, SingleResult } from "../job-manager.js";
 import { renderWidgetContent } from "../widget.js";
 import { renderSingleResult, renderJobStatusLine } from "../renderers.js";

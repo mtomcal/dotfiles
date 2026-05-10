@@ -334,7 +334,7 @@ Each agent MUST be installed via its designated method:
 |-------|---------------|---------|
 | Codex CLI | npm | `npm install -g --prefix ~/.local @openai/codex@latest` |
 | Claude Code | curl | `curl -fsSL https://claude.ai/install.sh \| bash` |
-| Pi | npm | `npm install -g --prefix ~/.local @mariozechner/pi-coding-agent@latest` |
+| Pi | npm | `npm install -g --prefix ~/.local @earendil-works/pi-coding-agent@latest` |
 | Gemini CLI | npm | `npm install -g --prefix ~/.local @google/gemini-cli@latest` |
 | Copilot CLI | curl | `curl -fsSL https://gh.io/copilot-install \| bash` |
 

@@ -18,7 +18,7 @@ import { createMockExtension } from "./extension-helpers.js";
 import { JobManager, type SingleResult } from "../job-manager.js";
 import { formatToolsBracket, formatToolsLabel, renderJobStatusLine } from "../renderers.js";
 import { parseTools } from "../subagent-config.js";
-import type { Message } from "@mariozechner/pi-ai";
+import type { Message } from "@earendil-works/pi-ai";
 
 let registeredTools: Map<string, any>;
 let mockPi: any;

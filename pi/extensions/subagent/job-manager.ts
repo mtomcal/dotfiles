@@ -7,8 +7,8 @@
 
 import { randomBytes } from "node:crypto";
 import type { ChildProcess } from "node:child_process";
-import type { Message } from "@mariozechner/pi-ai";
-import type { ThinkingLevel } from "@mariozechner/pi-agent-core";
+import type { Message } from "@earendil-works/pi-ai";
+import type { ThinkingLevel } from "@earendil-works/pi-agent-core";
 import type { Guardrails } from "./guardrails.js";
 
 export interface UsageStats {

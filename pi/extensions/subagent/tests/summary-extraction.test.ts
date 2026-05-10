@@ -12,7 +12,7 @@ import {
 	SUBAGENT_WIDGET_DEBOUNCE_MS,
 	SUBAGENT_WIDGET_DISMISS_DELAY_MS,
 } from "../summary.js";
-import type { Message } from "@mariozechner/pi-ai";
+import type { Message } from "@earendil-works/pi-ai";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 

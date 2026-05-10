@@ -10,7 +10,7 @@ import { describe, test, expect, vi } from "vitest";
 import { createMockExtension } from "./extension-helpers.js";
 import { fakeSingleResult } from "./helpers.js";
 import type { SingleResult } from "../job-manager.js";
-import type { Message } from "@mariozechner/pi-ai";
+import type { Message } from "@earendil-works/pi-ai";
 
 /**
  * Create a partial result with text and tool call messages

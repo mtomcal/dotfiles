@@ -8,7 +8,7 @@
 import { describe, test, expect, vi, beforeAll, beforeEach, afterEach } from "vitest";
 import { createMockExtension } from "./extension-helpers.js";
 import type { SingleResult } from "../job-manager.js";
-import type { Message } from "@mariozechner/pi-ai";
+import type { Message } from "@earendil-works/pi-ai";
 
 let registeredTools: Map<string, any>;
 let mockPi: any;

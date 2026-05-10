@@ -6,7 +6,7 @@
  */
 
 import { describe, test, expect, vi } from "vitest";
-import type { Message } from "@mariozechner/pi-ai";
+import type { Message } from "@earendil-works/pi-ai";
 import { JobManager, type SingleResult } from "../job-manager.js";
 import { fakeUsageStats, fakeSingleResult, fakeChildProcess } from "./helpers.js";
 

@@ -10,8 +10,8 @@
  * Content is truncated to stay within safe context limits.
  */
 
-import { Type } from "@mariozechner/pi-ai";
-import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+import { Type } from "@earendil-works/pi-ai";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
 const OLLAMA_API = "https://ollama.com/api";
 

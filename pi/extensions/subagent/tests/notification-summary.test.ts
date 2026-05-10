@@ -6,7 +6,7 @@
  */
 
 import { describe, test, expect, vi, beforeAll, afterEach } from "vitest";
-import type { Message } from "@mariozechner/pi-ai";
+import type { Message } from "@earendil-works/pi-ai";
 import { createMockExtension } from "./extension-helpers.js";
 import { type SingleResult } from "../job-manager.js";
 

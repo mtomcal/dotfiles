@@ -28,7 +28,7 @@ import { fakeSingleResult, fakeUsageStats, fakeMessage, makeAsyncJob } from "./h
 import { formatToolsBracket, formatToolsLabel } from "../renderers.js";
 import { parseTools } from "../subagent-config.js";
 import { JobManager, type AsyncJob, type SingleResult } from "../job-manager.js";
-import type { Message } from "@mariozechner/pi-ai";
+import type { Message } from "@earendil-works/pi-ai";
 
 let registeredTools: Map<string, any>;
 let mockPi: any;

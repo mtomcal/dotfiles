@@ -127,42 +127,6 @@ version_lt() {
     [ "$(printf '%s\n' "$1" "$2" | sort -V | head -n1)" != "$2" ]
 }
 
-cleanup_dirty_lazy_plugins() {
-    local lazy_dir="$HOME/.local/share/nvim/lazy"
-    local plugin_dir
-    local plugin_name
-    local dirty_count=0
-    local entry_word="entries"
-
-    if [ ! -d "$lazy_dir" ]; then
-        return 0
-    fi
-
-    print_info "Checking lazy.nvim plugin cache for local changes..."
-
-    for plugin_dir in "$lazy_dir"/*; do
-        [ -d "$plugin_dir" ] || continue
-        [ -d "$plugin_dir/.git" ] || continue
-
-        if [ -n "$(git -C "$plugin_dir" status --porcelain --untracked-files=normal 2>/dev/null)" ]; then
-            plugin_name=$(basename "$plugin_dir")
-            print_warning "Removing dirty plugin cache: $plugin_name"
-            rm -rf "$plugin_dir"
-            dirty_count=$((dirty_count + 1))
-        fi
-    done
-
-    if [ "$dirty_count" -eq 1 ]; then
-        entry_word="entry"
-    fi
-
-    if [ "$dirty_count" -gt 0 ]; then
-        print_info "Removed $dirty_count dirty lazy.nvim cache $entry_word"
-    else
-        print_success "No dirty lazy.nvim plugin cache found"
-    fi
-}
-
 # ===========================
 # Module Installation Functions
 # ===========================
@@ -205,8 +169,8 @@ install_neovim() {
             NVIM_VERSION="0.0"
         fi
 
-        if [[ $(echo "$NVIM_VERSION < 0.10" | bc -l 2>/dev/null || echo "1") -eq 1 ]]; then
-            print_warning "Neovim version is $NVIM_VERSION (recommended: 0.10+)"
+        if version_lt "$NVIM_VERSION" "0.12"; then
+            print_warning "Neovim version is $NVIM_VERSION (required: 0.12+)"
             print_info "Installing latest stable Neovim via AppImage..."
 
             # Remove any existing apt-installed neovim
@@ -262,14 +226,26 @@ install_neovim() {
             INSTALLED_VERSION=$(nvim --version | head -n1 | sed 's/.*v\([0-9]*\.[0-9]*\.[0-9]*\).*/\1/')
             print_success "Neovim $INSTALLED_VERSION installed successfully"
         else
-            print_success "Neovim version is $NVIM_VERSION (meets requirements)"
+            print_success "Neovim $NVIM_VERSION is already installed (meets requirements >= 0.12)"
         fi
     elif [ "$OS" == "macos" ]; then
-        print_info "Installing stable Neovim via Homebrew..."
-        if ! brew list neovim &> /dev/null; then
-            brew install neovim
+        # Check if nvim exists and get version
+        if command -v nvim &> /dev/null; then
+            NVIM_VERSION=$(nvim --version 2>/dev/null | head -n1 | sed 's/.*v\([0-9]*\.[0-9]*\).*/\1/' || echo "0.0")
         else
-            brew upgrade neovim || print_success "Neovim is already up to date"
+            NVIM_VERSION="0.0"
+        fi
+
+        if version_lt "$NVIM_VERSION" "0.12"; then
+            print_warning "Neovim version is $NVIM_VERSION (required: 0.12+)"
+            print_info "Installing/upgrading Neovim via Homebrew..."
+            if ! brew list neovim &> /dev/null; then
+                brew install neovim
+            else
+                brew upgrade neovim
+            fi
+        else
+            print_success "Neovim $NVIM_VERSION is already installed"
         fi
     fi
 }
@@ -341,18 +317,25 @@ This directory contains your personal neovim customizations that layer on top of
 Kickstart.nvim automatically loads configurations from `~/.config/nvim/lua/custom/`.
 This directory is symlinked to your dotfiles, so changes here are version controlled.
 
+The `plugins/init.lua` file auto-loads all `.lua` files in the `plugins/` directory.
+
 ## Adding Custom Plugins
 
-Create a new file in `plugins/` directory:
+Create a new file in `plugins/` directory using vim.pack format:
 
 ```lua
 -- plugins/my-plugin.lua
-return {
-  'author/plugin-name',
-  config = function()
-    -- Plugin configuration
-  end,
-}
+vim.pack.add({
+  { src = 'https://github.com/author/plugin-name' },
+})
+
+-- Configure after adding
+require('plugin-name').setup({
+  -- your options here
+})
+
+-- Add keymaps
+vim.keymap.set('n', '<leader>xx', '<cmd>PluginCommand<CR>', { desc = 'My Plugin' })
 ```
 
 ## Adding Custom Keymaps
@@ -377,15 +360,29 @@ EOF
 
     # Enable custom plugins in kickstart.nvim
     if [ -f "$HOME/.config/nvim/init.lua" ]; then
-        if grep -q "^  -- { import = 'custom\.plugins' }," "$HOME/.config/nvim/init.lua"; then
+        # Handle new kickstart.nvim (vim.pack) pattern: -- require 'custom.plugins'
+        if grep -q "^  -- require 'custom\.plugins'" "$HOME/.config/nvim/init.lua"; then
+            if [ "$OS" == "macos" ]; then
+                sed -i '' "s/^  -- require 'custom\.plugins'/  require 'custom.plugins'/" "$HOME/.config/nvim/init.lua"
+            else
+                sed -i "s/^  -- require 'custom\.plugins'/  require 'custom.plugins'/" "$HOME/.config/nvim/init.lua"
+            fi
+            print_success "Custom plugin loading enabled (vim.pack format)"
+        # Handle old kickstart.nvim (lazy.nvim) pattern: -- { import = 'custom.plugins' },
+        elif grep -q "^  -- { import = 'custom\.plugins' }," "$HOME/.config/nvim/init.lua"; then
             if [ "$OS" == "macos" ]; then
                 sed -i '' "s/^  -- { import = 'custom\.plugins' },/  { import = 'custom.plugins' },/" "$HOME/.config/nvim/init.lua"
             else
                 sed -i "s/^  -- { import = 'custom\.plugins' },/  { import = 'custom.plugins' },/" "$HOME/.config/nvim/init.lua"
             fi
-            print_success "Custom plugin loading enabled"
+            print_success "Custom plugin loading enabled (lazy.nvim format)"
+        elif grep -q "^  require 'custom\.plugins'" "$HOME/.config/nvim/init.lua"; then
+            print_success "Custom plugin loading already enabled (vim.pack format)"
         elif grep -q "^  { import = 'custom\.plugins' }," "$HOME/.config/nvim/init.lua"; then
-            print_success "Custom plugin loading already enabled"
+            print_success "Custom plugin loading already enabled (lazy.nvim format)"
+        else
+            print_warning "Could not find custom plugins directive in init.lua"
+            print_info "Manually add: require('custom.plugins') near the end of init.lua"
         fi
 
         # Fix nvim-treesitter.configs deprecated API (nvim-treesitter changed from .configs to root module)
@@ -400,36 +397,32 @@ EOF
         fi
     fi
 
-    # Clean cache on fresh installation
-    if [ ! -d "$HOME/.local/share/nvim/lazy" ]; then
+    # Clean cache on fresh installation (check both lazy.nvim and vim.pack paths)
+    if [ ! -d "$HOME/.local/share/nvim/lazy" ] && [ ! -d "$HOME/.local/share/nvim/site/pack/core/opt" ]; then
         print_info "Fresh installation detected - cleaning neovim cache..."
         rm -rf "$HOME/.local/share/nvim"
         rm -rf "$HOME/.local/state/nvim"
         rm -rf "$HOME/.cache/nvim"
     else
-        print_info "Preserving existing Mason packages and cache"
+        print_info "Preserving existing Mason packages and plugin cache"
         rm -rf "$HOME/.cache/nvim"
     fi
 
-    # Install plugins
-    print_info "Installing neovim plugins..."
-    if LAZY_SYNC_OUTPUT=$(nvim --headless "+Lazy! sync" +qa 2>&1); then
+    # Ensure tree-sitter CLI is available for building parsers on Ubuntu
+    if [ "$OS" == "ubuntu" ]; then
+        if ! command -v tree-sitter &> /dev/null; then
+            print_info "Installing tree-sitter CLI (for nvim-treesitter parsers)..."
+            npm install -g tree-sitter-cli@latest 2>/dev/null || print_warning "tree-sitter CLI install failed (pre-built parsers may be used)"
+        fi
+    fi
+
+    # Install plugins (vim.pack installs automatically on startup)
+    print_info "Installing neovim plugins (vim.pack auto-install)..."
+    if nvim --headless +qa 2>&1; then
         print_success "Neovim plugins installed"
     else
-        if echo "$LAZY_SYNC_OUTPUT" | grep -q "You have local changes in"; then
-            print_warning "Detected dirty lazy.nvim plugin cache; cleaning and retrying once..."
-            cleanup_dirty_lazy_plugins
-
-            if nvim --headless "+Lazy! sync" +qa 2>/dev/null; then
-                print_success "Neovim plugins installed after cleaning plugin cache"
-            else
-                print_warning "Plugin installation still failed after cache cleanup"
-                print_info "Run: nvim --headless '+Lazy! sync' +qa"
-            fi
-        else
-            print_warning "Plugin installation may require manual intervention"
-            print_info "Run: nvim --headless '+Lazy! sync' +qa"
-        fi
+        print_warning "Plugin installation may require manual intervention"
+        print_info "Run: nvim --headless +qa"
     fi
 
     # Update treesitter parsers
@@ -941,8 +934,15 @@ install_pi() {
     fi
 
     mkdir -p "$HOME/.local/bin"
+
+    # Clean up old deprecated package and binary to allow rename from @mariozechner -> @earendil-works
+    if npm ls --prefix "$HOME/.local" -g @mariozechner/pi-coding-agent &>/dev/null 2>&1; then
+        print_info "Removing deprecated @mariozechner/pi-coding-agent..."
+        npm uninstall -g --prefix "$HOME/.local" @mariozechner/pi-coding-agent || true
+    fi
+
     print_info "Installing/updating Pi coding agent via npm into ~/.local..."
-    npm install -g --prefix "$HOME/.local" @mariozechner/pi-coding-agent@latest
+    npm install -g --prefix "$HOME/.local" @earendil-works/pi-coding-agent@latest
 
     if [ ! -x "$HOME/.local/bin/pi" ]; then
         print_error "Pi coding agent install failed: ~/.local/bin/pi not found"
@@ -1041,7 +1041,7 @@ install_pi_sandbox() {
 
     # Build the Docker image (pin Pi version from npm so the image label is accurate)
     print_info "Resolving latest Pi version for sandbox image..."
-    PI_SANDBOX_VER=$(npm view @mariozechner/pi-coding-agent version 2>/dev/null || echo "latest")
+    PI_SANDBOX_VER=$(npm view @earendil-works/pi-coding-agent version 2>/dev/null || echo "latest")
     print_info "Building Pi sandbox Docker image (Pi @${PI_SANDBOX_VER})..."
     if docker build --build-arg PI_VERSION="$PI_SANDBOX_VER" -t "pis:latest" "$DOTFILES_DIR/pi/"; then
         print_success "Pi sandbox Docker image built (Pi @${PI_SANDBOX_VER})"
@@ -1446,7 +1446,7 @@ show_custom_menu() {
     # Parallel arrays instead of associative array (bash 3.2 compat)
     local options=(
         "base_tools:Base Tools (git, curl, tmux, zsh, etc.)"
-        "neovim:Neovim 0.10+"
+        "neovim:Neovim 0.12+"
         "nvim_config:Neovim Configuration (kickstart + custom)"
         "tmux_config:Tmux Configuration"
         "zsh_ohmyzsh:Zsh + Oh My Zsh"
@@ -1551,7 +1551,7 @@ show_installation_summary() {
     for module in "${SELECTED_MODULES[@]}"; do
         case "$module" in
             "base_tools") echo "  • Base Tools (git, curl, tmux, zsh, etc.)" ;;
-            "neovim") echo "  • Neovim 0.10+" ;;
+            "neovim") echo "  • Neovim 0.12+" ;;
             "nvim_config") echo "  • Neovim Configuration (kickstart + custom)" ;;
             "tmux_config") echo "  • Tmux Configuration" ;;
             "zsh_ohmyzsh") echo "  • Zsh + Oh My Zsh" ;;
@@ -1754,7 +1754,7 @@ Profiles:
 
 Modules:
   base_tools          Base tools (git, curl, tmux, zsh, etc.)
-  neovim              Neovim 0.10+
+  neovim              Neovim 0.12+
   nvim_config         Neovim configuration (kickstart + custom)
   tmux_config         Tmux configuration
   zsh_ohmyzsh         Zsh + Oh My Zsh
