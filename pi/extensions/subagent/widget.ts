@@ -23,6 +23,24 @@ function formatElapsed(ms: number): string {
 	return `${Math.floor(ms / 60000)}m ${Math.round((ms % 60000) / 1000)}s`;
 }
 
+/** Sort priority: running → failed → completed → cancelled. */
+const STATUS_SORT_ORDER: Record<string, number> = {
+	running: 0,
+	failed: 1,
+	completed: 2,
+	cancelled: 3,
+};
+
+/** Sort jobs: running first, then failed, then completed, then cancelled. Within each group, oldest start time first. */
+function sortJobs(jobs: AsyncJob[]): AsyncJob[] {
+	return [...jobs].sort((a, b) => {
+		const orderA = STATUS_SORT_ORDER[a.status] ?? 99;
+		const orderB = STATUS_SORT_ORDER[b.status] ?? 99;
+		if (orderA !== orderB) return orderA - orderB;
+		return a.startedAt - b.startedAt;
+	});
+}
+
 /**
  * Render widget content from the current set of async jobs.
  *
@@ -35,8 +53,10 @@ export function renderWidgetContent(jobs: AsyncJob[], terminalWidth?: number): s
 
 		const width = terminalWidth && !Number.isNaN(terminalWidth) ? terminalWidth : 80;
 
-		const runningCount = jobs.filter((j) => j.status === "running").length;
-		const doneCount = jobs.filter(
+		const sorted = sortJobs(jobs);
+
+		const runningCount = sorted.filter((j) => j.status === "running").length;
+		const doneCount = sorted.filter(
 			(j) => j.status === "completed" || j.status === "failed" || j.status === "cancelled",
 		).length;
 
@@ -45,7 +65,7 @@ export function renderWidgetContent(jobs: AsyncJob[], terminalWidth?: number): s
 		// Header line
 		lines.push(`⏳ Subagents: ${runningCount} running, ${doneCount} done`);
 
-		for (const job of jobs) {
+		for (const job of sorted) {
 			const elapsed = formatElapsed((job.completedAt ?? Date.now()) - job.startedAt);
 
 			if (job.status === "running") {

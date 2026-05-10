@@ -367,6 +367,55 @@ describe("renderWidgetContent", () => {
 		// Should show done count (2 done = completed + failed)
 		expect(header).toMatch(/\d+\s*done/);
 	});
+
+	// 11. Jobs are sorted: running → failed → completed → cancelled, oldest start time first within each group
+	test("jobs are sorted: running first, then failed, then completed, then cancelled", () => {
+		const now = Date.now();
+		const jobs: AsyncJob[] = [
+			// Insert in reverse priority order to verify sorting
+			makeCancelledJob({ name: "scan", startedAt: now - 6000 }),
+			makeCompletedJob({ name: "review", startedAt: now - 15000 }),
+			makeFailedJob({ name: "fix", startedAt: now - 8000 }),
+			makeRunningJob({ name: "build", startedAt: now - 30000 }),
+			makeRunningJob({ name: "test", startedAt: now - 20000 }),
+		];
+		const result = renderWidgetContent(jobs, 120);
+		expect(result).toBeDefined();
+
+		// Extract lines after header, filtering out indented detail lines (running jobs get 2 lines)
+		const bodyLines = result!.slice(1).filter((line) => !line.startsWith("  "));
+
+		// Expected order: running("build"), running("test"), failed("fix"), completed("review"), cancelled("scan")
+		expect(bodyLines.length).toBe(5);
+		expect(bodyLines[0]).toContain("build");
+		expect(bodyLines[0]).toContain("⏳");
+		expect(bodyLines[1]).toContain("test");
+		expect(bodyLines[1]).toContain("⏳");
+		expect(bodyLines[2]).toContain("fix");
+		expect(bodyLines[2]).toContain("✗");
+		expect(bodyLines[3]).toContain("review");
+		expect(bodyLines[3]).toContain("✓");
+		expect(bodyLines[4]).toContain("scan");
+		expect(bodyLines[4]).toContain("⊘");
+	});
+
+	// 12. Within same status group, oldest start time first
+	test("within same status group, jobs sorted by oldest start time first", () => {
+		const now = Date.now();
+		const jobs: AsyncJob[] = [
+			makeCompletedJob({ name: "review-c", startedAt: now - 5000 }),
+			makeCompletedJob({ name: "review-a", startedAt: now - 30000 }),
+			makeCompletedJob({ name: "review-b", startedAt: now - 15000 }),
+		];
+		const result = renderWidgetContent(jobs, 120);
+		expect(result).toBeDefined();
+
+		const bodyLines = result!.slice(1).filter((line) => !line.startsWith("  "));
+		expect(bodyLines.length).toBe(3);
+		expect(bodyLines[0]).toContain("review-a");
+		expect(bodyLines[1]).toContain("review-b");
+		expect(bodyLines[2]).toContain("review-c");
+	});
 });
 
 // ---------------------------------------------------------------------------
