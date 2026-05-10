@@ -5,6 +5,9 @@
  * Pure config resolution: per-item > top-level > agent file > default.
  */
 
+import * as fs from "node:fs";
+import * as os from "node:os";
+import * as path from "node:path";
 import type { ThinkingLevel } from "@earendil-works/pi-agent-core";
 import type { Guardrails } from "./guardrails.js";
 import { resolveGuardrails } from "./guardrails.js";
@@ -200,6 +203,66 @@ export function resolveConfig(
 	};
 }
 
+// ─── Extension Tool Detection ───────────────────────────────────────
+
+/**
+ * Derive the tool prefix for an extension directory by naming convention.
+ *
+ * Convention: extension directory "<namespace>-<action>" owns all tools
+ * with prefix "<namespace>_". If the directory name has no hyphen, the
+ * prefix is "<dirname>_".
+ *
+ * Examples:
+ *   web-search → web_  (owns web_search, web_fetch, etc.)
+ *   subagent   → subagent_  (owns subagent_run, subagent_fork, etc.)
+ */
+function deriveExtensionToolPrefix(dirName: string): string {
+	const hyphenIdx = dirName.indexOf("-");
+	return hyphenIdx > 0 ? dirName.substring(0, hyphenIdx) + "_" : dirName + "_";
+}
+
+/**
+ * Scan ~/.pi/agent/extensions/ and build a map of tool prefix → extension
+ * directory name. Symlinks are followed. Returns empty map if the directory
+ * doesn't exist.
+ */
+function getExtensionToolPrefixes(): Map<string, string> {
+	const extDir = path.join(os.homedir(), ".pi", "agent", "extensions");
+	const prefixes = new Map<string, string>();
+
+	let entries: fs.Dirent[];
+	try {
+		entries = fs.readdirSync(extDir, { withFileTypes: true });
+	} catch {
+		return prefixes;
+	}
+
+	for (const entry of entries) {
+		if (!entry.isDirectory() && !entry.isSymbolicLink()) continue;
+		const dirName = entry.name;
+		const prefix = deriveExtensionToolPrefix(dirName);
+		prefixes.set(prefix, dirName);
+	}
+
+	return prefixes;
+}
+
+/**
+ * Check whether any of the requested tools belong to an extension
+ * (as opposed to core tools). Uses naming convention: if a tool starts
+ * with a known extension prefix, it requires that extension to be loaded.
+ */
+function needsExtensionsForTools(tools: string[] | undefined): boolean {
+	if (!tools || tools.length === 0) return false;
+	const prefixes = getExtensionToolPrefixes();
+	for (const tool of tools) {
+		for (const prefix of prefixes.keys()) {
+			if (tool.startsWith(prefix)) return true;
+		}
+	}
+	return false;
+}
+
 // ─── CLI Arg Builder ──────────────────────────────────────────────────
 
 export function buildSpawnArgs(config: SubagentConfig, task: string): string[] {
@@ -215,7 +278,12 @@ export function buildSpawnArgs(config: SubagentConfig, task: string): string[] {
 		args.push("--tools", config.tools.join(","));
 	}
 	if (!config.contextFiles) args.push("--no-context-files");
-	if (!config.extensions) args.push("--no-extensions");
+
+	// Load extensions if explicitly requested OR if any requested tools
+	// belong to extensions (detected by naming convention). When extensions
+	// are loaded, the --tools flag gates which extension tools are visible.
+	const needsExts = config.extensions || needsExtensionsForTools(config.tools);
+	if (!needsExts) args.push("--no-extensions");
 
 	// Task text is appended at the end
 	args.push(`Task: ${task}`);

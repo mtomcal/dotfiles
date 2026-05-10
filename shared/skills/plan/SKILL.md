@@ -13,7 +13,9 @@ Produce a TDD implementation plan entirely in conversation context. No files are
 
 ```
 User: /plan — implement the session-persistence hook we grilled
-Pi: identifies context engine, reads decisions, grills for gaps, produces plan in context, offers /tree handoff
+Pi: identifies context engine, reads decisions, grills for gaps, produces plan in context
+Pi: forks sage review (async), user sees plan immediately with "awaiting sage review" status
+Pi: on sage approval (or max 2 rounds + escalation), offers /tree handoff with verdict
 ```
 
 ## Process
@@ -22,7 +24,52 @@ Pi: identifies context engine, reads decisions, grills for gaps, produces plan i
 2. **Gather context** — read specs, research, decisions, or grill outcomes; read current code. Surface the state of play.
 3. **Grill to distill** — confirm intent, pin down implementation shape, surface edge cases. Use `grill-me` if the user hasn't already resolved key decisions.
 4. **Produce plan in context** — output the structure below directly in the conversation. No files. Everything stays in context.
-5. **Offer /tree handoff** — end with: `Ready to execute. Run /tree [branch-name] to fork an execution branch for these slices.`
+5. **Fork sage review** — submit the plan output to the sage for review via `subagent_fork` with `agent: "sage"`. See Sage Review Loop below for the full cycle.
+6. **Offer /tree handoff** — once the sage approves (or the review loop reaches its terminal state), end with: `Ready to execute. Run /tree [branch-name] to fork an execution branch for these slices.` Include the sage's verdict in the handoff.
+
+## Sage Review Loop
+
+Every plan goes through a sage review before the `/tree` handoff. The sage is the highest-authority escalation agent — it reviews the plan for slice ordering mistakes, missing edge cases, unrealistic risk tiers, bad architectural guidance, and inaccurate planning.
+
+### Invocation
+
+Fork the sage as a background job so the user can read the plan immediately:
+
+```
+subagent_fork:
+  agent: "sage"
+  name: "sage-plan-review"
+  task: [full plan output — Goal, Constraints, Implementation Shape, Slice Breakdown, Verification Sequence]
+  tools: "read,bash"
+```
+
+The task text is the plan output only — lightweight and self-contained. The sage reviews what it receives. If the sage needs additional context (e.g., current source files to judge architectural fit), it requests it via an `Issues Found` entry stating what it needs.
+
+### Report Format
+
+The sage outputs a structured report using this plan-review variant of its standard format:
+
+- **Issues Found** — what's wrong or risky in the plan, specific to a section or slice
+- **Fix** — the corrective action for each issue
+- **Confidence** — the sage's confidence after the review
+- **Approval** — `Approved` or `Not Approved` (explicit verdict, not a number)
+
+### Revision Loop
+
+1. Sage returns its report (via `subagent_results` or completion notification)
+2. If `Approval: Approved` → proceed to step 6 (offer /tree handoff) with the sage verdict included
+3. If `Approval: Not Approved` → incorporate the sage's findings, revise affected slices in context, re-submit to sage via another `subagent_fork`. If the sage requested additional context in its findings, read the relevant files and include excerpts in the re-submission.
+4. Max 2 review rounds total. After the second round, if still `Not Approved`, escalate to the user with a summary of the unresolved disagreement. The user decides whether to proceed or re-plan.
+
+### Error Handling
+
+If the sage invocation fails (timeout, API error): retry once automatically. If the retry also fails, present the plan to the user with a note that sage review was unavailable and let the user decide whether to proceed.
+
+### Anti-patterns
+
+- **Blocking on sage** — the sage review is forked as a background job. The plan is displayed to the user immediately. Do not make the user wait for the sage to see the plan.
+- **Sage as rubber stamp** — if the sage says Not Approved, fix the plan. Don't skip the revision and hand off anyway.
+- **Infinite review loop** — max 2 rounds. If the sage and planner can't converge, escalate. Don't keep revising and re-submitting.
 
 ## Plan Output Structure
 
@@ -96,3 +143,4 @@ Default is serial (slices run in order). Mark a slice as parallelizable when its
 - `create-plan` skill — full context engine taxonomy and RED/GREEN/REFACTOR slicing discipline
 - `grill-me` skill — produces decision tables for decision-driven plans
 - `test-quality-verifier` skill — sub-agent tool for post-green review passes
+- `pi/agents/sage.md` — sage agent, consulted for plan review before /tree handoff

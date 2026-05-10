@@ -138,6 +138,77 @@ function cleanupTempFiles(files: { dir: string | null; filePath: string | null }
 	}
 }
 
+// ─── Agent Catalog Helpers ─────────────────────────────────────────
+
+/**
+ * Build a markdown catalog of all available agents for system prompt injection.
+ * Discovers agents from ~/.pi/agent/agents/*.md, loads full frontmatter config
+ * for each, and formats as a bulleted list with model, provider, thinking, tools,
+ * and default guardrails.
+ */
+function buildAgentCatalog(): string {
+	const agentsDir = getDefaultAgentsDir();
+	const listings = listAgentFiles(agentsDir);
+	if (listings.length === 0) return "";
+
+	const lines: string[] = [];
+	lines.push("## Available Subagents");
+	lines.push("");
+
+	for (const listing of listings) {
+		const agent = loadAgentFile(listing.name, agentsDir);
+		const toolsLabel = agent?.tools || "(all default)";
+
+		const guardrailParts: string[] = [];
+		if (agent?.maxTurns) guardrailParts.push(`${agent.maxTurns} turns`);
+		if (agent?.maxCost) guardrailParts.push(`$${agent.maxCost.toFixed(2)}`);
+		if (agent?.maxTokens) guardrailParts.push(`${agent.maxTokens.toLocaleString()} tokens`);
+		if (agent?.maxTime) guardrailParts.push(`${agent.maxTime}s`);
+		const guardrailStr = guardrailParts.length > 0 ? guardrailParts.join(", ") : "none";
+
+		lines.push(`- **\`${listing.name}\`** (user): ${listing.description}`);
+
+		const metaParts: string[] = [];
+		if (agent?.model && agent?.provider) {
+			metaParts.push(`Model: ${agent.model} @ ${agent.provider}`);
+		} else if (agent?.model) {
+			metaParts.push(`Model: ${agent.model}`);
+		}
+		if (agent?.thinking) metaParts.push(`Thinking: ${agent.thinking}`);
+		metaParts.push(`Tools: ${toolsLabel}`);
+		lines.push(`  ${metaParts.join(" | ")}`);
+
+		lines.push(`  Default guardrails: ${guardrailStr}`);
+		lines.push("");
+	}
+
+	return lines.join("\n");
+}
+
+/**
+ * Build a compact agent list for the `agent` parameter description
+ * on subagent_run / subagent_fork tools.
+ */
+function buildAgentParamDescription(): string {
+	const agentsDir = getDefaultAgentsDir();
+	const listings = listAgentFiles(agentsDir);
+	if (listings.length === 0) {
+		return "Named agent to use from ~/.pi/agent/agents/. Loads .md file with frontmatter defaults. Per-call params override agent defaults.";
+	}
+	const compact = listings
+		.map((a) => {
+			// Take first clause before em-dash, comma, period, or colon
+			const raw = a.description.split(/[—–,:.]/)[0].trim();
+			// Truncate to ~40 chars at word boundary
+			const short = raw.length > 40
+				? raw.slice(0, 40).replace(/\s+\S*$/, "") + "..."
+				: raw;
+			return `${a.name} (${short})`;
+		})
+		.join(", ");
+	return `Named agent to use from ~/.pi/agent/agents/. Available: ${compact}. Loads .md file with frontmatter defaults. Per-call params override agent defaults.`;
+}
+
 async function mapWithConcurrencyLimit<TIn, TOut>(
 	items: TIn[],
 	concurrency: number,
@@ -578,6 +649,9 @@ export default function (pi: ExtensionAPI) {
 	const jobMgr: JobManager = (pi as any).jobMgr ?? new JobManager();
 	if (!(pi as any).jobMgr) (pi as any).jobMgr = jobMgr;
 
+	// ── Agent catalog injection tracking ───────────────────────────
+	let _catalogInjectedThisSession = false;
+
 	// Wire up cancellation notification callback so cancelJob/cancelAll
 	// automatically send steer notifications when jobs are cancelled.
 	jobMgr.setOnCancel((job: AsyncJob) => {
@@ -646,6 +720,28 @@ export default function (pi: ExtensionAPI) {
 		path.join(os.homedir(), ".pi", "agent", "settings.json");
 	const routingTable = readRoutingTable(settingsPath);
 
+	// ── Register /reload-agents command ────────────────────────────
+	// Allows hot-reload of agent catalog without restarting pi.
+	// Refreshes the agent listing injected into the system prompt.
+	// NOTE: tool parameter descriptions are baked at registration time.
+	// Run /reload after /reload-agents to update tool descriptions too.
+	pi.registerCommand("reload-agents", {
+		description: "Reload agent catalog from ~/.pi/agent/agents/ into system prompt (use /reload after to update tool descriptions)",
+		handler: async (_args: string, _ctx: ExtensionCommandContext) => {
+			_catalogInjectedThisSession = false;
+			const agentsDir = getDefaultAgentsDir();
+			const listings = listAgentFiles(agentsDir);
+			if (listings.length === 0) {
+				console.warn("[subagent] No agents found in " + agentsDir);
+			} else {
+				console.warn(
+					`[subagent] Reloaded — ${listings.length} agents discovered. ` +
+					"Run /reload to apply changes to subagent_run and subagent_fork tool descriptions.",
+				);
+			}
+		},
+	});
+
 	// ── Register /reload-routing command ───────────────────────────
 	// Allows hot-reload of routing table without restarting pi.
 	// Useful after editing settings.json during a session.
@@ -670,12 +766,26 @@ export default function (pi: ExtensionAPI) {
 	// ── Lifecycle ────────────────────────────────────────────────────
 	pi.on("session_shutdown", async () => { cancelWidgetTimers(); widgetCtx = null; jobMgr.cancelAll(); persist(); });
 	pi.on("session_start", async (_event, ctx) => {
+		_catalogInjectedThisSession = false;
 		widgetCtx = ctx;
 		for (const entry of ctx.sessionManager.getEntries()) {
 			if (entry.type === "custom" && entry.customType === "subagent-job-state") {
 				jobMgr.deserialize(entry.data as any);
 			}
 		}
+	});
+
+	// ── Inject agent catalog into system prompt once per session ───
+	pi.on("before_agent_start", async (event, _ctx) => {
+		if (_catalogInjectedThisSession) return;
+		_catalogInjectedThisSession = true;
+
+		const catalog = buildAgentCatalog();
+		if (!catalog) return;
+
+		return {
+			systemPrompt: event.systemPrompt + "\n\n" + catalog,
+		};
 	});
 
 	// ── Tool: subagent_run (Blocking) ────────────────────────────────
@@ -688,7 +798,7 @@ export default function (pi: ExtensionAPI) {
 			"ad-hoc subagents: each call configures the subagent inline.",
 		].join(" "), routingTable),
 		parameters: Type.Object({
-			agent: Type.Optional(Type.String({ description: "Named agent to use from ~/.pi/agent/agents/. Loads .md file with frontmatter defaults. Per-call params override agent defaults." })),
+			agent: Type.Optional(Type.String({ description: buildAgentParamDescription() })),
 			name: Type.Optional(Type.String({ description: "Display label. Auto-derived from task text if omitted." })),
 			task: Type.Optional(Type.String({ description: "Task to delegate (single mode)" })),
 			systemPrompt: Type.Optional(Type.String({ description: "System prompt — defines the subagent's role and behavior" })),
@@ -708,7 +818,7 @@ export default function (pi: ExtensionAPI) {
 		}),
 		promptSnippet: "Run subagent tasks and get results immediately",
 		promptGuidelines: [
-			"Use the `agent` parameter to reference a named agent definition (e.g. 'implementer', 'test-reviewer'). The agent .md file provides defaults for system prompt, tools, model, and guardrails.",
+			"Use the `agent` parameter to reference a named agent definition from the Available Subagents catalog in the system prompt. The agent .md file provides defaults for system prompt, tools, model, and guardrails.",
 			"Provide `systemPrompt` to define the subagent's behavior, and `name` for a readable job label.",
 			"For the best results, scope `tools` to what the subagent needs (e.g. 'read,grep' for review, 'read,write,bash,edit' for implementation).",
 			"Omit `systemPrompt` and `name` for a bare-task pattern: a default assistant in an isolated context. Useful for running a task in a fresh context window.",
@@ -893,7 +1003,7 @@ export default function (pi: ExtensionAPI) {
 			"ad-hoc subagents: each call configures the subagent inline.",
 		].join(" "), routingTable),
 		parameters: Type.Object({
-			agent: Type.Optional(Type.String({ description: "Named agent to use from ~/.pi/agent/agents/. Loads .md file with frontmatter defaults. Per-call params override agent defaults." })),
+			agent: Type.Optional(Type.String({ description: buildAgentParamDescription() })),
 			name: Type.Optional(Type.String({ description: "Display label. Auto-derived from task text if omitted." })),
 			task: Type.Optional(Type.String({ description: "Task to delegate (for single mode)" })),
 			systemPrompt: Type.Optional(Type.String({ description: "System prompt — defines the subagent's role and behavior" })),
@@ -912,7 +1022,7 @@ export default function (pi: ExtensionAPI) {
 		}),
 		promptSnippet: "Fork background subagent jobs, continue working while they run",
 		promptGuidelines: [
-			"Use the `agent` parameter to reference a named agent definition (e.g. 'implementer', 'test-reviewer'). The agent .md file provides defaults for system prompt, tools, model, and guardrails.",
+			"Use the `agent` parameter to reference a named agent definition from the Available Subagents catalog in the system prompt. The agent .md file provides defaults for system prompt, tools, model, and guardrails.",
 			"Provide `systemPrompt` to define the subagent's behavior, and `name` for a readable job label.",
 			"After forking, continue your work. You'll receive a completion notification with a summary and usage stats.",
 			"When you receive a notification, call subagent_results with the jobId only if you need more detail.",
@@ -920,7 +1030,7 @@ export default function (pi: ExtensionAPI) {
 			"Omit `systemPrompt` for the bare-task pattern: a default assistant in isolated context.",
 			"Use subagent_run when you need the result immediately. Use subagent_fork when you can work in parallel.",
 			"A TUI status widget is displayed above the editor while jobs are running, showing live progress. You'll also receive a completion notification when each job finishes.",
-		"Set guardrails (maxTurns, maxCost, maxTokens, maxTime) to limit subagent resource usage. The subagent is killed with stopReason=guardrail if any threshold is exceeded.",
+			"Set guardrails (maxTurns, maxCost, maxTokens, maxTime) to limit subagent resource usage. The subagent is killed with stopReason=guardrail if any threshold is exceeded.",
 		],
 
 		async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
