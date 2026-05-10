@@ -131,18 +131,18 @@ Subagent was terminated by Pi (exceeded maxTurns, maxCost, maxTokens, or maxTime
 
 Subagent completed but produced broken code (tests fail, won't compile, or returned an error). No guardrail kill.
 
-1. **Provider switch** — same model, different provider. Re-fork with same guardrails.
-2. **Course correction** — orchestrator appends specific guidance to the task text. State what failed and what to try differently. Re-fork same agent + model + provider.
-3. **Model bump** — escalate to stronger model or higher thinking.
-4. **Expert consultation** — `expert-consultation` skill with slice context + prior attempts.
-5. **Strongest subagent** — deepest model available with max guardrails (`maxTurns: 60, maxCost: 2.00, maxTokens: 500000, maxTime: 600`).
+1. **Course correction** — orchestrator appends specific guidance to the task text. State what failed and what to try differently. Re-fork same agent + model + provider.
+2. **Model bump** — escalate to stronger model or higher thinking.
+3. **Expert consultation** — `expert-consultation` skill with slice context + prior attempts.
+4. **Strongest subagent** — deepest model available with max guardrails (`maxTurns: 60, maxCost: 2.00, maxTokens: 500000, maxTime: 600`).
+5. **Provider switch** — same model, different provider. Last-ditch attempt if inference quality is the issue.
 
 ### Track 3: Review rejection
 
 Implementation compiled and tests passed, but a reviewer returned ❌ NEEDS-FIX with specific feedback.
 
 1. **Re-implement with verdict** — pass the reviewer's verdict as guidance to the implementer: "Previous attempt rejected. Reviewer feedback: [verdict]. Fix these issues and re-submit." Re-fork implementer.
-2. **If still rejected** — escalate the implementer: provider switch → course correction → model bump → expert → strongest subagent (Track 2, tiers 1-5).
+2. **If still rejected** — escalate the implementer: course correction → model bump → expert → strongest subagent → provider switch (Track 2, tiers 1-5).
 3. **If a different reviewer rejects** (e.g., test passed but security now fails) — re-implement with the new verdict. Only escalate if the same issue persists.
 
 ### General rules
