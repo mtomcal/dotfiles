@@ -41,7 +41,7 @@ Each slice is self-contained task text — passable as-is to an executor:
 ```
 ### Slice N: [Name]
 Risk: routine | standard | tricky
-Reviews: test | test,quality | test,quality,security
+Reviews: test | test,quality | test,quality,security | test,quality,design | test,quality,security,design
 Depends on: [slice numbers or "none"]
 Parallel: ["ok with slice N" or "serial only"]
 
@@ -73,7 +73,9 @@ REFACTOR — Clean up while green
 |------|-----------|--------------|
 | **routine** | Standard — straightforward, low blast radius | test |
 | **standard** | Moderate — some complexity, multi-file | test, quality |
+| **standard + UI** | Moderate complexity with UI changes | test, quality, design |
 | **tricky** | Tight — subtle logic, high blast radius, or security-sensitive | test, quality, security |
+| **tricky + UI** | Tight logic with UI changes, auth-sensitive surfaces | test, quality, security, design |
 
 Risk tier determines guardrail thresholds and review depth. Plan does **not** name models or providers — agent `.md` files handle routing at execution time.
 
