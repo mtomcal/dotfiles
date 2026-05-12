@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lab Template: Knowledge Check Quiz</title>
+<style>
+  :root {
+    --bg:#0d1117;--bg-elev:#161b22;--bg-card:#1c2128;--border:#30363d;
+    --text:#c9d1d9;--text-dim:#8b949e;--text-bright:#e6edf3;
+    --accent:#58a6ff;--client:#3fb950;--danger:#f85149;
+    --font-mono:"SF Mono",ui-monospace,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);padding:24px;line-height:1.6}
+  .container{max-width:720px;margin:0 auto}
+  h1{margin:0 0 8px;font-size:24px}
+  p{color:var(--text-dim);margin:0 0 20px}
+
+  .panel{background:var(--bg-elev);border:1px solid var(--border);border-radius:16px;padding:24px;margin:16px 0}
+
+  .quiz-opt{display:block;width:100%;text-align:left;padding:12px 16px;margin:6px 0;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;cursor:pointer;transition:all .15s}
+  .quiz-opt:hover{border-color:#484f58;background:var(--bg-elev)}
+  .quiz-opt.correct{border-color:var(--client);background:rgba(63,185,80,0.1);color:var(--client)}
+  .quiz-opt.wrong{border-color:var(--danger);background:rgba(248,81,73,0.1);color:var(--danger)}
+  .quiz-opt:disabled{cursor:default}
+
+  .explanation{display:none;margin-top:12px;padding:14px;background:var(--bg);border-radius:8px;border:1px solid var(--border);font-size:13px;color:var(--text-dim)}
+  .explanation strong{display:block;margin-bottom:4px}
+
+  .btn{display:inline-flex;align-items:center;gap:6px;padding:10px 20px;border-radius:8px;border:1px solid var(--border);background:var(--bg-elev);color:var(--text-bright);font-size:14px;font-weight:600;cursor:pointer}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+
+  .score-board{display:flex;gap:24px;justify-content:center;margin:20px 0}
+  .score-item{text-align:center}
+  .score-num{font-size:32px;font-weight:800;color:var(--accent);font-family:var(--font-mono)}
+  .score-label{font-size:12px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.05em}
+
+  .center{text-align:center}
+  .emoji{font-size:48px;margin-bottom:16px}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>&#10067; Knowledge Check</h1>
+  <p>Test your understanding. Each question reinforces a key concept.</p>
+
+  <div class="panel" id="quiz-panel">
+    <!-- Start screen -->
+    <div class="center" id="start-screen" style="padding:40px 20px">
+      <div class="emoji">&#127942;</div>
+      <h3 style="margin:0 0 8px">Ready?</h3>
+      <p style="color:var(--text-dim);margin:0 0 20px">5 questions covering the core concepts.</p>
+      <button class="btn primary" onclick="startQuiz()">Start Quiz</button>
+    </div>
+
+    <!-- Question screen -->
+    <div id="question-screen" style="display:none">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <span style="font-size:12px;font-weight:700;text-transform:uppercase;color:var(--text-dim)">Question <span id="q-current">1</span> / <span id="q-total">5</span></span>
+        <span style="font-family:var(--font-mono);font-size:14px;font-weight:700;color:var(--accent)">Score: <span id="q-score">0</span></span>
+      </div>
+      <h4 id="q-text" style="font-size:17px;font-weight:600;color:var(--text-bright);margin:0 0 16px;line-height:1.5"></h4>
+      <div id="q-options"></div>
+      <div class="explanation" id="q-explanation"></div>
+      <div class="center" style="margin-top:16px">
+        <button class="btn primary" id="q-next" onclick="nextQuestion()" style="display:none">Next</button>
+      </div>
+    </div>
+
+    <!-- End screen -->
+    <div class="center" id="end-screen" style="display:none;padding:40px 20px">
+      <div class="emoji">&#127881;</div>
+      <h3 style="margin:0 0 8px">Complete!</h3>
+      <div class="score-board">
+        <div class="score-item"><div class="score-num" id="final-score">0</div><div class="score-label">Correct</div></div>
+        <div class="score-item"><div class="score-num" id="final-total">0</div><div class="score-label">Total</div></div>
+        <div class="score-item"><div class="score-num" id="final-pct">0%</div><div class="score-label">Score</div></div>
+      </div>
+      <button class="btn primary" onclick="startQuiz()">Retake</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ================================================================
+   ADAPT THIS SECTION: Define your questions.
+   Each question: { q (string), options (string[]), correct (index), explain (string) }
+=============================================================== */
+const questions = [
+  {
+    q: "Which layer owns the authoritative truth for user authentication state?",
+    options: ["The client (browser localStorage)", "The server (session store)", "The CDN edge cache", "The load balancer"],
+    correct: 1,
+    explain: "The server must be the source of truth for auth state. If the client claimed authority, a modified browser could fake authentication."
+  },
+  {
+    q: "What is the primary purpose of a rate limiter?",
+    options: ["To speed up requests", "To prevent abuse and ensure fairness", "To cache responses", "To encrypt traffic"],
+    correct: 1,
+    explain: "Rate limiting prevents a single client from overwhelming the system, protecting both resources and other users' experience."
+  },
+  {
+    q: "In a server-authoritative architecture, why does the client send only minimal data?",
+    options: ["To save bandwidth", "Because the server validates everything else", "To reduce battery usage", "Because JSON is slow"],
+    correct: 1,
+    explain: "The server validates ammo, cooldown, permissions, etc. The client only sends intent (e.g., 'I want to fire at this angle'). Minimal trust in the client prevents cheating."
+  },
+  {
+    q: "What happens first when a request arrives at the server?",
+    options: ["Run the business handler", "Validate authentication", "Write to the database", "Broadcast to other clients"],
+    correct: 1,
+    explain: "Authentication is checked first (fail-fast). There's no point parsing a body or running a handler for an unauthenticated request."
+  },
+  {
+    q: "Why do distributed systems use idempotency keys?",
+    options: ["To encrypt requests", "To prevent duplicate processing on retries", "To compress payloads", "To authenticate users"],
+    correct: 1,
+    explain: "If a client retries a request due to a network timeout, the idempotency key lets the server recognize it as a duplicate and return the previous result instead of processing again."
+  }
+];
+
+let qIdx = 0, qScore = 0;
+
+function startQuiz() {
+  qIdx = 0; qScore = 0;
+  document.getElementById("start-screen").style.display = "none";
+  document.getElementById("end-screen").style.display = "none";
+  document.getElementById("question-screen").style.display = "block";
+  showQuestion();
+}
+
+function showQuestion() {
+  const q = questions[qIdx];
+  document.getElementById("q-current").textContent = qIdx + 1;
+  document.getElementById("q-total").textContent = questions.length;
+  document.getElementById("q-score").textContent = qScore;
+  document.getElementById("q-text").textContent = q.q;
+
+  const opts = document.getElementById("q-options");
+  opts.innerHTML = "";
+  q.options.forEach((opt, i) => {
+    const btn = document.createElement("button");
+    btn.className = "quiz-opt";
+    btn.textContent = String.fromCharCode(65 + i) + ". " + opt;
+    btn.onclick = () => answer(i);
+    opts.appendChild(btn);
+  });
+
+  document.getElementById("q-explanation").style.display = "none";
+  document.getElementById("q-next").style.display = "none";
+}
+
+function answer(idx) {
+  const q = questions[qIdx];
+  const opts = document.querySelectorAll(".quiz-opt");
+  opts.forEach((btn, i) => {
+    btn.disabled = true;
+    if (i === q.correct) btn.classList.add("correct");
+    else if (i === idx) btn.classList.add("wrong");
+  });
+  if (idx === q.correct) qScore++;
+
+  const exp = document.getElementById("q-explanation");
+  exp.innerHTML = "<strong>" + (idx === q.correct ? "\u2705 Correct!" : "\u274C Incorrect.") + "</strong> " + q.explain;
+  exp.style.display = "block";
+  document.getElementById("q-next").style.display = "inline-flex";
+}
+
+function nextQuestion() {
+  qIdx++;
+  if (qIdx >= questions.length) {
+    document.getElementById("question-screen").style.display = "none";
+    document.getElementById("end-screen").style.display = "block";
+    document.getElementById("final-score").textContent = qScore;
+    document.getElementById("final-total").textContent = questions.length;
+    document.getElementById("final-pct").textContent = Math.round((qScore / questions.length) * 100) + "%";
+  } else {
+    showQuestion();
+  }
+}
+</script>
+</body>
+</html>

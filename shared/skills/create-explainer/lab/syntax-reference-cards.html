@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Syntax Reference Cards Template</title>
+<style>
+/* ===== THEME ===== */
+:root {
+  --bg: #0b1020; --panel: #111a33; --panel-2: #162042;
+  --border: #1e2d52; --ink: #eef4ff; --muted: #aab7d4; --dim: #5a6a8a;
+  --accent: #6ee7ff; --accent-2: #ffd166; --good: #55d68b; --bad: #ff6b6b;
+  --code-bg: #0d1528; --code-border: #1a2a4a;
+  --font: 'SF Mono', 'Fira Code', 'JetBrains Mono', monospace;
+  --font-ui: system-ui, -apple-system, sans-serif;
+  --radius: 12px; --radius-sm: 8px;
+}
+body { font-family: var(--font-ui); background: var(--bg); color: var(--ink); padding: 40px 24px; max-width: 960px; margin: 0 auto; line-height: 1.6; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ===== SYNTAX CARD ===== */
+.syntax-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  margin: 8px 0;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.syntax-card:hover { border-color: var(--accent); }
+.syntax-card .card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.syntax-card .card-title { font-size: 14px; font-weight: 600; }
+.syntax-card .card-toggle { font-size: 18px; color: var(--dim); transition: transform 0.2s; }
+.syntax-card.open .card-toggle { transform: rotate(180deg); }
+.syntax-card .card-body { display: none; margin-top: 12px; }
+.syntax-card.open .card-body { display: block; }
+
+/* ===== SPLIT CODE ===== */
+.split-code {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin: 12px 0;
+  width: 100%;
+}
+.split-code pre {
+  background: var(--code-bg);
+  border: 1px solid var(--code-border);
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  font-family: var(--font);
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-x: auto;
+  margin: 0;
+}
+.split-code .side-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 6px;
+  display: block;
+}
+/* ADAPT: Change these color classes to match your language pair */
+.split-code .side-label.lang-a { color: #f7df1e; } /* JS: yellow */
+.split-code .side-label.lang-b { color: #3776ab; } /* Python: blue */
+@media (max-width: 700px) {
+  .split-code { grid-template-columns: 1fr; }
+}
+
+/* ===== CODE SYNTAX COLORING ===== */
+.token-kw { color: #ff79c6; } .token-fn { color: #50fa7b; }
+.token-str { color: #f1fa8c; } .token-cmt { color: #6272a4; font-style: italic; }
+.token-num { color: #bd93f9; } .token-type { color: #8be9fd; }
+.token-op { color: #ff79c6; } .token-var { color: #f8f8f2; }
+.token-prop { color: #f1fa8c; } .token-dec { color: #ffb86c; }
+
+/* ===== CALLOUT ===== */
+.callout {
+  background: var(--panel);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  padding: 12px 16px;
+  font-size: 13px;
+  color: var(--muted);
+  margin: 12px 0 0;
+}
+.callout strong { color: var(--ink); }
+</style>
+</head>
+<body>
+
+<h2>Language Syntax Reference</h2>
+<p style="color:var(--muted);margin:8px 0 24px;">
+  Click any card to expand. Each shows the same logical operation in both languages.
+</p>
+
+<!-- ===== CARD 1: Function Definitions ===== -->
+<div class="syntax-card" onclick="toggleCard(this)">
+  <div class="card-header">
+    <span class="card-title">Function Definitions</span>
+    <span class="card-toggle">▼</span>
+  </div>
+  <div class="card-body">
+    <div class="split-code">
+      <div>
+        <span class="side-label lang-b">Python</span>
+        <!-- ADAPT: Replace with target language code -->
+        <pre><span class="token-kw">def</span> <span class="token-fn">create_event</span>(event: EventCreate) -> EventResponse:
+    <span class="token-cmt"># body</span>
+    <span class="token-kw">return</span> EventResponse(...)</pre>
+      </div>
+      <div>
+        <span class="side-label lang-a">TypeScript</span>
+        <!-- ADAPT: Replace with known language code -->
+        <pre><span class="token-kw">function</span> <span class="token-fn">createEvent</span>(event: EventCreate): EventResponse {
+    <span class="token-cmt">// body</span>
+    <span class="token-kw">return</span> new EventResponse(...);
+}</pre>
+      </div>
+    </div>
+    <div class="callout">
+      <strong>Key difference:</strong> <!-- ADAPT: Explain the key difference -->
+      Language A uses <code>function</code> and curly braces. Language B uses <code>def</code> and indentation.
+    </div>
+  </div>
+</div>
+
+<!-- ===== CARD 2: Async/Await ===== -->
+<div class="syntax-card" onclick="toggleCard(this)">
+  <div class="card-header">
+    <span class="card-title">Async / Await</span>
+    <span class="card-toggle">▼</span>
+  </div>
+  <div class="card-body">
+    <div class="split-code">
+      <div>
+        <span class="side-label lang-b">Python</span>
+        <pre><span class="token-kw">async def</span> <span class="token-fn">fetch_data</span>() -> <span class="token-type">dict</span>:
+    <span class="token-kw">return</span> {<span class="token-str">"status"</span>: <span class="token-str">"ok"</span>}</pre>
+      </div>
+      <div>
+        <span class="side-label lang-a">TypeScript</span>
+        <pre><span class="token-kw">async function</span> <span class="token-fn">fetchData</span>(): Promise&lt;Record&lt;string, string&gt;&gt; {
+    <span class="token-kw">return</span> { status: <span class="token-str">"ok"</span> };
+}</pre>
+      </div>
+    </div>
+    <div class="callout">
+      <!-- ADAPT: Customize the explanation -->
+      <strong>Note:</strong> Language A returns a Promise type explicitly. Language B's async machinery wraps it automatically.
+    </div>
+  </div>
+</div>
+
+<!-- ===== Card 3: Error Handling ===== -->
+<div class="syntax-card" onclick="toggleCard(this)">
+  <div class="card-header">
+    <span class="card-title">Error Handling</span>
+    <span class="card-toggle">▼</span>
+  </div>
+  <div class="card-body">
+    <div class="split-code">
+      <div>
+        <span class="side-label lang-b">Python</span>
+        <!-- ADAPT: Replace with actual error handling pattern from the codebase -->
+        <pre><span class="token-kw">try</span>:
+    result = risky_operation()
+<span class="token-kw">except</span> ValueError <span class="token-kw">as</span> e:
+    <span class="token-fn">log</span>(<span class="token-str">f"Got error: {e}"</span>)
+    <span class="token-kw">raise</span>
+<span class="token-kw">finally</span>:
+    cleanup()</pre>
+      </div>
+      <div>
+        <span class="side-label lang-a">TypeScript</span>
+        <pre><span class="token-kw">try</span> {
+    <span class="token-kw">const</span> result = riskyOperation();
+} <span class="token-kw">catch</span> (e) {
+    console.log(<span class="token-str">`Got error: ${e}`</span>);
+    <span class="token-kw">throw</span>;
+} <span class="token-kw">finally</span> {
+    cleanup();
+}</pre>
+      </div>
+    </div>
+    <div class="callout">
+      <!-- ADAPT: Customize -->
+      <strong>Mapping:</strong> <code>try/except</code> → <code>try/catch</code>. <code>raise</code> → <code>throw</code>. <code>as e</code> binds the exception like <code>catch (e)</code>.
+    </div>
+  </div>
+</div>
+
+<!-- ===== ADAPT: Add 5-9 more cards covering these patterns ===== -->
+<!-- Suggested patterns to cover:
+  - Imports / Modules
+  - Type annotations
+  - Classes / Structs / Models
+  - String formatting (f-strings vs template literals)
+  - Null/None handling
+  - Array/list operations (map, filter, list comprehensions)
+  - Dict/Object operations
+  - Decorators / Middleware / Higher-order functions
+-->
+
+<script>
+function toggleCard(el) {
+  el.classList.toggle('open');
+}
+</script>
+
+<div style="text-align:center;margin-top:40px;color:var(--dim);font-size:12px;">
+  <!-- ADAPT: Update this -->
+  Syntax Reference Cards Template · Language A ↔ Language B
+</div>
+</body>
+</html>

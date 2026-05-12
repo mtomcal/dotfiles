@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lab Template: Network Simulator</title>
+<style>
+  :root {
+    --bg:#0d1117;--bg-elev:#161b22;--bg-card:#1c2128;--border:#30363d;
+    --text:#c9d1d9;--text-dim:#8b949e;--text-bright:#e6edf3;
+    --accent:#58a6ff;--client:#3fb950;--server:#f0883e;--network:#a371f7;--fx:#f778ba;--danger:#f85149;
+    --font-mono:"SF Mono",ui-monospace,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);padding:24px;line-height:1.6}
+  .container{max-width:900px;margin:0 auto}
+  h1{margin:0 0 8px;font-size:24px}
+  p{color:var(--text-dim);margin:0 0 20px}
+
+  .panel{background:var(--bg-elev);border:1px solid var(--border);border-radius:16px;padding:24px;margin:16px 0}
+
+  .slider-wrap{display:flex;align-items:center;gap:16px;margin:16px 0}
+  .slider-wrap label{min-width:160px;font-size:13px;font-weight:500}
+  .slider-wrap input[type=range]{flex:1;-webkit-appearance:none;height:6px;background:var(--border);border-radius:3px;outline:none}
+  .slider-wrap input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:var(--accent);cursor:pointer;box-shadow:0 0 8px rgba(88,166,255,0.3)}
+  .slider-value{font-family:var(--font-mono);font-size:14px;font-weight:600;color:var(--accent);min-width:80px;text-align:right}
+
+  .timeline{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:16px;font-family:var(--font-mono);font-size:12px;line-height:2.2;min-height:200px}
+  .timeline-row{display:flex;align-items:center;gap:8px}
+  .timeline-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:10px 20px;border-radius:8px;border:1px solid var(--border);background:var(--bg-elev);color:var(--text-bright);font-size:14px;font-weight:600;cursor:pointer}
+  .btn:hover{border-color:#484f58}
+
+  .callout{margin-top:16px;padding:16px;background:var(--bg);border-radius:8px;border:1px solid var(--border)}
+  .callout strong{font-size:13px;color:var(--text-bright)}
+  .callout p{margin:6px 0 0;font-size:13px;color:var(--text-dim)}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>&#127760; Network Delay Simulator</h1>
+  <p>Adjust latency and watch how timing changes. Understand why distributed systems need compensation strategies.</p>
+
+  <div class="panel">
+    <div style="display:flex;flex-wrap:wrap;gap:24px">
+      <div style="flex:1;min-width:280px">
+        <div style="font-size:12px;font-weight:700;text-transform:uppercase;color:var(--text-dim);margin-bottom:14px">Network Conditions</div>
+
+        <!-- ADAPT: Add/remove sliders for your concept's variables -->
+        <div class="slider-wrap">
+          <label>Latency (one-way)</label>
+          <input type="range" id="latency" min="0" max="300" value="30" oninput="updateSim()">
+          <span class="slider-value" id="val-latency">30ms</span>
+        </div>
+        <div class="slider-wrap">
+          <label>Packet Loss</label>
+          <input type="range" id="loss" min="0" max="20" value="0" oninput="updateSim()">
+          <span class="slider-value" id="val-loss">0%</span>
+        </div>
+        <div class="slider-wrap">
+          <label>Jitter</label>
+          <input type="range" id="jitter" min="0" max="50" value="5" oninput="updateSim()">
+          <span class="slider-value" id="val-jitter">&plusmn;5ms</span>
+        </div>
+
+        <button class="btn" onclick="simulate()">Simulate Request</button>
+      </div>
+
+      <div style="flex:1.5;min-width:300px">
+        <div style="font-size:12px;font-weight:700;text-transform:uppercase;color:var(--text-dim);margin-bottom:14px">Timeline</div>
+        <div class="timeline" id="timeline">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- ADAPT: Change this callout to explain your concept's compensation strategy -->
+    <div class="callout">
+      <strong>Why latency matters</strong>
+      <p>When you send a request at t=0, the server doesn't see it until t=latency. In distributed systems, this gap can cause race conditions, stale reads, or duplicate processing. Strategies like optimistic locking, vector clocks, or idempotency keys help compensate.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ================================================================
+   ADAPT THIS SECTION: Define your timeline events and labels.
+   The simulate() function builds a timeline of events with delays.
+=============================================================== */
+
+function updateSim() {
+  const lat = document.getElementById("latency").value;
+  const loss = document.getElementById("loss").value;
+  const jitter = document.getElementById("jitter").value;
+  document.getElementById("val-latency").textContent = lat + "ms";
+  document.getElementById("val-loss").textContent = loss + "%";
+  document.getElementById("val-jitter").textContent = "\u00B1" + jitter + "ms";
+
+  // ADAPT: Change event names and colors to match your flow
+  const rtt = lat * 2;
+  const total = Math.round(rtt + (Math.random() * jitter * 2 - jitter));
+  const timeline = document.getElementById("timeline");
+  timeline.innerHTML =
+    row("var(--client)", "t=0ms", "Client sends request") +
+    row("var(--network)", "t=" + lat + "ms", "Request reaches server") +
+    row("var(--server)", "t=" + (parseInt(lat) + 2) + "ms", "Server processes request") +
+    row("var(--network)", "t=" + (lat * 2 + 2) + "ms", "Response reaches client") +
+    row("var(--fx)", "t=" + (lat * 2 + 2) + "ms", "Client renders result") +
+    divider("Total round-trip: <span style='color:var(--accent);font-weight:700'>~" + total + "ms</span>" +
+      (loss > 0 ? " &nbsp;|&nbsp; Packet loss: <span style='color:var(--danger)'"> + loss + "%</span>" : ""));
+}
+
+function row(color, time, desc) {
+  return '<div class="timeline-row"><span class="timeline-dot" style="background:' + color + '"></span><span>' + time + "&nbsp;&nbsp;&nbsp;" + desc + '</span></div>';
+}
+
+function divider(html) {
+  return '<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);color:var(--text-dim)">' + html + '</div>';
+}
+
+function simulate() {
+  const btn = event.target;
+  const lat = parseInt(document.getElementById("latency").value);
+  btn.disabled = true;
+  btn.textContent = "Sending...";
+  setTimeout(() => {
+    btn.textContent = "Processing...";
+    setTimeout(() => {
+      btn.textContent = "Receiving...";
+      setTimeout(() => {
+        btn.textContent = "Simulate Request";
+        btn.disabled = false;
+        updateSim(); // Refresh with new jitter randomness
+      }, lat);
+    }, 20);
+  }, lat);
+}
+
+updateSim();
+</script>
+</body>
+</html>
