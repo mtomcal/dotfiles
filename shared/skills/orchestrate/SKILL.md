@@ -168,8 +168,7 @@ Subagent was terminated by Pi (exceeded maxTurns, maxCost, maxTokens, or maxTime
 1. **Bump guardrails + retry** — double the offending threshold, re-fork same agent + model + provider. If the subagent produced partial output, include it as context.
 2. **Provider switch** — same model, different provider. Retry with bumped guardrails.
 3. **Model bump** — escalate to stronger model or higher thinking. Override model/thinking on next fork.
-4. **Expert consultation** — use `expert-consultation` skill. Provide slice context + all prior attempts.
-5. **Strongest subagent** — delegate to sage (`agent: "sage"`) with max guardrails (`maxTurns: 60, maxCost: 2.00, maxTokens: 500000, maxTime: 600`).
+4. **Strongest subagent** — delegate to sage (`agent: "sage"`) with max guardrails (`maxTurns: 60, maxCost: 2.00, maxTokens: 500000, maxTime: 600`).
 
 ### Track 2: Implementation failure
 
@@ -177,16 +176,15 @@ Subagent completed but produced broken code (tests fail, won't compile, or retur
 
 1. **Course correction** — orchestrator appends specific guidance to the task text. State what failed and what to try differently. Re-fork same agent + model + provider.
 2. **Model bump** — escalate to stronger model or higher thinking.
-3. **Expert consultation** — `expert-consultation` skill with slice context + prior attempts.
-4. **Strongest subagent** — delegate to sage (`agent: "sage"`) with max guardrails (`maxTurns: 60, maxCost: 2.00, maxTokens: 500000, maxTime: 600`).
-5. **Provider switch** — same model, different provider. Last-ditch attempt if inference quality is the issue.
+3. **Strongest subagent** — delegate to sage (`agent: "sage"`) with max guardrails (`maxTurns: 60, maxCost: 2.00, maxTokens: 500000, maxTime: 600`).
+4. **Provider switch** — same model, different provider. Last-ditch attempt if inference quality is the issue.
 
 ### Track 3: Review rejection
 
 Implementation compiled and tests passed, but a reviewer returned ❌ NEEDS-FIX with specific feedback.
 
 1. **Re-implement with verdict** — pass the reviewer's verdict as guidance to the implementer: "Previous attempt rejected. Reviewer feedback: [verdict]. Fix these issues and re-submit." Re-fork implementer.
-2. **If still rejected** — escalate the implementer: course correction → model bump → expert consultation → sage (`agent: "sage"`) → provider switch (Track 2, tiers 1-5).
+2. **If still rejected** — escalate the implementer: course correction → model bump → sage (`agent: "sage"`) → provider switch (Track 2, tiers 1-4).
 3. **If a different reviewer rejects** (e.g., test passed but security now fails) — re-implement with the new verdict. Only escalate if the same issue persists.
 
 ### General rules
@@ -194,7 +192,7 @@ Implementation compiled and tests passed, but a reviewer returned ❌ NEEDS-FIX 
 - Never skip tiers. Try the cheap thing first.
 - Record each tier attempted in context so the next iteration knows where it left off.
 - After each escalation tier, the slice returns to `review` status — reviewers re-evaluate.
-- If escalation hits tier 5 and still fails, write: `🚨 Slice N: [name] — all escalation tiers exhausted. Human intervention needed.`
+- If escalation hits tier 4 and still fails, write: `🚨 Slice N: [name] — all escalation tiers exhausted. Human intervention needed.`
 
 ## Guardrail Defaults
 

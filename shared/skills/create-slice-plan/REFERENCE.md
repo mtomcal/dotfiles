@@ -175,8 +175,7 @@ Repeat until all slices are `done`:
 1. **Provider switch** — same model, different provider (e.g., ollama-cloud → openrouter)
 2. **Course correction** — append guidance to slice's Course Corrections section, re-delegate same model+provider
 3. **Model bump** — escalate to stronger model or higher thinking
-4. **Expert consultation** — use `expert-consultation` skill
-5. **Orchestrator takeover** — you implement directly (last resort only)
+4. **Orchestrator takeover** — you implement directly (last resort only)
 
 Never skip tiers. Try the cheap thing first.
 
@@ -185,7 +184,7 @@ Never skip tiers. Try the cheap thing first.
 These are **soft heuristics** for the orchestrator to monitor progress. They are separate from **hard guardrails** (maxTurns, maxCost, maxTokens, maxTime) which kill the sub-agent automatically when exceeded.
 
 - **Caution**: Read the slice file's Progress section. If checkboxes are being checked, let it ride. If no progress in 10 turns, course-correct.
-- **Escalate**: Switch provider (tier 1). If still no progress after 15 more turns, course-correct (tier 2).
+- **Escalate**: Switch provider. If still no progress after 15 more turns, course-correct.
 - **Guardrails** handle the hard kill: a sub-agent that exceeds its maxTurns/maxCost/maxTokens/maxTime threshold is terminated automatically. The orchestrator does not need to monitor for hard limits — only for soft "no progress" signals below the guardrail threshold.
 
 | Model tier | Caution (check progress) | Escalate (switch to stronger model) | Hard kill (maxTurns guardrail) |
@@ -344,20 +343,19 @@ When writing a slice plan, verify these before finalizing:
 
 ## Escalation Protocol
 
-Full 5-tier escalation ladder, tried in order:
+Full 4-tier escalation ladder, tried in order:
 
 1. **Provider switch** — same model, different provider (e.g., ollama-cloud → openrouter)
 2. **Course correction** — orchestrator appends guidance to the slice file's Course Corrections section, re-delegates to same model+provider
 3. **Model bump** — escalate to a stronger model (e.g., glm-5.1 → deepseek-v4-pro, or thinking: medium → high)
-4. **Expert consultation** — uses the `expert-consultation` skill's 3-tier chain (deepseek-v4-pro → glm-5.1 → kimi-k2.6). The orchestrator provides the accumulated slice state as the consultation payload.
-5. **Orchestrator takeover** — the orchestrator agent itself implements the slice directly
+4. **Orchestrator takeover** — the orchestrator agent itself implements the slice directly
 
 Each escalation is recorded in the slice file's Course Corrections section with:
 - Why the escalation happened
 - What was tried at lower tiers
 - What changed for this attempt
 
-**Never skip tiers.** Switch provider before appending a course correction. Append a correction before bumping the model. Bump the model before consulting an expert.
+**Never skip tiers.** Switch provider before appending a course correction. Append a correction before bumping the model. Bump the model before orchestrator takeover.
 
 ---
 
@@ -375,7 +373,7 @@ Each escalation is recorded in the slice file's Course Corrections section with:
 | Review guardrails | 10T $0.10 50K 2m | 10T $0.10 50K 2m | 10T $0.10 50K 2m |
 | Review gates | test | test, quality | test, quality, security |
 | Escalation retries | 2 | 2 | 3 |
-| Final escalation | expert consultation | expert consultation | orchestrator takeover |
+| Final escalation | orchestrator takeover | orchestrator takeover | orchestrator takeover |
 
 ---
 

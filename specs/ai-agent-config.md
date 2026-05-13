@@ -1,7 +1,7 @@
 # AI Agent Configuration Specification
 
-> **Version**: 1.4.0
-> **Last Updated**: 2026-05-02
+> **Version**: 1.5.0
+> **Last Updated**: 2026-05-13
 > **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md), [Design Language](DESIGN_LANGUAGE.md)
 > **Depended By**: Install Orchestrator (INSTL)
 > **Prefix**: AIAGT
@@ -10,7 +10,7 @@
 
 ## Overview
 
-The AI Agent Configuration system provisions, configures, and manages five AI coding assistants — Codex CLI, Claude Code, Pi, Gemini CLI, and GitHub Copilot CLI — for a shared dotfiles environment. Every **agent** receives version-controlled configuration from the dotfiles repository via the **symlink deployment** pattern, and shares a single canonical **shared skills directory** across all agents.
+The AI Agent Configuration system provisions, configures, and manages five AI coding assistants — Codex CLI, Claude Code, Pi, Gemini CLI, and GitHub Copilot CLI — for a shared dotfiles environment. Pi additionally supports **sub-agent roles** — named agent definitions in `pi/agents/` that pre-configure model, provider, thinking level, tools, and guardrails for specialized tasks (design review, premortem analysis, visual QA, implementation, expert consultation). Every **agent** receives version-controlled configuration from the dotfiles repository via the **symlink deployment** pattern, and shares a single canonical **shared skills directory** across all agents.
 
 The system MUST ensure that:
 
@@ -192,6 +192,23 @@ A Pi **extension** is a module loaded by the Pi coding agent at startup, written
 | `tools` | list | Required | Registered tool names and their schemas |
 | `lifecycleHooks` | list | Optional | Pi lifecycle events the extension subscribes to (session lifecycle and model selection events) |
 
+### Pi Sub-Agent Role
+
+A Pi **sub-agent role** is a named agent definition stored as a Markdown file in `pi/agents/` with YAML frontmatter. Each role pre-configures a model, provider, thinking level, allowed tools, and guardrail thresholds. The subagent extension reads these definitions at session start and injects them into the system prompt as an agent catalog, making them available for delegation via `subagent_run` or `subagent_fork`.
+
+| Field | Type | Constraints | Description |
+|-------|------|-------------|-------------|
+| `name` | string | Required; matches filename | Role identifier used in `agent` parameter of subagent tools |
+| `description` | string | Required | Purpose of this sub-agent role |
+| `model` | string | Required | Model ID matching an entry in `models.json` |
+| `provider` | string | Required | Provider ID matching an entry in `models.json` |
+| `thinking` | enum | Required; one of: `off`, `minimal`, `low`, `medium`, `high`, `xhigh` | Thinking level for this role |
+| `tools` | string | Optional; comma-separated | Tool allowlist; defaults to all tools if omitted |
+| `maxTurns` | number | Optional | Maximum LLM turns before auto-kill |
+| `maxCost` | number | Optional | Maximum USD cost before auto-kill |
+| `maxTokens` | number | Optional | Maximum total tokens (input+output) before auto-kill |
+| `maxTime` | number | Optional | Maximum wall-clock seconds before auto-kill |
+
 ### Pi Subagent Job
 
 An async background subagent job managed by the Pi subagent extension.
@@ -273,51 +290,6 @@ A prescriptive mapping from subagent intent categories to model, provider, and t
 | `thinking` | enum | Required; one of: `off`, `minimal`, `low`, `medium`, `high`, `xhigh` | Thinking level for this category |
 | `rationale` | string | Required | One-line explanation of why this model/thinking pair was chosen for this category |
 
-### Expert Consultation Protocol
-
-The expert consultation protocol governs when and how the main model escalates to an expert-model subagent. It defines two consultation modes, loop-trigger detection, a three-row fallback chain, and five mandatory rules.
-
-#### Expert Consultation Modes
-
-| Mode | When | Input | Output |
-|------|------|-------|--------|
-| Delegate | Task is hard from the start — the model knows upfront that deep reasoning is required | Full problem description with context | Completed work |
-| Consult | Model hits a loop trigger after trying to solve something | Trigger ID + file + error + summary of attempts | Structured: MISCONCEPTION / PIVOT / EVIDENCE |
-
-#### Loop Triggers
-
-| Trigger ID | Name | Threshold | Detection |
-|------------|------|-----------|------------|
-| TR-REPEAT | Repeat edit | 3 edits to overlapping area (±20 lines) in same file with partial reverts or re-attempts | Review edit history for overlapping ranges |
-| TR-ERROR | Same error | 2 occurrences of the same error class after attempted fixes | Compare last 2 error outputs |
-| TR-PLATEAU | Tool call plateau | 6+ consecutive tool calls without substantive text response | Count tool calls since last response |
-| TR-RECYCLE | Approach recycling | Tried approach A, then B, then returned to A or near-variant | Review approach history |
-| TR-TURNS | Turn budget | 8+ turns on a single file-scoped issue without resolution | Count turns since issue started |
-
-#### Expert Fallback Chain
-
-| Consultation | Category Key | Model | Provider | Thinking | Condition |
-|-------------|-------------|-------|----------|----------|----------|
-| 1st | expert (1st) | deepseek-v4-pro | ollama-cloud | high | First consultation on any issue |
-| 2nd | expert (2nd) | glm-5.1 | ollama-cloud | high | Same issue (same file + same error class) persists after 1st consultation |
-| 3rd | expert (3rd) | kimi-k2.6 | opencode-go | high | Same issue persists after 2nd consultation |
-
-#### Expert Consultation Rules
-
-1. File-scoped issue tracking: same file + same error class = same issue; different file or different error = new issue (counter resets)
-2. Directive escalation: the main model MUST follow the expert's pivot, not second-guess it
-3. Maximum 3 consultations per issue; after 3 unsuccessful consultations, escalate to the user
-4. One consultation per model per issue — never consult the same model twice on the same issue
-5. Bite-sized payloads: trigger, file, error, summary of attempts only — not full conversation history
-
-#### Expert Consultation Output Format (Consult Mode Only)
-
-```
-MISCONCEPTION: What the main model is getting wrong
-PIVOT: The new direction to try
-EVIDENCE: Why this is right (1-3 lines, with file:line if possible)
-```
-
 ### Shared Skills Directory
 
 The single canonical directory at `~/dotfiles/shared/skills/` — all agent skill configuration paths MUST point here via symlinks. When a skill is installed via any agent's skill installer (e.g., `npx skills@latest add`), it lands directly in this directory because every agent's skills path is already a symlink to it.
@@ -393,8 +365,9 @@ The shared skills system MUST satisfy:
 #### B4.3: Pi Configuration
 
 1. `settings.json` MUST set `enableSkillCommands` to `true` and define `defaultProvider`, `defaultModel`, `defaultThinkingLevel`, and `subagentModelRouting`.
-2. `models.json` MUST define providers with `baseUrl`, `api`, `apiKey` (env var reference), and model arrays specifying `id`, `name`, `contextWindow`, `maxTokens`, and optional flags `reasoning`, `input`, and `api` (for per-model API overrides).
-3. Extensions are loaded from `~/.pi/agent/extensions/`, where each extension directory is a symlink to the dotfiles repo.
+2. `models.json` MUST define providers with `baseUrl`, `api`, `apiKey` (env var reference), and model arrays specifying `id`, `name`, `contextWindow`, `maxTokens`, and optional flags `reasoning`, `input`, and `api` (for per-model API overrides). Model entries MUST include a `contextWindow` field defining the model's maximum token capacity.
+3. Sub-agent role definitions are stored as Markdown files under `pi/agents/`, symlinked to `~/.pi/agent/agents/`. Each role file MUST include YAML frontmatter with `name`, `description`, `model`, `provider`, and `thinking`; MAY include `tools`, `maxTurns`, `maxCost`, `maxTokens`, `maxTime`.
+4. Extensions are loaded from `~/.pi/agent/extensions/`, where each extension directory is a symlink to the dotfiles repo.
 
 #### B4.4: Gemini CLI Configuration
 
@@ -411,7 +384,7 @@ The shared skills system MUST satisfy:
 
 #### B5.1: Subagent Extension
 
-The subagent extension registers six tools:
+The subagent extension registers six tools and one command:
 
 | Tool | Behavior | Blocking |
 |------|----------|----------|
@@ -421,6 +394,10 @@ The subagent extension registers six tools:
 | `subagent_results` | Get full output of a completed job | No (query) |
 | `subagent_wait` | Block until a specific job completes | Yes |
 | `subagent_cancel` | Cancel one or all running jobs | No |
+
+| Command | Behavior |
+|---------|----------|
+| `/reload-agents` | Hot-reload agent catalog from `~/.pi/agent/agents/` without restarting Pi; used after adding or modifying agent role files. Does NOT update tool parameter descriptions — user must run `/reload` separately. |
 
 **Rules:**
 
@@ -445,15 +422,22 @@ The subagent extension registers six tools:
 19. The `subagent_fork` `promptGuidelines` MUST mention that a status widget is shown while jobs are running.
 20. The status widget MUST be display-only with no keyboard input. Cancelling jobs goes through `subagent_cancel`.
 
+**Agent catalog injection rules:**
+
+21. On `before_agent_start`, the extension MUST build a markdown catalog of all agent role files in `~/.pi/agent/agents/`. The catalog MUST list each agent's name, description, model, provider, thinking level, tools, and guardrail thresholds (maxTurns, maxCost, maxTokens, maxTime).
+22. The catalog MUST be injected into the agent's system prompt exactly once per session. Subsequent agent starts within the same session MUST NOT re-inject the catalog.
+23. The `agent` parameter description for `subagent_run` and `subagent_fork` MUST be dynamically generated from the agent catalog, listing available agent names and their descriptions. If no agent files exist, the description MUST fall back to a static message.
+24. The `/reload-agents` command MUST reset the injection flag, allowing the catalog to be re-injected on the next agent start. It MUST log the count of discovered agents.
+
 **Tools display rules:**
 
-21. The resolved tool allowlist (`SubagentConfig.tools`) MUST be stored on both `AsyncJob` and `SingleResult` as a `tools?: string[]` field. When `tools` is `undefined`, it means all default tools are available — this MUST NOT be displayed. When `tools` is a non-empty array, it MUST be displayed as a comma-separated bracket `[tool1,tool2,...]`.
+25. The resolved tool allowlist (`SubagentConfig.tools`) MUST be stored on both `AsyncJob` and `SingleResult` as a `tools?: string[]` field. When `tools` is `undefined`, it means all default tools are available — this MUST NOT be displayed. When `tools` is a non-empty array, it MUST be displayed as a comma-separated bracket `[tool1,tool2,...]`.
 
-22. The bracket convention MUST use square brackets `[...]` for tool scope and parentheses `(...)` for model/provider/thinking config. These two visual delimiters distinguish config metadata: parentheses for model identity, brackets for capability scope.
+26. The bracket convention MUST use square brackets `[...]` for tool scope and parentheses `(...)` for model/provider/thinking config. These two visual delimiters distinguish config metadata: parentheses for model identity, brackets for capability scope.
 
-23. Tool brackets MUST be truncated at 30 characters. When truncation is needed, the format MUST be `[tool1,tool2,... +N]` where `N` is the count of remaining tools that don't fit. Example: `[read,write,bash,edit,grep,find,ls]` (39 chars) becomes `[read,write,bash,edit,grep,find +1]` (29 chars).
+27. Tool brackets MUST be truncated at 30 characters. When truncation is needed, the format MUST be `[tool1,tool2,... +N]` where `N` is the count of remaining tools that don't fit. Example: `[read,write,bash,edit,grep,find,ls]` (39 chars) becomes `[read,write,bash,edit,grep,find +1]` (29 chars).
 
-24. The `tools` field MUST appear on the following display surfaces when `tools` is defined (and MUST be omitted when `tools` is `undefined`):
+28. The `tools` field MUST appear on the following display surfaces when `tools` is defined (and MUST be omitted when `tools` is `undefined`):
     a. **Widget**: After the job name on line 1 of both running and completed/failed job lines. NOT on line 2 (snippet + tool call line). NOT in the header line.
     b. **`subagent_status` single job**: As a `**Tools:**` line after `**Task:**`, comma-separated with spaces for readability (e.g. `**Tools:** read, grep`).
     c. **`subagent_results`**: As a `**Tools:**` line after `**Task:**`, same format as status.
@@ -464,15 +448,15 @@ The subagent extension registers six tools:
     h. **`subagent_run` text output**: In per-task headings for parallel and chain results. Format: `## name [tool1,tool2] (completed)`.
     i. **`subagent_fork` response text**: In per-job lines. Format: `**name** [tool1,tool2] — task (running)`.
 
-25. The `tools` field MUST NOT appear on the following surfaces:
+29. The `tools` field MUST NOT appear on the following surfaces:
     a. Completion notifications (steer messages)
     b. Cancellation notifications
     c. Widget line 2 (snippet + tool call)
     d. Widget header line (summary counts)
 
-26. The `tools` field on `AsyncJob` MUST be persisted in `SerializedJob` for session persistence. On deserialization, a missing `tools` field (from older data) MUST be treated as `undefined` (all default tools), consistent with the display rule that `undefined` = omitted from display.
+30. The `tools` field on `AsyncJob` MUST be persisted in `SerializedJob` for session persistence. On deserialization, a missing `tools` field (from older data) MUST be treated as `undefined` (all default tools), consistent with the display rule that `undefined` = omitted from display.
 
-27. The `tools` field on `SingleResult` MUST be set in `spawnSubagentProcess()` alongside `provider`, `model`, and `thinking`, from the resolved `SubagentConfig`. The `tools` field on `AsyncJob` MUST be set after job creation via `job.tools = config.tools`, before spawning the process.
+31. The `tools` field on `SingleResult` MUST be set in `spawnSubagentProcess()` alongside `provider`, `model`, and `thinking`, from the resolved `SubagentConfig`. The `tools` field on `AsyncJob` MUST be set after job creation via `job.tools = config.tools`, before spawning the process.
 
 **Model routing rules:**
 
@@ -558,21 +542,71 @@ Both implementations share the same core loop pattern: an iterative `loop.sh` th
 
 ### B9: Agent Role Definitions
 
-Two shared agent roles are defined for use across agents that support them:
+Six sub-agent roles and two shared agent roles are defined:
 
-#### B9.1: Test Quality Verifier
+#### B9.1: Test Reviewer
 
-1. MUST discover the project's language, test framework, and configuration.
-2. MUST identify vague assertions — tests that would pass with any truthy/non-nil return value.
-3. MUST run project-configured coverage tools when available; use advisory thresholds (80% lines, 70% branches, 80% functions) when project thresholds are absent.
-4. MUST output a structured report with files scanned, issues found/fixed, tests added, coverage metrics, and pass/fail result with reasons.
+1. MUST read the task for slice context to understand which tests are being verified.
+2. MUST run the test suite for the tests specified in the RED section of the slice brief.
+3. MUST verify each test assertion from the RED section passes.
+4. MUST check for vague assertions that would pass even if the implementation is wrong, including:
+   - `expect(true).toBe(true)` or literal-equals-literal patterns.
+   - `.toBeTruthy()` as the only assertion in a test.
+   - `.toBeDefined()` as sole assertion.
+   - Empty test bodies.
+   - Zero-assertion tests.
+5. MUST check the expected test count range from the brief is met.
+6. MUST output a structured verdict as formatted text with pass/fail result and details of what was checked, what passed, and what needs fixing.
 
-#### B9.2: Playwright Visual QA
+#### B9.2: Visual QA
 
-1. MUST verify `playwright-cli` is available before starting.
-2. MUST navigate to the target URL, capture viewport and full-page screenshots, dump accessibility snapshots, and check for console/network errors.
-3. MUST classify issues by severity: high (broken functionality, critical a11y failure), medium (layout issues, missing alt text), low (minor spacing, deprecation warnings).
-4. MUST output a structured Visual QA Report with URL, viewport, screenshots, issues table, accessibility summary, console summary, and network summary.
+1. MUST verify `playwright-cli` is available before starting; MUST NOT proceed if missing.
+2. MUST execute a structured checklist against a live web application using `playwright-cli` Bash commands (never MCP tools).
+3. MUST follow a three-phase process:
+   - **Phase 1**: Open browser via `playwright-cli open`.
+   - **Phase 2**: Execute each checklist step in order — navigation (`goto`), actions (`click`, `fill`, `type`, `select`, `check`, `uncheck`, `press`, `hover`, `upload`), and verification (`snapshot`, `eval`, `screenshot`).
+   - **Phase 3**: Final checks — full-page screenshot, `playwright-cli console`, `playwright-cli network`, `playwright-cli close`.
+4. MUST use assertion guidelines: element visible via snapshot, text match via `eval`, URL changed via `eval`, state change (modal/validation/toast), no regression.
+5. MUST classify results per step: ❌ FAIL (assertion failed, action had no effect, console/network error blocks functionality) or ⚠️ NOTE (console warning, slow request — do not fail step).
+6. MUST output a structured Visual QA Report with:
+   - Slice name and URL under test.
+   - Step Results table (Step, Action, Expected, Result, Evidence).
+   - Final Checks summary (console errors, console warnings, network failures, full-page screenshot path).
+   - Verdict: ✅ PASS or ❌ NEEDS-FIX with per-step failure count and summary.
+
+#### B9.3: Design Reviewer
+
+1. MUST read the task for slice context — what UI was built or changed.
+2. MUST find the project's design system reference (DESIGN_SYSTEM.md, Tailwind config, component library docs, design tokens) if one exists; use it as the primary standard.
+3. MUST render relevant pages or component states with `playwright-cli`; capture screenshots at 375px, 768px, and 1280px widths; check network/console.
+4. MUST evaluate across three dimensions:
+   - **Visual consistency**: spacing scale uniform, typography hierarchy respected, color tokens used (not ad-hoc hex), component variants match documented patterns.
+   - **Interaction patterns**: loading states rendered, empty states handled, error states surfaced, hover/focus/active states visible, transitions not jarring.
+   - **Responsiveness**: layout functional at all three widths, no horizontal overflow, touch targets ≥ 44x44px on mobile, content reflow makes sense per breakpoint.
+5. MUST apply general heuristics where no design system rule exists: consistent rhythm, clear visual hierarchy, no orphaned elements, information density appropriate to viewport.
+6. MUST return a severity-tagged review card with:
+   - 🔴 blocking issues that must be fixed before merge.
+   - 🟡 advisory issues that should be fixed.
+   - 🟢 praise for well-executed design decisions.
+   - Screenshot paths for evidence.
+   - Verdict: ✅ PASS or ❌ NEEDS-FIX.
+
+#### B9.4: Premortem Reviewer
+
+1. MUST read the task for slice/ad-hoc context — what code or feature is being reviewed.
+2. MUST read the implementation source files modified by this change.
+3. MUST evaluate across six failure mode categories:
+   - **Operational failure modes**: null pointers, race conditions, timeout cascades, resource exhaustion (memory/connections/disk).
+   - **Edge cases**: empty states, boundary values, concurrent access, partial failure in upstream/downstream calls, retry storms, backpressure.
+   - **Deployment risks**: order-of-operations (migrations before code?), rollback plan, feature flags, canary safety, data migration reversibility.
+   - **Data integrity**: what happens if the process crashes mid-write? Are mutations idempotent? Are transactions scoped correctly?
+   - **Observability**: if this fails, can we tell from logs/metrics/traces? Are error paths logged with enough context? Would a page get triggered?
+   - **Latency and scale**: could this introduce slowdown? N+1 queries? Unbounded loops or collection growth? What happens at 10× the current load?
+4. MUST return a structured verdict with:
+   - 🔴 blocking risks with specific file:line references.
+   - 🟡 advisory risks with specific file:line references.
+   - 🟢 resilience noted — things done well for reliability.
+   - Summary paragraph with concise verdict (✅ PASS or ❌ NEEDS-FIX).
 
 ### B10: Modular Installation
 
@@ -885,10 +919,73 @@ Preconditions: `playwright-cli` is not installed
 Input: Run playwright visual QA agent
 Expected Output: Agent reports that `playwright-cli` is not found and instructs the user to install it; does not proceed with browser automation.
 
+**TS-AIAGT-042**: Visual QA — checklist execution with pass/fail report
+Category: Unit
+Priority: High
+Preconditions: `playwright-cli` is installed; a target web application is running locally at `http://localhost:3000`; a structured checklist is provided
+Input: Run visual QA agent with checklist containing navigation, form fill, button click, and verification steps
+Expected Output: Agent opens browser, executes each step in order, captures screenshots, runs console/network checks, closes browser, and produces a structured Visual QA Report with a Step Results table and a pass/fail verdict. Any step failure is recorded as ❌ FAIL with evidence.
+
+**TS-AIAGT-043**: Visual QA — console error detection in final checks
+Category: Unit
+Priority: Medium
+Preconditions: `playwright-cli` is installed; target app has a known console error on page load
+Input: Run visual QA agent with a navigation-only checklist
+Expected Output: Agent opens browser, navigates to URL, runs final checks, reports the console error in the Final Checks summary section with error count and details. Verdict reflects failure due to console errors.
+
+**TS-AIAGT-044**: Design reviewer — multi-viewport screenshot capture
+Category: Unit
+Priority: High
+Preconditions: `playwright-cli` is installed; a rendered UI page is available; a design system reference exists
+Input: Run design reviewer agent with a task targeting a specific UI component
+Expected Output: Agent renders the page at 375px, 768px, and 1280px widths; saves screenshots for each viewport; evaluates visual consistency, interaction patterns, and responsiveness across all three widths; returns a severity-tagged review card with screenshot evidence paths and a pass/fail verdict.
+
+**TS-AIAGT-045**: Design reviewer — missing design system fallback
+Category: Unit
+Priority: Medium
+Preconditions: `playwright-cli` is installed; target page has NO design system reference files
+Input: Run design reviewer agent
+Expected Output: Agent discovers no design system reference; applies general heuristics (consistent rhythm, clear visual hierarchy, no orphaned elements) instead; returns review card with advisory and blocking issues; verdict references heuristic standards explicitly.
+
+**TS-AIAGT-046**: Premortem reviewer — operational risk detection
+Category: Unit
+Priority: High
+Preconditions: Implementation source files contain a known risk (e.g., unbounded loop, missing null check, non-idempotent mutation)
+Input: Run premortem reviewer agent with task context describing the feature
+Expected Output: Agent reads task and source files; identifies the known risk under the appropriate failure mode category (operational, edge case, deployment, data integrity, observability, latency/scale); returns structured verdict with 🔴 blocking items referencing specific file:line locations and a pass/fail verdict.
+
+**TS-AIAGT-047**: Premortem reviewer — resilience note for well-handled patterns
+Category: Unit
+Priority: Medium
+Preconditions: Implementation source files contain well-handled reliability patterns (proper error handling, idempotent mutations, adequate logging)
+Input: Run premortem reviewer agent
+Expected Output: Agent identifies well-handled patterns and includes a 🟢 resilience noted section in the verdict; summary paragraph acknowledges the positive practices alongside any blocking or advisory items.
+
+**TS-AIAGT-048**: Design reviewer — blocking issue classification
+Category: Unit
+Priority: Medium
+Preconditions: A rendered page has a critical a11y failure (missing alt text on primary navigation image) and a minor spacing inconsistency
+Input: Run design reviewer agent
+Expected Output: Agent classifies the a11y failure as 🔴 blocking and the spacing issue as 🟡 advisory; review card clearly separates blocking from advisory items with specific references and screenshot evidence.
+
+**TS-AIAGT-049**: Visual QA — step failure does not abort remaining steps
+Category: Unit
+Priority: High
+Preconditions: A checklist has 5 steps; step 2 is expected to fail (element not found)
+Input: Run visual QA agent
+Expected Output: Agent records step 2 as ❌ FAIL with evidence, continues to execute steps 3–5, produces a complete report showing all step results and a verdict of ❌ NEEDS-FIX with failure count.
+
+**TS-AIAGT-050**: Premortem reviewer — deployment risk identification for migration order
+Category: Unit
+Priority: Medium
+Preconditions: Implementation includes a database migration after application code change with no rollback plan documented
+Input: Run premortem reviewer agent
+Expected Output: Agent identifies the migration order risk under deployment risks category; flags missing rollback plan as a separate advisory item; returns structured verdict.
+
 **TS-AIAGT-025**: Subagent model routing — prescriptive model selection
 Category: Unit
 Priority: Critical
-Preconditions: Pi settings.json contains `subagentModelRouting` with all seven category rows (scout, planner, reviewer, implementer, expert (1st), expert (2nd), expert (3rd)); the LLM invokes `subagent_run` with a scouting task
+Preconditions: Pi settings.json contains `subagentModelRouting` with rows for scout, planner, reviewer, and implementer; the LLM invokes `subagent_run` with a scouting task
 Input: LLM classifies task as "scout" and uses the prescribed model/provider/thinking from the routing table
 Expected Output: The subagent is launched with the exact model, provider, and thinking level specified in the routing table for the "scout" category; no deviation without explicit justification.
 
@@ -902,9 +999,9 @@ Expected Output: Extension logs a warning about missing routing configuration; s
 **TS-AIAGT-027**: Subagent model routing — routing table injected into tool descriptions
 Category: Unit
 Priority: High
-Preconditions: Pi settings.json contains `subagentModelRouting` with all seven category rows (scout, planner, reviewer, implementer, expert (1st), expert (2nd), expert (3rd))
+Preconditions: Pi settings.json contains `subagentModelRouting` with rows for scout, planner, reviewer, and implementer)
 Input: Pi starts a new session
-Expected Output: The `subagent_run` and `subagent_fork` tool descriptions include a markdown table with columns: category, description, model, provider, thinking, rationale; the table contains entries for scout, planner, reviewer, implementer, expert (1st), expert (2nd), and expert (3rd).
+Expected Output: The `subagent_run` and `subagent_fork` tool descriptions include a markdown table with columns: category, description, model, provider, thinking, rationale; the table contains entries for scout, planner, reviewer, and implementer.
 
 **TS-AIAGT-028**: Subagent fork — summary extraction threshold
 Category: Unit
@@ -1012,6 +1109,7 @@ Expected Output: `tools` is `undefined`; no tool bracket appears in any display 
 
 | Version | Date | Summary |
 |---------|------|---------|
+| 1.5.0 | 2026-05-13 | Updated B9 Agent Role Definitions: B9.1 (Test Reviewer) matches actual `test-reviewer.md` agent behavior; B9.2 (Visual QA) expanded to full three-phase checklist workflow matching `visual-qa.md`; added B9.3 (Design Reviewer) from `design-reviewer.md` with multi-viewport rendering and severity-tagged review cards; added B9.4 (Premortem Reviewer) from `premortem-reviewer.md` with six failure mode categories. Added 9 test scenarios (TS-AIAGT-042 through TS-AIAGT-050) covering visual QA checklist execution and console error detection, design reviewer multi-viewport capture and missing-design-system fallback, premortem reviewer operational risk detection and resilience notes, blocking issue classification, step-failure continuation, and deployment risk identification. |
 | 1.0.0 | 2026-05-01 | Initial specification extracted from brownfield codebase. Covers all five agents, shared skills, Pi extensions (subagent, inherit-last-model, web-search), Pi sandbox, Ralph agentic loop, agent role definitions, symlink deployment, and error handling. |
 | 1.1.0 | 2026-05-01 | Added subagent model routing: prescriptive model selection via `subagentModelRouting` in Pi settings, injected into subagent tool descriptions. Added data structure, behavior rules, error handling, and test scenarios. |
 | 1.3.0 | 2026-05-01 | Added subagent live progress: TUI status widget for forked jobs, partial result updates on running jobs, cancellation notifications, `subagent_status` progress section, `subagent_wait` streaming updates, improved summary extraction (skip short text blocks), widget debounce and dismiss delay. |

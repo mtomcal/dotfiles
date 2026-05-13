@@ -4,7 +4,7 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 
 ## Map
 
-<!-- TREE-HASH: 758fed63228f34d166c8d50981bfc4c92689f9fcbac7140d12e7e4f0da2f2160 -->
+<!-- TREE-HASH: 8a8ce692b566b1c8bb0642d8857893ad664b30292e2111d60a9e13ace0587fa1 -->
 
 <!-- TREE-START -->
 ```
@@ -38,7 +38,6 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 |       |-- create-plan
 |       |-- create-slice-plan
 |       |-- create-subagent-skill
-|       |-- expert-consultation
 |       |-- grill-me
 |       |-- improve-codebase-architecture
 |       |-- orchestrate
