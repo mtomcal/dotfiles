@@ -3,7 +3,7 @@ name: visual-qa
 description: Browser-based functional QA agent — executes step-by-step test checklists via playwright-cli and reports per-step pass/fail with evidence
 tools: bash, write, read
 model: kimi-k2.6
-provider: ollama-cloud
+provider: crof
 thinking: high
 maxTurns: 40
 maxCost: 0.75

@@ -3,7 +3,7 @@ name: test-reviewer
 description: Verifies test assertions pass and catches vague or weak tests
 tools: read, bash
 model: deepseek-v4-pro
-provider: opencode-go
+provider: crof
 thinking: high
 maxTurns: 10
 maxCost: 0.10

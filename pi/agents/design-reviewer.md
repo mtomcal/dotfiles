@@ -3,7 +3,7 @@ name: design-reviewer
 description: Rendered visual design review covering consistency, interactions, and responsiveness
 tools: read, bash, write
 model: kimi-k2.6
-provider: ollama-cloud
+provider: crof
 thinking: high
 maxTurns: 30
 maxCost: 0.50
