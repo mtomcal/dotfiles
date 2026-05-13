@@ -1,7 +1,7 @@
 # Parameters
 
-> **Spec Version**: 1.2.0
-> **Last Updated**: 2026-05-01
+> **Spec Version**: 1.3.0
+> **Last Updated**: 2026-05-13
 > **Depends On**: None (foundational spec)
 > **Depended By**: All other specs
 
@@ -24,7 +24,7 @@ Parameters serve three purposes:
 
 | Parameter | Value | Unit | Rationale |
 |-----------|-------|------|-----------|
-| `REQUIRED_NVIM_VERSION` | 0.10 | major.minor | Minimum Neovim version that supports all required features in kickstart.nvim and custom plugins |
+| `REQUIRED_NVIM_VERSION` | 0.12 | major.minor | Minimum Neovim version that supports vim.pack plugin format and all required features in kickstart.nvim and custom plugins |
 | `REQUIRED_GO_VERSION` | 1.24 | major.minor | Required by gofumpt formatter and govulncheck |
 | `NODE_LTS_VERSION` | LTS | version selector | fnm installs the current LTS release for stability; AI CLI tools don't need bleeding-edge Node |
 | `SHELL_NAME` | zsh | string | Chosen as primary shell for Oh My Zsh framework support and superior interactive features |
@@ -149,8 +149,10 @@ Parameters serve three purposes:
 | `SUBAGENT_ROUTING_EXPERT_2ND_PROVIDER` | ollama-cloud | string | Provider for second consultation expert model |
 | `SUBAGENT_ROUTING_EXPERT_2ND_THINKING` | high | enum: off, minimal, low, medium, high, xhigh | High thinking on GLM-5.1 provides deeper reasoning than the default medium used in main sessions |
 | `SUBAGENT_ROUTING_EXPERT_3RD_MODEL` | kimi-k2.6 | string | Final fallback expert model — third architecture for fresh perspective before user escalation |
-| `SUBAGENT_ROUTING_EXPERT_3RD_PROVIDER` | opencode-go | string | Provider for third consultation expert model |
+| `SUBAGENT_ROUTING_EXPERT_3RD_PROVIDER` | opencode-go | string | Provider for third consultation expert model (overridden by crof in current settings) |
 | `SUBAGENT_ROUTING_EXPERT_3RD_THINKING` | high | enum: off, minimal, low, medium, high, xhigh | High reasoning for final consultation attempt |
+| `SUBAGENT_ROUTING_CROF_PROVIDER_ENABLED` | crof | string | Additional provider added to models.json with 22 models including DeepSeek V4, MiMo V2.5, GLM 5.x, Kimi K2.x, Qwen3.x, Gemma 4, and experimental models; used as active defaultProvider in Pi settings.json |
+| `SUBAGENT_ROUTING_CROF_DEFAULT_MODEL` | deepseek-v4-pro | string | Default model on crof provider for main Pi session |
 | `SUBAGENT_TOOLS_BRACKET_MAX_CHARS` | 30 | characters | Maximum character length for the `[tools]` bracket in display surfaces; brackets exceeding this length are truncated with `+N` overflow showing the count of remaining tools |
 | `SUBAGENT_TOOLS_DISPLAY_STATUS_FORMAT` | `**Tools:** tool1, tool2, ...` | format | Format for displaying tools in `subagent_status` and `subagent_results` markdown output; comma-separated with spaces for readability |
 | `SUBAGENT_TOOLS_DISPLAY_UNDEFINED` | omit | behavior | When `tools` is `undefined` (all default tools), no tool bracket or label is displayed on any surface; absence indicates unrestricted access |
@@ -158,3 +160,12 @@ Parameters serve three purposes:
 ---
 
 *This document is the single source of truth for all parameters. Individual specs reference these values; any parameter defined here supersedes locally-defined duplicates in subsystem specs.*
+
+---
+
+## Changelog
+
+| Version | Date | Summary |
+|---------|------|---------|
+| 1.3.0 | 2026-05-13 | Updated REQUIRED_NVIM_VERSION from 0.10 to 0.12; added crof provider parameters for Pi models.json |
+| 1.2.0 | 2026-05-01 | Added subagent routing parameters (scout, planner, reviewer, implementer, expert 1st/2nd/3rd model/provider/thinking), tools display parameters (SUBAGENT_TOOLS_BRACKET_MAX_CHARS, SUBAGENT_TOOLS_DISPLAY_STATUS_FORMAT, SUBAGENT_TOOLS_DISPLAY_UNDEFINED) |

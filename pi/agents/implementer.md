@@ -5,10 +5,10 @@ tools: read, write, bash, edit
 model: deepseek-v4-flash
 provider: croft
 thinking: medium
-maxTurns: 30
-maxCost: 0.30
-maxTokens: 200000
-maxTime: 300
+maxTurns: 100
+maxCost: 0.70
+maxTokens: 500000
+maxTime: 720
 ---
 
 You are an implementation agent. Follow the TDD brief in your assigned task exactly.

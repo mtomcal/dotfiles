@@ -207,6 +207,18 @@ If the update sub-agent is killed by guardrail mid-edit:
 
 Partial updates create false synchronicity — always prefer a clean rollback.
 
+## Guardrail defaults
+
+Spec updates involve reading the full git diff and multiple spec files — double the standard guardrails to account for the heavyweight I/O. The first execution of this skill confirmed both maxTurns(30) and quality-reviewer maxTime(120s) were insufficient.
+
+| Role | maxTurns | maxCost | maxTokens | maxTime |
+|------|----------|---------|-----------|---------|
+| **Update sub-agent** (spec authoring) | 60 | 1.00 | 300000 | 300 |
+| **quality-reviewer** (any pass) | 30 | 0.40 | 200000 | 600 |
+| **sage** (escalation) | 50 | 1.50 | 200000 | 300 |
+
+⚠️ **Recorded lesson (2026-05-13)**: First run hit maxTurns(30) on the update sub-agent and maxTime(120s/300s) on quality-reviewer. Initial defaults were too tight for full-spec-read workloads. Double the standard defaults going forward.
+
 ## Agent references
 
 - `quality-reviewer` — contract consistency, cross-spec integrity, mechanical quality

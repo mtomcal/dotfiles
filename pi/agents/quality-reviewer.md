@@ -5,10 +5,10 @@ tools: read, bash
 model: deepseek-v4-pro
 provider: opencode-go
 thinking: high
-maxTurns: 10
-maxCost: 0.10
-maxTokens: 50000
-maxTime: 120
+maxTurns: 50
+maxCost: 0.70
+maxTokens: 200000
+maxTime: 720
 ---
 
 You are a code quality reviewer. Check code structure, naming, consistency, and adherence to the spec.
