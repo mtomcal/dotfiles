@@ -96,14 +96,110 @@ The ticket includes:
 ## Tips
 - [Key conventions to follow]
 - [Gotchas to watch for]
+
+⚠️ **No spoilers in Tips.** Do not give away exact method names, async patterns, or specific API calls the user needs to discover. Point to patterns in existing code instead.
 ```
 
 ### Step 5: Generate the explainer brief
 
-Run the `create-explainer` skill to produce a briefing tailored to the user's persona and the specific ticket. This covers:
-- What they're building and why the architecture works that way
-- Key code patterns they'll need to understand
-- Cross-language syntax reference (if applicable)
+Build a self-contained HTML explainer following the `create-explainer` skill's workflow. This goes into the temp skill directory alongside the guidance skill.
+
+#### 5a. Discover source files
+
+Read the actual source files the user will need. Build a factual model:
+- Entry points: the tools, models, and patterns they'll need
+- Trace the flow: how existing tools work end-to-end
+- Read specs: pull from `specs/` for authoritative behavior
+- Record the path: note every file, key function, and what truth it owns
+
+#### 5b. Propose scope (human checkpoint)
+
+Present a concise summary to the user:
+
+```
+I'll build a [Condensed | Guided | Full Lab] explainer for "[concept]" targeting a [level] [specialty].
+
+Planned sections:
+1. [section name]
+2. [section name]
+...
+
+Time estimate: [X] minutes of your reading time.
+Proceed? (yes / adjust / cancel)
+```
+
+Wait for user confirmation.
+
+#### 5c. Build the HTML explainer
+
+Use the lab templates from `create-explainer/lab/` for interactive components:
+
+| Context | Template to use |
+|---------|----------------|
+| Cross-language (user knows language A, codebase is B) | [`syntax-reference-cards.html`](../create-explainer/lab/syntax-reference-cards.html) — 8-12 collapsible side-by-side cards |
+| User needs to understand codebase patterns | [`architecture-map.html`](../create-explainer/lab/architecture-map.html) |
+| Need to verify understanding | [`quiz.html`](../create-explainer/lab/quiz.html) — 5-10 questions |
+| Need to explain a flow | [`toggleable-state-machine.html`](../create-explainer/lab/toggleable-state-machine.html) |
+| Interactive decision training | [`decision-game.html`](../create-explainer/lab/decision-game.html) |
+
+Key patterns from create-explainer:
+- **Self-contained**: Single `index.html` (Condensed) or `index.html` + `main.js` (Guided/Full Lab)
+- **Theme**: Dark theme with `--bg: #0b1020`, `--panel: #111a33`, `--accent: #6ee7ff`
+- **Split-code blocks**: Side-by-side Python ↔ JS with `.split-code` CSS grid, collapses at 700px
+- **No external deps**: All CSS inline, all JS in `main.js`, no CDN
+- **Syntax coloring**: Use `.token-kw`, `.token-fn`, `.token-str`, `.token-cmt`, etc. classes
+- **Cross-language mapping**: Heavy side-by-side code blocks. Python ↔ JS syntax reference cards. Annotate each Python concept with JS analogy.
+
+**No-spoiler rule**: The explainer teaches patterns from EXISTING code — never from the user's ticket. Every code example must come from a file that already exists in the codebase, not from the tool/feature the user is tasked to build. The "Your Ticket" section may show class skeletons (field declarations, method signatures up to `pass`) but must avoid:
+  - Exact return dict structures with key names
+  - Exact parameter names and types for input schemas
+  - The specific method call that solves the core problem
+  - Copy-paste-ready code blocks for the registry
+
+Refer to the `create-explainer` lab README for guidance on specific patterns: `../create-explainer/lab/README.md`
+
+#### 5d. Write the files
+
+Write the explainer to `.pi/skills/em-train-guide/explainer.html` (and optionally `explainer.js` for interactivity).
+
+For the `index.html` (Condensed/Guided) or as `explainer.html`:
+- Hero: one-sentence summary + three-pillar overview
+- TOC with links to sections
+- Section cards with numbered headings
+- Split-code blocks for cross-language patterns
+- Code blocks from actual source files (verified paths exist)
+- Callouts for key differences
+
+For `explainer.js` (Guided/Full Lab):
+- Syntax card toggle logic
+- Quiz logic
+- Interactive components from lab templates
+
+#### 5e. Self-fix
+
+Read through the full explainer. Check:
+- File paths in code blocks actually exist
+- Syntax coloring is applied correctly
+- Interactive element IDs match between HTML and JS
+- Split-code collapses at 700px
+- No placeholder text or TODO markers
+
+**Spoiler checklist** — flag any of these:
+  - The "Your Ticket" section contains code the user could copy-paste directly into their implementation
+  - A code block shows the exact return shape or parameter names the user's ticket needs
+  - The explainer shows the specific method call on `event_bus`, `game_state`, or other injected dependency that solves the core logic
+  - The ticket's Tips section (in `ticket.md`) gives away exact method names, async patterns, or implementation strategies
+  - If you find spoilers, replace them with `pass` + a comment like `# ← implement this` or a hint that points to the ticket AC
+
+#### 5f. Serve (optional — for Full Lab only)
+
+```bash
+cd .pi/skills/em-train-guide && python3 -m http.server 3456 --bind 0.0.0.0
+```
+
+#### 5g. Reviewer pass (optional — for Guided/Full Lab with interactivity)
+
+Delegate a reviewer sub-agent to verify factual claims in the explainer match the source code. Fix all CRITICAL findings.
 
 ---
 
@@ -117,17 +213,21 @@ BRANCH_NAME="train/em-$(date +%Y%m%d)-$(echo '$TICKET_TITLE' | slugify)"
 git checkout -b "$BRANCH_NAME"
 ```
 
-### Drop the temp guidance skill
+### Assemble the temp skill directory
 
-Write a temporary skill file at a project-appropriate location. For Pi projects, use `.pi/skills/em-train-guide.md`. For non-Pi projects, use `.em-train-guide.md` in the project root.
+Create `.pi/skills/em-train-guide/` (or `.em-train-guide/` for non-Pi projects) with:
 
-The content comes from the [template below](#temp-guidance-skill-template), with `$TICKET`, `$LANGUAGE`, `$LEVEL`, and `$PROJECT` filled in.
+1. **`SKILL.md`** — the guidance skill (see [template below](#temp-guidance-skill-template))
+2. **`ticket.md`** — the ticket (story, acceptance criteria, files, tips from Step 4)
+3. **`explainer.html`** (and optionally `explainer.js`) — the self-contained HTML explainer from Step 5
+
+The content for SKILL.md comes from the [template below](#temp-guidance-skill-template), with `$TICKET`, `$LANGUAGE`, `$LEVEL`, and `$PROJECT` filled in.
 
 ### Guidance for invoking
 
 Tell the user:
 
-> "You're now on branch `$BRANCH_NAME`. I've left a guidance skill you can invoke for help. It will answer API/language questions and explain concepts — but it will NOT write the code for you. If you get truly stuck, ask it for an explainer on the blocking concept. When you're done, come back to me and say 'ready for review.'"
+> "You're now on branch `$BRANCH_NAME`. I've left a guidance skill and an interactive explainer in `.pi/skills/em-train-guide/`. Open `explainer.html` in your browser for a cross-language reference. Use the guidance skill for API/language questions — it will NOT write the code for you. If you get truly stuck, ask it for an explainer on the blocking concept. When you're done, come back to me and say 'ready for review.'"
 
 ---
 
@@ -228,7 +328,7 @@ Given what you worked on and where you struggled, here's a good next ticket:
 Remove the temporary guidance skill file:
 
 ```bash
-rm -f .pi/skills/em-train-guide.md .em-train-guide.md
+rm -rf .pi/skills/em-train-guide .em-train-guide.md
 ```
 
 ### Offer merge
@@ -239,7 +339,12 @@ rm -f .pi/skills/em-train-guide.md .em-train-guide.md
 
 ## Temp guidance skill template
 
-This is the content written to `.pi/skills/em-train-guide.md` (or `.em-train-guide.md` for non-Pi projects):
+This is the content written to `.pi/skills/em-train-guide/SKILL.md` (or `.em-train-guide.md` for non-Pi projects).
+
+Fill in placeholders:
+- `$TICKET_TITLE`, `$TICKET_SUMMARY`, `$LEVEL`, `$LANGUAGE`, `$PROJECT` — from the intake interview and ticket
+- `$SOURCE_FILES` — actual file paths from the codebase the user needs to read (e.g. `backend/src/agentic_rpg/tools/character.py`)
+- `$TEST_FILES` — actual test file paths (e.g. `backend/tests/test_tools/test_character.py`)
 
 ```markdown
 ---
@@ -271,9 +376,19 @@ You are a senior engineer guiding a [LEVEL] [LANGUAGE] developer through a train
    - "Can you write this for me?"
 4. **When the user asks for something you shouldn't answer:**
    - First ask: "What part are you stuck on? What have you tried?"
-   - Second ask: "Let me generate an explainer for the concept blocking you."
-   - Third ask: Generate a `create-explainer` brief for the blocking concept. The user studies it and comes back.
+   - Second ask: "Open the interactive explainer at `explainer.html` — it covers all the patterns."
+   - Third ask: "Let me generate an explainer for the concept blocking you."
 5. **Keep a list of language patterns the user struggles with.** At the end, report to the EM for the summary report.
+
+## Reference files (in this directory)
+
+- [ticket.md](ticket.md) — the ticket with story, AC, files, tips
+- [explainer.html](explainer.html) — interactive cross-language reference with syntax cards and quiz
+
+## Reference files (codebase)
+
+- `$SOURCE_FILES` — key implementation patterns
+- `$TEST_FILES` — test patterns to follow
 ```
 
 ---
@@ -281,16 +396,25 @@ You are a senior engineer guiding a [LEVEL] [LANGUAGE] developer through a train
 ## Session lifecycle
 
 ```
-┌─────────────────────────────────────────────────┐
-│ 1. INTAKE ──── Interview (level, goal, budget)  │
-│ 2. EXPLORE ─── Read codebase, roadmap, specs     │
-│ 3. SCOPE ───── Conversation → ticket negotiation │
-│ 4. BRIEF ───── Create-explainer for the ticket   │
-│ 5. SETUP ───── Branch + temp skill               │
-│ 6. DOING ────  User works (guidance skill active)│
-│ 7. REVIEW ──── CI + subagents → curated feedback │
-│ 8. ITERATE ─── Fix (max 2 rounds)                │
-│ 9. REPORT ──── Summary + next steps              │
-│ 10. CLEANUP ── Remove temp skill, offer merge    │
-└─────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────┐
+│ 1. INTAKE ──── Interview (level, goal, budget)      │
+│ 2. EXPLORE ─── Read codebase, roadmap, specs         │
+│ 3. SCOPE ───── Conversation → ticket negotiation     │
+│ 4. TICKET ──── Story + AC + files + tips             │
+│ 5. EXPLAINER ── HTML explainer (create-explainer)   │
+│    ├─ 5a. Discover source files                      │
+│    ├─ 5b. Propose scope (human checkpoint)           │
+│    ├─ 5c. Build HTML with lab templates              │
+│    ├─ 5d. Write explainer.html + explainer.js        │
+│    ├─ 5e. Self-fix                                   │
+│    ├─ 5f. Serve (Full Lab only)                      │
+│    └─ 5g. Reviewer pass (Guided/Full Lab)            │
+│ 6. SETUP ──── Branch + skill dir (SKILL.md,          │
+│               ticket.md, explainer.html)             │
+│ 7. DOING ──── User works (guidance skill active)     │
+│ 8. REVIEW ─── CI + subagents → curated feedback      │
+│ 9. ITERATE ── Fix (max 2 rounds)                    │
+│ 10. REPORT ── Summary + next steps                   │
+│ 11. CLEANUP ─ Remove skill dir, offer merge          │
+└─────────────────────────────────────────────────────┘
 ```
