@@ -75,32 +75,42 @@ Record the job ID. The agent .md file provides model/provider/thinking — you o
 
 Write milestone: `🔄 Slice N: [name] — implementation complete. Forking review.`
 
-Immediately fork review sub-agents per slice risk tier:
+Consult the canonical [`/review` skill](../review/SKILL.md) for the full review decision table, auto-detection heuristics, and output format. This is the **single source of truth** for which reviewers to fire and when.
 
-| Risk tier | Review gates |
-|-----------|-------------|
-| routine | test |
-| standard | test, quality |
-| standard + UI | test, quality, design, visual-qa |
-| tricky | test, quality, security |
-| tricky + UI | test, quality, security, design, visual-qa |
+For this slice, determine which reviewers to fire by combining:
+- **Risk tier** (from the plan) — determines the base set
+- **File signals** (from the slice's changed files) — gates expensive reviewers like security, design, visual-qa
+- **Always-fire rule**: test, quality, and premortem run on **every** slice regardless of risk tier
 
-Each review type is a **separate** sub-agent call:
+The decision matrix (canonically defined in `/review`):
+
+| Risk tier | Base reviewers | File-gated additions |
+|-----------|---------------|----------------------|
+| routine | test, quality, premortem | — |
+| standard | test, quality, premortem | + security if auth/data files touched |
+| standard + UI | test, quality, premortem | + security (if triggered) + design + visual-qa |
+| tricky | test, quality, premortem | + security |
+| tricky + UI | test, quality, premortem | + security + design + visual-qa |
+
+The `premortem-reviewer` always fires. For slices touching migrations, queues, workers, webhooks, payment, or transactions, amplify premortem scrutiny in the task text.
+
+Each review type is a **separate** sub-agent call using the guardrails from the `/review` skill's guardrail table. Defaults:
 
 ```
 subagent_fork {
-  agent: "[test-reviewer|quality-reviewer|security-reviewer|design-reviewer|visual-qa]"
-  task: "Review slice N: [slice context]. Write ✅ PASS or ❌ NEEDS-FIX."
+  agent: "[test-reviewer|quality-reviewer|premortem-reviewer|security-reviewer|design-reviewer|visual-qa]"
+  task: "Review slice N: [slice context]. Scope files: [list]. Write ✅ PASS or ❌ NEEDS-FIX."
   maxTurns: 10, maxCost: 0.10, maxTokens: 50000, maxTime: 120
 }
 ```
 
-Design reviewer guardrails are higher to accommodate playwright-cli snapshots (360s, $0.50, read+bash+write tools):
+Design-reviewer and visual-qa have higher guardrails (see `/review` skill). The task text for premortem-reviewer should include a note if the slice touches risk-amplified files:
+
 ```
 subagent_fork {
-  agent: "design-reviewer"
-  task: "Review slice N: [slice context]. Write verdict card with screenshots."
-  maxTurns: 30, maxCost: 0.50, maxTokens: 150000, maxTime: 360
+  agent: "premortem-reviewer"
+  task: "Review slice N: [slice context]. Scope files: [list]. ⚠️ Slice includes [migration/queue/worker/webhook/payment] files — amplify scrutiny on deployment ordering, rollback, and data integrity. Write ✅ PASS or ❌ NEEDS-FIX."
+  maxTurns: 10, maxCost: 0.10, maxTokens: 50000, maxTime: 120
 }
 ```
 
@@ -108,7 +118,7 @@ subagent_fork {
 
 Visual-qa fires **only when the slice's acceptance criteria contain interactive keywords**: `click`, `submit`, `navigate`, `form`, `modal`, `flow`, `toggle`, `drag`, `select`, `type`, `fill`, `upload`. If none are present, skip visual-qa — the design-reviewer already covers static visual checks.
 
-Construct the checklist task from the slice's acceptance criteria. Map each user-facing interaction into a step with action and expected outcome:
+Construct the checklist task from the slice's acceptance criteria. Map each user-facing interaction into a step with action and expected outcome. See the `/review` skill for the canonical task format.
 
 ```
 subagent_fork {
