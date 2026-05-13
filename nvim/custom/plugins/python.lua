@@ -11,6 +11,8 @@ require('nvim-treesitter').install('python')
 --    Provides go-to-definition, hover, autocomplete, type checking
 -- ============================================================
 vim.lsp.config('pyright', {
+  root_markers = { 'pyrightconfig.json', 'pyproject.toml', 'setup.py', 'setup.cfg', 'requirements.txt', 'Pipfile', '.git' },
+  filetypes = { 'python' },
   settings = {
     python = {
       analysis = {
@@ -21,6 +23,46 @@ vim.lsp.config('pyright', {
       },
     },
   },
+  before_init = function(client, config)
+    -- Dynamically detect a .venv and point pyright at it
+    -- so that packages like langchain resolve correctly
+    local root = config.root_dir
+    if not root then return end
+
+    local venv_dir = vim.fn.resolve(root .. '/.venv')
+    if vim.fn.isdirectory(venv_dir) ~= 1 then
+      -- Also check for 'venv' instead of '.venv'
+      venv_dir = vim.fn.resolve(root .. '/venv')
+      if vim.fn.isdirectory(venv_dir) ~= 1 then return end
+    end
+
+    config.settings = config.settings or {}
+    config.settings.python = config.settings.python or {}
+
+    -- Point to the venv Python interpreter
+    local python_bin = venv_dir .. '/bin/python'
+    if vim.fn.executable(python_bin) == 1 then
+      config.settings.python.pythonPath = python_bin
+    end
+
+    -- Add site-packages as an extra path for reliable resolution
+    -- Find the right python version dir inside the venv
+    local handle = vim.uv.fs_scandir(venv_dir .. '/lib')
+    if handle then
+      while true do
+        local name, type = vim.uv.fs_scandir_next(handle)
+        if not name then break end
+        if type == 'directory' then
+          local site_pkgs = venv_dir .. '/lib/' .. name .. '/site-packages'
+          if vim.fn.isdirectory(site_pkgs) == 1 then
+            config.settings.python.analysis = config.settings.python.analysis or {}
+            config.settings.python.analysis.extraPaths = { site_pkgs }
+            break
+          end
+        end
+      end
+    end
+  end,
 })
 vim.lsp.enable('pyright')
 
