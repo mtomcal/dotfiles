@@ -343,6 +343,28 @@ If you need to hand-build a component, here are the CSS/JS patterns:
 - Delete handles: Midpoint via bezier formula at `t=0.5`, not `getPointAtLength()`.
 - Z-index fix: `#connect-nodes` container gets `pointer-events: none`; each `.nc-node` gets `pointer-events: auto`.
 
+### Common adaptation pitfalls (node graph builder)
+
+When adapting the [`node-graph-builder.html`](lab/node-graph-builder.html) template, avoid merging `updateUI()` into `renderNodes()`:
+
+**Wrong** — renders calls `renderNodes()` after setting button state, but `renderNodes()` resets it:
+```javascript
+function checkGraph() {
+  // ... sets nextBtn display: inline-flex
+  renderNodes();  // OOPS: renderNodes() hides nextBtn again
+}
+```
+
+**Right** — keep `updateUI()` (init/reset) separate from `renderNodes()` (DOM only):
+```javascript
+function buildNodes() {
+  updateUI();    // sets button visibility, scores
+  renderNodes(); // pure DOM — no button/side-effect code
+}
+```
+
+The template already does this correctly. Do not inline `updateUI`'s contents into `renderNodes` during adaptation.
+
 ## File conventions
 
 - Directory: `./explainer/` (or user-specified)

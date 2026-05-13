@@ -2,6 +2,6 @@
   "enableSkillCommands": true,
   "lastChangelogVersion": "0.74.0",
   "defaultProvider": "crof",
-  "defaultModel": "deepseek-v4-pro",
+  "defaultModel": "glm-5.1",
   "defaultThinkingLevel": "medium"
 }
