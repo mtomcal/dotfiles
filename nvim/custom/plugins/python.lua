@@ -1,5 +1,38 @@
--- Python linting with Ruff and Poetry auto-detection
+-- Python tooling: LSP via pyright, linting via ruff
 
+-- ============================================================
+-- 1. Treesitter: ensure Python parser is installed
+--    Enables syntax highlighting, folds, and indentation
+-- ============================================================
+require('nvim-treesitter').install('python')
+
+-- ============================================================
+-- 2. LSP: pyright for code intelligence
+--    Provides go-to-definition, hover, autocomplete, type checking
+-- ============================================================
+vim.lsp.config('pyright', {
+  settings = {
+    python = {
+      analysis = {
+        typeCheckingMode = 'basic',
+        autoSearchPaths = true,
+        useLibraryCodeForTypes = true,
+        diagnosticMode = 'openFilesOnly',
+      },
+    },
+  },
+})
+vim.lsp.enable('pyright')
+
+-- Ensure pyright gets installed via Mason if not present
+vim.defer_fn(function()
+  pcall(vim.cmd.MasonInstall, 'pyright')
+end, 2000)
+
+-- ============================================================
+-- 3. Linting with Ruff via nvim-lint
+--    Provides fast, inline diagnostics outside of LSP
+-- ============================================================
 vim.pack.add({
   { src = 'https://github.com/mfussenegger/nvim-lint' },
 })

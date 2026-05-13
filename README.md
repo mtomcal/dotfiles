@@ -217,7 +217,7 @@ dotfiles/
     └── custom/            # Custom neovim configs (symlinked)
         └── plugins/       # Your custom plugins (6 plugins)
             ├── go.lua     # Go debugging and testing
-            ├── python.lua # Python linting with Ruff
+            ├── python.lua # Python LSP (pyright) + ruff linting
             ├── markdown.lua   # Markdown rendering
             ├── neo-tree.lua   # File explorer
             ├── diffview.lua   # Git diff viewer
@@ -389,8 +389,9 @@ Your custom configs persist across updates!
    - nvim-dap-go for debugging
    - neotest-golang for test running
 
-2. **python.lua** - Python linting with Ruff
-   - Poetry project auto-detection
+2. **python.lua** - Python LSP (pyright) + ruff linting
+   - pyright: go-to-definition, hover, autocomplete, type checking
+   - ruff: fast linting with Poetry auto-detection
    - Real-time linting on save
 
 3. **markdown.lua** - Beautiful markdown rendering
@@ -506,7 +507,7 @@ Full Python development environment with LSP, linting, and formatting.
 - `grd` - Go to definition
 - `grr` - Find references
 
-See [docs/PYTHON_DEVELOPMENT.md](docs/PYTHON_DEVELOPMENT.md) for comprehensive guide.
+
 
 #### Go (Golang) Development
 
