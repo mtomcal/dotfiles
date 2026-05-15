@@ -7,6 +7,8 @@ Interview me relentlessly about every aspect of this plan until we reach a share
 
 Ask the questions one at a time.
 
+With each question, include the approximate grilling progress as a percentage (e.g. "~30% through"). Estimate based on how many branches of the decision tree remain versus how many have been resolved. Adjust the estimate as new branches emerge from the user's answers.
+
 If a question can be answered by exploring the codebase, explore the codebase instead.
 
 ## Pre-Grilling: Load the Ubiquitous Language
