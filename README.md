@@ -487,6 +487,46 @@ Your custom configs persist across updates!
 | `<leader>sd` | Search diagnostics |
 | `K` | Hover documentation |
 
+### Clipboard & Yank History
+
+`clipboard=unnamedplus` is configured: yanks (`y`) and deletes go to both the system clipboard (`+` register) and the unnamed register. This means `"+y`/`"+p` work over SSH when OSC 52 is configured (see [Copy & Paste over SSH](#copy--paste-over-ssh-tmux--neovim)).
+
+**The delete-crushes-yank problem**: you `yiw` to yank a word, then `dd` deletes a line, and your yank is gone. Two defenses:
+
+| Method | Key | What it does |
+|--------|-----|-------------|
+| Paste last yank | `gp` / `gP` | Paste from register `0` — never overwritten by deletes |
+| Browse registers | `<leader>pr` | Open `:registers` to find lost text in any register |
+
+**Yank history** — yanky.nvim provides a searchable, persistent yank ring:
+
+| Key | Action |
+|-----|--------|
+| `<leader>py` | Browse yank history with Telescope (search, preview, paste) |
+| `y` | Yank to unnamed register + yank ring |
+| `p` / `P` | Paste; repeat `p` to cycle through recent yanks |
+
+Example: recover a yank crushed by a delete:
+```
+yiw                  # Yank inner word
+dd                   # Delete a line (crushed your yank)
+gp                   # Paste from register 0 — your yank is still there!
+
+# Or browse all history:
+<leader>py           # Telescope yank history — search, preview, paste
+```
+
+**Numbered registers reference:**
+
+| Register | Holds | Recover with |
+|----------|-------|-------------|
+| `""` | Last yank or delete (unnamed) | `p` |
+| `"0` | Last yank only | `"0p` or `gp` |
+| `"1` | Last delete (>1 line) | `"1p` |
+| `"2`–`"9` | Older deletes (shift down) | `"2p`, `"3p`, ... |
+| `"-` | Small deletes (<1 line) | `"-p` |
+| `"+` | System clipboard | `"+p` (synced from unnamed) |
+
 ### LSP (all languages)
 
 | Key | Action |
