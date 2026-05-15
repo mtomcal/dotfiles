@@ -390,23 +390,23 @@ describe("subagent_fork resumeFrom behavior (spawn integration)", () => {
 		// Verify spawn was called twice
 		expect(mockSpawn).toHaveBeenCalledTimes(2);
 
-		// First spawn should be the fresh task
-		const firstSpawnArgs = mockSpawn.mock.calls[0][1] as string[];
-		const firstTaskArg = firstSpawnArgs.find((a: string) => a.startsWith("Task: "));
-		expect(firstTaskArg).toBeDefined();
-		expect(firstTaskArg).toContain("Fresh task");
+		// Find spawns by task content (order-independent)
+		const allSpawnArgs = mockSpawn.mock.calls.map((c: any) => c[1] as string[]);
+		const freshSpawn = allSpawnArgs.find((args: string[]) =>
+			args.some((a: string) => a.startsWith("Task: ") && a.includes("Fresh task")),
+		);
+		const resumeSpawn = allSpawnArgs.find((args: string[]) =>
+			args.some((a: string) => a.startsWith("Task: ") && a.includes("original test task") && a.includes("Continue from source")),
+		);
 
-		// Second spawn should be the resume task
-		const secondSpawnArgs = mockSpawn.mock.calls[1][1] as string[];
-		const secondTaskArg = secondSpawnArgs.find((a: string) => a.startsWith("Task: "));
-		expect(secondTaskArg).toBeDefined();
-		expect(secondTaskArg).toContain("original test task");
-		expect(secondTaskArg).toContain("Continue from source");
+		expect(freshSpawn).toBeDefined();
+		expect(resumeSpawn).toBeDefined();
 
 		// Verify the resume spawn has provider from source
-		expect(secondSpawnArgs).toContain("--provider");
-		const providerIdx = secondSpawnArgs.indexOf("--provider");
-		expect(secondSpawnArgs[providerIdx + 1]).toBe("anthropic");
+		const resumeSpawnArgs = resumeSpawn!;
+		expect(resumeSpawnArgs).toContain("--provider");
+		const providerIdx = resumeSpawnArgs.indexOf("--provider");
+		expect(resumeSpawnArgs[providerIdx + 1]).toBe("anthropic");
 
 		// Emit successful results to resolve
 		mockProc1.stdout.emit("data", Buffer.from(makeMessageEndEvent({ turns: 1, cost: 0.001 }) + "\n"));

@@ -778,13 +778,29 @@ export default function (pi: ExtensionAPI) {
 	});
 
 	// ── Lifecycle ────────────────────────────────────────────────────
-	pi.on("session_shutdown", async () => { cancelWidgetTimers(); widgetCtx = null; jobMgr.cancelAll(); persist(); });
+	pi.on("session_shutdown", async () => {
+		cancelWidgetTimers();
+		widgetCtx = null;
+		// Persist BEFORE cancel so guardrail-killed jobs keep their "failed" status
+		persist();
+		jobMgr.cancelAll();
+	});
 	pi.on("session_start", async (_event, ctx) => {
 		_catalogInjectedThisSession = false;
 		widgetCtx = ctx;
 		for (const entry of ctx.sessionManager.getEntries()) {
 			if (entry.type === "custom" && entry.customType === "subagent-job-state") {
-				jobMgr.deserialize(entry.data as any);
+				try {
+					const data = entry.data as any;
+					// Validate data is an array before deserializing
+					if (Array.isArray(data)) {
+						jobMgr.deserialize(data);
+					} else {
+						console.warn("[subagent] session data is not an array, skipping");
+					}
+				} catch (err) {
+					console.warn("[subagent] failed to deserialize session data:", (err as Error).message);
+				}
 			}
 		}
 	});
@@ -841,11 +857,12 @@ export default function (pi: ExtensionAPI) {
 			"Use subagent_fork for background execution. Use subagent_run when you need the result before continuing.",
 			"Set guardrails (maxTurns, maxCost, maxTokens, maxTime) to limit subagent resource usage. The subagent is killed with stopReason=guardrail if any threshold is exceeded.",
 			"RESUME: Use `resumeFrom` to continue a guardrail-killed subagent where it left off. The job's full conversation history is injected into the new subagent's context — no progress is lost.",
-			"RESUME: The guardrail-kill notification includes a pasteable `resumeFrom` command. Use `subagent_status` to see resumable jobs with their resume commands.",
+			"RESUME: The guardrail-kill notification includes a pasteable `resumeFrom` command. Use `subagent_status` to inspect resumable jobs with their resume commands.",
 			"RESUME: You MUST raise the breached guardrail dimension when resuming. Use 4x the offending threshold as a starting point.",
 			"RESUME: `resumeFrom` cannot be combined with `tasks[]`, `chain[]`, or `agent` at the top level.",
 			"RESUME: The `task` param becomes a continuation instruction. The original task is preserved and your new instruction is appended: 'original task\n\nNew instruction: ...'",
 			"RESUME: Use `subagent_fork({ resumeFrom: jobId, ... })` for non-blocking background resume.",
+			"RESUME: `resumeFrom` only works within the same session. Jobs from prior sessions cannot be resumed — use `subagent_status` to list current session jobs.",
 		],
 
 		async execute(_toolCallId, params, signal, onUpdate, ctx) {
@@ -1144,6 +1161,7 @@ export default function (pi: ExtensionAPI) {
 			"RESUME: You MUST raise the breached guardrail dimension. Use 4x the offending threshold as a starting point.",
 			"RESUME: Top-level `resumeFrom` cannot be combined with `tasks[]` or `agent`. Per-task `resumeFrom` is allowed in `tasks[]`.",
 			"RESUME: The `task` param becomes a continuation instruction appended to the original task.",
+			"RESUME: `resumeFrom` is session-scoped — only jobs created in the current session can be resumed. Cross-session resume is not supported.",
 		],
 
 		async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
