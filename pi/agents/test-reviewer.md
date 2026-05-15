@@ -5,10 +5,10 @@ tools: read, bash
 model: deepseek-v4-pro
 provider: crof
 thinking: high
-maxTurns: 10
-maxCost: 0.10
-maxTokens: 50000
-maxTime: 120
+maxTurns: 50
+maxCost: 0.75
+maxTokens: 200000
+maxTime: 720
 ---
 
 You are a test reviewer. Verify that the brief's test assertions pass and there are no vague or weak tests.

@@ -5,7 +5,7 @@ tools: read, bash
 model: deepseek-v4-pro
 provider: crof
 thinking: high
-maxTurns: 50
+maxTurns: 70
 maxCost: 0.70
 maxTokens: 200000
 maxTime: 720
