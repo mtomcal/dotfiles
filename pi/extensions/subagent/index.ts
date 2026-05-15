@@ -860,9 +860,11 @@ export default function (pi: ExtensionAPI) {
 			"RESUME: Use `resumeFrom` to continue a guardrail-killed subagent where it left off. The job's full conversation history is injected into the new subagent's context — no progress is lost.",
 			"RESUME: The guardrail-kill notification includes a pasteable `resumeFrom` command. Use `subagent_status` to inspect resumable jobs with their resume commands.",
 			"RESUME: You MUST raise the breached guardrail dimension when resuming. Use 4x the offending threshold as a starting point.",
-			"RESUME: `resumeFrom` cannot be combined with `tasks[]`, `chain[]`, or `agent` at the top level.",
+			"RESUME: `resumeFrom` cannot be combined with `tasks[]` or `chain[]` at the top level.",
 			"RESUME: The `task` param becomes a continuation instruction. The original task is preserved and your new instruction is appended: 'original task\n\nNew instruction: ...'",
 			"RESUME: Use `subagent_fork({ resumeFrom: jobId, ... })` for non-blocking background resume.",
+			"RESUME: job IDs use format `{name}-{6hex}` (e.g. `implementer-a1b2c3`, `sage-review-def456`). Do NOT construct IDs manually — use the ID from the guardrail notification, `subagent_status` output, or error message.",
+			"RESUME: Sync `subagent_run` calls that hit guardrails also create a resumable job entry. The job ID and pasteable resume command appear in the error message.",
 			"RESUME: `resumeFrom` only works within the same session. Jobs from prior sessions cannot be resumed — use `subagent_status` to list current session jobs.",
 		],
 
@@ -1038,6 +1040,7 @@ export default function (pi: ExtensionAPI) {
 					null,
 					agentFile,
 				);
+				const startedAt = Date.now();
 				const { resultPromise } = spawnSubagentProcess(
 					config, params.task.trim(), params.cwd, ctx.cwd, signal, undefined,
 					onUpdate ? (cr: SingleResult) => { onUpdate({ content: [{ type: "text", text: getFinalOutput(cr.messages) || "(running...)" }], details: makeDetails("single")([cr]) }); } : undefined,
@@ -1046,6 +1049,44 @@ export default function (pi: ExtensionAPI) {
 				const isError = result.exitCode !== 0 || result.stopReason === "error" || result.stopReason === "aborted";
 				if (isError) {
 					const errorMsg = result.errorMessage || result.stderr || getFinalOutput(result.messages) || "(no output)";
+					if (result.stopReason === "guardrail") {
+						// Create a JobManager entry so this failed sync run is resumable
+						const original: OriginalInvocation = {
+							config: {
+								name: config.name,
+								systemPrompt: config.systemPrompt,
+								tools: config.tools,
+								model: config.model,
+								provider: config.provider,
+								thinking: config.thinking,
+								contextFiles: config.contextFiles,
+								extensions: config.extensions,
+								guardrails: config.guardrails,
+							},
+							task: params.task.trim(),
+							cwd: params.cwd ?? ctx.cwd,
+							guardrails: config.guardrails,
+						};
+						const job = jobMgr.recordFailedJob(
+							config.name,
+							params.task.trim(),
+							result,
+							config.guardrails,
+							original,
+							startedAt,
+						);
+						persist();
+						const suggestion = formatResumableSuggestion(job);
+						return {
+							content: [{ type: "text", text: `Agent guardrail: ${errorMsg}\n\n**Job:** \`${job.id}\`\n\n${suggestion}` }],
+							details: {
+								...makeDetails("single")([result]),
+								jobId: job.id,
+								resumable: true,
+							},
+							isError: true,
+						};
+					}
 					return { content: [{ type: "text", text: `Agent ${result.stopReason || "failed"}: ${errorMsg}` }], details: makeDetails("single")([result]), isError: true };
 				}
 				return { content: [{ type: "text", text: getFinalOutput(result.messages) || "(no output)" }], details: makeDetails("single")([result]) };
@@ -1160,8 +1201,9 @@ export default function (pi: ExtensionAPI) {
 			"RESUME: Use `resumeFrom` to continue a guardrail-killed background job where it left off. The job's full conversation history is injected — no progress is lost.",
 			"RESUME: The completion notification includes a pasteable resume command. Use `subagent_status` to inspect resumable jobs.",
 			"RESUME: You MUST raise the breached guardrail dimension. Use 4x the offending threshold as a starting point.",
-			"RESUME: Top-level `resumeFrom` cannot be combined with `tasks[]` or `agent`. Per-task `resumeFrom` is allowed in `tasks[]`.",
+			"RESUME: Top-level `resumeFrom` cannot be combined with `tasks[]`. Per-task `resumeFrom` is allowed in `tasks[]`.",
 			"RESUME: The `task` param becomes a continuation instruction appended to the original task.",
+			"RESUME: job IDs use format `{name}-{6hex}` (e.g. `implementer-a1b2c3`). Find the ID in the guardrail notification, `subagent_status` output, or completion notification.",
 			"RESUME: `resumeFrom` is session-scoped — only jobs created in the current session can be resumed. Cross-session resume is not supported.",
 		],
 

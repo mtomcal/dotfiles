@@ -102,13 +102,8 @@ export class JobManager {
 	private onCancel: ((job: AsyncJob) => void) | null = null;
 	private onPartialResult: ((jobId: string, partial: SingleResult) => void) | null = null;
 
-	createJob(name: string, task: string, guardrails?: Guardrails, original?: OriginalInvocation): AsyncJob {
-		const running = this.listRunning();
-		if (running.length >= MAX_RUNNING_JOBS) {
-			throw new Error(
-				`Maximum ${MAX_RUNNING_JOBS} concurrent async jobs. Cancel a job or wait for one to complete.`,
-			);
-		}
+	/** Generate a unique job ID in {name}-{6hex} format */
+	private generateJobId(name: string): string {
 		// 3 bytes = 6 hex chars = 16M values per name prefix (safe from birthday collisions)
 		let id: string;
 		let attempts = 0;
@@ -116,6 +111,48 @@ export class JobManager {
 			id = `${name}-${randomBytes(3).toString("hex")}`;
 			attempts++;
 		} while (this.jobs.has(id) && attempts < 10);
+		return id;
+	}
+
+	/**
+	 * Record a guardrail-killed job result without enforcing max concurrency.
+	 * Used by sync subagent_run to make guardrail-killed results resumable.
+	 */
+	recordFailedJob(
+		name: string,
+		task: string,
+		result: SingleResult,
+		guardrails: Guardrails,
+		original: OriginalInvocation,
+		startedAt: number,
+		completedAt: number = Date.now(),
+	): AsyncJob {
+		const id = this.generateJobId(name);
+		const job: AsyncJob = {
+			id,
+			name,
+			task,
+			status: "failed",
+			process: null,
+			result,
+			startedAt,
+			completedAt,
+			tools: result.tools,
+			guardrails,
+			original,
+		};
+		this.jobs.set(id, job);
+		return job;
+	}
+
+	createJob(name: string, task: string, guardrails?: Guardrails, original?: OriginalInvocation): AsyncJob {
+		const running = this.listRunning();
+		if (running.length >= MAX_RUNNING_JOBS) {
+			throw new Error(
+				`Maximum ${MAX_RUNNING_JOBS} concurrent async jobs. Cancel a job or wait for one to complete.`,
+			);
+		}
+		const id = this.generateJobId(name);
 		const job: AsyncJob = {
 			id,
 			name,
