@@ -31,7 +31,6 @@ Delegate to a subagent — do not run anything yourself:
 subagent_run {
   agent: "implementer"
   task: "Confirm baseline: cd to project root, run the full test suite, verify clean working tree, verify dev deps installed. Report GREEN or RED with specifics."
-  maxTurns: 10, maxCost: 0.05, maxTokens: 25000, maxTime: 120
 }
 ```
 
@@ -100,7 +99,6 @@ Each review type is a **separate** sub-agent call using the guardrails from the 
 subagent_fork {
   agent: "[test-reviewer|quality-reviewer|premortem-reviewer|security-reviewer|design-reviewer|visual-qa]"
   task: "Review slice N: [slice context]. Scope files: [list]. Write ✅ PASS or ❌ NEEDS-FIX."
-  maxTurns: 10, maxCost: 0.10, maxTokens: 50000, maxTime: 120
 }
 ```
 
@@ -110,7 +108,6 @@ Design-reviewer and visual-qa have higher guardrails (see `/review` skill). The 
 subagent_fork {
   agent: "premortem-reviewer"
   task: "Review slice N: [slice context]. Scope files: [list]. ⚠️ Slice includes [migration/queue/worker/webhook/payment] files — amplify scrutiny on deployment ordering, rollback, and data integrity. Write ✅ PASS or ❌ NEEDS-FIX."
-  maxTurns: 10, maxCost: 0.10, maxTokens: 50000, maxTime: 120
 }
 ```
 
@@ -133,7 +130,6 @@ Checklist:
 Final: Take full-page screenshot, check console for errors, check network for failed requests.
 
 Report per-step pass/fail with evidence. Write ✅ PASS or ❌ NEEDS-FIX."
-  maxTurns: 40, maxCost: 0.75, maxTokens: 200000, maxTime: 480
 }
 ```
 
@@ -229,7 +225,6 @@ All slices `done` → delegate final verification:
 subagent_run {
   agent: "test-reviewer"
   task: "Full verification. Run full test suite, lint, typecheck. Verify all acceptance criteria from plan. Report any gaps."
-  maxTurns: 20, maxCost: 0.20, maxTokens: 100000, maxTime: 300
 }
 ```
 
