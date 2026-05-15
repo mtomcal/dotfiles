@@ -840,6 +840,12 @@ export default function (pi: ExtensionAPI) {
 			"Use `model` and `thinking` to control the subagent's capability: fast models for lookup, powerful models for complex tasks.",
 			"Use subagent_fork for background execution. Use subagent_run when you need the result before continuing.",
 			"Set guardrails (maxTurns, maxCost, maxTokens, maxTime) to limit subagent resource usage. The subagent is killed with stopReason=guardrail if any threshold is exceeded.",
+			"RESUME: Use `resumeFrom` to continue a guardrail-killed subagent where it left off. The job's full conversation history is injected into the new subagent's context — no progress is lost.",
+			"RESUME: The guardrail-kill notification includes a pasteable `resumeFrom` command. Use `subagent_status` to see resumable jobs with their resume commands.",
+			"RESUME: You MUST raise the breached guardrail dimension when resuming. Use 4x the offending threshold as a starting point.",
+			"RESUME: `resumeFrom` cannot be combined with `tasks[]`, `chain[]`, or `agent` at the top level.",
+			"RESUME: The `task` param becomes a continuation instruction. The original task is preserved and your new instruction is appended: 'original task\n\nNew instruction: ...'",
+			"RESUME: Use `subagent_fork({ resumeFrom: jobId, ... })` for non-blocking background resume.",
 		],
 
 		async execute(_toolCallId, params, signal, onUpdate, ctx) {
@@ -1133,6 +1139,11 @@ export default function (pi: ExtensionAPI) {
 			"Use subagent_run when you need the result immediately. Use subagent_fork when you can work in parallel.",
 			"A TUI status widget is displayed above the editor while jobs are running, showing live progress. You'll also receive a completion notification when each job finishes.",
 			"Set guardrails (maxTurns, maxCost, maxTokens, maxTime) to limit subagent resource usage. The subagent is killed with stopReason=guardrail if any threshold is exceeded.",
+			"RESUME: Use `resumeFrom` to continue a guardrail-killed background job where it left off. The job's full conversation history is injected — no progress is lost.",
+			"RESUME: The completion notification includes a pasteable resume command. Use `subagent_status` to inspect resumable jobs.",
+			"RESUME: You MUST raise the breached guardrail dimension. Use 4x the offending threshold as a starting point.",
+			"RESUME: Top-level `resumeFrom` cannot be combined with `tasks[]` or `agent`. Per-task `resumeFrom` is allowed in `tasks[]`.",
+			"RESUME: The `task` param becomes a continuation instruction appended to the original task.",
 		],
 
 		async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
