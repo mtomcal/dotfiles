@@ -165,10 +165,26 @@ When a subagent returns ❌ NEEDS-FIX, determine the cause before escalating. Ch
 
 Subagent was terminated by Pi (exceeded maxTurns, maxCost, maxTokens, or maxTime). `stopReason: "guardrail"`.
 
-1. **Bump guardrails + retry** — double the offending threshold, re-fork same agent + model + provider. If the subagent produced partial output, include it as context.
-2. **Provider switch** — same model, different provider. Retry with bumped guardrails.
-3. **Model bump** — escalate to stronger model or higher thinking. Override model/thinking on next fork.
-4. **Strongest subagent** — delegate to sage (`agent: "sage"`) with max guardrails (`maxTurns: 60, maxCost: 2.00, maxTokens: 500000, maxTime: 600`).
+The guardrail-kill notification includes a pasteable `resumeFrom` command. Use it as the first escalation step — it preserves the subagent's full conversation history so work continues without restarting from scratch.
+
+1. **Resume with higher limits** — Use `resumeFrom` with the failed job's ID and raise the breached guardrail. The extension injects the prior conversation context automatically.
+   ```typescript
+   subagent_run({ resumeFrom: "<job-id>", maxTurns: 40 })
+   subagent_fork({ resumeFrom: "<job-id>", maxTime: 240 })
+   ```
+   - Resume is preferred over retry: it preserves partial progress, tool call results, and accumulated context.
+   - The breached guardrail dimension must be explicitly raised. Use 4x the offending threshold as a starting point.
+   - `resumeFrom` cannot be combined with `tasks[]`, `chain[]`, or `agent`.
+   - You can append a new continuation instruction via `task`: `subagent_run({ resumeFrom: "<id>", maxTurns: 40, task: "Now focus on the tests" })`.
+
+2. **Bump guardrails + retry fresh** — If the subagent was spinning in a loop (repeated identical tool calls) or you want a completely clean start, retry from scratch with higher limits. Use the retry-fresh command from the notification or construct manually.
+   ```typescript
+   subagent_fork({ task: "original task", maxTurns: 40, ...originalParams })
+   ```
+
+3. **Provider switch** — same model, different provider. Retry with bumped guardrails.
+4. **Model bump** — escalate to stronger model or higher thinking. Override model/thinking on next fork.
+5. **Strongest subagent** — delegate to sage (`agent: "sage"`) with max guardrails (`maxTurns: 60, maxCost: 2.00, maxTokens: 500000, maxTime: 600`).
 
 ### Track 2: Implementation failure
 

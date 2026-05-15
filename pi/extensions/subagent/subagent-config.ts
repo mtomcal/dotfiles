@@ -42,6 +42,7 @@ export interface ResolvableFields {
 	maxCost?: number;
 	maxTokens?: number;
 	maxTime?: number;
+	resumeFrom?: string;
 }
 
 // ─── Constants ───────────────────────────────────────────────────────
@@ -173,7 +174,7 @@ export function resolveConfig(
 		topLevel?.thinking ??
 		(topLevelParsed?.thinking ? topLevelParsed.thinking : undefined) ??
 		agentFile?.thinking ??
-		"medium";
+		"medium" as ThinkingLevel;
 
 	// Context files: per-item > top-level > default true
 	const contextFiles = perItem.contextFiles ?? topLevel?.contextFiles ?? true;
@@ -196,7 +197,7 @@ export function resolveConfig(
 		tools,
 		model,
 		provider,
-		thinking,
+		thinking: thinking as ThinkingLevel,
 		contextFiles,
 		extensions,
 		guardrails: resolvedGuardrails,

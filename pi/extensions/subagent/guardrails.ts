@@ -30,6 +30,25 @@ export interface Guardrails {
 
 const WARNING_PREFIX = "[subagent-routing]";
 
+// ─── Higher Limits Computation ───────────────────────────────────────
+
+/**
+ * computeHigherLimits — Multiply the breached dimension by 4.
+ *
+ * Returns a new Guardrails object with the breached dimension multiplied
+ * by 4, leaving all other dimensions unchanged.
+ */
+export function computeHigherLimits(guardrails: Guardrails, breachedDimension: string): Guardrails {
+	const multiplier = 4;
+	const result: Guardrails = { ...guardrails };
+	const key = breachedDimension as keyof Guardrails;
+	const current = result[key];
+	if (current !== undefined) {
+		(result as any)[key] = current * multiplier;
+	}
+	return result;
+}
+
 // ─── Pure Functions ───────────────────────────────────────────────────
 
 /**

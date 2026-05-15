@@ -189,45 +189,7 @@ describe("widget update on partial result", () => {
 	});
 });
 
-// ─── 4. Widget removed after dismiss delay ─────────────────────────────
-
-describe("widget lifecycle — dismiss after completion", () => {
-	test("setWidget with undefined content is called after dismiss delay", async () => {
-		vi.useFakeTimers();
-
-		const forkResult = await forkTool.execute("fw-7", { task: "Quick check" }, undefined, undefined, mockCtx);
-		const jobId = forkResult.details.jobs[0].id;
-
-		// Complete the job
-		const completionResult = fakeSingleResult({
-			name: "quick",
-			exitCode: 0,
-			messages: [{ role: "assistant", content: [{ type: "text", text: "Done!" }] }] as Message[],
-			usage: fakeUsageStats(),
-		});
-
-		jobMgr.completeJob(jobId, completionResult);
-
-		// In production, the fork handler calls updateWidget(ctx) on completion,
-		// then scheduleWidgetDismiss(ctx) when no running jobs remain.
-		// For this test, we simulate that flow:
-		// 1. All jobs completed -> scheduleWidgetDismiss called
-		// 2. After SUBAGENT_WIDGET_DISMISS_DELAY_MS (5000ms), widget is removed
-
-		// Advance past dismiss delay
-		vi.advanceTimersByTime(6000);
-
-		// Check that setWidget was eventually called with undefined content
-		// (This may or may not happen in this test depending on whether
-		//  scheduleWidgetDismiss was triggered by the completion path)
-		// The key contract is that the dismiss mechanism exists.
-		expect(true).toBe(true); // Placeholder — the real test is in integration
-
-		vi.useRealTimers();
-	});
-});
-
-// ─── 5. Widget debounce ────────────────────────────────────────────────
+// ─── 4. Widget debounce ────────────────────────────────────────────────
 
 describe("widget debounce", () => {
 	test("rapid partial result updates are debounced (setWidget called fewer times than updates)", async () => {
@@ -371,6 +333,115 @@ describe("cancellation triggers widget update and steer notification", () => {
 		expect(notif.details.jobId).toBe(jobId);
 		expect(notif.details.name).toBe("my-worker");
 		expect(notif.details.status).toBe("cancelled");
+	});
+});
+
+// ─── Slice 4: original invocation stored on forked jobs ──────────────
+
+describe("fork stores original invocation", () => {
+	test("original has config.model matching resolved params", async () => {
+		const result = await forkTool.execute(
+			"orig-1",
+			{ task: "test task", model: "claude-3", maxTime: 30, cwd: "/tmp" },
+			undefined,
+			undefined,
+			mockCtx,
+		);
+
+		const jobId = result.details.jobs[0].id;
+		const job = jobMgr.getJob(jobId);
+		expect(job).toBeDefined();
+		expect(job!.original).toBeDefined();
+		expect(job!.original!.config.model).toBe("claude-3");
+		expect(job!.original!.task).toBe("test task");
+	});
+
+	test("original.config contains resolved guardrails with maxTime", async () => {
+		const result = await forkTool.execute(
+			"orig-2",
+			{ task: "test task", model: "claude-3", maxTime: 30, cwd: "/tmp" },
+			undefined,
+			undefined,
+			mockCtx,
+		);
+
+		const jobId = result.details.jobs[0].id;
+		const job = jobMgr.getJob(jobId);
+		expect(job!.original!.guardrails.maxTime).toBe(30);
+	});
+
+	test("original.config includes resolved name, systemPrompt, tools, thinking, contextFiles, extensions", async () => {
+		const result = await forkTool.execute(
+			"orig-3",
+			{ task: "test task", model: "claude-3", maxTime: 30, cwd: "/tmp" },
+			undefined,
+			undefined,
+			mockCtx,
+		);
+
+		const jobId = result.details.jobs[0].id;
+		const job = jobMgr.getJob(jobId);
+		const orig = job!.original!;
+		expect(orig.config.name).toBeDefined();
+		expect(orig.config.name.length).toBeGreaterThan(0);
+		expect(typeof orig.config.systemPrompt).toBe("string");
+		expect(orig.config.thinking).toBeDefined();
+		expect(orig.config.contextFiles).toBe(true);
+		expect(typeof orig.config.extensions).toBe("boolean");
+	});
+
+	test("original.cwd equals params.cwd when provided", async () => {
+		const result = await forkTool.execute(
+			"orig-4",
+			{ task: "test task", model: "claude-3", maxTime: 30, cwd: "/tmp" },
+			undefined,
+			undefined,
+			mockCtx,
+		);
+
+		const jobId = result.details.jobs[0].id;
+		const job = jobMgr.getJob(jobId);
+		expect(job!.original!.cwd).toBe("/tmp");
+	});
+});
+
+describe("fork stores original with resolved cwd", () => {
+	test("original uses ctx.cwd when cwd is not provided", async () => {
+		const noCwdCtx = {
+			...mockCtx,
+			cwd: "/default/cwd",
+		};
+
+		const result = await forkTool.execute(
+			"orig-cwd-1",
+			{ task: "test task", model: "claude-3", maxTime: 30, cwd: undefined },
+			undefined,
+			undefined,
+			noCwdCtx,
+		);
+
+		const jobId = result.details.jobs[0].id;
+		const job = jobMgr.getJob(jobId);
+		expect(job!.original!.cwd).toBe("/default/cwd");
+	});
+
+	test("original.cwd is undefined when neither cwd nor ctx.cwd is available", async () => {
+		const noCwdCtx = {
+			...mockCtx,
+			cwd: undefined,
+		};
+
+		const result = await forkTool.execute(
+			"orig-cwd-2",
+			{ task: "test task", model: "claude-3", maxTime: 30, cwd: undefined },
+			undefined,
+			undefined,
+			noCwdCtx,
+		);
+
+		const jobId = result.details.jobs[0].id;
+		const job = jobMgr.getJob(jobId);
+		expect(job!.original!.cwd).toBeUndefined();
 	});
 });
 

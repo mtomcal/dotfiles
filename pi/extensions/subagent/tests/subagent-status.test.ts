@@ -5,6 +5,8 @@
 
 import { describe, test, expect, vi, beforeAll, beforeEach, afterEach } from "vitest";
 import { createMockExtension } from "./extension-helpers.js";
+import { renderJobStatusLine } from "../renderers.js";
+import { makeAsyncJob, fakeMessage } from "./helpers.js";
 
 let registeredTools: Map<string, any>;
 let mockPi: any;
@@ -129,6 +131,68 @@ describe("subagent_status formatting", () => {
 
 		expect(text).toContain("✗");
 		expect(text).toContain("failed-name");
+	});
+});
+
+describe("guardrail-failed status view — resumable", () => {
+	beforeEach(() => {
+		jobMgr.cancelAll();
+		for (const job of jobMgr.listJobs()) {
+			(jobMgr as any).jobs.delete(job.id);
+		}
+	});
+
+	function makeGuardrailJob(): any {
+		const job = jobMgr.createJob("resume-job", "Do something dangerous");
+		const completedAt = Date.now() - 1000;
+		const origJob = jobMgr.getJob(job.id)!;
+		Object.assign(origJob, {
+			status: "failed",
+			result: {
+				name: "resume-job",
+				task: "Do something dangerous",
+				exitCode: 1,
+				messages: [],
+				stderr: "",
+				usage: { input: 100, output: 50, cacheRead: 0, cacheWrite: 0, cost: 0.01, contextTokens: 500, turns: 26 },
+				stopReason: "guardrail",
+				errorMessage: "Subagent killed: exceeded maxTurns (25)",
+			},
+			completedAt,
+			original: {
+				config: { name: "subagent" },
+				task: "Do something dangerous",
+				guardrails: { maxTurns: 25 },
+			},
+		});
+		return origJob;
+	}
+
+	test("Status single-job view shows resumable block for guardrail-failed job", async () => {
+		const job = makeGuardrailJob();
+		const result = await statusTool.execute("s20", { jobId: job.id }, undefined, undefined, mockCtx);
+		const text = result.content[0].text;
+		expect(text).toContain("Resumable");
+		expect(text).toContain("resumeFrom");
+		expect(text).toContain("subagent_run");
+	});
+
+	test("renderJobStatusLine includes '⤻ Resumable' for guardrail-failed with original", () => {
+		const job = makeGuardrailJob();
+		const theme = { fg: (_c: string, s: string) => s, bold: (s: string) => s } as any;
+		const line = renderJobStatusLine(job, theme);
+		expect(line).toContain("⤻ Resumable");
+	});
+
+	test("non-guardrail has no marker", () => {
+		const job = makeAsyncJob({
+			name: "safe-job",
+			status: "completed",
+			messages: [fakeMessage("All done")],
+		});
+		const theme = { fg: (_c: string, s: string) => s, bold: (s: string) => s } as any;
+		const line = renderJobStatusLine(job, theme);
+		expect(line).not.toContain("⤻ Resumable");
 	});
 });
 

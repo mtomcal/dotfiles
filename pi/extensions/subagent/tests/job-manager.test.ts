@@ -5,6 +5,7 @@
 import { describe, test, expect, vi, beforeEach } from "vitest";
 import { JobManager, type SingleResult, type AsyncJob, terminateProcess } from "../job-manager.js";
 import type { Guardrails } from "../guardrails.js";
+import type { SubagentConfig } from "../subagent-config.js";
 import { fakeSingleResult, setupJobManager, fakeChildProcess } from "./helpers.js";
 
 describe("JobManager", () => {
@@ -285,5 +286,76 @@ describe("JobManager", () => {
 		const newJob = jobMgr.createJob("test", "task2");
 		expect(newJob.id).not.toBe(existing.id);
 		expect(newJob.id).toMatch(/^test-[a-z0-9]{6}$/);
+	});
+});
+
+describe("OriginalInvocation", () => {
+	const minimalConfig: SubagentConfig = {
+		name: "test-agent",
+		systemPrompt: "You are a test agent",
+		tools: undefined,
+		model: undefined,
+		provider: undefined,
+		thinking: "medium" as const,
+		contextFiles: true,
+		extensions: false,
+		guardrails: {},
+	};
+
+	test("createJob with original stores it", () => {
+		const { jobMgr } = setupJobManager();
+		const original = {
+			config: minimalConfig,
+			task: "Original task description",
+			cwd: "/tmp",
+			guardrails: { maxTurns: 10 },
+		};
+		const job = jobMgr.createJob("test", "Sub task", undefined, original);
+		expect(job.original).toBeDefined();
+		expect(job.original!.config).toEqual(minimalConfig);
+		expect(job.original!.task).toBe("Original task description");
+		expect(job.original!.cwd).toBe("/tmp");
+		expect(job.original!.guardrails).toEqual({ maxTurns: 10 });
+	});
+
+	test("serialize/deserialize round-trips original", () => {
+		const { jobMgr } = setupJobManager();
+		const original = {
+			config: minimalConfig,
+			task: "Original task",
+			guardrails: {},
+		};
+		jobMgr.createJob("test", "Sub task", undefined, original);
+		const data = jobMgr.serialize();
+		const mgr2 = new JobManager();
+		mgr2.deserialize(data);
+		const restored = mgr2.getJob(data[0].id)!;
+		expect(restored.original).toEqual(original);
+	});
+
+	test("job without original deserializes safely", () => {
+		const { jobMgr } = setupJobManager();
+		jobMgr.createJob("test", "Sub task");
+		const data = jobMgr.serialize();
+		const mgr2 = new JobManager();
+		mgr2.deserialize(data);
+		const restored = mgr2.getJob(data[0].id)!;
+		expect(restored.original).toBeUndefined();
+	});
+
+	test("original.resumedFrom round-trips", () => {
+		const { jobMgr } = setupJobManager();
+		const original = {
+			config: minimalConfig,
+			task: "Original task",
+			guardrails: {},
+			resumedFrom: "some-job-id",
+		};
+		jobMgr.createJob("test", "Sub task", undefined, original);
+		const data = jobMgr.serialize();
+		const mgr2 = new JobManager();
+		mgr2.deserialize(data);
+		const restored = mgr2.getJob(data[0].id)!;
+		expect(restored.original!.resumedFrom).toBe("some-job-id");
 	});
 });

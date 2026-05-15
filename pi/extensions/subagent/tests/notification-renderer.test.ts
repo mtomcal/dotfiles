@@ -155,4 +155,18 @@ describe("subagent-result message renderer", () => {
 		expect(text).not.toContain("(user)");
 		expect(text).not.toContain("(project)");
 	});
+
+	test("collapsed mode shows resume suggestion for guardrail-failed", () => {
+		const renderer = mockPi.messageRenderers.get("subagent-result");
+		const message = fakeNotificationMessage({
+			details: {
+				status: "failed",
+				summary: "Killed by guardrail",
+				resumable: true,
+			},
+		});
+		const component = renderer(message, { expanded: false }, getMockTheme());
+		const text = component?.text ?? "";
+		expect(text).toContain("Resumable");
+	});
 });

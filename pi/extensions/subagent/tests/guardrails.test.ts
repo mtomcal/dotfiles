@@ -26,6 +26,7 @@ import {
 	formatGuardrailProgress,
 	formatGuardrailLine,
 	readGuardrailDefaults,
+	computeHigherLimits,
 } from "../guardrails.js";
 
 // ─── Mock helpers ─────────────────────────────────────────────────────
@@ -342,6 +343,26 @@ describe("formatGuardrailLine", () => {
 		const guardrails: Guardrails = { maxCost: 1 };
 		const result = formatGuardrailLine(guardrails);
 		expect(result).toBe("$1.00");
+	});
+});
+
+describe("computeHigherLimits", () => {
+	test("4x breached dimension: maxTurns", () => {
+		const guardrails: Guardrails = { maxTurns: 25 };
+		const result = computeHigherLimits(guardrails, "maxTurns");
+		expect(result).toEqual({ maxTurns: 100 });
+	});
+
+	test("4x maxCost", () => {
+		const guardrails: Guardrails = { maxCost: 0.50 };
+		const result = computeHigherLimits(guardrails, "maxCost");
+		expect(result).toEqual({ maxCost: 2.00 });
+	});
+
+	test("unaffected dims unchanged", () => {
+		const guardrails: Guardrails = { maxTurns: 25, maxCost: 0.50 };
+		const result = computeHigherLimits(guardrails, "maxTurns");
+		expect(result).toEqual({ maxTurns: 100, maxCost: 0.50 });
 	});
 });
 

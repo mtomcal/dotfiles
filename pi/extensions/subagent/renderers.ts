@@ -12,6 +12,7 @@ import { getMarkdownTheme } from "@earendil-works/pi-coding-agent";
 import { Container, Markdown, Spacer, Text, type Component } from "@earendil-works/pi-tui";
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import { formatGuardrailProgress } from "./guardrails.js";
+import { isResumableJob } from "./resume.js";
 
 /** Usage statistics for a subagent run */
 export interface UsageStats {
@@ -380,15 +381,19 @@ export function renderJobStatusLine(
 
 	// Usage summary for completed/failed
 	let summary = "";
+	let resumableTag = "";
 	if (job.status === "completed" && job.result) {
 		const out = getFinalOutput(job.result.messages);
 		if (out) summary = ` — ${out.length > 80 ? out.slice(0, 80) + "..." : out}`;
 	} else if (job.status === "failed" && job.result) {
 		summary = ` — ${job.result.errorMessage || job.result.stderr || "(error)"}`;
 		summary = summary.length > 80 ? summary.slice(0, 80) + "..." : summary;
+		if (isResumableJob(job as any)) {
+			resumableTag = ` ${theme.fg("accent", "⤻ Resumable")}`;
+		}
 	}
 
-	let result = `${icon} ${nameStr}${toolsSuffix} ${theme.fg("dim", `(${elapsed})`)} ${theme.fg("muted", taskPreview)}${summary}`;
+	let result = `${icon} ${nameStr}${toolsSuffix} ${theme.fg("dim", `(${elapsed})`)} ${theme.fg("muted", taskPreview)}${summary}${resumableTag}`;
 
 	// Guardrail progress for running jobs
 	if (job.status === "running" && job.result && job.guardrails) {

@@ -10,6 +10,7 @@ import type { ChildProcess } from "node:child_process";
 import type { Message } from "@earendil-works/pi-ai";
 import type { ThinkingLevel } from "@earendil-works/pi-agent-core";
 import type { Guardrails } from "./guardrails.js";
+import type { SubagentConfig } from "./subagent-config.js";
 
 export interface UsageStats {
 	input: number;
@@ -37,6 +38,14 @@ export interface SingleResult {
 	step?: number;
 }
 
+export interface OriginalInvocation {
+	config: SubagentConfig;
+	task: string;
+	cwd?: string;
+	guardrails: Guardrails;
+	resumedFrom?: string;
+}
+
 export type JobStatus = "running" | "completed" | "failed" | "cancelled";
 
 export interface AsyncJob {
@@ -50,6 +59,7 @@ export interface AsyncJob {
 	completedAt: number | null;
 	tools?: string[];
 	guardrails?: Guardrails;
+	original?: OriginalInvocation;
 }
 
 export interface SerializedJob {
@@ -62,6 +72,7 @@ export interface SerializedJob {
 	completedAt: number | null;
 	tools?: string[];
 	guardrails?: Guardrails;
+	original?: OriginalInvocation;
 }
 
 export const MAX_RUNNING_JOBS = 8;
@@ -91,7 +102,7 @@ export class JobManager {
 	private onCancel: ((job: AsyncJob) => void) | null = null;
 	private onPartialResult: ((jobId: string, partial: SingleResult) => void) | null = null;
 
-	createJob(name: string, task: string, guardrails?: Guardrails): AsyncJob {
+	createJob(name: string, task: string, guardrails?: Guardrails, original?: OriginalInvocation): AsyncJob {
 		const running = this.listRunning();
 		if (running.length >= MAX_RUNNING_JOBS) {
 			throw new Error(
@@ -115,6 +126,7 @@ export class JobManager {
 			startedAt: Date.now(),
 			completedAt: null,
 			guardrails,
+			original,
 		};
 		this.jobs.set(id, job);
 		return job;
@@ -230,6 +242,7 @@ export class JobManager {
 			completedAt: j.completedAt,
 			tools: j.tools,
 			guardrails: j.guardrails,
+			original: j.original,
 		}));
 	}
 
@@ -254,6 +267,7 @@ export class JobManager {
 				completedAt: d.completedAt,
 				tools: d.tools,
 				guardrails: d.guardrails,
+				original: d.original,
 			};
 			this.jobs.set(d.id, job);
 		}

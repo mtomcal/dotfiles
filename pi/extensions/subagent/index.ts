@@ -42,7 +42,7 @@ import {
 	resolveConfig,
 	BARE_TASK_INJECTION,
 } from "./subagent-config.js";
-import { JobManager, type AsyncJob, type SingleResult, MAX_RUNNING_JOBS, terminateProcess } from "./job-manager.js";
+import { JobManager, type AsyncJob, type SingleResult, type OriginalInvocation, MAX_RUNNING_JOBS, terminateProcess } from "./job-manager.js";
 import { checkGuardrails, formatGuardrailLine, formatGuardrailProgress, type Guardrails } from "./guardrails.js";
 import {
 	type SubagentDetails,
@@ -64,6 +64,7 @@ import { readRoutingTable, buildToolDescription } from "./routing.js";
 import { loadAgentFile, listAgentFiles, getDefaultAgentsDir } from "./agent-loading.js";
 import { renderWidgetContent } from "./widget.js";
 import { SUBAGENT_WIDGET_DEBOUNCE_MS, SUBAGENT_WIDGET_DISMISS_DELAY_MS } from "./summary.js";
+import { isResumableJob, determineBreachedGuardrail, validateHigherLimits, prepareResumeInvocation, formatResumableSuggestion } from "./resume.js";
 
 // ─── Schema Definitions ───────────────────────────────────────────────
 
@@ -94,6 +95,7 @@ const ItemConfig = Type.Object({
 	maxCost: Type.Optional(Type.Number({ description: "Maximum cost in dollars before guardrail kill" })),
 	maxTokens: Type.Optional(Type.Number({ description: "Maximum context tokens before guardrail kill" })),
 	maxTime: Type.Optional(Type.Number({ description: "Maximum wall-clock time in seconds before guardrail kill" })),
+	resumeFrom: Type.Optional(Type.String({ description: "Job ID to resume from. Only guardrail-killed jobs can be resumed. Requires higher limits on the breached dimension." })),
 });
 
 // ─── Helpers ──────────────────────────────────────────────────────────
@@ -405,7 +407,7 @@ function spawnSubagentProcess(
 
 // ─── Notification ─────────────────────────────────────────────────────
 
-function emitCompletionNotification(pi: ExtensionAPI, job: AsyncJob): void {
+export function emitCompletionNotification(pi: ExtensionAPI, job: AsyncJob): void {
 	if (job.status === "cancelled" || !job.result) return;
 	const result = job.result;
 
@@ -420,6 +422,12 @@ function emitCompletionNotification(pi: ExtensionAPI, job: AsyncJob): void {
 	if (result.stopReason === "guardrail") {
 		// Guardrail kill notification with specific reason and usage
 		const guardrailReason = result.errorMessage || "Subagent killed by guardrail";
+		let resumeSuggestion = "";
+		try {
+			resumeSuggestion = formatResumableSuggestion(job);
+		} catch {
+			// Best-effort — notification still sends without resume block
+		}
 		notificationContent = [
 			`**Subagent ${statusEmoji}: \`${job.name}\` — ${job.status}**`,
 			`**Job:** \`${job.id}\``,
@@ -429,6 +437,8 @@ function emitCompletionNotification(pi: ExtensionAPI, job: AsyncJob): void {
 			truncatedContent,
 			"",
 			usageLine ? `**Usage:** ${usageLine}` : "",
+			"",
+			resumeSuggestion,
 		].filter(Boolean);
 	} else {
 		notificationContent = [
@@ -442,7 +452,10 @@ function emitCompletionNotification(pi: ExtensionAPI, job: AsyncJob): void {
 		].filter(Boolean);
 	}
 
-	pi.sendMessage(
+	// Add resumable flag for guardrail-killed jobs
+		const resumableFlag = result.stopReason === "guardrail" && job.original != null;
+
+		pi.sendMessage(
 		{
 			customType: "subagent-result",
 			content: notificationContent.join("\n"),
@@ -456,6 +469,7 @@ function emitCompletionNotification(pi: ExtensionAPI, job: AsyncJob): void {
 				summary: truncatedContent,
 				usage: result.usage,
 				result,
+				resumable: resumableFlag,
 			},
 		},
 		{ triggerTurn: true, deliverAs: "steer" },
@@ -815,6 +829,7 @@ export default function (pi: ExtensionAPI) {
 			maxTime: Type.Optional(Type.Number({ description: "Maximum wall-clock time in seconds before guardrail kill" })),
 			tasks: Type.Optional(Type.Array(ItemConfig, { description: "Array of items for parallel execution" })),
 			chain: Type.Optional(Type.Array(ItemConfig, { description: "Array of items for sequential execution with {previous}" })),
+			resumeFrom: Type.Optional(Type.String({ description: "Job ID to resume from. Only guardrail-killed jobs can be resumed. Requires higher limits on the breached dimension." })),
 		}),
 		promptSnippet: "Run subagent tasks and get results immediately",
 		promptGuidelines: [
@@ -835,11 +850,97 @@ export default function (pi: ExtensionAPI) {
 			const hasChain = (params.chain?.length ?? 0) > 0;
 			const hasTasks = (params.tasks?.length ?? 0) > 0;
 			const hasSingle = Boolean(params.task && params.task.trim());
-			const modeCount = Number(hasChain) + Number(hasTasks) + Number(hasSingle);
 
 			const makeDetails = (mode: "single" | "parallel" | "chain") => (results: SingleResult[]): SubagentDetails => ({
 				mode, results,
 			});
+
+			// ═══ ResumeFrom Handling ═══
+			// Must be checked BEFORE mode validation so resumeFrom is an independent mode.
+			if (params.resumeFrom) {
+				// Mode validation: no tasks/chain with resumeFrom at top level
+				if (hasTasks) {
+					return { content: [{ type: "text", text: "resumeFrom cannot be used with tasks[]" }], details: {} as any, isError: true };
+				}
+				if (hasChain) {
+					return { content: [{ type: "text", text: "resumeFrom cannot be used with chain[]" }], details: {} as any, isError: true };
+				}
+				if (params.agent) {
+					return { content: [{ type: "text", text: "resumeFrom cannot be used with agent — the source job's config is used" }], details: {} as any, isError: true };
+				}
+
+				// Validate the source job exists
+				const sourceJob = jobMgr.getJob(params.resumeFrom);
+				if (!sourceJob) {
+					return { content: [{ type: "text", text: `Job "${params.resumeFrom}" not found.` }], details: {} as any, isError: true };
+				}
+
+				// Validate the source job is resumable (guardrail-killed with original)
+				if (!isResumableJob(sourceJob)) {
+					return { content: [{ type: "text", text: `Job "${params.resumeFrom}" was not killed by a guardrail.` }], details: {} as any, isError: true };
+				}
+
+				// Determine which guardrail dimension was breached
+				const originalGuardrails = sourceJob.original!.guardrails;
+				const usage = sourceJob.result!.usage;
+				const elapsedMs = (sourceJob.completedAt ?? Date.now()) - sourceJob.startedAt;
+				const breached = determineBreachedGuardrail(usage, originalGuardrails, elapsedMs);
+				if (!breached) {
+					return { content: [{ type: "text", text: `Cannot determine which guardrail dimension was breached for job "${params.resumeFrom}".` }], details: {} as any, isError: true };
+				}
+
+				// Build the new guardrails from caller params with source as base
+				const newGuardrails: Guardrails = {
+					...originalGuardrails,
+					...(params.maxTurns !== undefined ? { maxTurns: params.maxTurns } : {}),
+					...(params.maxCost !== undefined ? { maxCost: params.maxCost } : {}),
+					...(params.maxTokens !== undefined ? { maxTokens: params.maxTokens } : {}),
+					...(params.maxTime !== undefined ? { maxTime: params.maxTime } : {}),
+				};
+
+				// Validate that the breached dimension has been raised
+				const limitsCheck = validateHigherLimits(originalGuardrails, newGuardrails, breached);
+				if (!limitsCheck.valid) {
+					return { content: [{ type: "text", text: limitsCheck.reason! }], details: {} as any, isError: true };
+				}
+
+				// Prepare resume invocation — merges source config with caller overrides
+				const resume = prepareResumeInvocation(sourceJob, {
+					task: params.task,
+					cwd: params.cwd,
+					model: params.model,
+					provider: params.provider,
+					thinking: params.thinking as string | undefined,
+					systemPrompt: params.systemPrompt,
+					tools: params.tools,
+					maxTurns: params.maxTurns,
+					maxCost: params.maxCost,
+					maxTokens: params.maxTokens,
+					maxTime: params.maxTime,
+				});
+
+				// Append conversation context (systemPromptAddition) to the system prompt
+				const finalConfig: SubagentConfig = {
+					...resume.config,
+					systemPrompt: resume.config.systemPrompt
+						? resume.config.systemPrompt + "\n\n" + resume.systemPromptAddition
+						: resume.systemPromptAddition,
+				};
+
+				const { resultPromise } = spawnSubagentProcess(
+					finalConfig, resume.task, params.cwd, ctx.cwd, signal, undefined,
+					onUpdate ? (cr: SingleResult) => { onUpdate({ content: [{ type: "text", text: getFinalOutput(cr.messages) || "(running...)" }], details: makeDetails("single")([cr]) }); } : undefined,
+				);
+				const result = await resultPromise;
+				const isError = result.exitCode !== 0 || result.stopReason === "error" || result.stopReason === "aborted";
+				if (isError) {
+					const errorMsg = result.errorMessage || result.stderr || getFinalOutput(result.messages) || "(no output)";
+					return { content: [{ type: "text", text: `Agent ${result.stopReason || "failed"}: ${errorMsg}` }], details: makeDetails("single")([result]), isError: true };
+				}
+				return { content: [{ type: "text", text: getFinalOutput(result.messages) || "(no output)" }], details: makeDetails("single")([result]) };
+			}
+
+			const modeCount = Number(hasChain) + Number(hasTasks) + Number(hasSingle);
 
 			if (modeCount !== 1) {
 				return { content: [{ type: "text", text: "Invalid parameters. Provide exactly one of: task, tasks[], or chain[]." }], details: makeDetails("single")([]), isError: true };
@@ -1018,6 +1119,7 @@ export default function (pi: ExtensionAPI) {
 			maxCost: Type.Optional(Type.Number({ description: "Maximum cost in dollars before guardrail kill" })),
 			maxTokens: Type.Optional(Type.Number({ description: "Maximum context tokens before guardrail kill" })),
 			maxTime: Type.Optional(Type.Number({ description: "Maximum wall-clock time in seconds before guardrail kill" })),
+			resumeFrom: Type.Optional(Type.String({ description: "Job ID to resume from. Only guardrail-killed jobs can be resumed. Requires higher limits on the breached dimension." })),
 			tasks: Type.Optional(Type.Array(ItemConfig, { description: "Array of items for parallel fork" })),
 		}),
 		promptSnippet: "Fork background subagent jobs, continue working while they run",
@@ -1038,9 +1140,70 @@ export default function (pi: ExtensionAPI) {
 			const agentsDir = getDefaultAgentsDir();
 			const agentFile = params.agent ? loadAgentFile(params.agent, agentsDir) : null;
 
-			const tasks: Array<{ config: SubagentConfig; task: string; cwd?: string }> = [];
+			const tasks: Array<{ config: SubagentConfig; task: string; cwd?: string; resumedFrom?: string }> = [];
 
-			if (params.task && params.task.trim()) {
+			// ═══ ResumeFrom Mode (independent mode) ═══
+			if (params.resumeFrom) {
+				// Mode validation: no tasks[] with resumeFrom at top level
+				if (params.tasks && params.tasks.length > 0) {
+					return { content: [{ type: "text", text: "resumeFrom cannot be used with tasks[]" }], details: { jobs: [] }, isError: true };
+				}
+				if (params.agent) {
+					return { content: [{ type: "text", text: "resumeFrom cannot be used with agent — the source job's config is used" }], details: { jobs: [] }, isError: true };
+				}
+
+				const sourceJob = jobMgr.getJob(params.resumeFrom);
+				if (!sourceJob) {
+					return { content: [{ type: "text", text: `Job "${params.resumeFrom}" not found.` }], details: { jobs: [] }, isError: true };
+				}
+				if (!isResumableJob(sourceJob)) {
+					return { content: [{ type: "text", text: `Job "${params.resumeFrom}" was not killed by a guardrail.` }], details: { jobs: [] }, isError: true };
+				}
+
+				const originalGuardrails = sourceJob.original!.guardrails;
+				const usage = sourceJob.result!.usage;
+				const elapsedMs = (sourceJob.completedAt ?? Date.now()) - sourceJob.startedAt;
+				const breached = determineBreachedGuardrail(usage, originalGuardrails, elapsedMs);
+				if (!breached) {
+					return { content: [{ type: "text", text: `Cannot determine which guardrail dimension was breached for job "${params.resumeFrom}".` }], details: { jobs: [] }, isError: true };
+				}
+
+				const newGuardrails: Guardrails = {
+					...originalGuardrails,
+					...(params.maxTurns !== undefined ? { maxTurns: params.maxTurns } : {}),
+					...(params.maxCost !== undefined ? { maxCost: params.maxCost } : {}),
+					...(params.maxTokens !== undefined ? { maxTokens: params.maxTokens } : {}),
+					...(params.maxTime !== undefined ? { maxTime: params.maxTime } : {}),
+				};
+
+				const limitsCheck = validateHigherLimits(originalGuardrails, newGuardrails, breached);
+				if (!limitsCheck.valid) {
+					return { content: [{ type: "text", text: limitsCheck.reason! }], details: { jobs: [] }, isError: true };
+				}
+
+				const resume = prepareResumeInvocation(sourceJob, {
+					task: params.task,
+					cwd: params.cwd,
+					model: params.model,
+					provider: params.provider,
+					thinking: params.thinking as string | undefined,
+					systemPrompt: params.systemPrompt,
+					tools: params.tools,
+					maxTurns: params.maxTurns,
+					maxCost: params.maxCost,
+					maxTokens: params.maxTokens,
+					maxTime: params.maxTime,
+				});
+
+				const config: SubagentConfig = {
+					...resume.config,
+					systemPrompt: resume.config.systemPrompt
+						? resume.config.systemPrompt + "\n\n" + resume.systemPromptAddition
+						: resume.systemPromptAddition,
+				};
+
+				tasks.push({ config, task: resume.task, cwd: resume.cwd, resumedFrom: params.resumeFrom });
+			} else if (params.task && params.task.trim()) {
 				const config = resolveConfig(
 					{ task: params.task.trim(), name: params.name, systemPrompt: params.systemPrompt, tools: params.tools, model: params.model, provider: params.provider, thinking: params.thinking as ThinkingLevel | undefined, cwd: params.cwd, contextFiles: params.contextFiles, extensions: params.extensions, maxTurns: params.maxTurns, maxCost: params.maxCost, maxTokens: params.maxTokens, maxTime: params.maxTime },
 					undefined,
@@ -1054,14 +1217,69 @@ export default function (pi: ExtensionAPI) {
 					if (!t.task || !t.task.trim()) {
 						return { content: [{ type: "text", text: `Task for "${t.name || deriveName(t.task)}" must not be empty.` }], details: { jobs: [] }, isError: true };
 					}
-					const config = resolveConfig(
-						{ task: t.task.trim(), name: t.name, systemPrompt: t.systemPrompt, tools: t.tools, model: t.model, provider: t.provider, thinking: t.thinking as ThinkingLevel | undefined, cwd: t.cwd, contextFiles: t.contextFiles, extensions: t.extensions, maxTurns: t.maxTurns, maxCost: t.maxCost, maxTokens: t.maxTokens, maxTime: t.maxTime },
-						{ task: params.task ?? "", provider: params.provider, thinking: params.thinking as ThinkingLevel | undefined, model: params.model, systemPrompt: params.systemPrompt, tools: params.tools, contextFiles: params.contextFiles, extensions: params.extensions, maxTurns: params.maxTurns, maxCost: params.maxCost, maxTokens: params.maxTokens, maxTime: params.maxTime },
-						undefined,
-						null,
-						agentFile,
-					);
-					tasks.push({ config, task: t.task.trim(), cwd: t.cwd ?? params.cwd });
+
+					if (t.resumeFrom) {
+						const sourceJob = jobMgr.getJob(t.resumeFrom);
+						if (!sourceJob) {
+							return { content: [{ type: "text", text: `Job "${t.resumeFrom}" not found for task "${t.name || deriveName(t.task)}".` }], details: { jobs: [] }, isError: true };
+						}
+						if (!isResumableJob(sourceJob)) {
+							return { content: [{ type: "text", text: `Job "${t.resumeFrom}" for task "${t.name || deriveName(t.task)}" was not killed by a guardrail.` }], details: { jobs: [] }, isError: true };
+						}
+
+						const originalGuardrails = sourceJob.original!.guardrails;
+						const usage = sourceJob.result!.usage;
+						const elapsedMs = (sourceJob.completedAt ?? Date.now()) - sourceJob.startedAt;
+						const breached = determineBreachedGuardrail(usage, originalGuardrails, elapsedMs);
+						if (!breached) {
+							return { content: [{ type: "text", text: `Cannot determine which guardrail dimension was breached for job "${t.resumeFrom}".` }], details: { jobs: [] }, isError: true };
+						}
+
+						const newGuardrails: Guardrails = {
+							...originalGuardrails,
+							...(t.maxTurns !== undefined ? { maxTurns: t.maxTurns } : {}),
+							...(t.maxCost !== undefined ? { maxCost: t.maxCost } : {}),
+							...(t.maxTokens !== undefined ? { maxTokens: t.maxTokens } : {}),
+							...(t.maxTime !== undefined ? { maxTime: t.maxTime } : {}),
+						};
+
+						const limitsCheck = validateHigherLimits(originalGuardrails, newGuardrails, breached);
+						if (!limitsCheck.valid) {
+							return { content: [{ type: "text", text: limitsCheck.reason! }], details: { jobs: [] }, isError: true };
+						}
+
+						const resume = prepareResumeInvocation(sourceJob, {
+							task: t.task,
+							cwd: t.cwd,
+							model: t.model,
+							provider: t.provider,
+							thinking: t.thinking as string | undefined,
+							systemPrompt: t.systemPrompt,
+							tools: t.tools,
+							maxTurns: t.maxTurns,
+							maxCost: t.maxCost,
+							maxTokens: t.maxTokens,
+							maxTime: t.maxTime,
+						});
+
+						const config: SubagentConfig = {
+							...resume.config,
+							systemPrompt: resume.config.systemPrompt
+								? resume.config.systemPrompt + "\n\n" + resume.systemPromptAddition
+								: resume.systemPromptAddition,
+						};
+
+						tasks.push({ config, task: resume.task, cwd: resume.cwd, resumedFrom: t.resumeFrom });
+					} else {
+						const config = resolveConfig(
+							{ task: t.task.trim(), name: t.name, systemPrompt: t.systemPrompt, tools: t.tools, model: t.model, provider: t.provider, thinking: t.thinking as ThinkingLevel | undefined, cwd: t.cwd, contextFiles: t.contextFiles, extensions: t.extensions, maxTurns: t.maxTurns, maxCost: t.maxCost, maxTokens: t.maxTokens, maxTime: t.maxTime },
+							{ task: params.task ?? "", provider: params.provider, thinking: params.thinking as ThinkingLevel | undefined, model: params.model, systemPrompt: params.systemPrompt, tools: params.tools, contextFiles: params.contextFiles, extensions: params.extensions, maxTurns: params.maxTurns, maxCost: params.maxCost, maxTokens: params.maxTokens, maxTime: params.maxTime },
+							undefined,
+							null,
+							agentFile,
+						);
+						tasks.push({ config, task: t.task.trim(), cwd: t.cwd ?? params.cwd });
+					}
 				}
 			} else {
 				return { content: [{ type: "text", text: "Provide task or tasks[] to fork." }], details: { jobs: [] }, isError: true };
@@ -1076,9 +1294,28 @@ export default function (pi: ExtensionAPI) {
 			const spawnedJobs: Array<{ id: string; name: string; task: string; status: string; provider?: string; thinking?: string; tools?: string[]; guardrails?: import("./guardrails.js").Guardrails }> = [];
 
 			for (const t of tasks) {
+				// Construct original invocation before creating job entry
+				const original: OriginalInvocation = {
+					config: {
+						name: t.config.name,
+						systemPrompt: t.config.systemPrompt,
+						tools: t.config.tools,
+						model: t.config.model,
+						provider: t.config.provider,
+						thinking: t.config.thinking,
+						contextFiles: t.config.contextFiles,
+						extensions: t.config.extensions,
+						guardrails: t.config.guardrails,
+					},
+					task: t.task.trim(),
+					cwd: t.cwd ?? params.cwd ?? ctx.cwd,
+					guardrails: t.config.guardrails,
+					resumedFrom: t.resumedFrom,
+				};
+
 				// Always create job entry first so it counts against the cap.
 				let job;
-				try { job = jobMgr.createJob(t.config.name, t.task, t.config.guardrails); }
+				try { job = jobMgr.createJob(t.config.name, t.task, t.config.guardrails, original); }
 				catch (err) {
 					// Cap hit mid-batch
 					return { content: [{ type: "text", text: `Maximum ${MAX_RUNNING_JOBS} concurrent async jobs (${jobMgr.runningCount()} running). Cancel a job or wait for one to complete.` }], details: { jobs: spawnedJobs }, isError: true };
@@ -1233,6 +1470,17 @@ export default function (pi: ExtensionAPI) {
 				}
 				if (job.status === "failed" && job.result) {
 					text += `\n\n**Error:** ${job.result.errorMessage || job.result.stderr || "(no error detail)"}`;
+					if (isResumableJob(job)) {
+						let resumeSuggestion = "";
+						try {
+							resumeSuggestion = formatResumableSuggestion(job);
+						} catch {
+							// Best-effort — status still shows without resume block
+						}
+						if (resumeSuggestion) {
+							text += `\n\n${resumeSuggestion}`;
+						}
+					}
 				}
 				return { content: [{ type: "text", text }], details: { job: serializeJobForDetails(job) } };
 			}
@@ -1462,7 +1710,8 @@ export default function (pi: ExtensionAPI) {
 			const usageLine = details.usage ? theme.fg("dim", formatUsageStats(details.usage, details.result?.model, details.result?.provider, details.result?.thinking)) : "";
 			const taskLine = theme.fg("dim", details.task.length > 60 ? `${details.task.slice(0, 60)}...` : details.task);
 			const summaryLine = details.summary ? theme.fg("toolOutput", details.summary.length > 100 ? `${details.summary.slice(0, 100)}...` : details.summary) : "";
-			return new Text(`${header}\n${taskLine}${summaryLine ? `\n${summaryLine}` : ""}${usageLine ? `\n${usageLine}` : ""}`, 0, 0);
+			const resumableLine = (details as any).resumable ? `\n${theme.fg("accent", "⤻ Resumable — subagent_run({ resumeFrom: \"...\" })")}` : "";
+			return new Text(`${header}\n${taskLine}${summaryLine ? `\n${summaryLine}` : ""}${usageLine ? `\n${usageLine}` : ""}${resumableLine}`, 0, 0);
 		}
 
 		const container = new Container();
