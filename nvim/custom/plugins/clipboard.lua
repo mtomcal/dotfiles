@@ -1,5 +1,12 @@
--- Clipboard: yanky.nvim handles system clipboard sync for yanks only (not deletes).
--- The unnamedplus setting is intentionally omitted — it would push dd/x to system clipboard.
+-- Only sync explicit yanks to system clipboard — deletes stay local.
+-- (clipboard=unnamedplus is avoided because it pushes dd/x/c to OS clipboard)
+vim.api.nvim_create_autocmd('TextYankPost', {
+  callback = function()
+    if vim.v.event.operator == 'y' then
+      vim.fn.setreg('+', vim.v.event.regcontents)
+    end
+  end,
+})
 
 -- Paste from register 0 (last yank) — survives deletes that crush unnamed.
 -- Use gp after a stray dd/x destroyed your yank.
