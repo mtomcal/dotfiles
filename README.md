@@ -489,7 +489,7 @@ Your custom configs persist across updates!
 
 ### Clipboard & Yank History
 
-`clipboard=unnamedplus` is configured: yanks (`y`) and deletes go to both the system clipboard (`+` register) and the unnamed register. This means `"+y`/`"+p` work over SSH when OSC 52 is configured (see [Copy & Paste over SSH](#copy--paste-over-ssh-tmux--neovim)).
+yanky.nvim syncs **only explicit yanks** (`y`, `yw`, `yiw`, etc.) to the system clipboard. Deletes (`dd`, `x`, `c`) stay out of the OS clipboard so you never paste a deleted line into another app. For SSH clipboard, see [Copy & Paste over SSH](#copy--paste-over-ssh-tmux--neovim).
 
 **The delete-crushes-yank problem**: you `yiw` to yank a word, then `dd` deletes a line, and your yank is gone. Two defenses:
 
