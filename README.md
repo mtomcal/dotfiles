@@ -262,8 +262,144 @@ dotfiles/
 |-----|--------|
 | `Ctrl-a [` | Enter copy mode |
 | `v` | Start selection (in copy mode) |
-| `y` | Yank selection to clipboard |
+| `y` | Yank selection to clipboard (tmux buffer + system via xclip/OSC 52) |
 | `q` | Exit copy mode |
+| `Ctrl-a =` | Choose from all tmux buffers to paste |
+
+### Copy & Paste over SSH (Tmux + Neovim)
+
+Copying and pasting between a remote server and your local machine is a multi-layer problem: your local terminal emulator, the SSH connection, tmux, and neovim all have their own clipboard/buffer systems. Here's how to make it seamless.
+
+#### How the Layers Work
+
+```
+Local Machine                          Remote Server
+┌──────────────┐     SSH      ┌─────────────────────────┐
+│ Terminal     │◄───────────►│ tmux (buffers)          │
+│ (OS clip)    │              │  ├─ neovim (registers)   │
+│              │              │  └─ shell (stdin/stdout) │
+└──────────────┘              └─────────────────────────┘
+```
+
+By default, the remote server has no direct access to your local clipboard. Tmux's `set-clipboard on` and the `xclip` pipe only work when the remote has a running X server. Over SSH, you need **OSC 52** — a terminal escape sequence that writes to your local clipboard through the terminal emulator itself.
+
+#### Method 1: Tmux Copy Mode (Works Everywhere, Zero Setup)
+
+The simplest approach — yank text into tmux's internal buffer, then use your terminal's native selection to get it locally.
+
+**Copy from remote to local:**
+
+1. `Ctrl-a [` — enter tmux copy mode
+2. Navigate with vim keys (`h/j/k/l`, `/` to search, `w/b` for words)
+3. `v` — start visual selection
+4. Move to select text, then `y` — yank to tmux buffer
+5. Hold **Shift** and select the text with your mouse — this bypasses tmux mouse handling and uses your terminal's native selection, which goes straight to your local system clipboard
+
+**Why this works:** Most terminals (iTerm2, kitty, Alacritty, Terminal.app) copy mouse-selected text to the system clipboard. Holding Shift tells the terminal to use its own selection rather than forwarding the mouse event to tmux.
+
+**Paste from local to remote:**
+- **In any tmux pane:** `⌘V` (macOS) or `Ctrl+Shift+V` (Linux) in your terminal — this sends text as keyboard input
+- **From tmux buffer:** `Ctrl-a ]` pastes the last tmux buffer
+- **Choose buffer:** `Ctrl-a =` to browse all tmux buffers and pick one
+
+#### Method 2: OSC 52 Clipboard (Seamless Neovim Integration)
+
+OSC 52 lets the remote server write directly to your local clipboard via terminal escape codes. Configure this once and `"+y` / `"+p` in neovim will work over SSH — just like they do on your local machine.
+
+**Step 1: Check your terminal supports OSC 52**
+
+| Terminal | OSC 52 Support |
+|----------|---------------|
+| iTerm2 | ✅ Built-in (enable in Preferences → General → "Applications in terminal may access clipboard") |
+| kitty | ✅ Built-in (no config needed) |
+| WezTerm | ✅ Built-in |
+| Alacritty | ✅ Built-in |
+| Terminal.app (macOS) | ❌ Not supported |
+| Windows Terminal | ✅ Built-in |
+| Ghostty | ✅ Built-in |
+
+**Step 2: Enable OSC 52 passthrough in tmux**
+
+This config ships with OSC 52 terminal features enabled. These lines in `tmux/.tmux.conf` tell tmux to forward the escape sequences instead of eating them:
+
+```tmux
+# Already in your tmux/.tmux.conf — no changes needed
+set -g set-clipboard on
+set -as terminal-features ",tmux-256color*:clipboard"
+set -as terminal-features ",xterm-256color*:clipboard"
+```
+
+Reload after changes: `Ctrl-a r` or `tmux source-file ~/.tmux.conf`
+
+**Step 3: Configure neovim for OSC 52**
+
+Neovim 0.10+ includes `vim.ui.clipboard.osc52` built-in — no plugins required. Add this to your neovim config:
+
+```lua
+-- Add to lua/custom/init.lua (create if it doesn't exist)
+-- or add as a new plugin file in lua/custom/plugins/
+
+-- OSC 52 clipboard provider — makes "+y / "+p work over SSH
+vim.g.clipboard = {
+  name = 'OSC 52',
+  copy = {
+    ['+'] = require('vim.ui.clipboard.osc52').copy('+'),
+    ['*'] = require('vim.ui.clipboard.osc52').copy('*'),
+  },
+  paste = {
+    ['+'] = require('vim.ui.clipboard.osc52').paste('+'),
+    ['*'] = require('vim.ui.clipboard.osc52').paste('*'),
+  },
+}
+```
+
+**After setup, these neovim commands work over SSH:**
+- `"+y` / `"*y` — yank to local system clipboard
+- `"+p` / `"*p` — paste from local system clipboard
+- `"+d` / `"*d` — cut to local system clipboard
+- Visual select then `y` (with `set clipboard+=unnamedplus`) — auto-yanks to system clipboard
+
+#### Method 3: Tmux Buffers as a Bridge (No Terminal Support Needed)
+
+When OSC 52 isn't available (e.g., Terminal.app on macOS), use tmux buffers and shell pipes:
+
+```bash
+# Remote → Local: dump last tmux buffer to local clipboard
+# Run this on the remote machine — the pipe writes through SSH to your local:
+tmux show-buffer | pbcopy           # macOS local machine
+
+# If you're on a Linux remote SSH'd from a Linux local:
+tmux show-buffer | ssh $LOCAL_HOST 'xclip -selection clipboard'
+
+# Local → Remote: send local clipboard to tmux buffer
+pbpaste | tmux load-buffer -         # macOS local → remote tmux
+xclip -o -selection clipboard | tmux load-buffer -   # Linux local → remote tmux
+# Then paste in tmux with: Ctrl-a ]
+```
+
+#### Quick Reference: Copy/Paste Cheat Sheet
+
+| Task | Where | How |
+|------|-------|-----|
+| Copy remote text to local | Tmux | `Ctrl-a [`, `v`, select, `y`, then **Shift+mouse-select** |
+| Paste local text to remote | Terminal | `⌘V` or `Ctrl+Shift+V` |
+| Yank to system clipboard | Neovim (SSH) | `"+y` (requires OSC 52 from Method 2) |
+| Paste from system clipboard | Neovim (SSH) | `"+p` (requires OSC 52 from Method 2) |
+| Paste last tmux buffer | Tmux/Shell | `Ctrl-a ]` |
+| Browse all tmux buffers | Tmux | `Ctrl-a =` (select with `j/k`, Enter to paste) |
+| List all tmux buffers | Shell | `tmux list-buffers` |
+| Copy tmux buffer to macOS clipboard | Shell (SSH) | `tmux show-buffer \| pbcopy` |
+| Send macOS clipboard to tmux buffer | Shell (SSH) | `pbpaste \| tmux load-buffer -` |
+
+#### Common SSH Copy/Paste Pitfalls
+
+| Problem | Cause | Fix |
+|---------|-------|-----|
+| `"+y` in neovim does nothing over SSH | No clipboard provider configured for headless remote | Set up OSC 52 (Method 2) or use tmux copy mode (Method 1) |
+| Mouse selection disappears when I release the button | Tmux mouse mode is intercepting | Hold **Shift** while selecting — forces terminal-native selection |
+| `xclip: command not found` or DISPLAY errors on remote | Remote has no X display | Use OSC 52 (Method 2), or Shift+mouse-select (Method 1) |
+| Pasting indented code gets cascading indentation | Neovim auto-indent in insert mode | Use `:set paste` before pasting, or paste with `"+p` in normal mode |
+| Large copies (>1MB) are slow with OSC 52 | Escape sequence overhead | Use `scp` or `rsync` for files; OSC 52 is for snippets |
 
 ### Pane Layout Bindings
 
