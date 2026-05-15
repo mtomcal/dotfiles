@@ -1,5 +1,6 @@
--- Only sync explicit yanks to system clipboard — deletes stay local.
--- (clipboard=unnamedplus is avoided because it pushes dd/x/c to OS clipboard)
+-- Sync explicit yanks to system clipboard via TextYankPost autocmd.
+-- Operator guard ('y') ensures deletes/change (dd, x, c) never reach OS clipboard.
+-- yanky.nvim is configured with sync_with_ring=false so it doesn't touch clipboard either.
 vim.api.nvim_create_autocmd('TextYankPost', {
   callback = function()
     if vim.v.event.operator == 'y' then
