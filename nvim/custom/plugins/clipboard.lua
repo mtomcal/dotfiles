@@ -1,10 +1,18 @@
 -- Sync explicit yanks to system clipboard via TextYankPost autocmd.
 -- Operator guard ('y') ensures deletes/change (dd, x, c) never reach OS clipboard.
 -- yanky.nvim is configured with sync_with_ring=false so it doesn't touch clipboard either.
+--
+-- NOTE: kickstart.nvim sets clipboard=unnamedplus via vim.schedule (init.lua:125).
+-- Our vim.schedule queues later during plugin loading → fires second → clears unnamedplus.
+-- No patching of kickstart required.
+vim.schedule(function()
+  vim.o.clipboard = ''
+end)
+
 vim.api.nvim_create_autocmd('TextYankPost', {
   callback = function()
     if vim.v.event.operator == 'y' then
-      vim.fn.setreg('+', vim.v.event.regcontents)
+      vim.fn.setreg('+', vim.v.event.regcontents, vim.v.event.regtype)
     end
   end,
 })
