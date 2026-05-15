@@ -1,12 +1,6 @@
 -- Python tooling: LSP via pyright, linting via ruff
 
 -- ============================================================
--- 1. Treesitter: ensure Python parser is installed
---    Enables syntax highlighting, folds, and indentation
--- ============================================================
-require('nvim-treesitter').install('python')
-
--- ============================================================
 -- 2. LSP: pyright for code intelligence
 --    Provides go-to-definition, hover, autocomplete, type checking
 -- ============================================================
@@ -65,11 +59,6 @@ vim.lsp.config('pyright', {
   end,
 })
 vim.lsp.enable('pyright')
-
--- Ensure pyright gets installed via Mason if not present
-vim.defer_fn(function()
-  pcall(vim.cmd.MasonInstall, 'pyright')
-end, 2000)
 
 -- ============================================================
 -- 3. Linting with Ruff via nvim-lint
