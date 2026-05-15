@@ -489,16 +489,18 @@ Your custom configs persist across updates!
 
 ### Clipboard & Yank History
 
-A `TextYankPost` autocmd syncs **only explicit yanks** (`y`, `yw`, `yiw`, etc.) to the system clipboard (`+` register). Deletes (`dd`, `x`, `c`) stay out — `vim.v.event.operator == 'y'` gates the sync. For SSH clipboard, see [Copy & Paste over SSH](#copy--paste-over-ssh-tmux--neovim).
+A `TextYankPost` autocmd syncs **only explicit yanks** (`y`, `yw`, `yiw`, etc.) to the system clipboard (`+` register). Deletes (`dd`, `x`, `c`) stay in the unnamed register only — `vim.v.event.operator == 'y'` gates the sync.
 
-**The delete-crushes-yank problem**: you `yiw` to yank a word, then `dd` deletes a line, and your yank is gone. Two defenses:
+**How it works**: kickstart.nvim sets `clipboard=unnamedplus` via `vim.schedule` at startup, which would push deletes to the OS clipboard. Our custom layer queues a later `vim.schedule` to clear it — no patching of kickstart required. The autocmd then handles yank→`+` explicitly, preserving register type (char/line/block). For SSH clipboard, see [Copy & Paste over SSH](#copy--paste-over-ssh-tmux--neovim).
+
+**The delete-crushes-yank problem**: you `yiw` to yank a word, then `dd` deletes a line, and your yank is gone from the unnamed register (`""`). Two defenses:
 
 | Method | Key | What it does |
 |--------|-----|-------------|
 | Paste last yank | `gp` / `gP` | Paste from register `0` — never overwritten by deletes |
 | Browse registers | `<leader>pr` | Open `:registers` to find lost text in any register |
 
-**Yank history** — yanky.nvim provides a searchable, persistent yank ring:
+**Yank history** — yanky.nvim (loaded via `vim.pack.add`, same as other custom plugins) provides a searchable, persistent yank ring:
 
 | Key | Action |
 |-----|--------|
