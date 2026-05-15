@@ -81,6 +81,7 @@ const ThinkingSchema = Type.Optional(
 );
 
 const ItemConfig = Type.Object({
+	agent: Type.Optional(Type.String({ description: "Named agent to use from ~/.pi/agent/agents/. Loads .md file with frontmatter defaults. Per-call params override agent defaults." })),
 	name: Type.Optional(Type.String({ description: "Display label for this subagent. Auto-derived from task text if omitted." })),
 	task: Type.String({ description: "Task to delegate to the subagent" }),
 	systemPrompt: Type.Optional(Type.String({ description: "System prompt — defines the subagent's role and behavior" })),
@@ -1177,10 +1178,6 @@ export default function (pi: ExtensionAPI) {
 				if (params.tasks && params.tasks.length > 0) {
 					return { content: [{ type: "text", text: "resumeFrom cannot be used with tasks[]" }], details: { jobs: [] }, isError: true };
 				}
-				if (params.agent) {
-					return { content: [{ type: "text", text: "resumeFrom cannot be used with agent — the source job's config is used" }], details: { jobs: [] }, isError: true };
-				}
-
 				const sourceJob = jobMgr.getJob(params.resumeFrom);
 				if (!sourceJob) {
 					return { content: [{ type: "text", text: `Job "${params.resumeFrom}" not found.` }], details: { jobs: [] }, isError: true };
@@ -1280,23 +1277,72 @@ export default function (pi: ExtensionAPI) {
 						const resume = prepareResumeInvocation(sourceJob, {
 							task: t.task,
 							cwd: t.cwd,
-							model: t.model,
-							provider: t.provider,
-							thinking: t.thinking as string | undefined,
-							systemPrompt: t.systemPrompt,
-							tools: t.tools,
-							maxTurns: t.maxTurns,
-							maxCost: t.maxCost,
-							maxTokens: t.maxTokens,
-							maxTime: t.maxTime,
 						});
 
-						const config: SubagentConfig = {
-							...resume.config,
-							systemPrompt: resume.config.systemPrompt
-								? resume.config.systemPrompt + "\n\n" + resume.systemPromptAddition
-								: resume.systemPromptAddition,
-						};
+						let config: SubagentConfig;
+						if (t.agent || params.agent) {
+							// Agent file provides base config; inject resume context
+							const effectiveAgent = (t.agent || params.agent)!;
+							const agentFileForTask = loadAgentFile(effectiveAgent, agentsDir);
+							if (agentFileForTask) {
+								const agentConfig = resolveConfig(
+									{ task: resume.task, name: t.name, systemPrompt: t.systemPrompt, tools: t.tools, model: t.model, provider: t.provider, thinking: t.thinking as ThinkingLevel | undefined, cwd: t.cwd, contextFiles: t.contextFiles, extensions: t.extensions, maxTurns: t.maxTurns, maxCost: t.maxCost, maxTokens: t.maxTokens, maxTime: t.maxTime },
+									{ task: params.task ?? "", provider: params.provider, thinking: params.thinking as ThinkingLevel | undefined, model: params.model, systemPrompt: params.systemPrompt, tools: params.tools, contextFiles: params.contextFiles, extensions: params.extensions, maxTurns: params.maxTurns, maxCost: params.maxCost, maxTokens: params.maxTokens, maxTime: params.maxTime },
+									undefined,
+									null,
+									agentFileForTask,
+								);
+								config = {
+									...agentConfig,
+									guardrails: newGuardrails,
+									systemPrompt: (agentConfig.systemPrompt || "") + "\n\n" + resume.systemPromptAddition,
+								};
+							} else {
+								// Agent file not found — fall back to source job config
+								const fullResume = prepareResumeInvocation(sourceJob, {
+									task: t.task,
+									cwd: t.cwd,
+									model: t.model,
+									provider: t.provider,
+									thinking: t.thinking as string | undefined,
+									systemPrompt: t.systemPrompt,
+									tools: t.tools,
+									maxTurns: t.maxTurns,
+									maxCost: t.maxCost,
+									maxTokens: t.maxTokens,
+									maxTime: t.maxTime,
+								});
+								config = {
+									...fullResume.config,
+									guardrails: newGuardrails,
+									systemPrompt: fullResume.config.systemPrompt
+										? fullResume.config.systemPrompt + "\n\n" + fullResume.systemPromptAddition
+										: fullResume.systemPromptAddition,
+								};
+							}
+						} else {
+							// Source job config as base
+							const fullResume = prepareResumeInvocation(sourceJob, {
+								task: t.task,
+								cwd: t.cwd,
+								model: t.model,
+								provider: t.provider,
+								thinking: t.thinking as string | undefined,
+								systemPrompt: t.systemPrompt,
+								tools: t.tools,
+								maxTurns: t.maxTurns,
+								maxCost: t.maxCost,
+								maxTokens: t.maxTokens,
+								maxTime: t.maxTime,
+							});
+							config = {
+								...fullResume.config,
+								guardrails: newGuardrails,
+								systemPrompt: fullResume.config.systemPrompt
+									? fullResume.config.systemPrompt + "\n\n" + fullResume.systemPromptAddition
+									: fullResume.systemPromptAddition,
+							};
+						}
 
 						tasks.push({ config, task: resume.task, cwd: resume.cwd, resumedFrom: t.resumeFrom });
 					} else {
