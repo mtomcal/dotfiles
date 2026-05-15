@@ -5,6 +5,7 @@ return {
     require('yanky').setup({
       highlight = { timer = 300 },   -- pulse yanked text for 300ms
       ring = { storage = 'shada' },  -- persist yank history across neovim sessions
+      system_clipboard = false,      -- disabled: TextYankPost autocmd handles it so deletes stay out
     })
     vim.keymap.set({ 'n', 'x' }, '<leader>py', '<cmd>Telescope yank_history<cr>', { desc = 'Yank history' })
   end,
