@@ -964,7 +964,7 @@ install_pi() {
         TIMESTAMP=$(date +%Y%m%d_%H%M%S)
         mv "$HOME/.pi/agent/skills" "$HOME/.pi/agent/skills.backup.$TIMESTAMP"
     fi
-    ln -s "$DOTFILES_DIR/shared/skills" "$HOME/.pi/agent/skills"
+    ln -s "$DOTFILES_DIR/pi/skills" "$HOME/.pi/agent/skills"
 
     # Link settings.json
     if [ -f "$HOME/.pi/agent/settings.json" ] && [ ! -L "$HOME/.pi/agent/settings.json" ]; then

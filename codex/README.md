@@ -8,7 +8,6 @@ This directory contains version-controlled configuration for Codex CLI.
 codex/
 ├── config.toml                 # Base Codex config template (copied to ~/.codex/config.toml)
 ├── agents/                     # Agent role configs (symlinked to ~/.codex/agents/)
-├── skills/                     # Skills (symlinked to ~/.agents/skills/)
 ├── AGENTS.md                   # Optional global instructions for Codex (symlinked to ~/.codex/AGENTS.md)
 └── .gitignore                  # Prevents committing sensitive data
 ```
@@ -22,7 +21,7 @@ The install script will:
 - Optionally refresh local config from template with `--codex-config-template overwrite`
 - Symlink `~/.codex/agents/` → `~/dotfiles/codex/agents/`
 - Symlink `~/.codex/AGENTS.md` → `~/dotfiles/codex/AGENTS.md` (optional)
-- Symlink `~/.agents/skills/` → `~/dotfiles/codex/skills/`
+- Symlink `~/.agents/skills/` → `~/dotfiles/shared/skills/`
 - Preserve existing local `~/.codex/config.toml` values (for runtime keys like trusted projects)
 
 ## Privacy

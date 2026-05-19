@@ -12,7 +12,7 @@ This directory is symlinked into `~/.gemini/` by `install.sh` (`gemini` module).
 | `gemini/settings.json` | `~/.gemini/settings.json` | User settings (theme, tools, MCP servers, etc.) |
 | `gemini/commands/` | `~/.gemini/commands/` | Custom slash commands (`.toml` files) |
 | `gemini/agents/` | `~/.gemini/agents/` | Personal subagents (`.md` files) |
-| `gemini/skills/` | `~/.gemini/skills/` | Personal skills (directories with `SKILL.md`) |
+| `shared/skills/` | `~/.gemini/skills/` | Cross-agent skills (directories with `SKILL.md`) |
 
 Sensitive runtime data (credentials, session history, browser profiles, OAuth
 tokens, trusted-folders state, etc.) lives directly under `~/.gemini/` and is

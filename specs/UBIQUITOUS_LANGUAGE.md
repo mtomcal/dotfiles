@@ -1,7 +1,7 @@
 # Ubiquitous Language
 
-> **Version**: 0.1.0
-> **Last Updated**: 2026-05-01
+> **Version**: 0.2.0
+> **Last Updated**: 2026-05-19
 > **Purpose**: Shared vocabulary for all specs. Every term used in multiple specs MUST be defined here. Read this before any other spec.
 
 > **Usage note**: Throughout all specs, the bare term "install" should be disambiguated using one of the three defined terms: **install** (the complete install.sh run), **install (dependency)** (a single package), or **install (Mason)** (a Neovim package). Use the specific term wherever context is ambiguous.
@@ -46,8 +46,9 @@
 | Term | Definition | Aliases to avoid | Context notes |
 |------|-----------|-------------------|---------------|
 | **agent** | An AI coding assistant (Codex CLI, Claude Code, Pi, Gemini CLI, or Copilot CLI) | "AI", "assistant" | Used generically when referring to any or all of the supported agents |
-| **skill** | A reusable instruction set that can be shared across AI agents | "instruction" | Lives in shared/skills/, symlinked to each agent's skills directory |
-| **shared skills directory** | The single canonical skills directory at ~/dotfiles/shared/skills/ | — | All agent skill paths are symlinks pointing here |
+| **skill** | A reusable instruction set for one or more AI agents | "instruction" | Cross-agent skills live in shared/skills/. Pi-specific subagent workflow skills live in pi/skills/. |
+| **shared skills directory** | The canonical cross-agent skills directory at ~/dotfiles/shared/skills/ | — | Non-Pi agent skill paths are symlinks pointing here. Pi consumes shared skills through symlinks inside pi/skills/. |
+| **Pi skills directory** | The Pi-owned skills directory at ~/dotfiles/pi/skills/ | — | Contains real Pi-specific subagent workflow skills plus symlinks to shared skills. Symlinked to ~/.pi/agent/skills. |
 | **sub-agent role** | A named agent definition stored as a Markdown file in `pi/agents/` with YAML frontmatter. Each role pre-configures a model, provider, thinking level, allowed tools, and guardrail thresholds (maxTurns, maxCost, maxTokens, maxTime). The subagent extension reads these definitions at session start and builds a catalog, making them available for delegation via `subagent_run` or `subagent_fork` | "agent file", "role file" | Distinct from "agent" (an AI coding assistant like Codex/Claude) — sub-agent roles are delegatable specialists scoped to Pi's subagent system. Examples: design-reviewer, premortem-reviewer, visual-qa, implementer, sage |
 | **subagent model routing** | A prescriptive mapping from subagent intent categories (scout, planner, reviewer, implementer, expert (1st), expert (2nd), expert (3rd)) to specific model, provider, and thinking level configurations, stored in Pi's settings.json and injected into subagent tool descriptions. The expert categories form a 3-model fallback chain for consultation when the main model is stuck | "model selection", "model choosing" | Ensures cost-effective model selection; the LLM MUST follow the routing table for subagent calls |
 | **scout** | A subagent intent category for fast, read-only codebase reconnaissance that returns compressed context for handoff | "explorer", "looker" | Mapped to flash-tier models with low thinking; no modifications, no deep analysis |
@@ -70,7 +71,8 @@
 ## Relationships
 
 - A **dotfiles** repo contains multiple **agent configs** (one per supported agent)
-- Every **agent config** has its **skills** directory symlinked to the **shared skills directory**
+- Non-Pi **agent configs** have their **skills** directory symlinked to the **shared skills directory**
+- The Pi **agent config** has its **skills** directory symlinked to the **Pi skills directory**, which composes Pi-only skills with symlinks to shared skills
 - A **custom layer** can contain multiple **plugins (Neovim)**
 - A **kickstart** configuration imports exactly one **custom layer**
 - The **install** process **deploys** multiple **symlinks** and **installs (dependency)** multiple system packages and Mason packages

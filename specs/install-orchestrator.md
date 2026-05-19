@@ -1,7 +1,7 @@
 # Install Orchestrator
 
-> **Spec Version**: 1.0.0
-> **Last Updated**: 2026-05-01
+> **Spec Version**: 1.1.0
+> **Last Updated**: 2026-05-19
 > **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md), [Design Language](DESIGN_LANGUAGE.md), [Tool Provisioning](tool-provisioning.md), [Symlink Manager](symlink-manager.md)
 > **Depended By**: None (this is the top-level orchestrator)
 
@@ -469,12 +469,12 @@ Preconditions: No CLI flags; interactive mode entered
 Input: User selects profile 4 (Custom), toggles modules 1 and 5, then selects Done
 Expected Output: Only the toggled modules appear in the resolved and confirmed lists.
 
-### TS-INSTL-028: Shared Skills Directory Linked To All Agents
+### TS-INSTL-028: Agent Skills Directories Linked
 Category: Integration
 Priority: High
 Preconditions: Multiple agent modules selected (e.g., `claude`, `pi`, `codex`, `gemini`, `copilot`)
 Input: `--modules claude,pi,codex,gemini,copilot`
-Expected Output: Each agent's skills directory symlink points to the same `~/dotfiles/shared/skills/` directory. A skill added to this directory is immediately available to all agents.
+Expected Output: Claude, Codex, Gemini, and Copilot skills directory symlinks point to `~/dotfiles/shared/skills/`. Pi's skills directory symlink points to `~/dotfiles/pi/skills/`, which exposes Pi-specific skills plus symlinks to shared skills.
 
 ---
 
@@ -482,4 +482,5 @@ Expected Output: Each agent's skills directory symlink points to the same `~/dot
 
 | Version | Date | Summary |
 |---------|------|---------|
+| 1.1.0 | 2026-05-19 | Updated skills deployment expectations for Pi's composed skills directory |
 | 1.0.0 | 2026-05-01 | Initial spec: orchestration flow, phase ordering, platform branching, dependency resolution, idempotency rules, error handling, interactive/CLI modes |

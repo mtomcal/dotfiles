@@ -1,7 +1,7 @@
 # Parameters
 
-> **Spec Version**: 1.3.0
-> **Last Updated**: 2026-05-13
+> **Spec Version**: 1.4.0
+> **Last Updated**: 2026-05-19
 > **Depends On**: None (foundational spec)
 > **Depended By**: All other specs
 
@@ -117,6 +117,7 @@ Parameters serve three purposes:
 | `AGENT_CONFIG_DIR_GEMINI` | ~/.gemini | path | Gemini CLI's canonical config directory |
 | `AGENT_CONFIG_DIR_COPILOT` | ~/.config/copilot | path | Copilot CLI's canonical config directory (XDG-style) |
 | `AGENT_SKILLS_DIR_CODEX` | ~/.agents/skills | path | Codex CLI resolves skills from this path; symlinked to shared skills |
+| `AGENT_SKILLS_DIR_PI` | ~/.pi/agent/skills | path | Pi coding agent resolves skills from this path; symlinked to pi/skills |
 | `SANDBOX_IMAGE_NAME` | pis:latest | Docker image tag | Default Pi sandbox Docker image name |
 | `SANDBOX_NETWORK` | sandbox-net | Docker network name | Isolated network for sandbox containers; subnet 172.30.0.0/24 |
 | `SANDBOX_MEMORY_DEFAULT` | 8g | memory limit | Default Docker container memory for Pi sandbox |
@@ -167,5 +168,6 @@ Parameters serve three purposes:
 
 | Version | Date | Summary |
 |---------|------|---------|
+| 1.4.0 | 2026-05-19 | Added AGENT_SKILLS_DIR_PI for Pi's composed skills directory |
 | 1.3.0 | 2026-05-13 | Updated REQUIRED_NVIM_VERSION from 0.10 to 0.12; added crof provider parameters for Pi models.json |
 | 1.2.0 | 2026-05-01 | Added subagent routing parameters (scout, planner, reviewer, implementer, expert 1st/2nd/3rd model/provider/thinking), tools display parameters (SUBAGENT_TOOLS_BRACKET_MAX_CHARS, SUBAGENT_TOOLS_DISPLAY_STATUS_FORMAT, SUBAGENT_TOOLS_DISPLAY_UNDEFINED) |

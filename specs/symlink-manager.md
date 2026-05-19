@@ -1,7 +1,7 @@
 # Symlink Manager
 
-> **Version**: 1.0.0
-> **Last Updated**: 2026-05-01
+> **Version**: 1.1.0
+> **Last Updated**: 2026-05-19
 > **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md)
 > **Depended By**: [AI Agent Config](ai-agent-config.md), [Install Orchestrator](install-orchestrator.md), [Neovim Config](neovim-config.md)
 
@@ -74,7 +74,7 @@ The complete set of symlink deployments the system MUST establish. Each entry de
 | **Claude Code** | ~/.claude/skills | shared/skills | replace-symlink (directory) | Always |
 | **Claude Code** | ~/.claude/settings.json | claude/settings.json | replace-symlink | Source file must exist |
 | **Claude Code** | ~/.claude/statusline.sh | claude/statusline.sh | replace-symlink | Source file must exist |
-| **Pi** | ~/.pi/agent/skills | shared/skills | replace-symlink (directory) | Always |
+| **Pi** | ~/.pi/agent/skills | pi/skills | replace-symlink (directory) | Always |
 | **Pi** | ~/.pi/agent/settings.json | pi/settings.json | replace-symlink | Source file must exist |
 | **Pi** | ~/.pi/agent/models.json | pi/models.json | replace-symlink | Source file must exist |
 | **Pi** | ~/.pi/agent/extensions/subagent | pi/extensions/subagent | replace-symlink (directory) | Always |
@@ -416,4 +416,5 @@ Expected Output: First run: all symlinks created, backups made for any conflicti
 
 | Version | Date | Summary |
 |---------|------|---------|
+| 1.1.0 | 2026-05-19 | Changed Pi skills symlink source from `shared/skills` to `pi/skills` for Pi-specific skill composition |
 | 1.0.0 | 2026-05-01 | Initial brownfield extraction — complete specification of symlink management behavior from existing install.sh |
