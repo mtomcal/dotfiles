@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lab Template: Parsons Sequencer</title>
+<style>
+  :root{--bg:#0d1117;--bg-elev:#161b22;--bg-card:#1c2128;--border:#30363d;--text:#c9d1d9;--text-dim:#8b949e;--text-bright:#e6edf3;--accent:#58a6ff;--client:#3fb950;--danger:#f85149;--warn:#d29922;--font-mono:"SF Mono",ui-monospace,monospace}*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);padding:24px;line-height:1.6}.container{max-width:900px;margin:0 auto}h1{margin:0 0 8px;color:var(--text-bright);font-size:24px}p{color:var(--text-dim);margin:0 0 20px}.panel{background:var(--bg-elev);border:1px solid var(--border);border-radius:16px;padding:24px;margin:16px 0}.workspace{display:grid;grid-template-columns:1fr 1fr;gap:16px}.lane{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:14px;min-height:280px}.lane h3{font-size:13px;color:var(--text-bright);margin:0 0 10px;text-transform:uppercase;letter-spacing:.05em}.card{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;margin:8px 0;background:var(--bg-card);border:1px solid var(--border);border-radius:10px;color:var(--text);cursor:grab;font-family:var(--font-mono);font-size:13px}.card:active{cursor:grabbing}.card .handle{color:var(--text-dim)}.slot{min-height:44px;border:1px dashed var(--border);border-radius:10px;margin:8px 0;padding:4px}.slot.over{border-color:var(--accent);background:rgba(88,166,255,.08)}.slot.correct{border-color:var(--client)}.slot.wrong{border-color:var(--danger)}.btn{display:inline-flex;align-items:center;gap:6px;padding:10px 16px;border-radius:8px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-bright);font-weight:700;cursor:pointer;margin-right:8px}.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}.feedback{display:none;margin-top:14px;padding:14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text-dim)}.feedback strong{display:block;color:var(--text-bright);margin-bottom:4px}@media(max-width:760px){.workspace{grid-template-columns:1fr}body{padding:16px}}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Parsons Sequencer</h1>
+  <p>Drag the shuffled steps into the correct order. Use this for request lifecycles, algorithms, validation gates, or code-line ordering.</p>
+  <div class="panel">
+    <h3 id="task-title" style="margin:0 0 8px;color:var(--text-bright)"></h3>
+    <p id="task-desc"></p>
+    <div class="workspace">
+      <div class="lane"><h3>Available steps</h3><div id="source"></div></div>
+      <div class="lane"><h3>Correct order</h3><div id="target"></div></div>
+    </div>
+    <div style="margin-top:16px"><button class="btn primary" onclick="check()">Check Order</button><button class="btn" onclick="reset()">Reset</button></div>
+    <div class="feedback" id="feedback"></div>
+  </div>
+</div>
+<script>
+/* ================================================================
+   ADAPT THIS SECTION: Replace task.steps with code lines or flow steps.
+   Steps must appear in the correct order here; the template shuffles them.
+=============================================================== */
+const task = {
+  title: "Order the server-side request path",
+  desc: "Build the fail-fast sequence a request should pass through before business logic runs.",
+  steps: [
+    "Authenticate the caller",
+    "Check rate limit",
+    "Validate payload shape",
+    "Authorize the requested action",
+    "Run business logic",
+    "Persist state change",
+    "Return response / broadcast update"
+  ],
+  explain: "The order matters because cheap and security-critical checks should happen before expensive or state-changing work."
+};
+let dragId = null;
+function shuffle(arr){return arr.map(v=>[Math.random(),v]).sort((a,b)=>a[0]-b[0]).map(x=>x[1]);}
+function makeCard(text){const el=document.createElement('div');el.className='card';el.draggable=true;el.dataset.step=text;el.innerHTML=`<span class="handle">☰</span><span>${text}</span>`;el.addEventListener('dragstart',()=>dragId=text);return el;}
+function makeSlot(i){const slot=document.createElement('div');slot.className='slot';slot.dataset.index=i;slot.addEventListener('dragover',e=>{e.preventDefault();slot.classList.add('over')});slot.addEventListener('dragleave',()=>slot.classList.remove('over'));slot.addEventListener('drop',e=>{e.preventDefault();slot.classList.remove('over');const old=document.querySelector(`.card[data-step="${CSS.escape(dragId)}"]`);if(old){slot.innerHTML='';slot.appendChild(old);}});return slot;}
+function render(){document.getElementById('task-title').textContent=task.title;document.getElementById('task-desc').textContent=task.desc;const source=document.getElementById('source');source.innerHTML='';shuffle(task.steps).forEach(s=>source.appendChild(makeCard(s)));const target=document.getElementById('target');target.innerHTML='';task.steps.forEach((_,i)=>target.appendChild(makeSlot(i)));document.getElementById('feedback').style.display='none';}
+function check(){let correct=0;document.querySelectorAll('#target .slot').forEach((slot,i)=>{slot.classList.remove('correct','wrong');const card=slot.querySelector('.card');if(card && card.dataset.step===task.steps[i]){slot.classList.add('correct');correct++;}else{slot.classList.add('wrong');}});const f=document.getElementById('feedback');f.innerHTML=`<strong>${correct}/${task.steps.length} steps in the right place.</strong>${task.explain}`;f.style.display='block';}
+function reset(){render();}
+render();
+</script>
+</body>
+</html>
+
