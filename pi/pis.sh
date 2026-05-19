@@ -105,6 +105,7 @@ build_image() {
         --build-arg BASE_IMAGE="$base_image" \
         --build-arg PI_VERSION="$pi_ver" \
         --build-arg HOST_USER="$(whoami)" \
+        --build-arg HOST_GID="$(id -g)" \
         -t "$IMAGE_NAME" "$DOCKERFILE_DIR"
     echo -e "${GREEN}[pis]${NC} Image built successfully"
 }

@@ -1058,6 +1058,7 @@ install_pi_sandbox() {
         --build-arg BASE_IMAGE="$SANDBOX_BASE_IMAGE" \
         --build-arg PI_VERSION="$PI_SANDBOX_VER" \
         --build-arg HOST_USER="$(whoami)" \
+        --build-arg HOST_GID="$(id -g)" \
         -t "pis:latest" "$DOTFILES_DIR/pi/"; then
         print_success "Pi sandbox Docker image built (Pi @${PI_SANDBOX_VER})"
     else
@@ -1192,6 +1193,7 @@ install_codex_sandbox() {
         --build-arg BASE_IMAGE="$SANDBOX_BASE_IMAGE" \
         --build-arg CODEX_VERSION="$CODEX_SANDBOX_VER" \
         --build-arg HOST_USER="$(whoami)" \
+        --build-arg HOST_GID="$(id -g)" \
         -t "cods:latest" "$DOTFILES_DIR/codex/"; then
         print_success "Codex sandbox Docker image built (Codex @${CODEX_SANDBOX_VER})"
     else

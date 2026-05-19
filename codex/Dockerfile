@@ -7,10 +7,11 @@ FROM ${BASE_IMAGE}
 
 ARG CODEX_VERSION=latest
 ARG HOST_USER=mtomcal
+ARG HOST_GID=1000
 
 RUN mkdir -p ${USER_HOME}/.codex \
     && npm install -g @openai/codex@${CODEX_VERSION} \
-    && chown -R ${HOST_USER}:${HOST_USER} ${USER_HOME} \
+    && chown -R ${HOST_USER}:${HOST_GID} ${USER_HOME} \
     && echo "Installed Codex ($(node -e 'console.log(process.arch)'))"
 
 LABEL codex.version="${CODEX_VERSION}"

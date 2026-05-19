@@ -64,10 +64,12 @@ RUN ln -sf /usr/bin/fdfind /usr/local/bin/fd
 
 RUN userdel -r ubuntu 2>/dev/null; \
     groupdel ubuntu 2>/dev/null; \
-    groupadd -g ${HOST_GID} ${HOST_USER} && \
+    if ! getent group ${HOST_GID} >/dev/null; then \
+        groupadd -g ${HOST_GID} ${HOST_USER}; \
+    fi && \
     useradd -m -u ${HOST_UID} -g ${HOST_GID} -s /bin/zsh ${HOST_USER} && \
     mkdir -p ${USER_HOME}/.local/share ${USER_HOME}/go-workspace && \
-    chown -R ${HOST_USER}:${HOST_USER} ${USER_HOME}
+    chown -R ${HOST_USER}:${HOST_GID} ${USER_HOME}
 
 ENV GOPATH="${USER_HOME}/go-workspace"
 ENV PATH="${GOPATH}/bin:${PATH}"
@@ -79,7 +81,7 @@ RUN ARCH=$(dpkg --print-architecture) \
     && eval "$(fnm env --shell bash)" \
     && fnm install --lts \
     && fnm default lts-latest \
-    && chown -R ${HOST_USER}:${HOST_USER} ${USER_HOME} \
+    && chown -R ${HOST_USER}:${HOST_GID} ${USER_HOME} \
     && echo "Installed Node on ${ARCH} ($(node -e 'console.log(process.arch)'))"
 
 RUN ln -sf "${FNM_DIR}/aliases/default" /usr/local/node
