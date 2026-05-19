@@ -57,7 +57,9 @@ The system MUST ensure that:
 | `AGENT_CONFIG_DIR_COPILOT` | `~/.config/copilot` | path | Copilot CLI's canonical config directory |
 | `AGENT_SKILLS_DIR_CODEX` | `~/.agents/skills` | path | Codex CLI resolves skills from this path; symlinked to shared skills |
 | `AGENT_SKILLS_DIR_PI` | `~/.pi/agent/skills` | path | Pi coding agent resolves skills from this path; symlinked to `pi/skills` |
+| `SANDBOX_BASE_IMAGE_NAME` | `dotfiles-dev-base:{UID}-{GID}` | image reference | Shared Docker base image for agent sandboxes, tagged by host UID/GID |
 | `SANDBOX_IMAGE_NAME` | `pis:latest` | image reference | Default Pi sandbox container image |
+| `CODEX_SANDBOX_IMAGE_NAME` | `cods:latest` | image reference | Default Codex sandbox container image |
 | `SANDBOX_NETWORK` | `sandbox-net` | network name | Isolated network for sandbox containers (used by Ralph sandbox mode, not by `pis`) |
 | `SANDBOX_RECOMMENDED_MEMORY` | `8g` | memory allocation | Recommended memory allocation for sandbox containers |
 | `SANDBOX_RECOMMENDED_CPU` | `4` | CPU allocation | Recommended CPU core allocation for sandbox containers |
@@ -518,6 +520,7 @@ The `pis` script provides a Docker sandbox wrapper for the Pi coding agent.
 
 **Rules:**
 
+1. The Pi sandbox image MUST build from the shared sandbox base image (`dotfiles-dev-base:{UID}-{GID}`), ensuring that base image through a cached Docker build before rebuilding the Pi image.
 1. The current working directory MUST be mounted read-write at its original path inside the container.
 2. Pi agent state (sessions, auth, settings, models, skills, extensions) MUST be mounted into the container under the container user's home directory (`/home/{HOST_USER}/`, not `/root/`).
 3. The container MUST run as the host user (`--user UID:GID`) so that files written to mounted volumes are owned by the host user, not root.
@@ -529,7 +532,28 @@ The `pis` script provides a Docker sandbox wrapper for the Pi coding agent.
 9. `--no-rebuild` skips the version check; `--build` forces a build.
 10. Container MUST run as ephemeral (removed on exit). Recommended resource allocation is 8g memory, 4 CPUs, and 512 PIDs, but these limits are NOT enforced by the `pis` command — they are applied only when running under the Ralph sandbox mode.
 
-### B8: Ralph Agentic Loop
+### B8: Codex Sandbox Mode
+
+The `cods` script provides a Docker sandbox wrapper for running Codex with `--yolo`.
+
+**Rules:**
+
+1. The Codex sandbox image MUST build from the shared sandbox base image (`dotfiles-dev-base:{UID}-{GID}`), ensuring that base image through a cached Docker build before rebuilding the Codex image.
+1. The current working directory MUST be mounted read-write at its original path inside the container.
+2. `~/.codex` MUST be mounted read-write under the container user's home directory.
+3. If `~/.codex/auth.json` exists, it MUST be overlaid as a read-only bind mount.
+4. The container MUST run as the host user (`--user UID:GID`) and the Dockerfile MUST create a matching user with `HOST_USER`, `HOST_UID`, and `HOST_GID`.
+5. The `HOME` environment variable inside the container MUST be set to `/home/{HOST_USER}/`.
+6. The script MUST invoke `codex --yolo` by default.
+7. API-key-shaped environment variables MUST be forwarded by default; forwarded names MAY be displayed, but values MUST NOT be printed.
+8. Extra paths MUST only be mounted through explicit `--mount-ro PATH` or `--mount-rw PATH` flags. High-risk paths such as `/`, `$HOME`, `~/.ssh`, and the Docker socket MUST be rejected unless explicitly overridden.
+9. Host SSH credentials, SSH agent sockets, and global Git credentials MUST NOT be mounted by default.
+10. The script MUST auto-rebuild the Docker image if the installed Codex version in the image label doesn't match the latest npm version. `--no-rebuild` skips the version check; `--build` forces a build.
+11. Container resource limits MUST be applied by default: 8g memory, 4 CPUs, and 512 PIDs, configurable through environment variables.
+12. `--dry-run` MUST print the generated Docker command without requiring Docker or building the image.
+13. Strict network egress allowlisting is out of scope for v1; the standalone `cods` command uses normal Docker networking.
+
+### B9: Ralph Agentic Loop
 
 Ralph has two implementations:
 
@@ -625,7 +649,7 @@ Six sub-agent roles and two shared agent roles are defined:
 
 The install script supports module-based installation:
 
-1. Agent modules: `codex`, `claude`, `pi`, `pi_sandbox`, `gemini`, `copilot`.
+1. Agent modules: `codex`, `codex_sandbox`, `claude`, `pi`, `pi_sandbox`, `gemini`, `copilot`.
 2. Module dependencies MUST be resolved automatically (e.g., `pi` requires `nodejs`, `claude` requires `curl`).
 3. The user MAY choose a profile (Full, Minimal, Work, Custom) or specify modules directly.
 4. The `--modules` flag accepts a comma-separated list of module names.
@@ -678,6 +702,8 @@ The install script supports module-based installation:
 5. **Pi subagent isolation**: Subagent processes are spawned as separate Pi child processes with isolation flags. Each subagent gets its own context window and system prompt. Extensions are NOT loaded by default in subagents (explicit opt-in required).
 
 6. **Pi sandbox security**: The sandbox uses network isolation when running under Ralph's Docker sandbox mode — a dedicated network (`sandbox-net`) with iptables rules that allow only DNS and specific service endpoints. The standalone `pis` command runs containers on the default Docker network without resource limits or network isolation.
+
+6a. **Codex sandbox security**: The standalone `cods` command is designed for accidental overreach and malicious prompt/tool behavior inside `codex --yolo`. It constrains mounted host paths, overlays Codex auth read-only, runs as the host UID/GID, and applies resource limits. It does not claim to prevent container escapes or network exfiltration from mounted/project secrets or forwarded API environment variables.
 
 7. **Ralph loop resilience**: The `loop.sh` script handles container crashes (exit code 137 for OOM, 124 for timeout) by logging the error and continuing to the next iteration. The orchestrator monitors progress every 5 minutes and can inject course corrections by appending to `PROMPT.md`.
 
@@ -915,6 +941,29 @@ Priority: High
 Preconditions: Docker image built with host user build args
 Input: Run `pis` and check `echo $HOME` and `whoami` inside the container
 Expected Output: `$HOME` is `/home/{HOST_USER}/`, `whoami` returns `{HOST_USER}`, and Pi agent state is mounted at `/home/{HOST_USER}/.pi/agent/`.
+
+### Codex Sandbox
+
+**TS-AIAGT-022d**: Codex sandbox — dry-run safety contract
+Category: Unit
+Priority: Critical
+Preconditions: CWD is a project directory; `~/.codex` exists; `~/.codex/auth.json` may exist
+Input: Run `cods --dry-run`
+Expected Output: The generated Docker command mounts CWD read-write at the same path, sets `-w` to CWD, runs as the host UID/GID, sets `HOME=/home/{HOST_USER}`, mounts `~/.codex` read-write, overlays `~/.codex/auth.json` read-only when present, applies memory/CPU/PID limits, and invokes `codex --yolo`.
+
+**TS-AIAGT-022e**: Codex sandbox — default-deny extra mounts
+Category: Unit
+Priority: High
+Preconditions: High-risk path such as `~/.ssh` exists
+Input: Run `cods --mount-ro ~/.ssh --dry-run`
+Expected Output: The command is rejected unless `--allow-dangerous-mount` is supplied.
+
+**TS-AIAGT-022f**: Codex sandbox — extra directory mounts
+Category: Unit
+Priority: Medium
+Preconditions: Additional project directory exists at `~/Code/lib`
+Input: Run `cods --mount-ro ~/Code/lib --mount-rw ~/Code/worktree --dry-run`
+Expected Output: The generated Docker command mounts the read-only path with `:ro` and the read-write path with `:rw`, both at their same absolute paths.
 
 ### Agent Roles
 

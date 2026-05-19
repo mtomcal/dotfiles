@@ -1042,8 +1042,23 @@ install_pi_sandbox() {
     # Build the Docker image (pin Pi version from npm so the image label is accurate)
     print_info "Resolving latest Pi version for sandbox image..."
     PI_SANDBOX_VER=$(npm view @earendil-works/pi-coding-agent version 2>/dev/null || echo "latest")
+    SANDBOX_BASE_IMAGE="dotfiles-dev-base:$(id -u)-$(id -g)"
+    print_info "Ensuring shared sandbox base image (${SANDBOX_BASE_IMAGE})..."
+    if ! docker build \
+        -f "$DOTFILES_DIR/docker/dev-base.Dockerfile" \
+        --build-arg HOST_USER="$(whoami)" \
+        --build-arg HOST_UID="$(id -u)" \
+        --build-arg HOST_GID="$(id -g)" \
+        -t "$SANDBOX_BASE_IMAGE" "$DOTFILES_DIR"; then
+        print_error "Failed to build shared sandbox base image"
+        return 1
+    fi
     print_info "Building Pi sandbox Docker image (Pi @${PI_SANDBOX_VER})..."
-    if docker build --build-arg PI_VERSION="$PI_SANDBOX_VER" -t "pis:latest" "$DOTFILES_DIR/pi/"; then
+    if docker build \
+        --build-arg BASE_IMAGE="$SANDBOX_BASE_IMAGE" \
+        --build-arg PI_VERSION="$PI_SANDBOX_VER" \
+        --build-arg HOST_USER="$(whoami)" \
+        -t "pis:latest" "$DOTFILES_DIR/pi/"; then
         print_success "Pi sandbox Docker image built (Pi @${PI_SANDBOX_VER})"
     else
         print_error "Failed to build Pi sandbox Docker image"
@@ -1144,6 +1159,56 @@ install_codex() {
 
     print_success "Codex configured"
     print_info "Run 'codex login' to authenticate"
+}
+
+install_codex_sandbox() {
+    print_header "Installing Codex Sandbox (Docker)"
+
+    if ! command -v docker &> /dev/null; then
+        print_error "Docker not found. Install Docker first."
+        return 1
+    fi
+
+    if ! command -v npm &> /dev/null; then
+        print_warning "npm not found. Installing Node.js first..."
+        install_nodejs || return 1
+    fi
+
+    print_info "Resolving latest Codex version for sandbox image..."
+    CODEX_SANDBOX_VER=$(npm view @openai/codex version 2>/dev/null || echo "latest")
+    SANDBOX_BASE_IMAGE="dotfiles-dev-base:$(id -u)-$(id -g)"
+    print_info "Ensuring shared sandbox base image (${SANDBOX_BASE_IMAGE})..."
+    if ! docker build \
+        -f "$DOTFILES_DIR/docker/dev-base.Dockerfile" \
+        --build-arg HOST_USER="$(whoami)" \
+        --build-arg HOST_UID="$(id -u)" \
+        --build-arg HOST_GID="$(id -g)" \
+        -t "$SANDBOX_BASE_IMAGE" "$DOTFILES_DIR"; then
+        print_error "Failed to build shared sandbox base image"
+        return 1
+    fi
+    print_info "Building Codex sandbox Docker image (Codex @${CODEX_SANDBOX_VER})..."
+    if docker build \
+        --build-arg BASE_IMAGE="$SANDBOX_BASE_IMAGE" \
+        --build-arg CODEX_VERSION="$CODEX_SANDBOX_VER" \
+        --build-arg HOST_USER="$(whoami)" \
+        -t "cods:latest" "$DOTFILES_DIR/codex/"; then
+        print_success "Codex sandbox Docker image built (Codex @${CODEX_SANDBOX_VER})"
+    else
+        print_error "Failed to build Codex sandbox Docker image"
+        return 1
+    fi
+
+    mkdir -p "$HOME/.local/bin"
+    if [ -L "$HOME/.local/bin/cods" ]; then
+        rm "$HOME/.local/bin/cods"
+    elif [ -f "$HOME/.local/bin/cods" ]; then
+        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+        mv "$HOME/.local/bin/cods" "$HOME/.local/bin/cods.backup.$TIMESTAMP"
+    fi
+    ln -s "$DOTFILES_DIR/codex/cods.sh" "$HOME/.local/bin/cods"
+
+    print_success "Codex sandbox configured (run 'cods' to launch)"
 }
 
 install_gemini() {
@@ -1346,6 +1411,18 @@ resolve_dependencies() {
                 fi
                 resolved+=("pi_sandbox")
                 ;;
+            "codex_sandbox")
+                # Codex sandbox needs Docker (not installed by this script), npm, and Codex config.
+                if ! command -v docker &> /dev/null; then
+                    print_warning "Docker required for Codex sandbox (install Docker separately)"
+                fi
+                if ! command -v npm &> /dev/null; then
+                    print_warning "Adding Node.js (required by Codex sandbox)"
+                    resolved+=("nodejs")
+                fi
+                resolved+=("codex")
+                resolved+=("codex_sandbox")
+                ;;
             "codex")
                 # Codex CLI install uses npm
                 if ! command -v npm &> /dev/null; then
@@ -1416,7 +1493,7 @@ show_profile_menu() {
 
     case $choice in
         1)
-            SELECTED_MODULES=(base_tools neovim nvim_config tmux_config zsh_ohmyzsh zsh_config golang_full nodejs tui_tools codex claude playwright pi pi_sandbox gemini copilot)
+            SELECTED_MODULES=(base_tools neovim nvim_config tmux_config zsh_ohmyzsh zsh_config golang_full nodejs tui_tools codex codex_sandbox claude playwright pi pi_sandbox gemini copilot)
             ;;
         2)
             SELECTED_MODULES=(base_tools neovim nvim_config tmux_config)
@@ -1454,6 +1531,7 @@ show_custom_menu() {
         "golang_full:Go Development (toolchain + LSP + tools)"
         "nodejs:Node.js LTS (fnm)"
         "codex:Codex CLI"
+        "codex_sandbox:Codex Sandbox (Docker)"
         "claude:Claude Code CLI"
         "pi:Pi Coding Agent"
         "pi_sandbox:Pi Sandbox (Docker)"
@@ -1560,6 +1638,7 @@ show_installation_summary() {
             "golang_full") echo "  • Go Development (toolchain + LSP + tools + govulncheck)" ;;
             "nodejs") echo "  • Node.js LTS (fnm)" ;;
             "codex") echo "  • Codex CLI" ;;
+            "codex_sandbox") echo "  • Codex Sandbox (Docker)" ;;
             "claude") echo "  • Claude Code CLI" ;;
             "pi") echo "  • Pi Coding Agent" ;;
             "pi_sandbox") echo "  • Pi Sandbox (Docker)" ;;
@@ -1641,6 +1720,11 @@ execute_modules() {
                     FAILED_MODULES+=("codex")
                 fi
                 ;;
+            "codex_sandbox")
+                if ! install_codex_sandbox; then
+                    FAILED_MODULES+=("codex_sandbox")
+                fi
+                ;;
             "gemini")
                 if ! install_gemini; then
                     FAILED_MODULES+=("gemini")
@@ -1694,7 +1778,7 @@ parse_arguments() {
             --profile)
                 case $2 in
                     full)
-                        SELECTED_MODULES=(base_tools neovim nvim_config tmux_config zsh_ohmyzsh zsh_config golang_full nodejs tui_tools codex claude playwright pi pi_sandbox gemini copilot)
+                        SELECTED_MODULES=(base_tools neovim nvim_config tmux_config zsh_ohmyzsh zsh_config golang_full nodejs tui_tools codex codex_sandbox claude playwright pi pi_sandbox gemini copilot)
                         ;;
                     minimal)
                         SELECTED_MODULES=(base_tools neovim nvim_config tmux_config)
@@ -1763,6 +1847,7 @@ Modules:
   golang_full         Go development (toolchain + LSP + tools + govulncheck)
   nodejs              Node.js LTS (fnm)
   codex               Codex CLI
+  codex_sandbox       Codex Sandbox (Docker image + cods script)
   tui_tools           TUI tools (lazygit, yazi, zoxide)
   claude              Claude Code CLI
   pi                  Pi Coding Agent

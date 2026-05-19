@@ -91,6 +91,7 @@ The complete set of symlink deployments the system MUST establish. Each entry de
 | **Copilot** | ~/.config/copilot/commands | copilot/commands | replace-symlink (directory) | Always |
 | **Copilot** | ~/.config/copilot/agents | copilot/agents | replace-symlink (directory) | Always |
 | **Copilot** | ~/.config/copilot/skills | shared/skills | replace-symlink (directory) | Always |
+| **Codex Sandbox** | ~/.local/bin/cods | codex/cods.sh | replace-symlink | Always |
 | **Pi Sandbox** | ~/.local/bin/pis | pi/pis.sh | replace-symlink | Always |
 
 ### Deployment Types
@@ -208,6 +209,10 @@ Additionally, if the kickstart `init.lua` exists, the system MUST uncomment the 
 #### Pi Sandbox Script Deployment
 
 The Pi sandbox runner script (`pis`) is symlinked from the dotfiles repository into `~/.local/bin/`. The system MUST ensure `~/.local/bin/` exists before creating the symlink. If a non-symlink file exists at the target, it MUST be backed up before replacement.
+
+#### Codex Sandbox Script Deployment
+
+The Codex sandbox runner script (`cods`) is symlinked from the dotfiles repository into `~/.local/bin/`. The system MUST ensure `~/.local/bin/` exists before creating the symlink. If a non-symlink file exists at the target, it MUST be backed up before replacement.
 
 ### Shared Skills Architecture
 
@@ -395,6 +400,13 @@ Priority: Medium
 Preconditions: `~/.local/bin/` directory does not exist
 Input: Run the Pi sandbox module
 Expected Output: The `~/.local/bin/` directory is created; the `pis` symlink is created within it pointing to the dotfiles `pi/pis.sh` source
+
+### TS-SYMLK-016b: Codex sandbox script parent directory created
+Category: Unit
+Priority: Medium
+Preconditions: `~/.local/bin/` directory does not exist
+Input: Run the Codex sandbox module
+Expected Output: The `~/.local/bin/` directory is created; the `cods` symlink is created within it pointing to the dotfiles `codex/cods.sh` source
 
 ### TS-SYMLK-017: Repeated backup does not overwrite previous backup
 Category: Unit

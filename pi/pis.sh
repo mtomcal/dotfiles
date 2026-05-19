@@ -17,6 +17,7 @@ set -e
 
 IMAGE_NAME="pis:latest"
 DOCKERFILE_DIR="$(cd "$(dirname "$0")" && pwd)"
+DOTFILES_DIR="$(cd "$DOCKERFILE_DIR/.." && pwd)"
 
 # Colors
 RED='\033[0;31m'
@@ -89,13 +90,21 @@ build_image() {
     # This ensures Docker cache is invalidated when the version changes and
     # the pi.version label matches the installed package.
     local pi_ver
+    local base_image
     pi_ver=$(npm view @earendil-works/pi-coding-agent version 2>/dev/null || echo "latest")
-    echo -e "${GREEN}[pis]${NC} Building Docker image ${IMAGE_NAME} (Pi @${pi_ver})..."
+    base_image="dotfiles-dev-base:$(id -u)-$(id -g)"
+    echo -e "${GREEN}[pis]${NC} Ensuring shared sandbox base image ${base_image}..."
     docker build \
-        --build-arg PI_VERSION="$pi_ver" \
+        -f "$DOTFILES_DIR/docker/dev-base.Dockerfile" \
         --build-arg HOST_USER="$(whoami)" \
         --build-arg HOST_UID="$(id -u)" \
         --build-arg HOST_GID="$(id -g)" \
+        -t "$base_image" "$DOTFILES_DIR"
+    echo -e "${GREEN}[pis]${NC} Building Docker image ${IMAGE_NAME} (Pi @${pi_ver})..."
+    docker build \
+        --build-arg BASE_IMAGE="$base_image" \
+        --build-arg PI_VERSION="$pi_ver" \
+        --build-arg HOST_USER="$(whoami)" \
         -t "$IMAGE_NAME" "$DOCKERFILE_DIR"
     echo -e "${GREEN}[pis]${NC} Image built successfully"
 }

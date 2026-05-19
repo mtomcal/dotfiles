@@ -68,13 +68,13 @@ The orchestrator does NOT implement any module's internal logic (package install
 | `name` | string | One of the valid module identifiers | Unique identifier for a selectable install unit |
 | `label` | string | Human-readable description | Displayed in menus and summaries |
 
-**Valid module identifiers**: `base_tools`, `neovim`, `nvim_config`, `tmux_config`, `zsh_ohmyzsh`, `zsh_config`, `golang` (toolchain only), `golang_full` (toolchain + LSP + tools), `nodejs`, `tui_tools`, `codex`, `claude`, `pi`, `pi_sandbox`, `gemini`, `copilot`, `playwright`
+**Valid module identifiers**: `base_tools`, `neovim`, `nvim_config`, `tmux_config`, `zsh_ohmyzsh`, `zsh_config`, `golang` (toolchain only), `golang_full` (toolchain + LSP + tools), `nodejs`, `tui_tools`, `codex`, `codex_sandbox`, `claude`, `pi`, `pi_sandbox`, `gemini`, `copilot`, `playwright`
 
 ### Installation Profile
 
 | Profile | Modules Included |
 |---------|-----------------|
-| `full` | base_tools, neovim, nvim_config, tmux_config, zsh_ohmyzsh, zsh_config, golang_full, nodejs, tui_tools, codex, claude, playwright, pi, pi_sandbox, gemini, copilot |
+| `full` | base_tools, neovim, nvim_config, tmux_config, zsh_ohmyzsh, zsh_config, golang_full, nodejs, tui_tools, codex, codex_sandbox, claude, playwright, pi, pi_sandbox, gemini, copilot |
 | `minimal` | base_tools, neovim, nvim_config, tmux_config |
 | `work` | base_tools, neovim, nvim_config, tmux_config, tui_tools, copilot |
 
@@ -94,6 +94,7 @@ Modules declare implicit prerequisites via the dependency resolver. The resolver
 | `pi` | `nodejs` | Only if `npm` is not found |
 | `pi_sandbox` | Docker (external) | Not auto-installed; warning issued if missing |
 | `codex` | `nodejs` | Only if `npm` is not found |
+| `codex_sandbox` | `codex`, `nodejs`, Docker (external) | `nodejs` only if `npm` is not found; Docker warning issued if missing |
 | `gemini` | `nodejs` | Only if `npm` is not found |
 | `playwright` | `nodejs` | Only if `npm` is not found |
 | `golang_full` | `golang` | Always (golang_full calls golang install internally) |
@@ -245,6 +246,7 @@ When Neovim's Lazy plugin sync reports local changes in cached plugins:
 | Mason package install failure | MasonInstall command exits non-zero | Mason installation phase | Print warning with manual remediation command | User runs `:Mason` inside Neovim |
 | npm not found for agent install | Node.js/npm is not available when installing Codex, Pi, or Gemini | Dependency resolver | Auto-add `nodejs` module to resolved list | Automatic; user notified via warning message |
 | Docker not found for Pi sandbox | Docker command not found when installing `pi_sandbox` | `install_pi_sandbox` module | Print error, skip module | User must install Docker separately before re-running |
+| Docker not found for Codex sandbox | Docker command not found when installing `codex_sandbox` | `install_codex_sandbox` module | Print error, skip module | User must install Docker separately before re-running |
 | Go version fetch failure | Version endpoint returns empty result | `install_golang` module | Print error, signal module failure | Module fails; user retries or installs Go manually |
 | PATH conflict for npm-installed agents | The agent binary is found via PATH but not at `~/.local/bin/` | Post-install verification | Print warning identifying the conflicting binary path | User must ensure `~/.local/bin` is earlier in PATH |
 | Codex config symlink detected | Existing `~/.codex/config.toml` is a symlink | `install_codex` module | Remove symlink, copy template as regular file | Automatic; local config file created from template |

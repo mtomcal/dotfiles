@@ -13,6 +13,7 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 |   `-- agents
 |-- codex
 |   `-- agents
+|-- docker
 |-- gemini
 |   |-- agents
 |   `-- commands
@@ -90,6 +91,13 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 - **Depends on**: `shared/skills/` for cross-agent skills. Pi's runtime skills path resolves to `pi/skills/`, which composes Pi-only skills with symlinks to `shared/skills/`.
 - **Rules**: Agents never reference each other's configs. Shared skills `npx skills@latest add` into any non-Pi agent lands in `shared/skills/` automatically. Pi-specific skills that require `subagent_run`, `subagent_fork`, Pi role files, or `/tree` handoff live in `pi/skills/`. Role MD files use frontmatter: `name`, `description`, `metadata.short-description`, `allowed-tools`.
 - **Entry points**: Agent root dirs. Each contains the settings file(s) the agent loads at startup.
+
+### `docker/`
+- **Purpose**: Shared Docker base image definitions for agent sandboxes.
+- **Owns**: `docker/dev-base.Dockerfile` — common Ubuntu dev environment, host-matched user, Go, Node/fnm, GitHub CLI, and base shell/build tools.
+- **Depends on**: Docker at build time; no runtime dependency on agent configs.
+- **Rules**: Agent-specific sandbox images (`pi/Dockerfile`, `codex/Dockerfile`) build FROM the shared base image tagged as `dotfiles-dev-base:{UID}-{GID}`. Keep agent-specific npm packages, labels, entrypoints, and auth mounts in the agent modules, not in the shared base.
+- **Entry points**: `docker/dev-base.Dockerfile`; built automatically by `pis --build`, `cods --build`, and the matching install modules.
 
 ### `nvim/`
 - **Purpose**: Custom Neovim plugins layered on top of kickstart.nvim (the base at `~/.config/nvim`).

@@ -133,7 +133,9 @@ Packages with different names across platforms MUST use the `install_package` fu
 | gemini | npm | npm global install for Gemini binary |
 | copilot | curl | Installer needs curl |
 | playwright | npm | npm global install for Playwright CLI |
+| sandbox_base | docker | Shared Docker base image for agent sandboxes |
 | pi_sandbox | docker | Sandbox runs in Docker container |
+| codex_sandbox | docker | Codex `--yolo` sandbox runs in Docker container |
 
 ---
 

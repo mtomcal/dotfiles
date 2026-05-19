@@ -118,7 +118,9 @@ Parameters serve three purposes:
 | `AGENT_CONFIG_DIR_COPILOT` | ~/.config/copilot | path | Copilot CLI's canonical config directory (XDG-style) |
 | `AGENT_SKILLS_DIR_CODEX` | ~/.agents/skills | path | Codex CLI resolves skills from this path; symlinked to shared skills |
 | `AGENT_SKILLS_DIR_PI` | ~/.pi/agent/skills | path | Pi coding agent resolves skills from this path; symlinked to pi/skills |
+| `SANDBOX_BASE_IMAGE_NAME` | dotfiles-dev-base:{UID}-{GID} | Docker image tag | Shared sandbox base image containing common dev tools and host-matched user |
 | `SANDBOX_IMAGE_NAME` | pis:latest | Docker image tag | Default Pi sandbox Docker image name |
+| `CODEX_SANDBOX_IMAGE_NAME` | cods:latest | Docker image tag | Default Codex sandbox Docker image name |
 | `SANDBOX_NETWORK` | sandbox-net | Docker network name | Isolated network for sandbox containers; subnet 172.30.0.0/24 |
 | `SANDBOX_MEMORY_DEFAULT` | 8g | memory limit | Default Docker container memory for Pi sandbox |
 | `SANDBOX_CPU_DEFAULT` | 4 | CPU limit | Default CPU cores for Pi sandbox |
