@@ -55,6 +55,18 @@ Each engine shapes the plan differently. See [EXAMPLES.md](EXAMPLES.md) for conc
 8. **Write acceptance criteria** — numbered, testable, verifiable
 9. **Build checklist** — per-slice TDD cycle checklist + verification gates (not a flat list)
 
+### Visual and Gameplay Plans
+
+For frontend, game, canvas, animation, or art-direction work, plan the visual feedback loop before the art changes. A successful build is not enough to validate rendering or feel.
+
+When the task involves visual fidelity or gameplay feel:
+
+- Include an early slice for browser/video validation before the main visual implementation slices.
+- Prefer deterministic autoplay, seeded scenarios, fixture data, or bot-only gameplay when human input automation would be slow, flaky, or low-signal.
+- Capture review artifacts such as screenshots, video, console logs, and failed network requests under an ignored tooling directory.
+- Add a visual QA pass with a focused prompt that compares artifacts to the design/spec/reference image.
+- Keep normal automated tests for deterministic helpers and state contracts; use video/screenshot review for the parts that are inherently visual.
+
 ## Plan Structure
 
 Every plan document must include these sections in order:
