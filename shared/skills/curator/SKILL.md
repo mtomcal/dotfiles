@@ -17,7 +17,8 @@ Curator turns session evidence into a ranked, human-approved proposal for improv
 
 ## Operating Rules
 
-- Produce a ranked proposal only. Do not edit files until the user approves specific recommendations.
+- Produce a ranked proposal internally, but present recommendations to the user one at a time by default. Do not dump the full ranked list unless the user explicitly asks for the full list, summary, or all recommendations at once.
+- Do not edit files until the user has reviewed recommendations and gives final confirmation to apply the tentative approvals.
 - Always produce 3-5 recommendations, ranked by expected compound value and efficiency gain.
 - Prefer updating, delegating to, consolidating, renaming, or removing existing durable state before creating something new.
 - Treat the existing skill ecosystem as first-class evidence and routing infrastructure.
@@ -118,9 +119,63 @@ Evidence types:
 - Premortem-backed: inferred future bottleneck from the success path.
 - Speculative: weak signal; include only when needed to reach 3 recommendations, and label clearly.
 
-## Proposal Format
+## Default Sequential Proposal Format
 
-Use this structure for the initial ranked summary:
+After the evidence scan, build a ranked set of 3-5 recommendations internally. The first user-facing proposal must be the highest-ranked recommendation only, using this concise format:
+
+```md
+Recommendation N of M (~X% through)
+
+Decision: <short recommendation title>
+Recommended answer: Approve | Skip | Edit
+
+Why this matters:
+<1-2 short sentences focused on the outcome>
+
+What would change:
+- <concrete artifact or behavior>
+- <concrete artifact or behavior>
+
+Your choices:
+- Approve
+- Skip
+- Edit: <change>
+- Rerank remaining
+- Stop
+
+Evidence:
+<brief supporting details, after the decision>
+```
+
+Sequential review is recommendation-first and evidence-light. Follow the same interaction style as `grill-me`: ask one question at a time, show approximate progress, and provide the recommended answer. Avoid burying the decision in evidence text.
+
+Rules for default sequential review:
+
+1. Present only the next highest-ranked active recommendation.
+2. Treat approvals during sequential review as tentative decisions only. Record them in a short running list and do not edit files yet.
+3. Offer concise actions:
+   - `Approve this recommendation`
+   - `Skip this recommendation`
+   - `Edit this recommendation: <change>`
+   - `Rerank remaining recommendations`
+   - `Stop curator review`
+4. After an approval, record it as tentatively approved and present the next active recommendation. Do not apply it immediately unless the user explicitly says to apply immediately.
+5. After a skip, remove that recommendation from the active list and present the next one.
+6. After an edit or rerank request, update the remaining list and continue one at a time.
+7. After all active recommendations have been reviewed, show the tentative approval list and ask for final confirmation before applying any writes:
+
+   ```md
+   Ready for final confirmation:
+   - `Apply approved recommendations`
+   - `Revise before applying: <change>`
+   - `Cancel without applying`
+   ```
+
+8. If the user approves multiple numbered recommendations at once outside sequential review, treat them as tentative approvals unless the user explicitly says to apply now. Confirm once before writing.
+
+## Full Summary Format
+
+Use the full summary only when the user explicitly asks for the full list, all recommendations at once, or a ranked summary. Do not use this as the default initial output.
 
 ```md
 # Curator Proposal
@@ -137,24 +192,37 @@ Use this structure for the initial ranked summary:
 
 ## Ranked Recommendations
 
+### At a Glance
+
+1. <recommendation title> - <target artifact>
+2. <recommendation title> - <target artifact>
+3. <recommendation title> - <target artifact>
+
 ### 1. <action-oriented title>
 
-Action: Add | Update | Consolidate | Remove | Archive | Rename | Refactor | Monitor
-Target artifact: <path or artifact type>
-Follow-up skill: <skill name or "none">
-Expected compound value: High | Medium | Low
-Expected efficiency gain: High | Medium | Low
-Confidence: High | Medium | Low
-Evidence type: Pattern-backed | Correction-backed | Discovery-backed | Premortem-backed | Speculative
-Evidence: <brief pattern summary, not sensitive transcript text>
-Why now: <why this should be handled now>
-Future trigger: <when this durable state will help>
-Maintenance burden: High | Medium | Low
-Duplication/staleness risk: High | Medium | Low
+Recommendation: <one sentence that says exactly what should change>
+Target: <path or artifact type>
 Recommended action: <specific next step>
-Approval phrase: `Apply recommendation 1`
-Alternate approvals: `Apply 1 as project-local`, `Apply 1 globally`, `Skip 1 and rerank`
+
+Evidence:
+- Type: Pattern-backed | Correction-backed | Discovery-backed | Premortem-backed | Speculative
+- Signal: <brief pattern summary, not sensitive transcript text>
+- Why now: <why this should be handled now>
+- Future trigger: <when this durable state will help>
+
+Decision:
+- Recommendation type: Add | Update | Consolidate | Remove | Archive | Rename | Refactor | Monitor
+- Follow-up skill: <skill name or "none">
+- Expected compound value: High | Medium | Low
+- Expected efficiency gain: High | Medium | Low
+- Confidence: High | Medium | Low
+- Maintenance burden: High | Medium | Low
+- Duplication/staleness risk: High | Medium | Low
+- Approval phrase: `Apply recommendation 1`
+- Alternate approvals: `Apply 1 as project-local`, `Apply 1 globally`, `Skip 1 and rerank`
 ```
+
+Make every recommendation its own self-contained entry. The first visible line under each numbered heading must be `Recommendation:` so the user can skim the proposed changes without reading the evidence ledger or scoring metadata. Keep evidence short and put it after the recommendation. Put approval and routing details under `Decision`, not before the evidence.
 
 For removal/archive/consolidation recommendations, also include:
 
@@ -183,62 +251,6 @@ Approval shortcuts:
 - `Convert 3 into an AGENTS.md update`
 - `Skip 1 and rerank`
 ```
-
-## Sequential Approval Mode
-
-After presenting the ranked summary, support one-at-a-time review when the user asks to apply, skip, rerank, or refine recommendations. This keeps the proposal scannable while making approval precise.
-
-Sequential review is recommendation-first and evidence-light. Follow the same interaction style as `grill-me`: ask one question at a time, show approximate progress, and provide the recommended answer. Avoid burying the decision in evidence text.
-
-When the user chooses sequential review or starts steering the list:
-
-1. Present only the next highest-ranked active recommendation.
-2. Use this concise format:
-
-   ```md
-   Recommendation N of M (~X% through)
-
-   Decision: <short recommendation title>
-   Recommended answer: Approve | Skip | Edit
-
-   Why this matters:
-   <1-2 short sentences focused on the outcome>
-
-   What would change:
-   - <concrete artifact or behavior>
-   - <concrete artifact or behavior>
-
-   Your choices:
-   - Approve
-   - Skip
-   - Edit: <change>
-   - Rerank remaining
-   - Stop
-
-   Evidence:
-   <brief supporting details, after the decision>
-   ```
-
-3. Treat approvals during sequential review as tentative decisions only. Record them in a short running list and do not edit files yet.
-4. Offer concise actions:
-   - `Approve this recommendation`
-   - `Skip this recommendation`
-   - `Edit this recommendation: <change>`
-   - `Rerank remaining recommendations`
-   - `Stop curator review`
-5. After an approval, record it as tentatively approved and present the next active recommendation. Do not apply it immediately unless the user explicitly says to apply immediately.
-6. After a skip, remove that recommendation from the active list and present the next one.
-7. After an edit or rerank request, update the remaining list and continue one at a time.
-8. After all active recommendations have been reviewed, show the tentative approval list and ask for final confirmation before applying any writes:
-
-   ```md
-   Ready for final confirmation:
-   - `Apply approved recommendations`
-   - `Revise before applying: <change>`
-   - `Cancel without applying`
-   ```
-
-If the user approves multiple numbered recommendations at once outside sequential review, treat them as tentative approvals unless the user explicitly says to apply now. Confirm once before writing.
 
 ## Quality Bar
 
