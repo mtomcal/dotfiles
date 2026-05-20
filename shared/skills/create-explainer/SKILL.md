@@ -1,6 +1,8 @@
 ---
 name: create-explainer
 description: Creates interactive, codebase-accurate HTML explainers for any concept in a software project. Asks the engineer about experience level and specialty to tailor analogies, depth, and code density. Includes a mandatory reviewer pass that independently discovers source files to verify factual claims. Use when the user wants to understand how a system or feature works across code boundaries, create onboarding docs, build interactive learning materials, or explain a complex flow to a teammate.
+metadata:
+  short-description: Create codebase explainers
 ---
 
 # create-explainer

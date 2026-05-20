@@ -1,6 +1,8 @@
 ---
 name: em-train
 description: Acts as an engineering manager to help you build fluency in a codebase's language and ecosystem. Interviews you about what the project needs, right-sizes a ticket to your skill level, generates a brief, creates a training branch, reviews your work via real CI, and produces a summary report. Use when you want to learn a new language/framework by doing real work on a real codebase, prepare for interviews, or build hands-on fluency through structured TDD tasks.
+metadata:
+  short-description: Train through real tickets
 ---
 
 # EM Train — Engineering Manager Training Skill
