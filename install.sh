@@ -102,6 +102,20 @@ update_package_manager() {
     fi
 }
 
+modules_require_package_manager_update() {
+    local module
+
+    for module in "$@"; do
+        case "$module" in
+            "base_tools")
+                return 0
+                ;;
+        esac
+    done
+
+    return 1
+}
+
 install_package() {
     local package=$1
     local brew_name=${2:-$package}
@@ -1079,6 +1093,33 @@ install_pi_sandbox() {
     print_success "Pi sandbox configured (run 'pis' to launch)"
 }
 
+link_codex_shared_skills() {
+    local codex_skills_dir="$HOME/.codex/skills"
+    local shared_skills_dir="$DOTFILES_DIR/shared/skills"
+    local skill_dir
+    local skill_name
+    local target
+
+    mkdir -p "$codex_skills_dir"
+
+    for skill_dir in "$shared_skills_dir"/*; do
+        [ -d "$skill_dir" ] || continue
+        [ -f "$skill_dir/SKILL.md" ] || continue
+
+        skill_name="$(basename "$skill_dir")"
+        target="$codex_skills_dir/$skill_name"
+
+        if [ -L "$target" ]; then
+            rm "$target"
+        elif [ -e "$target" ]; then
+            print_warning "Skipping Codex skill '$skill_name': ~/.codex/skills/$skill_name already exists and is not a symlink"
+            continue
+        fi
+
+        ln -s "$skill_dir" "$target"
+    done
+}
+
 install_codex() {
     print_header "Installing Codex CLI"
 
@@ -1149,7 +1190,7 @@ install_codex() {
         ln -s "$DOTFILES_DIR/codex/AGENTS.md" "$HOME/.codex/AGENTS.md"
     fi
 
-    # Link user skills directory
+    # Link user skills directory for cross-agent installers that still use ~/.agents.
     if [ -L "$HOME/.agents/skills" ]; then
         rm "$HOME/.agents/skills"
     elif [ -e "$HOME/.agents/skills" ]; then
@@ -1157,6 +1198,10 @@ install_codex() {
         mv "$HOME/.agents/skills" "$HOME/.agents/skills.backup.$TIMESTAMP"
     fi
     ln -s "$DOTFILES_DIR/shared/skills" "$HOME/.agents/skills"
+
+    # Codex loads skills from ~/.codex/skills. Keep Codex's built-in .system
+    # directory intact and expose each shared skill as an individual symlink.
+    link_codex_shared_skills
 
     print_success "Codex configured"
     print_info "Run 'codex login' to authenticate"
@@ -1652,6 +1697,11 @@ show_installation_summary() {
     done
 
     echo ""
+    if [ ! -t 0 ]; then
+        print_info "No interactive stdin detected; proceeding without confirmation"
+        return 0
+    fi
+
     read -p "Proceed with installation? (y/n) " -n 1 -r
     echo ""
 
@@ -1884,7 +1934,6 @@ main() {
     # Core setup (always required)
     detect_os
     setup_package_manager
-    update_package_manager
 
     # If no modules selected, show interactive menu
     if [ ${#SELECTED_MODULES[@]} -eq 0 ]; then
@@ -1894,6 +1943,12 @@ main() {
     # Resolve dependencies
     print_info "Resolving dependencies..."
     SELECTED_MODULES=($(resolve_dependencies "${SELECTED_MODULES[@]}"))
+
+    if modules_require_package_manager_update "${SELECTED_MODULES[@]}"; then
+        update_package_manager
+    else
+        print_info "Skipping package manager update; selected modules do not install OS packages"
+    fi
 
     # Show summary and confirm
     if ! show_installation_summary; then

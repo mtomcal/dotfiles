@@ -22,6 +22,7 @@ The install script will:
 - Symlink `~/.codex/agents/` → `~/dotfiles/codex/agents/`
 - Symlink `~/.codex/AGENTS.md` → `~/dotfiles/codex/AGENTS.md` (optional)
 - Symlink `~/.agents/skills/` → `~/dotfiles/shared/skills/`
+- Symlink each shared skill into `~/.codex/skills/` while preserving Codex's built-in `~/.codex/skills/.system/`
 - Preserve existing local `~/.codex/config.toml` values (for runtime keys like trusted projects)
 
 ## Privacy
