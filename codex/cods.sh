@@ -11,13 +11,22 @@
 #   cods --no-rebuild                 # Skip auto-rebuild check
 #   cods --build                      # Rebuild the Docker image
 #
-# CWD is always mounted read-write at the same absolute path. ~/.codex is
-# mounted read-write, with auth.json overlaid read-only when present.
+# CWD is always mounted read-write at the same absolute path. The dotfiles repo
+# is mounted read-only so ~/.codex/skills symlinks into shared/skills resolve.
+# ~/.codex is mounted read-write, with auth.json overlaid read-only when present.
 
 set -e
 
+SOURCE="${BASH_SOURCE[0]}"
+while [[ -L "$SOURCE" ]]; do
+    SOURCE_DIR="$(cd "$(dirname "$SOURCE")" && pwd)"
+    SOURCE="$(readlink "$SOURCE")"
+    [[ "$SOURCE" != /* ]] && SOURCE="${SOURCE_DIR}/${SOURCE}"
+done
+SCRIPT_DIR="$(cd "$(dirname "$SOURCE")" && pwd)"
+
 IMAGE_NAME="${CODEX_SANDBOX_IMAGE:-cods:latest}"
-DOCKERFILE_DIR="$(cd "$(dirname "$0")" && pwd)"
+DOCKERFILE_DIR="$SCRIPT_DIR"
 DOTFILES_DIR="$(cd "$DOCKERFILE_DIR/.." && pwd)"
 MEMORY_LIMIT="${CODEX_SANDBOX_MEMORY:-8g}"
 CPU_LIMIT="${CODEX_SANDBOX_CPUS:-4}"
@@ -243,9 +252,17 @@ DOCKER_ARGS=(
     -e LANG=${LANG:-C.UTF-8}
     -e LC_ALL=${LC_ALL:-C.UTF-8}
     -w "$HOST_CWD"
-    -v "${HOST_CWD}:${HOST_CWD}:rw"
     -v "${CODEX_DIR}:${CONTAINER_HOME}/.codex:rw"
 )
+
+if [[ "$HOST_CWD" == "$DOTFILES_DIR" ]]; then
+    DOCKER_ARGS+=("-v" "${HOST_CWD}:${HOST_CWD}:rw")
+else
+    DOCKER_ARGS+=(
+        "-v" "${DOTFILES_DIR}:${DOTFILES_DIR}:ro"
+        "-v" "${HOST_CWD}:${HOST_CWD}:rw"
+    )
+fi
 
 if [[ -f "${CODEX_DIR}/auth.json" ]]; then
     DOCKER_ARGS+=("-v" "${CODEX_DIR}/auth.json:${CONTAINER_HOME}/.codex/auth.json:ro")

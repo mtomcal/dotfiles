@@ -25,6 +25,9 @@ The install script will:
 - Symlink each shared skill into `~/.codex/skills/` while preserving Codex's built-in `~/.codex/skills/.system/`
 - Preserve existing local `~/.codex/config.toml` values (for runtime keys like trusted projects)
 
+The `cods` sandbox wrapper also mounts this dotfiles repo into the container so
+those `~/.codex/skills/*` symlinks resolve when Codex runs outside the repo.
+
 ## Privacy
 
 Do not commit runtime data:
