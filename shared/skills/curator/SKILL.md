@@ -47,6 +47,19 @@ Before proposing, inspect enough local context to avoid duplicate or low-value r
 6. Inspect active-agent session history by default when available. Summarize only patterns and counts.
 7. For recommendations that add or change skills, commands, wrappers, symlinks, agent configs, or other runtime-loaded artifacts, inspect how the active agent discovers that artifact and whether it will be available in the next session.
 
+## Worktree Triage
+
+When the current directory is inside a git repository, inspect `git status --short` before proposing and include a concise worktree triage in the evidence ledger.
+
+Classify visible changes as:
+
+- **Owned changes**: files changed by the current curator-approved work.
+- **Unrelated changes**: files changed before curator or outside the approved recommendations.
+- **Generated artifacts**: build outputs, explainers, screenshots, caches, reports, or temporary files.
+- **Tool-owned artifacts**: agent runtime folders such as `.pi/`, `.playwright-*`, or session/log outputs.
+
+Do not modify, stage, delete, or normalize unrelated changes, generated artifacts, or tool-owned artifacts unless the user explicitly approves that cleanup. If a recommendation could affect those files, call out the risk in the recommendation.
+
 ## Recommendation Types
 
 Recommendations may add, update, consolidate, remove, archive, rename, or refactor durable state.
@@ -107,7 +120,7 @@ Evidence types:
 
 ## Proposal Format
 
-Use this structure:
+Use this structure for the initial ranked summary:
 
 ```md
 # Curator Proposal
@@ -170,6 +183,62 @@ Approval shortcuts:
 - `Convert 3 into an AGENTS.md update`
 - `Skip 1 and rerank`
 ```
+
+## Sequential Approval Mode
+
+After presenting the ranked summary, support one-at-a-time review when the user asks to apply, skip, rerank, or refine recommendations. This keeps the proposal scannable while making approval precise.
+
+Sequential review is recommendation-first and evidence-light. Follow the same interaction style as `grill-me`: ask one question at a time, show approximate progress, and provide the recommended answer. Avoid burying the decision in evidence text.
+
+When the user chooses sequential review or starts steering the list:
+
+1. Present only the next highest-ranked active recommendation.
+2. Use this concise format:
+
+   ```md
+   Recommendation N of M (~X% through)
+
+   Decision: <short recommendation title>
+   Recommended answer: Approve | Skip | Edit
+
+   Why this matters:
+   <1-2 short sentences focused on the outcome>
+
+   What would change:
+   - <concrete artifact or behavior>
+   - <concrete artifact or behavior>
+
+   Your choices:
+   - Approve
+   - Skip
+   - Edit: <change>
+   - Rerank remaining
+   - Stop
+
+   Evidence:
+   <brief supporting details, after the decision>
+   ```
+
+3. Treat approvals during sequential review as tentative decisions only. Record them in a short running list and do not edit files yet.
+4. Offer concise actions:
+   - `Approve this recommendation`
+   - `Skip this recommendation`
+   - `Edit this recommendation: <change>`
+   - `Rerank remaining recommendations`
+   - `Stop curator review`
+5. After an approval, record it as tentatively approved and present the next active recommendation. Do not apply it immediately unless the user explicitly says to apply immediately.
+6. After a skip, remove that recommendation from the active list and present the next one.
+7. After an edit or rerank request, update the remaining list and continue one at a time.
+8. After all active recommendations have been reviewed, show the tentative approval list and ask for final confirmation before applying any writes:
+
+   ```md
+   Ready for final confirmation:
+   - `Apply approved recommendations`
+   - `Revise before applying: <change>`
+   - `Cancel without applying`
+   ```
+
+If the user approves multiple numbered recommendations at once outside sequential review, treat them as tentative approvals unless the user explicitly says to apply now. Confirm once before writing.
 
 ## Quality Bar
 

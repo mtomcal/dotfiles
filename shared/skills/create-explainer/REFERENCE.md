@@ -72,6 +72,8 @@ When the user knows language A but the codebase is in language B, use this speci
 ### Step 1: Intake interview
 Ask Q1–Q5. Record answers.
 
+If the user already gave a concrete concept, target audience, and time/depth signal, do not force redundant intake. State assumptions briefly, for example: "I will treat this as a Guided explainer for a JS-familiar engineer learning Python tooling." Ask only for missing or risky details.
+
 ### Step 2: Propose scope (human checkpoint)
 Present a concise summary:
 
@@ -186,6 +188,8 @@ After drafting, read through the full explainer and fix obvious issues yourself 
 
 The reviewer pass happens **after** the full explainer is drafted. One or more reviewer sub-agents independently read the source files and verify every factual claim.
 
+Before delegating reviewer work, ask the user whether sub-agents are approved for this workflow. If the user declines, does not approve delegation, or the runtime does not allow sub-agents, do a local source-grounded reviewer pass instead and report that no delegated reviewer was used.
+
 #### Single reviewer (compact explainers, ≤4 sections)
 
 Delegate to one reviewer sub-agent. Provide the full explainer content plus this checklist prompt. Adapt the task format to whatever mechanism your environment uses for delegating to sub-agents:
@@ -239,8 +243,18 @@ Address every CRITICAL finding. Address MINOR findings if they would confuse the
 ### Step 8: Serve
 Create `explainer/` directory in the project root (or wherever the user prefers). Write `index.html` and optionally `main.js`. Start server:
 
+First check whether the preferred port is already serving something else. A port can be open but pointed at an older explainer or unrelated tool artifact.
+
+```bash
+ss -tlnp | rg ':3456' || true
+curl -fsS http://127.0.0.1:3456/ | head -20 || true
+```
+
+If `3456` is occupied, choose the next free port (`3457`, `3458`, ...). After starting the server, verify page identity by grepping for a unique headline or section title from the explainer.
+
 ```bash
 cd /path/to/explainer && python3 -m http.server 3456 --bind 0.0.0.0
+curl -fsS http://127.0.0.1:3456/ | rg "Expected headline or section title"
 ```
 
 ### Step 9: Validate visually (recommended for Full Lab)
@@ -262,6 +276,25 @@ Check that:
 - Split-code blocks collapse to single column at 700px
 - Interactive elements (cards, quiz buttons, game controls) are clickable
 - No JavaScript console errors beyond expected favicon.ico 404
+
+For any explainer with hidden or expandable content, also run an expanded-state pass. Toggle every accordion, tab, syntax card, quiz reveal, or collapsible group before taking screenshots and scanning for overflow. A practical Playwright check is:
+
+```javascript
+const issues = await page.evaluate(() => {
+  const out = [];
+  document.querySelectorAll('.syntax-card, details, [data-expandable], pre, .split-code').forEach((el) => {
+    if (el.tagName === 'DETAILS') el.open = true;
+    el.classList.add('open');
+  });
+  document.querySelectorAll('pre, .split-code, .syntax-card, details, [data-expandable]').forEach((el) => {
+    const rect = el.getBoundingClientRect();
+    if (el.scrollWidth > el.clientWidth + 1) out.push({ type: 'horizontal-overflow', text: el.textContent.slice(0, 80) });
+    if (rect.right > window.innerWidth + 1 || rect.left < -1) out.push({ type: 'viewport-cutoff', text: el.textContent.slice(0, 80) });
+  });
+  return out;
+});
+if (issues.length) throw new Error(JSON.stringify(issues, null, 2));
+```
 
 If issues found, fix and re-serve. Skipping visual validation is acceptable for Condensed and Guided tiers.
 

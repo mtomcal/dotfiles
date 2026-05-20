@@ -25,6 +25,27 @@ playwright-cli screenshot
 playwright-cli close
 ```
 
+## Browser Binary Fallback
+
+If Playwright is installed but the bundled browser fails to launch because native shared libraries are missing, check for an installed system browser before trying privileged dependency installation:
+
+```bash
+which google-chrome || which chromium || which chromium-browser || true
+```
+
+For raw Node Playwright scripts, use an explicit executable path and conservative container flags:
+
+```javascript
+const { chromium } = require('@playwright/test');
+const browser = await chromium.launch({
+  headless: true,
+  executablePath: '/opt/google/chrome/chrome',
+  args: ['--no-sandbox', '--disable-dev-shm-usage'],
+});
+```
+
+Use `npx playwright install-deps` only when a system browser is unavailable or also fails; it may require sudo.
+
 ## Commands
 
 ### Core

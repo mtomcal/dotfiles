@@ -19,6 +19,8 @@ Build an interactive HTML explainer that teaches any concept in the current code
 
 Delegation is described in abstract terms — adapt to whatever sub-agent mechanism your environment provides. The key invariant: **you write the shell + CSS + navigation, delegate sections and labs, merge results, then run a single reviewer pass at the end.**
 
+If the user already provides a clear concept, audience, and desired depth, state your assumptions briefly and proceed without re-asking those intake questions unless the request is ambiguous or risky.
+
 ## Output tiers
 
 | Tier | Time budget | What you get |
@@ -38,21 +40,29 @@ The skill defaults to **Full Lab** unless the user explicitly requests less.
 - **Self-contained**: Single `index.html` for static tiers. `index.html` + `main.js` for interactive tiers. No build step, no external dependencies except a local server.
 - **Reuse lab templates**: The `lab/` folder contains working, copy-pasteable interactive components. Use them instead of writing interactivity from scratch. Choose the template by concept shape using the [lab selection matrix](lab/README.md#lab-selection-matrix).
 - **Full-width layout for code-heavy explainers**: Use `max-width: 1400px` (not 960px) when the explainer has extensive code blocks or side-by-side comparisons. Keep `padding: 0 32px` and collapse to 16px on mobile.
-- **Validate with Playwright before serving**: After drafting, take screenshots at the designed viewport and at 700px mobile width. Verify code blocks don't overflow and interactive elements render. Store all screenshots and generated files in `/tmp/` or another temporary directory — never in the project root or explainer folder.
+- **Validate with Playwright before serving**: After drafting, take screenshots at the designed viewport and at 700px mobile width. Verify code blocks don't overflow and interactive elements render. For accordions, tabs, syntax cards, quizzes, or other hidden panels, expand every group before checking layout. Store all screenshots and generated files in `/tmp/` or another temporary directory — never in the project root or explainer folder.
 
 ## Reviewer pass (mandatory)
 
-After drafting, always delegate a reviewer sub-agent with:
+After drafting, ask the user whether sub-agents are approved for the reviewer pass before delegating review work. If the user approves, delegate a reviewer sub-agent with:
 - The full explainer content
 - Access to read source files independently
 - Instructions to flag any claim that doesn't match reality
 
-Address every finding before serving. Never skip this step. For large explainers, split review across multiple sub-agents (syntax reviewer, architecture reviewer, code accuracy reviewer, interactive lab reviewer), each receiving only their sections plus a claim checklist.
+If sub-agents are unavailable or the user does not approve them, perform a local source-grounded reviewer pass yourself and explicitly report that no delegated reviewer was used. Address every finding before serving. Never skip the reviewer pass. For large explainers, split review across multiple sub-agents (syntax reviewer, architecture reviewer, code accuracy reviewer, interactive lab reviewer), each receiving only their sections plus a claim checklist after approval.
 
 ## Serving
 
+Before starting a server, verify the preferred port is available and will serve this explainer, not an older artifact. If `3456` is already occupied, pick the next free port and use that URL consistently for browser checks and the final response.
+
 ```bash
 cd /path/to/explainer && python3 -m http.server 3456 --bind 0.0.0.0
+```
+
+After the server starts, fetch the page and confirm it contains explainer-specific text before running Playwright:
+
+```bash
+curl -fsS http://127.0.0.1:3456/ | rg "Expected headline or section title"
 ```
 
 Present the URL (e.g., `http://localhost:3456/` or the machine's public URL) to the user.

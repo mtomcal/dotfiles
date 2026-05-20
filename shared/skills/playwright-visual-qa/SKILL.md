@@ -17,6 +17,24 @@ Verify `playwright-cli` exists:
 
 If missing, install it (how you do this depends on your environment). If you don't have `playwright-cli`, you can also do visual QA with any Playwright setup you already use, but this skill assumes the `playwright-cli` interface.
 
+If Playwright is installed but its bundled browser cannot launch because native dependencies are missing, try a system browser before attempting privileged dependency installation:
+
+```bash
+which google-chrome || which chromium || which chromium-browser || true
+```
+
+For Node-based Playwright checks, launch with an explicit executable path:
+
+```javascript
+const browser = await chromium.launch({
+  headless: true,
+  executablePath: '/opt/google/chrome/chrome',
+  args: ['--no-sandbox', '--disable-dev-shm-usage'],
+});
+```
+
+Only escalate to `npx playwright install-deps` or OS package installation when no usable system browser is available or the system browser also fails.
+
 ## Workflow
 
 1. Navigate: `playwright-cli navigate --url "<url>"`
