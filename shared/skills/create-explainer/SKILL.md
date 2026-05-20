@@ -36,7 +36,7 @@ The skill defaults to **Full Lab** unless the user explicitly requests less.
 - **Cross-language explainers**: When the user knows language A but the codebase uses language B, generate side-by-side code comparisons (split-code blocks) throughout. Include a syntax reference section. See [cross-language patterns](REFERENCE.md#cross-language-explainers).
 - **Server-authoritative mindset**: Teach *why* the architecture works the way it does, not just *what* happens. Every explainer answers: "Who owns the truth for each piece of state?"
 - **Self-contained**: Single `index.html` for static tiers. `index.html` + `main.js` for interactive tiers. No build step, no external dependencies except a local server.
-- **Reuse lab templates**: The `lab/` folder contains 8 working, copy-pasteable interactive components. Use them instead of writing interactivity from scratch.
+- **Reuse lab templates**: The `lab/` folder contains working, copy-pasteable interactive components. Use them instead of writing interactivity from scratch. Choose the template by concept shape using the [lab selection matrix](lab/README.md#lab-selection-matrix).
 - **Full-width layout for code-heavy explainers**: Use `max-width: 1400px` (not 960px) when the explainer has extensive code blocks or side-by-side comparisons. Keep `padding: 0 32px` and collapse to 16px on mobile.
 - **Validate with Playwright before serving**: After drafting, take screenshots at the designed viewport and at 700px mobile width. Verify code blocks don't overflow and interactive elements render. Store all screenshots and generated files in `/tmp/` or another temporary directory — never in the project root or explainer folder.
 

@@ -112,10 +112,12 @@ Build the explainer as self-contained HTML. Structure depends on tier.
 
 #### Guided tier structure
 - Everything in Condensed
-- Plus ONE interactive element chosen by relevance:
-  - Toggleable state machine (e.g., validation gates)
-  - Step-through timeline (e.g., message flow)
-  - Network delay simulator (sliders → timeline visualization)
+- Plus ONE interactive element chosen by concept shape from the [lab selection matrix](lab/README.md#lab-selection-matrix):
+  - Toggleable state machine for validation gates
+  - Step-through timeline for message flow
+  - Network delay simulator for timing behavior
+  - Prediction lab for commit-before-reveal scenarios
+  - Compare/contrast lab for similar APIs or bug/fix pairs
 - Two files: `index.html` + `main.js`
 
 #### Full Lab structure
@@ -128,6 +130,12 @@ Build the explainer as self-contained HTML. Structure depends on tier.
 - Knowledge check quiz (5–10 questions)
 - Code architecture map (clickable table)
 - Connect-the-concepts graph builder (node-based, rounds with synonym disguises)
+- Compare/contrast lab for near-miss concepts, bug/fix pairs, and subtle API differences
+- Prediction lab where the learner commits before revealing output, next state, or blocking gate
+- Parsons sequencer for ordering code lines, validation gates, or lifecycle steps
+- Worked example fader for full example → partial support → independent attempt
+- Self-explanation cards for important code lines or architecture decisions
+- Confidence checks after quiz/prediction answers to detect false confidence
 - Quick reference with collapsible message payloads
 - **Syntax reference cards** — 8-12 collapsible cards with side-by-side code (for cross-language explainers)
 - Two files: `index.html` + `main.js`
@@ -161,7 +169,7 @@ For large explainers (10+ sections, multiple interactive labs), you can parallel
 
 **Handling failed delegation**: If a sub-agent returns unusable output (empty, corrupted, or wrong concept), narrow the task and retry, or write that section yourself.
 
-**Use lab templates**: Instead of writing interactivity from scratch, copy from the [`lab/`](lab/README.md) folder. Each template is a self-contained HTML file with `/* ADAPT: ... */` comments marking customization points.
+**Use lab templates**: Instead of writing interactivity from scratch, copy from the [`lab/`](lab/README.md) folder. Each template is a self-contained HTML file with `/* ADAPT: ... */` comments marking customization points. Pick templates from the lab selection matrix before drafting; do not choose flashy interactions that do not match the learning objective.
 
 **Cross-language explainers**: If the user knows a different language than the codebase, add:
 1. A "Python ↔ JS Quick Reference" section (or equivalent language pair) with 8-12 collapsible syntax cards as the first section after the TOC
