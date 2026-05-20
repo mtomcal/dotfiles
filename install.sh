@@ -1094,30 +1094,7 @@ install_pi_sandbox() {
 }
 
 link_codex_shared_skills() {
-    local codex_skills_dir="$HOME/.codex/skills"
-    local shared_skills_dir="$DOTFILES_DIR/shared/skills"
-    local skill_dir
-    local skill_name
-    local target
-
-    mkdir -p "$codex_skills_dir"
-
-    for skill_dir in "$shared_skills_dir"/*; do
-        [ -d "$skill_dir" ] || continue
-        [ -f "$skill_dir/SKILL.md" ] || continue
-
-        skill_name="$(basename "$skill_dir")"
-        target="$codex_skills_dir/$skill_name"
-
-        if [ -L "$target" ]; then
-            rm "$target"
-        elif [ -e "$target" ]; then
-            print_warning "Skipping Codex skill '$skill_name': ~/.codex/skills/$skill_name already exists and is not a symlink"
-            continue
-        fi
-
-        ln -s "$skill_dir" "$target"
-    done
+    "$DOTFILES_DIR/codex/sync-skills.sh" || print_warning "Failed to sync Codex shared skills"
 }
 
 install_codex() {

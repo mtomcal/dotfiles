@@ -45,6 +45,7 @@ Before proposing, inspect enough local context to avoid duplicate or low-value r
 4. Inventory available skills before proposing any skill work. Prefer existing skill updates or delegation paths over new skills.
 5. Inspect durable project context when present: `AGENTS.md`, specs, ubiquitous language, README files, plans, TODOs, and local skill directories.
 6. Inspect active-agent session history by default when available. Summarize only patterns and counts.
+7. For recommendations that add or change skills, commands, wrappers, symlinks, agent configs, or other runtime-loaded artifacts, inspect how the active agent discovers that artifact and whether it will be available in the next session.
 
 ## Recommendation Types
 
@@ -57,8 +58,9 @@ Use this targeting hierarchy:
 3. Existing skill update before new skill creation.
 4. Spec or glossary update when the learning changes domain language or behavioral contracts.
 5. Skill frontmatter tuning when an existing skill should have triggered but likely did not because its `description`, `Use when` phrase, `metadata.short-description`, name, or tool hints were unclear.
-6. Removal, archival, consolidation, rename, or refactor when existing durable state slows future agents down.
-7. No durable capture only when the evidence is one-off, vague, contradicted by existing guidance, or lacks a future trigger.
+6. Runtime availability fixes when durable state exists in the repo but will not be loaded by the intended agent because of missing symlinks, wrappers, config registration, install hooks, or session restart requirements.
+7. Removal, archival, consolidation, rename, or refactor when existing durable state slows future agents down.
+8. No durable capture only when the evidence is one-off, vague, contradicted by existing guidance, or lacks a future trigger.
 
 ## Skill Ecosystem Routing
 
@@ -178,6 +180,7 @@ Reject or down-rank recommendations that:
 - preserve local trivia as global policy
 - add broad instructions where a small test, spec, or checklist would work better
 - make skill selection harder
+- create or update durable state without a path for the intended agent to load it
 - increase maintenance burden more than they save future work
 
 When forced to produce 3-5 recommendations from weak evidence, label low-confidence or monitor-only items honestly.

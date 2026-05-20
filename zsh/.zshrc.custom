@@ -41,9 +41,24 @@ alias lg='lazygit'
 alias y='yazi'
 
 # AI Coding Assistant aliases
-alias cx='codex'
 alias gm='gemini'
 alias cop='copilot'
+
+_sync_codex_shared_skills() {
+  local sync_script="$HOME/dotfiles/codex/sync-skills.sh"
+  if [[ -x "$sync_script" ]]; then
+    "$sync_script" --quiet 2>/dev/null
+  fi
+}
+
+codex() {
+  _sync_codex_shared_skills
+  command codex "$@"
+}
+
+cx() {
+  codex "$@"
+}
 
 # Better navigation with neovim inside tmux
 export TERM=xterm-256color

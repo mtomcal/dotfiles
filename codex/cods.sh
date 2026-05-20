@@ -235,6 +235,10 @@ CONTAINER_HOME="/home/${HOST_USER}"
 
 mkdir -p "$CODEX_DIR"
 
+if [[ -x "$DOTFILES_DIR/codex/sync-skills.sh" ]]; then
+    "$DOTFILES_DIR/codex/sync-skills.sh" --quiet
+fi
+
 DOCKER_TTY_ARGS=(-i)
 if [[ -t 0 && -t 1 ]]; then
     DOCKER_TTY_ARGS=(-it)
