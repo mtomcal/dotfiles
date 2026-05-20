@@ -53,6 +53,8 @@ Before proposing, inspect enough local context to avoid duplicate or low-value r
 
 When the current directory is inside a git repository, inspect `git status --short` before proposing and include a concise worktree triage in the evidence ledger.
 
+If `git status --short` shows a newly created durable artifact as untracked, for example `?? AGENTS.md`, `?? DESIGN.md`, `?? SKILL.md`, `?? README.md`, specs, plans, or docs, inspect the file directly with `sed`/`cat`/`grep`. Do not rely on `git diff -- <file>` for untracked files; it will be empty unless invoked with special options.
+
 Classify visible changes as:
 
 - **Owned changes**: files changed by the current curator-approved work.
