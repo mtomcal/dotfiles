@@ -38,13 +38,15 @@ Only escalate to `npx playwright install-deps` or OS package installation when n
 ## Workflow
 
 1. Navigate: `playwright-cli navigate --url "<url>"`
+   - After CSS, layout, or static asset edits, prefer a cache-busted URL such as `?v=<timestamp>` or perform a hard reload before trusting screenshots.
+   - If browser output contradicts local files, verify the served DOM/CSS before diagnosing the page.
 2. Screenshot:
    - Viewport: `playwright-cli screenshot --filename viewport.png`
    - Full-page: `playwright-cli screenshot --full-page --filename full.png`
 3. Accessibility: `playwright-cli snapshot`
 4. Console: `playwright-cli console`
 5. Network: `playwright-cli network`
-6. Report issues (layout/a11y/console/network) with severity and suggested fixes.
+6. Report issues (layout/a11y/console/network) with severity and suggested fixes. Include viewport size, screenshot path, console warning/error count, network failures, missing hash targets when relevant, horizontal scroll width, and visible overflow/offscreen notes.
 7. Close: `playwright-cli close`
 
 ## Checklist-Based QA (Orchestrated)

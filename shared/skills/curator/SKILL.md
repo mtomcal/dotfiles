@@ -23,6 +23,7 @@ Curator turns session evidence into a ranked, human-approved proposal for improv
 - Prefer updating, delegating to, consolidating, renaming, or removing existing durable state before creating something new.
 - Treat the existing skill ecosystem as first-class evidence and routing infrastructure.
 - Include improvements to `curator` itself when the session reveals a reusable improvement to evidence scanning, ranking, routing, approval phrases, privacy handling, or dead-weight detection.
+- Always consider at least one new-skill candidate during ranking. Recommend it only if it clears the quality bar; otherwise note briefly that no new skill was recommended and why existing durable state is the better target.
 - Do not overfit `curator` to one session. Self-improvement recommendations need a clear future trigger or repeated failure mode.
 - Minimize sensitive details from history. Summarize patterns instead of quoting private user text, secrets, credentials, or unrelated project details.
 
@@ -91,6 +92,8 @@ Common routing:
 - `test-quality-verifier`: improve vague tests or validation coverage.
 
 If proposing a new skill, explain why no existing skill should absorb the learning.
+
+If not proposing any new skill, explicitly account for the strongest new-skill candidate considered and why it did not beat updating, consolidating, or routing to existing durable state.
 
 If the session reveals that a relevant skill was available but was not selected, consider that a skill ecosystem defect. Prefer a frontmatter or description update over creating a new skill when the missed trigger is caused by vague naming, missing keywords, weak "Use when" guidance, absent `metadata.short-description`, or misleading `allowed-tools`.
 
