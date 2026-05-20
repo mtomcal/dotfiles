@@ -48,6 +48,12 @@ Before proposing, inspect enough local context to avoid duplicate or low-value r
 5. Inspect durable project context when present: `AGENTS.md`, specs, ubiquitous language, README files, plans, TODOs, and local skill directories.
 6. Inspect active-agent session history by default when available. Summarize only patterns and counts.
 7. For recommendations that add or change skills, commands, wrappers, symlinks, agent configs, or other runtime-loaded artifacts, inspect how the active agent discovers that artifact and whether it will be available in the next session.
+8. When the session includes extracting a prototype, archived app, demo, or standalone repo from another codebase, check whether durable guidance should capture the extraction boundary and runtime verification lessons:
+   - the source artifact and extracted repository should have a clear source-of-truth relationship
+   - generated artifacts and tool-owned browser artifacts should be ignored
+   - a build should be paired with a browser smoke check when a UI can build while rendering blank
+   - optional secret-backed integrations should fail gracefully without local secrets
+   - private repo creation and push status should be verified when publication is part of the task
 
 ## Worktree Triage
 
@@ -132,6 +138,7 @@ After the evidence scan, build a ranked set of 3-5 recommendations internally. T
 Recommendation N of M (~X% through)
 
 Decision: <short recommendation title>
+
 Why this matters:
 <1-2 short sentences focused on the outcome>
 
@@ -150,7 +157,7 @@ Evidence:
 <brief supporting details, after the decision>
 ```
 
-Sequential review is recommendation-first and evidence-light. Follow the same interaction style as `grill-me`: ask one question at a time and show approximate progress. Avoid burying the decision in evidence text.
+Sequential review is recommendation-first and evidence-light. Follow the same interaction style as `grill-me`: ask one question at a time and show approximate progress. Do not prescribe a default answer; the user should choose without a recommended approval/skip/edit nudge. Avoid burying the decision in evidence text.
 
 Rules for default sequential review:
 
