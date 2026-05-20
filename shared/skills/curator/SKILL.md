@@ -127,8 +127,6 @@ After the evidence scan, build a ranked set of 3-5 recommendations internally. T
 Recommendation N of M (~X% through)
 
 Decision: <short recommendation title>
-Recommended answer: Approve | Skip | Edit
-
 Why this matters:
 <1-2 short sentences focused on the outcome>
 
@@ -147,7 +145,7 @@ Evidence:
 <brief supporting details, after the decision>
 ```
 
-Sequential review is recommendation-first and evidence-light. Follow the same interaction style as `grill-me`: ask one question at a time, show approximate progress, and provide the recommended answer. Avoid burying the decision in evidence text.
+Sequential review is recommendation-first and evidence-light. Follow the same interaction style as `grill-me`: ask one question at a time and show approximate progress. Avoid burying the decision in evidence text.
 
 Rules for default sequential review:
 
