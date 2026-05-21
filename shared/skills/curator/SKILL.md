@@ -172,16 +172,21 @@ Rules for default sequential review:
 4. After an approval, record it as tentatively approved and present the next active recommendation. Do not apply it immediately unless the user explicitly says to apply immediately.
 5. After a skip, remove that recommendation from the active list and present the next one.
 6. After an edit or rerank request, update the remaining list and continue one at a time.
-7. After all active recommendations have been reviewed, show the tentative approval list and ask for final confirmation before applying any writes:
+7. If the user is using terse repeated approvals such as "approve", "yes", or "agreed", keep the response short but include the running approval count or latest approved title before showing the next recommendation. This prevents ambiguity without slowing down the review.
+8. After all active recommendations have been reviewed, show the tentative approval list and ask for final confirmation before applying any writes:
 
    ```md
    Ready for final confirmation:
    - `Apply approved recommendations`
+   - `Apply and commit approved recommendations`
+   - `Apply, commit, and push approved recommendations`
    - `Revise before applying: <change>`
    - `Cancel without applying`
    ```
 
-8. If the user approves multiple numbered recommendations at once outside sequential review, treat them as tentative approvals unless the user explicitly says to apply now. Confirm once before writing.
+   Include commit/push options only when the approved writes affect files in a git repository. If the approved writes span multiple repositories, say which repositories would be committed or pushed separately. Applying, committing, and pushing still requires explicit final confirmation; a tentative approval is not enough.
+9. If the user approves multiple numbered recommendations at once outside sequential review, treat them as tentative approvals unless the user explicitly says to apply now. Confirm once before writing.
+10. After applying approved changes, summarize which files changed and whether any affected repository remains dirty. If the user chose an apply-only option, do not commit or push until they explicitly ask.
 
 ## Full Summary Format
 

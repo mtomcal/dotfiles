@@ -1,14 +1,14 @@
 ---
 name: playwright-visual-qa
-description: "Perform browser-based visual QA via playwright-cli: screenshots, a11y snapshot, console and network checks. Pairs well with @playwright_visual_qa. Use when performing visual QA, accessibility checks, or browser-based UI verification."
-allowed-tools: Bash(playwright-cli:*)
+description: "Perform browser-based visual QA via playwright-cli: screenshots, a11y snapshot, console and network checks, plus recorded video artifact review with ffmpeg/ffprobe. Pairs well with @playwright_visual_qa. Use when performing visual QA, accessibility checks, browser-based UI verification, reviewing recorded demos, gameplay videos, Playwright WebM artifacts, or visual scenario recordings."
+allowed-tools: Bash(playwright-cli:*) Bash(ffmpeg:*) Bash(ffprobe:*) Bash(find:*) Bash(mkdir:*) Bash(ls:*) Bash(du:*) Bash(jq:*) Bash(sed:*) Bash(cat:*)
 metadata:
-  short-description: Visual QA with Playwright CLI
+  short-description: Visual and video QA with Playwright CLI
 ---
 
 # Playwright Visual QA
 
-Use this skill to do quick, repeatable visual QA against a URL using `playwright-cli`.
+Use this skill to do quick, repeatable visual QA against a URL using `playwright-cli`, and to review recorded browser/demo videos using `ffmpeg` and structured artifacts.
 
 ## Prerequisite
 
@@ -48,6 +48,95 @@ Only escalate to `npx playwright install-deps` or OS package installation when n
 5. Network: `playwright-cli network`
 6. Report issues (layout/a11y/console/network) with severity and suggested fixes. Include viewport size, screenshot path, console warning/error count, network failures, missing hash targets when relevant, horizontal scroll width, and visible overflow/offscreen notes.
 7. Close: `playwright-cli close`
+
+## Recorded Video Review
+
+Use this workflow when the deliverable is a recorded demo, gameplay clip, Playwright WebM, or deterministic visual scenario. Artifact existence is not enough; the recording must prove the requested behavior to a human reviewer.
+
+### 1. Locate the Evidence Bundle
+
+Prefer the artifact directory produced by the test or runner. If the project has a standard artifact root, find the newest video:
+
+```bash
+LATEST=$(find artifacts -path '*/video.webm' -printf '%T@ %h\n' | sort -nr | head -1 | cut -d' ' -f2-)
+ls -lh "$LATEST"
+```
+
+If there are structured artifacts, inspect them before watching the video:
+
+```bash
+find "$LATEST" -maxdepth 1 -type f -print | sort
+jq . "$LATEST/scenario-result.json" 2>/dev/null || true
+sed -n '1,80p' "$LATEST/server-events.ndjson" 2>/dev/null || true
+sed -n '1,120p' "$LATEST/browser-console.log" 2>/dev/null || true
+```
+
+### 2. Probe the Recording
+
+Confirm duration, resolution, codec, file size, and whether audio is present:
+
+```bash
+ffprobe -v error -show_entries format=duration,size -show_streams "$LATEST/video.webm"
+```
+
+Call out missing audio explicitly. Many Playwright WebM captures have no audio stream, so do not treat silence as proof that product audio is broken.
+
+### 3. Build a Contact Sheet
+
+Create a low-frequency overview first. This catches wrong-camera, blank-screen, and "only spawn is visible" failures quickly:
+
+```bash
+mkdir -p /tmp/video-review
+ffmpeg -y -i "$LATEST/video.webm" \
+  -vf "fps=5,scale=320:-1,tile=5x7" \
+  -frames:v 1 /tmp/video-review/contact.png
+```
+
+Review the contact sheet before deeper analysis. Confirm the expected actor, target, UI, object, or interaction is visible for the meaningful part of the recording, not only at setup.
+
+### 4. Create Focused Clips Or Crops
+
+Use higher FPS contact sheets around the suspected moment when checking short-lived effects:
+
+```bash
+ffmpeg -y -ss 2.0 -t 2.0 -i "$LATEST/video.webm" \
+  -vf "fps=12,scale=480:-1,tile=6x4" \
+  -frames:v 1 /tmp/video-review/focused.png
+```
+
+Crop when the important action is small in the full frame:
+
+```bash
+ffmpeg -y -ss 2.0 -t 2.0 -i "$LATEST/video.webm" \
+  -vf "crop=420:260:760:320,fps=12,scale=420:-1,tile=6x4" \
+  -frames:v 1 /tmp/video-review/crop.png
+```
+
+Adjust `-ss`, `-t`, and `crop=w:h:x:y` from the contact sheet evidence. Do not guess once the frames show a better region.
+
+### 5. Cross-Check Semantics
+
+Compare the visible story with structured evidence:
+
+- Does the intended actor stay on camera through the behavior?
+- Does the video show the requested outcome, not merely setup or spawn?
+- Do console and network logs show errors that explain missing visuals?
+- Do authoritative events or scenario results agree with the video timeline?
+- Are domain-specific semantics visible? For example, a shotgun demo should show a pellet spread, not just one generic projectile.
+- Are artifact limitations being mistaken for product bugs? Missing audio in WebM is a recording limitation unless another capture proves otherwise.
+
+### 6. Report Findings
+
+Lead with failures that would mislead a human reviewer. Include:
+
+- Video path and duration
+- Contact sheet and crop paths
+- Console/network error count
+- Structured artifact mismatch, if any
+- The exact visual expectation that failed
+- Whether the issue is recording setup, test artifact limitation, or product/runtime behavior
+
+For game or animation work, a passing review means the artifact would convince a person watching it that the requested behavior happened correctly.
 
 ## Checklist-Based QA (Orchestrated)
 
