@@ -49,7 +49,8 @@ Before proposing, inspect enough local context to avoid duplicate or low-value r
 6. Inspect active-agent session history by default when available. Summarize only patterns and counts.
 7. For recommendations that add or change skills, commands, wrappers, symlinks, agent configs, or other runtime-loaded artifacts, inspect how the active agent discovers that artifact and whether it will be available in the next session.
 8. When the current session implements or closes a planned follow-up, compare `PLAN.md`, `CHANGELOG.md`, `AGENTS.md`, specs, and related recipes for stale open-item language. Recommend removing or rewriting stale "current follow-up", TODO, unknown-unknown, or workaround guidance when it would mislead future agents.
-9. When the session includes extracting a prototype, archived app, demo, or standalone repo from another codebase, check whether durable guidance should capture the extraction boundary and runtime verification lessons:
+9. When logs, tests, schemas, or structured events pass but video, screenshots, or visual review reveal a different issue, flag the cross-evidence mismatch. Recommend durable capture in specs, QA recipes, or visual-review skills when future agents need to compare machine truth with human-visible causality.
+10. When the session includes extracting a prototype, archived app, demo, or standalone repo from another codebase, check whether durable guidance should capture the extraction boundary and runtime verification lessons:
    - the source artifact and extracted repository should have a clear source-of-truth relationship
    - generated artifacts and tool-owned browser artifacts should be ignored
    - a build should be paired with a browser smoke check when a UI can build while rendering blank

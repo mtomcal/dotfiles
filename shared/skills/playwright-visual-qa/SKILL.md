@@ -123,6 +123,7 @@ Compare the visible story with structured evidence:
 
 - Does the intended actor stay on camera through the behavior?
 - Does the video show the requested outcome, not merely setup or spawn?
+- Does the visible cause align with the visible effect? For example, an actor's tool, cursor, weapon, animation, or gesture should point into or otherwise lead to the resulting projectile, hit spark, UI transition, object movement, or state change.
 - Do console and network logs show errors that explain missing visuals?
 - Do authoritative events or scenario results agree with the video timeline?
 - Are domain-specific semantics visible? For example, a shotgun demo should show a pellet spread, not just one generic projectile.
@@ -134,6 +135,7 @@ For deterministic game scenario recordings, compare server-authored evidence fir
 - Browser-observed events diagnose whether the browser received the expected state.
 - The video diagnoses camera targeting, timing, rendering, animation, and human-review credibility.
 - Verify domain-specific counts and identifiers, such as projectile count, burst IDs, sequence indexes, pickup-before-use ordering, and visible spread or impact behavior.
+- Verify visual causality with focused frames. For example, a shotgun barrel and arms should point into the pellet fan, not away from it, even when the event log has the right projectile count.
 
 ### 6. Report Findings
 
