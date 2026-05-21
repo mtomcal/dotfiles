@@ -67,6 +67,15 @@ When the task involves visual fidelity or gameplay feel:
 - Add a visual QA pass with a focused prompt that compares artifacts to the design/spec/reference image.
 - Keep normal automated tests for deterministic helpers and state contracts; use video/screenshot review for the parts that are inherently visual.
 
+When the output is a recorded demo or scenario video, define human-observable acceptance instead of treating artifact existence as success:
+
+- Name the viewer or camera subject separately from the actor that performs the behavior.
+- Specify the visible proof the recording must show, such as pickup, aim, fire, hit, miss, recoil, projectile fan, or impact.
+- Require an artifact review step using `ffprobe`, `ffmpeg` contact sheets, screenshots, or browser-video inspection.
+- Cross-check the video against structured logs, browser console output, and authoritative events.
+- Include domain semantics in acceptance criteria. For example, a shotgun demo must prove pellet spread, not merely that a fire event occurred.
+- Call out known recording limitations, such as missing audio tracks in Playwright WebM output, so reviewers do not over-interpret the artifact.
+
 ## Plan Structure
 
 Every plan document must include these sections in order:
