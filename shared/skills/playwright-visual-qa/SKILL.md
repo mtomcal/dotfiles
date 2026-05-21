@@ -67,7 +67,10 @@ If there are structured artifacts, inspect them before watching the video:
 ```bash
 find "$LATEST" -maxdepth 1 -type f -print | sort
 jq . "$LATEST/scenario-result.json" 2>/dev/null || true
+sed -n '1,80p' "$LATEST/server-authored-events.ndjson" 2>/dev/null || true
+sed -n '1,80p' "$LATEST/browser-observed-events.ndjson" 2>/dev/null || true
 sed -n '1,80p' "$LATEST/server-events.ndjson" 2>/dev/null || true
+sed -n '1,120p' "$LATEST/browser-console.ndjson" 2>/dev/null || true
 sed -n '1,120p' "$LATEST/browser-console.log" 2>/dev/null || true
 ```
 
@@ -124,6 +127,13 @@ Compare the visible story with structured evidence:
 - Do authoritative events or scenario results agree with the video timeline?
 - Are domain-specific semantics visible? For example, a shotgun demo should show a pellet spread, not just one generic projectile.
 - Are artifact limitations being mistaken for product bugs? Missing audio in WebM is a recording limitation unless another capture proves otherwise.
+
+For deterministic game scenario recordings, compare server-authored evidence first, then browser-observed evidence, then the video:
+
+- Server-authored events are the runtime truth for what happened in the simulation.
+- Browser-observed events diagnose whether the browser received the expected state.
+- The video diagnoses camera targeting, timing, rendering, animation, and human-review credibility.
+- Verify domain-specific counts and identifiers, such as projectile count, burst IDs, sequence indexes, pickup-before-use ordering, and visible spread or impact behavior.
 
 ### 6. Report Findings
 
