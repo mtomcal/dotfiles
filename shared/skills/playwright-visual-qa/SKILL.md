@@ -97,6 +97,17 @@ ffmpeg -y -i "$LATEST/video.webm" \
 
 Review the contact sheet before deeper analysis. Confirm the expected actor, target, UI, object, or interaction is visible for the meaningful part of the recording, not only at setup.
 
+If the first contact-sheet frames are black, blank, or only pre-app startup, do not treat the raw recording as the human-review clip. Create a trimmed clip that starts after the app canvas or meaningful scene is visible, then rebuild the contact sheet from that trimmed artifact:
+
+```bash
+ffmpeg -y -ss 1.5 -i "$LATEST/video.webm" -c copy /tmp/video-review/review.webm
+ffmpeg -y -i /tmp/video-review/review.webm \
+  -vf "fps=5,scale=320:-1,tile=5x7" \
+  -frames:v 1 /tmp/video-review/contact-trimmed.png
+```
+
+Adjust `-ss` from the actual frames. Keep the raw video as source evidence, but point human reviewers at the trimmed clip when startup frames would make the demo look blank or misleading.
+
 ### 4. Create Focused Clips Or Crops
 
 Use higher FPS contact sheets around the suspected moment when checking short-lived effects:
@@ -122,12 +133,14 @@ Adjust `-ss`, `-t`, and `crop=w:h:x:y` from the contact sheet evidence. Do not g
 Compare the visible story with structured evidence:
 
 - Does the intended actor stay on camera through the behavior?
+- Does the contact sheet reveal the same quality that structured JSON or event logs claim, or did machine checks pass while the visible artifact still looks wrong?
 - Does the video show the requested outcome, not merely setup or spawn?
 - Does the visible cause align with the visible effect? For example, an actor's tool, cursor, weapon, animation, or gesture should point into or otherwise lead to the resulting projectile, hit spark, UI transition, object movement, or state change.
 - Do console and network logs show errors that explain missing visuals?
 - Do authoritative events or scenario results agree with the video timeline?
 - Are domain-specific semantics visible? For example, a shotgun demo should show a pellet spread, not just one generic projectile.
 - Are artifact limitations being mistaken for product bugs? Missing audio in WebM is a recording limitation unless another capture proves otherwise.
+- For visual-reference work, compare the recording against the requested concept, mock, or screenshot. Passing palette/count/layout gates does not replace human inspection for crop, composition, readability, clipping, or obvious matte/fringe artifacts.
 
 For deterministic game scenario recordings, compare server-authored evidence first, then browser-observed evidence, then the video:
 
@@ -136,6 +149,7 @@ For deterministic game scenario recordings, compare server-authored evidence fir
 - The video diagnoses camera targeting, timing, rendering, animation, and human-review credibility.
 - Verify domain-specific counts and identifiers, such as projectile count, burst IDs, sequence indexes, pickup-before-use ordering, and visible spread or impact behavior.
 - Verify visual causality with focused frames. For example, a shotgun barrel and arms should point into the pellet fan, not away from it, even when the event log has the right projectile count.
+- For fixed-camera validation, confirm the important world-space elements are inside the captured crop. A correct simulation can still produce a weak or misleading review video if the actor, boundary, UI, prop, or effect sits under overlays or at the frame edge.
 
 ### 6. Report Findings
 
