@@ -47,23 +47,30 @@ Do not change movement or server-authoritative collision rules unless a red test
 
 #### Red
 
-Tests to write **before** touching implementation code:
+Cycle A test to write **before** touching implementation code:
 
 - Test file: `stick-rumble-client/src/game/entities/PlayerManager.test.ts`
-- What the test proves: live body must not rotate or flicker during dodge roll
-- Assertion strategy: check rotation and visibility state on roll enter/during/exit
+- What the test proves: live body must not rotate on dodge-roll enter
+- Assertion strategy: trigger roll start and assert live-body rotation stays `0`
 - Existing tests to rewrite: tests that endorse 360-degree rotation or body flicker
 
-Run the test suite. You must see the test fail (rotation/flicker still happening, test catches it) before touching PlayerManager.ts.
+Run the targeted test. You must see it fail because roll start still rotates the live body before touching PlayerManager.ts.
+
+Follow-up mini-cycle after Cycle A is green:
+
+- Cycle B: add the next failing behavior test proving the live body remains visible during i-frames
+- Run the targeted test and observe the visibility failure before changing implementation again
 
 #### Green
 
-Implementation changes to make the red test pass (only after observing the red failure):
+Cycle A implementation changes to make the red test pass (only after observing the red failure):
 
 - Source file: `stick-rumble-client/src/game/entities/PlayerManager.ts`
-- What to change: stop calling live-body `setRotation(...)` and `setVisible(...)` for roll presentation
-- Constraint: minimal change — do not add new flair systems, just remove the wrong behavior
+- What to change: stop calling live-body `setRotation(...)` for roll presentation
+- Constraint: minimal change — do not touch visibility behavior until Cycle B has its own red failure
 - Decisions/spec delta this satisfies: spec item 4 ("dodge roll may not rotate, hide, shrink, stretch, or otherwise distort the live collision-reading body")
+
+Run the targeted test again and observe the rotation test pass. Then return to Red for Cycle B before changing visibility.
 
 #### Refactor
 

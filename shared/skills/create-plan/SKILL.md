@@ -165,6 +165,8 @@ Describe the approach at a conceptual level. Not step-by-step, but the architect
 
 This is the core of the plan. Each slice is a self-contained red/green/refactor cycle with **structurally separated** Red and Green sections. The Red section and Green section must be distinct — never combine them into a single paragraph or bullet list.
 
+Use tracer-bullet TDD inside every slice: one behavior test fails, the minimum implementation makes it pass, then the next behavior test is written. Do not plan a broad batch of tests followed by a broad batch of implementation. If a slice needs several assertions, express them as ordered mini-cycles so the implementer can complete RED -> GREEN for one behavior before starting the next.
+
 #### Slice template
 
 ```markdown
@@ -172,12 +174,13 @@ This is the core of the plan. Each slice is a self-contained red/green/refactor 
 
 #### Red — Write tests first, no implementation code yet
 
-Create the test file and write assertions for the behavior this slice requires. Do **not** create or modify any implementation source files at this stage.
+Create the test file and write the first behavior test this slice requires. Do **not** create or modify any implementation source files at this stage.
 
 - Test file: `[path/to/test.file]`
 - What the test proves: [specific behavior]
 - Assertion strategy: [deterministic geometry / pure helper / state check — not snapshots]
 - Existing tests to rewrite: [any tests endorsing wrong behavior, or "none"]
+- Follow-up mini-cycles: [next behavior tests, each written only after the previous red test has gone green]
 
 Run the test suite. You must see the test fail. If the test passes, it's not a red test — either the behavior already exists, or the test is not asserting what you think it is. Fix the test and re-run until it fails.
 
@@ -191,6 +194,7 @@ Now — and only now — create or modify implementation source files to make th
 - What to change: [specific function, class, or behavior]
 - Constraint: [minimal change — one sentence about what the green step must NOT do]
 - Decisions/spec delta this satisfies: [Q3 / spec item 2]
+- Next mini-cycle: [return to Red for the next behavior, or "none"]
 
 Run the test suite again. The tests that were red must now pass. If they don't, you changed too much or too little — adjust and re-run.
 
@@ -211,14 +215,16 @@ Run the test suite again to confirm everything is still green after refactoring.
 - A future reader must be able to read the Red section alone and know exactly what the system must do
 - A future implementer must be able to read the Green section alone and know exactly what to change
 - There is a **hard gate** between Red and Green: the test file must be created, tests written, the suite run, and a failure observed before any implementation source file is touched. This gate is what makes TDD work — it proves the test actually tests something that didn't exist before.
+- The `tdd` skill's tracer-bullet rule applies here: one test -> one minimal implementation -> repeat. A slice is a series of small cycles, not one horizontal "write all tests" phase.
 
 **Slicing rules:**
 - Each slice addresses one vertical concern — a coherent set of behaviors
-- **Red writes tests first. No implementation source files are created or modified until Red is complete.** The test file is the only file that should be created or changed during the Red phase.
+- **Red writes one behavior test first. No implementation source files are created or modified until that Red is complete.** The test file is the only file that should be created or changed during the Red phase.
 - Red must be confirmed failing before Green begins. Write the test, **run the suite, observe the failure** — only then proceed to Green. Writing a test without running it is not red — it's untested intent.
 - Every Red section must name the test file and what the test proves
 - Every Green section must name the source file and the specific change. If the source file doesn't exist yet, say "Create" explicitly.
 - Green makes the smallest change that turns red to green. Do not add functionality that the red test doesn't require.
+- If a slice needs multiple behaviors, list them as mini-cycles with separate red commands and green commands. Do not ask the implementer to write all tests for the slice before any implementation.
 - Existing tests that endorse wrong behavior must be rewritten in the Red section, not retained alongside
 - Prefer assertions against deterministic geometry or pure helpers over brittle snapshot checks
 - Slices are ordered by dependency — earlier slices create foundations later slices build on
@@ -304,16 +310,20 @@ The last criterion should always be: "All quality gates pass" (lint, typecheck, 
 Markdown checklist that mirrors the slice order, preserving the RED → GREEN → REFACTOR cycle for each slice. Every slice must show its full TDD cycle as a contiguous group of checkboxes — never flatten all test creation into one block followed by all implementation.
 
 ```markdown
-- [ ] **Slice 1: [Descriptive name]** — Create test file `[path]`, write tests for [behavior]
-- [ ] **Slice 1: RED** — Run `[test command]`, observe failure for [test names]
+- [ ] **Slice 1 / Cycle A: [behavior]** — Create or update test file `[path]`, write one behavior test
+- [ ] **Slice 1 / Cycle A: RED** — Run `[test command]`, observe failure for [test name]; record failure signal: [expected message/assertion]
 - [ ] **Slice 1: GREEN** — Implement [specific change] in `[source file]`
-- [ ] **Slice 1: GREEN** — Run `[test command]`, observe pass for [test names]
+- [ ] **Slice 1 / Cycle A: GREEN** — Run `[test command]`, observe pass for [test name]; record pass signal: [expected summary]
+- [ ] **Slice 1 / Cycle B: [next behavior]** — Write the next behavior test only after Cycle A is green
+- [ ] **Slice 1 / Cycle B: RED** — Run `[test command]`, observe failure for [test name]; record failure signal: [expected message/assertion]
+- [ ] **Slice 1 / Cycle B: GREEN** — Implement [specific change] in `[source file]`
+- [ ] **Slice 1 / Cycle B: GREEN** — Run `[test command]`, observe pass for [test name]; record pass signal: [expected summary]
 - [ ] **Slice 1: REFACTOR** — [refactor action, or "none needed"]
 - [ ] **Slice 1: REFACTOR** — Run `[test command]`, confirm still green
-- [ ] **Slice 2: [Descriptive name]** — Create test file `[path]`, write tests for [behavior]
-- [ ] **Slice 2: RED** — Run `[test command]`, observe failure for [test names]
+- [ ] **Slice 2 / Cycle A: [behavior]** — Create or update test file `[path]`, write one behavior test
+- [ ] **Slice 2 / Cycle A: RED** — Run `[test command]`, observe failure for [test name]; record failure signal: [expected message/assertion]
 - [ ] **Slice 2: GREEN** — Implement [specific change] in `[source file]`
-- [ ] **Slice 2: GREEN** — Run `[test command]`, observe pass for [test names]
+- [ ] **Slice 2 / Cycle A: GREEN** — Run `[test command]`, observe pass for [test name]; record pass signal: [expected summary]
 - [ ] **Slice 2: REFACTOR** — [refactor action, or "none needed"]
 - [ ] **Slice 2: REFACTOR** — Run `[test command]`, confirm still green
 ...
@@ -327,6 +337,7 @@ Markdown checklist that mirrors the slice order, preserving the RED → GREEN �
 **Why the checklist must preserve per-slice cycles:**
 - A flat list that puts all implementation before all tests is the opposite of TDD — it encourages writing all the code first, then writing tests afterward as an afterthought.
 - Each slice's RED step must come before its GREEN step, and both must appear before the next slice begins.
+- Each RED/GREEN cycle must leave execution evidence: the red command, the observed failure signal, the green command, and the observed pass signal. "Tests were added and passed later" is not TDD evidence.
 - The checklist is the executable contract — if an agent (or human) can follow the checklist top-to-bottom and produce correct TDD work, the plan is well-structured. If they have to jump around, the checklist is broken.
 - Slices are ordered by dependency, so earlier slices must be complete (green + refactored) before later ones begin.
 
@@ -349,23 +360,27 @@ List every spec file, research file, decision source, API doc, and source/test f
 
 4. **Flat checklist that batches all implementation then all tests** — The implementation checklist must preserve the per-slice RED → GREEN → REFACTOR cycle. A checklist that lists all source changes first, then tacks on "create test file" and "run tests" at the end is not TDD — it's test-after. Each slice must show: write tests → run red → implement → run green → refactor → run green, as a contiguous group, before the next slice begins. The checklist is the executable contract; if you can't follow it top-to-bottom and produce correct TDD work, it's structured wrong.
 
-5. **Retaining tests that endorse wrong behavior** — If existing tests assert that the body rotates during roll, and the decision says it shouldn't, rewrite those tests in the Red section. Don't keep old and new assertions side by side.
+5. **Horizontal slice batching** — "Write all tests for this slice, then implement everything" outruns the feedback loop. Use tracer bullets: one behavior test, one minimal implementation, then the next behavior test.
 
-6. **Verification without prompt focus** — A subagent told to "review the tests" will produce generic output. Give it a specific concern: "Identify places where tests would pass even if the body rotated."
+6. **Missing execution evidence** — Saying "I added tests and they pass" does not prove TDD. Record the command that failed, the failure signal, the command that passed, and the pass signal for each mini-cycle.
 
-7. **Skipping verification passes** — Subagent verification passes (test-quality-verifier, pre-mortem) are mandatory completion gates, not nice-to-haves. An implementation is not done until every verification pass listed in Section 7 has been executed and its findings addressed. Leaving these unchecked at the end of a session means the plan is incomplete — the checklist item must be checked off, not just listed.
+7. **Retaining tests that endorse wrong behavior** — If existing tests assert that the body rotates during roll, and the decision says it shouldn't, rewrite those tests in the Red section. Don't keep old and new assertions side by side.
 
-8. **Scope creep in slices** — Each slice is one coherent concern. Don't bundle "fix rendering AND fix physics AND add map coverage" into a single slice.
+8. **Verification without prompt focus** — A subagent told to "review the tests" will produce generic output. Give it a specific concern: "Identify places where tests would pass even if the body rotated."
 
-9. **Spec delta as intent** — "Make the player body correct" is not a spec delta. "The visible body's outer extents must match the authoritative hitbox within 1 rendered pixel per side" is.
+9. **Skipping verification passes** — Subagent verification passes (test-quality-verifier, pre-mortem) are mandatory completion gates, not nice-to-haves. An implementation is not done until every verification pass listed in Section 7 has been executed and its findings addressed. Leaving these unchecked at the end of a session means the plan is incomplete — the checklist item must be checked off, not just listed.
 
-10. **Skipping current code state** — If you don't audit what's already correct, you'll re-implement working code. If you don't name what's out of alignment, you'll miss the actual gap.
+10. **Scope creep in slices** — Each slice is one coherent concern. Don't bundle "fix rendering AND fix physics AND add map coverage" into a single slice.
 
-11. **Decisions without source** — A decision that says "Use temp files" without a Source column explaining WHY is an assertion, not a decision. The Source column is what makes the table auditable and defensible.
+11. **Spec delta as intent** — "Make the player body correct" is not a spec delta. "The visible body's outer extents must match the authoritative hitbox within 1 rendered pixel per side" is.
 
-12. **Force-fitting one context engine** — Not every project has specs. Not every change needs a grill-me session. Read the room: use whichever engine(s) match the available context. Don't invent spec delta for a change that came from a design discussion.
+12. **Skipping current code state** — If you don't audit what's already correct, you'll re-implement working code. If you don't name what's out of alignment, you'll miss the actual gap.
 
-13. **Orphan reviewer findings** — If you include a Reviewer Findings section, every finding must map to a specific slice. Findings without implementation traceability are noise.
+13. **Decisions without source** — A decision that says "Use temp files" without a Source column explaining WHY is an assertion, not a decision. The Source column is what makes the table auditable and defensible.
+
+14. **Force-fitting one context engine** — Not every project has specs. Not every change needs a grill-me session. Read the room: use whichever engine(s) match the available context. Don't invent spec delta for a change that came from a design discussion.
+
+15. **Orphan reviewer findings** — If you include a Reviewer Findings section, every finding must map to a specific slice. Findings without implementation traceability are noise.
 
 ## References
 
