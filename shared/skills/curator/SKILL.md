@@ -83,7 +83,13 @@ After retrospective intake, inspect enough local context to avoid duplicate or l
    - a build should be paired with a browser smoke check when a UI can build while rendering blank
    - optional secret-backed integrations should fail gracefully without local secrets
    - private repo creation and push status should be verified when publication is part of the task
-11. Use the retrospective to target evidence, but still check for duplicate guidance and runtime availability before recommending durable changes.
+11. When the session includes release, deploy, publish, package, upload, or CI/CD
+    work, compare assumed automation with runtime availability. If a checked-in
+    workflow, script, connector, or remote job exists but is disabled,
+    unregistered, missing permissions, branch-scoped away, or otherwise
+    unavailable when needed, rank durable guidance for the fallback path and for
+    verifying automation availability before future publish/deploy work.
+12. Use the retrospective to target evidence, but still check for duplicate guidance and runtime availability before recommending durable changes.
 
 ## Worktree Triage
 
