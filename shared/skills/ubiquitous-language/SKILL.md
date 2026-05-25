@@ -1,13 +1,15 @@
 ---
 name: ubiquitous-language
-description: Extract a DDD-style ubiquitous language glossary from the current conversation, flagging ambiguities and proposing canonical terms. Saves to UBIQUITOUS_LANGUAGE.md. Use when user wants to define domain terms, build a glossary, harden terminology, create a ubiquitous language, or mentions "domain model" or "DDD".
+description: Extract a DDD-style ubiquitous language glossary from the current conversation, specs, plans, or brownfield domain language, flagging ambiguities and proposing canonical terms. Saves to UBIQUITOUS_LANGUAGE.md. Use when user wants to define domain terms, build a glossary, harden terminology, create or update a ubiquitous language, refine spec-suite vocabulary, extract bounded-context terms from brownfield systems, or mentions "domain model" or "DDD".
 metadata:
   short-description: Extract DDD glossary from conversation
 ---
 
 # Ubiquitous Language
 
-Extract and formalize domain terminology from the current conversation into a consistent glossary, saved to a local file.
+Extract and formalize domain terminology from the current conversation, specs,
+plans, or brownfield system evidence into a consistent glossary, saved to a
+local file.
 
 ## Process
 
