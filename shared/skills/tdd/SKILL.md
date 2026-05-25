@@ -45,6 +45,15 @@ RIGHT (vertical):
 
 ## Workflow
 
+### Discovered Bug Path
+
+When investigation reveals a bug during a task where the user already wants the
+behavior fixed, do not stop for a full planning interview unless the intended
+behavior is ambiguous or risky. Briefly state the observed bug, the intended
+behavior, and the smallest regression target, then enter the red/green loop:
+write or update one behavior test, run it and observe the failure, implement the
+minimal fix, and rerun the test to green.
+
 ### 1. Planning
 
 When exploring the codebase, use the project's domain glossary so that test names and interface vocabulary match the project's language, and respect ADRs in the area you're touching.
