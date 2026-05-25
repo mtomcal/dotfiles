@@ -1,6 +1,6 @@
 ---
 name: tdd
-description: Test-driven development with red-green-refactor loop. Use when user wants to build features or fix bugs using TDD, mentions "red-green-refactor", wants integration tests, or asks for test-first development.
+description: Test-driven development with red-green-refactor loop. Use when user wants to build features or fix bugs using TDD, mentions "red-green-refactor", wants integration tests, asks for test-first development, or when making source changes for a bug fix, regression fix, behavior change, or implementation task, especially after discovering a bug during debugging.
 metadata:
   short-description: TDD with red-green-refactor loop
 allowed-tools: read,write,bash,edit
