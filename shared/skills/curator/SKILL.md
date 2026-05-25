@@ -1,6 +1,6 @@
 ---
 name: curator
-description: Curate durable agent improvements from the current session, recent history, git activity, skills, docs, specs, and plans. Use when the user runs /curator, asks what should be learned from a session, wants compounding engineering recommendations, or asks whether to add, update, remove, rename, refactor, or consolidate skills or docs.
+description: Curate durable agent improvements from a human retrospective, current session, recent history, git activity, skills, docs, specs, and plans. Use when the user runs /curator, asks what should be learned from a session, wants compounding engineering recommendations, asks to steer recommendations with a retrospective, or asks whether to add, update, remove, rename, refactor, or consolidate skills or docs.
 metadata:
   short-description: Curate compounding agent improvements
 allowed-tools:
@@ -22,14 +22,40 @@ Curator turns session evidence into a ranked, human-approved proposal for improv
 - Always produce 3-5 recommendations, ranked by expected compound value and efficiency gain.
 - Prefer updating, delegating to, consolidating, renaming, or removing existing durable state before creating something new.
 - Treat the existing skill ecosystem as first-class evidence and routing infrastructure.
+- Before gathering evidence, invite the human to provide an optional retrospective from their perspective. Human steering is evidence, not an override; use it to focus inspection, interpret tradeoffs, and rank recommendations.
 - Include improvements to `curator` itself when the session reveals a reusable improvement to evidence scanning, ranking, routing, approval phrases, privacy handling, or dead-weight detection.
 - Always consider at least one new-skill candidate during ranking. Recommend it only if it clears the quality bar; otherwise note briefly that no new skill was recommended and why existing durable state is the better target.
 - Do not overfit `curator` to one session. Self-improvement recommendations need a clear future trigger or repeated failure mode.
 - Minimize sensitive details from history. Summarize patterns instead of quoting private user text, secrets, credentials, or unrelated project details.
 
+## Human Retrospective Intake
+
+Before proposing or gathering local evidence, give the human a chance to steer curator with their own retrospective. This happens before repository, history, skill, or worktree inspection so human context can shape what evidence is worth gathering.
+
+Ask for a brief optional retrospective unless the user has already supplied one in the request. Keep the prompt lightweight:
+
+```md
+Before I scan evidence, share any retrospective notes you want curator to consider:
+- what felt inefficient, brittle, or surprising
+- what worked well and should be preserved
+- what you want future agents to know or do differently
+- any areas you do not want changed
+
+You can also say `skip retrospective`.
+```
+
+Rules:
+
+1. If the user provides retrospective notes, summarize them internally as human-steered evidence and use them to focus the evidence scan.
+2. If the user says to skip, continue without treating the absence as a negative signal.
+3. If the user already included retrospective context in the curator request, do not ask again; acknowledge that it will guide the scan.
+4. Do not accept human retrospective as sufficient proof by itself for durable state changes. Corroborate where practical, and label uncorroborated steering honestly.
+5. Respect explicit boundaries such as files, skills, repos, private history, or recommendation types the human does not want touched.
+6. When human steering conflicts with local evidence, surface the conflict in the recommendation evidence instead of silently choosing one side.
+
 ## Evidence Scan
 
-Before proposing, inspect enough local context to avoid duplicate or low-value recommendations.
+After retrospective intake, inspect enough local context to avoid duplicate or low-value recommendations.
 
 1. Identify the active agent:
    - Codex: current Codex runtime, `$CODEX_HOME`, `~/.codex/`, Codex session/history files.
@@ -38,6 +64,7 @@ Before proposing, inspect enough local context to avoid duplicate or low-value r
    - Gemini: `~/.gemini/`, Gemini transcript/history conventions.
    - If detection is ambiguous, say so in the evidence ledger and inspect only clearly relevant sources.
 2. Inspect the current context window for:
+   - human retrospective notes and stated boundaries
    - user corrections
    - failed commands, tests, reviews, or assumptions
    - discovered unknown unknowns
@@ -56,6 +83,7 @@ Before proposing, inspect enough local context to avoid duplicate or low-value r
    - a build should be paired with a browser smoke check when a UI can build while rendering blank
    - optional secret-backed integrations should fail gracefully without local secrets
    - private repo creation and push status should be verified when publication is part of the task
+11. Use the retrospective to target evidence, but still check for duplicate guidance and runtime availability before recommending durable changes.
 
 ## Worktree Triage
 
@@ -126,6 +154,7 @@ Consider:
 
 Evidence types:
 
+- Human-steered: explicitly raised by the human retrospective; corroborate where practical.
 - Pattern-backed: repeated across context, history, git, or sessions.
 - Correction-backed: explicit user correction or validation failure.
 - Discovery-backed: newly found unknown unknown with a clear future trigger.
@@ -134,7 +163,7 @@ Evidence types:
 
 ## Default Sequential Proposal Format
 
-After the evidence scan, build a ranked set of 3-5 recommendations internally. The first user-facing proposal must be the highest-ranked recommendation only, using this concise format:
+After retrospective intake and the evidence scan, build a ranked set of 3-5 recommendations internally. The first user-facing proposal must be the highest-ranked recommendation only, using this concise format:
 
 ```md
 Recommendation N of M (~X% through)
@@ -200,6 +229,7 @@ Use the full summary only when the user explicitly asks for the full list, all r
 ## Evidence Ledger
 
 - Current context: inspected
+- Human retrospective: <provided/skipped/already supplied; brief steering summary>
 - Active agent: <detected agent or ambiguous>
 - Agent history: <source and approximate count, or unavailable>
 - Git history: <range inspected>
@@ -222,7 +252,7 @@ Target: <path or artifact type>
 Recommended action: <specific next step>
 
 Evidence:
-- Type: Pattern-backed | Correction-backed | Discovery-backed | Premortem-backed | Speculative
+- Type: Human-steered | Pattern-backed | Correction-backed | Discovery-backed | Premortem-backed | Speculative
 - Signal: <brief pattern summary, not sensitive transcript text>
 - Why now: <why this should be handled now>
 - Future trigger: <when this durable state will help>
