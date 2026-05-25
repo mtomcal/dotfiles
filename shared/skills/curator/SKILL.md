@@ -115,6 +115,13 @@ Use this targeting hierarchy:
 7. Removal, archival, consolidation, rename, or refactor when existing durable state slows future agents down.
 8. No durable capture only when the evidence is one-off, vague, contradicted by existing guidance, or lacks a future trigger.
 
+When a proposed shared/global skill update is mostly repo-specific, domain-heavy,
+or would make the global skill cumbersome for unrelated projects, prefer a
+project-specific skill fork or wrapper. Recommend the fork when the shared skill
+already provides the general workflow but the current repo needs additional
+gates, vocabulary, fixtures, validation artifacts, or lifecycle rules. Keep the
+global skill unchanged unless the learning generalizes beyond the current repo.
+
 ## Skill Ecosystem Routing
 
 Every recommendation must consider whether another skill should perform the approved follow-up.
@@ -130,6 +137,10 @@ Common routing:
 - `test-quality-verifier`: improve vague tests or validation coverage.
 
 If proposing a new skill, explain why no existing skill should absorb the learning.
+
+If proposing a project-specific fork of an existing shared skill, name the
+upstream skill it wraps, what repo-specific gates it adds, and how agents should
+route to it from `AGENTS.md` or equivalent project guidance.
 
 If not proposing any new skill, explicitly account for the strongest new-skill candidate considered and why it did not beat updating, consolidating, or routing to existing durable state.
 
