@@ -13,7 +13,7 @@ Use this skill when the implementation agent needs an independent visual judgmen
 
 1. Gather the reference image path and candidate image paths.
 2. Gather the domain constraints that change the verdict, such as truthful-HUD rules or forbidden mechanics that must remain visually absent.
-3. If subagents are available, delegate the comparison to the `image-comparison-judge` subagent.
+3. If you are already running as the `image-comparison-judge` subagent, perform the comparison directly. Otherwise, if subagents are available, delegate the comparison to the `image-comparison-judge` subagent.
 4. Ask for a strict PASS/FAIL verdict with:
    - blocking mismatches
    - secondary gaps
@@ -36,4 +36,4 @@ If a repo-local wrapper exists for the current project, use it before calling th
 
 ## Fallback
 
-If subagents are unavailable, perform the same comparison manually and say that the independent judge pass could not be run.
+If you are already running as the `image-comparison-judge` subagent, do not claim the independent judge pass was unavailable. If subagents are unavailable and you are not already that subagent, perform the same comparison manually and say that the independent judge pass could not be run.
