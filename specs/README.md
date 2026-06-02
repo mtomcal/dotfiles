@@ -1,7 +1,7 @@
 # Personal Dotfiles Manager Specification Suite
 
-> **Version**: 0.1.0
-> **Last Updated**: 2026-05-01
+> **Version**: 0.2.0
+> **Last Updated**: 2026-06-02
 > **Purpose**: Complete specification for the personal dotfiles manager — automates setup of a tmux + neovim + zsh dev environment across Linux and macOS. Primarily for personal use, serves as reference/inspiration for others.
 
 ---
@@ -99,14 +99,14 @@ graph TD
 
 | Spec | Description | Version |
 |------|-------------|---------|
-| [parameters.md](parameters.md) | All tuning values with rationale | 0.1.0 |
-| [symlink-manager.md](symlink-manager.md) | Symlink creation, backup, and verification | 0.1.0 |
-| [tool-provisioning.md](tool-provisioning.md) | Dependency and tool installation | 0.1.0 |
+| [parameters.md](parameters.md) | All tuning values with rationale | 1.5.0 |
+| [symlink-manager.md](symlink-manager.md) | Symlink creation, backup, and verification | 1.2.0 |
+| [tool-provisioning.md](tool-provisioning.md) | Dependency and tool installation | 1.1.0 |
 | [shell-config.md](shell-config.md) | Zsh + Oh My Zsh configuration | 0.1.0 |
 | [tmux-config.md](tmux-config.md) | Tmux keybindings and nested sessions | 0.1.0 |
 | [neovim-config.md](neovim-config.md) | Kickstart + custom plugin layer | 0.1.0 |
-| [ai-agent-config.md](ai-agent-config.md) | AI agent configs and shared skills | 0.1.0 |
-| [install-orchestrator.md](install-orchestrator.md) | Top-level idempotent setup orchestrator | 0.1.0 |
+| [ai-agent-config.md](ai-agent-config.md) | AI agent configs and shared skills | 1.7.0 |
+| [install-orchestrator.md](install-orchestrator.md) | Top-level idempotent setup orchestrator | 1.2.0 |
 
 ---
 

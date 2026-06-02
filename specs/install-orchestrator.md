@@ -1,7 +1,7 @@
 # Install Orchestrator
 
-> **Spec Version**: 1.1.0
-> **Last Updated**: 2026-05-19
+> **Spec Version**: 1.2.0
+> **Last Updated**: 2026-06-02
 > **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md), [Design Language](DESIGN_LANGUAGE.md), [Tool Provisioning](tool-provisioning.md), [Symlink Manager](symlink-manager.md)
 > **Depended By**: None (this is the top-level orchestrator)
 
@@ -10,6 +10,8 @@
 ## Overview
 
 The Install Orchestrator is the top-level entry point for deploying the entire dotfiles-managed development environment. It detects the platform, resolves module dependencies, presents an interactive or command-line-driven module selection interface, and then executes each selected module in dependency order. The orchestrator guarantees idempotency — running it multiple times with the same module list MUST produce the same system state without errors, data loss, or redundant operations.
+
+For Pi, the orchestrator deploys all committed **deployable profile output** directories, installs wrapper commands, and selects an initial **active profile** without rebuilding profile output at install time.
 
 The orchestrator does NOT implement any module's internal logic (package installation, symlink creation, etc.). It calls per-module functions that own those details. This spec governs the orchestration flow, phase ordering, platform branching, module dependency resolution, interactive menu behavior, and failure reporting.
 
@@ -69,6 +71,16 @@ The orchestrator does NOT implement any module's internal logic (package install
 | `label` | string | Human-readable description | Displayed in menus and summaries |
 
 **Valid module identifiers**: `base_tools`, `neovim`, `nvim_config`, `tmux_config`, `zsh_ohmyzsh`, `zsh_config`, `golang` (toolchain only), `golang_full` (toolchain + LSP + tools), `nodejs`, `tui_tools`, `codex`, `codex_sandbox`, `claude`, `pi`, `pi_sandbox`, `gemini`, `copilot`, `playwright`
+
+### Pi Module Deployment Contract
+
+When the `pi` module is selected, the orchestrator MUST:
+
+1. Install the shared Pi binary once.
+2. Deploy every committed Pi profile runtime from `pi/profiles/{profile}/resolved/` into `~/.pi/profiles/{profile}/agent/`.
+3. Create or refresh the active-profile compatibility path `~/.pi/agent -> ~/.pi/profiles/{active-profile}/agent`.
+4. Create or refresh `~/.pi/active-profile` with the selected active profile name.
+5. Deploy wrapper commands `pi`, `pis`, `pi-<profile>`, `pis-<profile>`, and `pim`.
 
 ### Installation Profile
 
@@ -189,6 +201,8 @@ Phase 7: COMPLETION REPORT
 
 **Precedence**: CLI arguments override interactive menu. If `--profile` or `--modules` is provided, the interactive menu is skipped entirely.
 
+**Terminology rule**: The `--profile` flag in `install.sh` refers to an installation profile (`full`, `minimal`, `work`), not a Pi profile. Pi profile selection is managed by `pim`.
+
 ### Module Execution Semantics
 
 - Modules execute sequentially in resolved order
@@ -247,6 +261,8 @@ When Neovim's Lazy plugin sync reports local changes in cached plugins:
 | npm not found for agent install | Node.js/npm is not available when installing Codex, Pi, or Gemini | Dependency resolver | Auto-add `nodejs` module to resolved list | Automatic; user notified via warning message |
 | Docker not found for Pi sandbox | Docker command not found when installing `pi_sandbox` | `install_pi_sandbox` module | Print error, skip module | User must install Docker separately before re-running |
 | Docker not found for Codex sandbox | Docker command not found when installing `codex_sandbox` | `install_codex_sandbox` module | Print error, skip module | User must install Docker separately before re-running |
+| Active Pi profile missing after deploy | `~/.pi/agent` points to a profile runtime that does not exist | `install_pi` or `pim doctor` validation | Reset active profile to configured default and recreate symlink | User may reselect with `pim use <profile>` |
+| Pi profile output missing | A source profile exists but `pi/profiles/{profile}/resolved/` is absent | `install_pi` validation | Print error naming the missing profile output and fail the `pi` module | Run `pim build <profile>` and re-run install |
 | Go version fetch failure | Version endpoint returns empty result | `install_golang` module | Print error, signal module failure | Module fails; user retries or installs Go manually |
 | PATH conflict for npm-installed agents | The agent binary is found via PATH but not at `~/.local/bin/` | Post-install verification | Print warning identifying the conflicting binary path | User must ensure `~/.local/bin` is earlier in PATH |
 | Codex config symlink detected | Existing `~/.codex/config.toml` is a symlink | `install_codex` module | Remove symlink, copy template as regular file | Automatic; local config file created from template |
@@ -476,7 +492,7 @@ Category: Integration
 Priority: High
 Preconditions: Multiple agent modules selected (e.g., `claude`, `pi`, `codex`, `gemini`, `copilot`)
 Input: `--modules claude,pi,codex,gemini,copilot`
-Expected Output: Claude, Codex, Gemini, and Copilot skills directory symlinks point to `~/dotfiles/shared/skills/`. Pi's skills directory symlink points to `~/dotfiles/pi/skills/`, which exposes Pi-specific skills plus symlinks to shared skills.
+Expected Output: Claude, Codex, Gemini, and Copilot skills directory symlinks point to `~/dotfiles/shared/skills/`. Pi's active skills directory resolves through `~/.pi/agent` to the active profile runtime's resolved `skills/` directory, which contains all shared skills.
 
 ---
 
@@ -484,5 +500,6 @@ Expected Output: Claude, Codex, Gemini, and Copilot skills directory symlinks po
 
 | Version | Date | Summary |
 |---------|------|---------|
+| 1.2.0 | 2026-06-02 | Added Pi profile-aware deployment requirements for the `pi` module: deploy all committed profile runtimes, maintain `~/.pi/agent` and `~/.pi/active-profile`, install Pi wrapper commands including `pim`, and fail fast when required profile output is missing. |
 | 1.1.0 | 2026-05-19 | Updated skills deployment expectations for Pi's composed skills directory |
 | 1.0.0 | 2026-05-01 | Initial spec: orchestration flow, phase ordering, platform branching, dependency resolution, idempotency rules, error handling, interactive/CLI modes |

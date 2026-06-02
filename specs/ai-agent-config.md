@@ -1,7 +1,7 @@
 # AI Agent Configuration Specification
 
-> **Version**: 1.6.0
-> **Last Updated**: 2026-05-19
+> **Version**: 1.7.0
+> **Last Updated**: 2026-06-02
 > **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md), [Design Language](DESIGN_LANGUAGE.md)
 > **Depended By**: Install Orchestrator (INSTL)
 > **Prefix**: AIAGT
@@ -10,15 +10,16 @@
 
 ## Overview
 
-The AI Agent Configuration system provisions, configures, and manages five AI coding assistants — Codex CLI, Claude Code, Pi, Gemini CLI, and GitHub Copilot CLI — for a shared dotfiles environment. Pi additionally supports **sub-agent roles** — named agent definitions in `pi/agents/` that pre-configure model, provider, thinking level, tools, and guardrails for specialized tasks (design review, premortem analysis, visual QA, implementation, expert consultation). Every **agent** receives version-controlled configuration from the dotfiles repository via the **symlink deployment** pattern. Cross-agent skills live in the canonical **shared skills directory**; Pi's runtime skills directory is a Pi-owned composed directory that contains Pi-specific subagent workflow skills plus symlinks to shared skills.
+The AI Agent Configuration system provisions, configures, and manages five AI coding assistants — Codex CLI, Claude Code, Pi, Gemini CLI, and GitHub Copilot CLI — for a shared dotfiles environment. Pi additionally supports multiple **Pi profiles** — named configuration variants such as coding, local, or loop-oriented setups — that share one installed Pi binary but deploy separate runtime configs. Each Pi profile also supports **sub-agent roles** — named agent definitions in its resolved `agents/` directory that pre-configure model, provider, thinking level, tools, and guardrails for specialized tasks (design review, premortem analysis, visual QA, implementation, expert consultation). Every **agent** receives version-controlled configuration from the dotfiles repository via the **symlink deployment** pattern. Cross-agent skills live in the canonical **shared skills directory**; every Pi profile includes those shared skills and MAY add profile-local skills.
 
 The system MUST ensure that:
 
 1. Each agent's runtime configuration directory is wired to the dotfiles repository through symlinks, so edits in the repo are immediately live.
 2. Sensitive data (credentials, session history, auth tokens) NEVER enters version control.
-3. The shared skills directory is the single source of truth for cross-agent skill definitions. Non-Pi agent skills paths point directly to it; Pi consumes shared skills through symlinks inside its Pi skills directory.
+3. The shared skills directory is the single source of truth for cross-agent skill definitions. Non-Pi agent skills paths point directly to it; every Pi profile consumes those shared skills in its resolved runtime skills directory.
 4. Each agent is installed to a user-local prefix that survives Node.js version manager switches.
 5. The install process is **idempotent** — re-running it produces the same end state without errors or data loss.
+6. Pi profile switching MUST change only the active runtime pointer and MUST NOT rewrite or mutate other deployed profiles.
 
 ---
 
@@ -52,11 +53,14 @@ The system MUST ensure that:
 | `NPM_GLOBAL_PREFIX` | `~/.local` | path prefix | Shared prefix for npm-installed agents so binaries survive fnm Node version switches; matches the `npm install -g --prefix` pattern |
 | `AGENT_CONFIG_DIR_CODEX` | `~/.codex` | path | Codex CLI's canonical config directory |
 | `AGENT_CONFIG_DIR_CLAUDE` | `~/.claude` | path | Claude Code's canonical config directory |
-| `AGENT_CONFIG_DIR_PI` | `~/.pi/agent` | path | Pi coding agent's canonical config directory |
+| `AGENT_CONFIG_DIR_PI` | `~/.pi/agent` | path | Compatibility path pointing to the active Pi profile runtime directory |
+| `PI_PROFILE_ROOT_DIR` | `~/.pi/profiles` | path | Parent directory containing deployed Pi profile runtime directories |
+| `PI_ACTIVE_PROFILE_FILE` | `~/.pi/active-profile` | path | File containing the active Pi profile name for inspection and recovery |
 | `AGENT_CONFIG_DIR_GEMINI` | `~/.gemini` | path | Gemini CLI's canonical config directory |
 | `AGENT_CONFIG_DIR_COPILOT` | `~/.config/copilot` | path | Copilot CLI's canonical config directory |
 | `AGENT_SKILLS_DIR_CODEX` | `~/.agents/skills` | path | Codex CLI resolves skills from this path; symlinked to shared skills |
-| `AGENT_SKILLS_DIR_PI` | `~/.pi/agent/skills` | path | Pi coding agent resolves skills from this path; symlinked to `pi/skills` |
+| `PI_ACTIVE_PROFILE_NAME` | `coding` | string | Default Pi profile selected after install unless the human switches it with `pim use` |
+| `AGENT_SKILLS_DIR_PI` | `~/.pi/agent/skills` | path | Pi resolves skills from the active profile runtime's composed skills directory |
 | `SANDBOX_BASE_IMAGE_NAME` | `dotfiles-dev-base:{UID}-{GID}` | image reference | Shared Docker base image for agent sandboxes, tagged by host UID/GID |
 | `SANDBOX_IMAGE_NAME` | `pis:latest` | image reference | Default Pi sandbox container image |
 | `CODEX_SANDBOX_IMAGE_NAME` | `cods:latest` | image reference | Default Codex sandbox container image |
@@ -74,6 +78,7 @@ The system MUST ensure that:
 | `BACKUP_TIMESTAMP_FMT` | `%Y%m%d_%H%M%S` | strftime format | Timestamp format appended to backup filenames during symlink deployment (e.g., `settings.json.backup.20260501_120000`) |
 | `RALPH_DEFAULT_ITERATIONS` | `25` | count | Default max loop iterations for Ralph agentic loop |
 | `RALPH_DONE_PATTERN` | `/done` | string | Pattern that signals loop completion in Ralph worker output |
+| `PI_PROFILE_SOURCE_ROOT` | `~/dotfiles/pi/profiles/` | path | Source root for Pi profile definitions, overrides, and generated output |
 
 ---
 
@@ -93,6 +98,21 @@ Describes a supported agent and its deployment mapping.
 | `skillsTarget` | string | Required | Target path in config dir that receives the agent's skills symlink |
 | `sensitivePatterns` | list | Required | Glob patterns that MUST NOT be committed to version control |
 | `authCommand` | string | Required | Command the human runs to authenticate |
+
+### Pi Profile
+
+Describes one Pi profile's source inputs, generated output, and deployed runtime locations.
+
+| Field | Type | Constraints | Description |
+|-------|------|-------------|-------------|
+| `name` | string | Required; kebab-case | Profile identifier used by `pim`, `pi-<name>`, and `pis-<name>` |
+| `sourceRoot` | string | Required; repo-relative path | Profile directory under `pi/profiles/<name>/` |
+| `outputRoot` | string | Required; repo-relative path | Committed **deployable profile output** directory |
+| `runtimeDir` | string | Required; absolute path | Deployed runtime directory under `~/.pi/profiles/<name>/agent/` |
+| `includesSharedSkills` | boolean | Must be `true` | Shared skills are always included in every profile |
+| `localSkillsDir` | string | Optional | Directory of profile-local skills layered on top of shared skills |
+| `enabledExtensions` | list of strings | Required | Extension names included in the resolved runtime directory |
+| `isDefault` | boolean | Optional | Whether install selects this profile as the initial active profile |
 
 ### Symlink Mapping
 
@@ -127,14 +147,17 @@ Each agent defines a set of paths in its config directory that are symlinked to 
 
 #### Pi Coding Agent
 
+Pi deploys one runtime directory per profile plus an active compatibility path.
+
 | Target Path | Source Path | Deploy Mode |
 |-------------|-------------|-------------|
-| `~/.pi/agent/skills/` | `~/dotfiles/pi/skills/` | symlink |
-| `~/.pi/agent/settings.json` | `~/dotfiles/pi/settings.json` | symlink |
-| `~/.pi/agent/models.json` | `~/dotfiles/pi/models.json` | symlink |
-| `~/.pi/agent/extensions/subagent/` | `~/dotfiles/pi/extensions/subagent/` | symlink |
-| `~/.pi/agent/extensions/web-search/` | `~/dotfiles/pi/extensions/web-search/` | symlink |
-| `~/.pi/agent/extensions/inherit-last-model/` | `~/dotfiles/pi/extensions/inherit-last-model/` | symlink |
+| `~/.pi/profiles/{profile}/agent/skills/` | `~/dotfiles/pi/profiles/{profile}/resolved/skills/` | symlink |
+| `~/.pi/profiles/{profile}/agent/settings.json` | `~/dotfiles/pi/profiles/{profile}/resolved/settings.json` | symlink |
+| `~/.pi/profiles/{profile}/agent/models.json` | `~/dotfiles/pi/profiles/{profile}/resolved/models.json` | symlink |
+| `~/.pi/profiles/{profile}/agent/agents/` | `~/dotfiles/pi/profiles/{profile}/resolved/agents/` | symlink |
+| `~/.pi/profiles/{profile}/agent/extensions/{extension}/` | `~/dotfiles/pi/profiles/{profile}/resolved/extensions/{extension}/` | symlink |
+| `~/.pi/agent` | `~/.pi/profiles/{active-profile}/agent` | symlink |
+| `~/.pi/active-profile` | `{profile-name}` | copy |
 
 #### Gemini CLI
 
@@ -174,29 +197,34 @@ Each agent's `.gitignore` MUST cover these categories. The specific filenames ar
 
 ### Skill Definition
 
-A **skill** is a reusable instruction set. Cross-agent skills live in `shared/skills/`. Pi-specific skills that require Pi subagent tools, Pi role files, or `/tree` orchestration live as real directories in `pi/skills/`; shared skills appear in `pi/skills/` as symlinks back to `shared/skills/`.
+A **skill** is a reusable instruction set. Cross-agent skills live in `shared/skills/`. Every Pi profile MUST include those shared skills in its resolved `skills/` directory. Pi profile-specific skills MAY be added from profile-local source directories.
 
 | Field | Type | Constraints | Description |
 |-------|------|-------------|-------------|
 | `name` | string | Required; kebab-case | Skill identifier, matches directory name |
 | `description` | string | Required | Human-readable purpose of the skill |
 | `metadata.short-description` | string | Optional | Brief description for agents that support it (Codex, Pi) |
+| `allowed-tools` | list of strings | Optional | Tool allowlist for agents that support it (Claude Code) |
 
 ### Pi Skills Composition
 
-Pi's runtime skills directory MUST be deployed as `~/.pi/agent/skills -> ~/dotfiles/pi/skills`. The `pi/skills/` directory MUST contain:
+Each Pi profile's resolved runtime skills directory MUST be generated from:
 
-1. Real directories for Pi-only skills that depend on `subagent_run`, `subagent_fork`, Pi role files, or `/tree` handoff.
-2. Symlinks to every cross-agent skill in `shared/skills/` that Pi should expose.
+1. All skills in `~/dotfiles/shared/skills/`
+2. Zero or more profile-local skills from `~/dotfiles/pi/profiles/{profile}/skills/`
 
-This keeps Pi-specific orchestration instructions out of the cross-agent shared catalog while preserving Pi access to general shared skills.
-| `allowed-tools` | list of strings | Optional | Tool allowlist for agents that support it (Claude Code) |
+Rules:
+
+1. Shared skills are always included; profiles MUST NOT opt out of them.
+2. Duplicate skill directory names between `shared/skills/` and a profile-local skills directory are a build error.
+3. Generated profile output MUST materialize a complete resolved `skills/` directory under `pi/profiles/{profile}/resolved/skills/`.
+4. Pi-only orchestration skills MAY live in profile-local skills directories rather than a single Pi-wide `pi/skills/` directory.
 
 The skill directory MUST contain a `SKILL.md` file with YAML frontmatter containing the fields above. A skill MAY include additional files (`REFERENCE.md`, `EXAMPLES.md`, helper scripts) in the same directory.
 
 ### Pi Extension
 
-A Pi **extension** is a module loaded by the Pi coding agent at startup, written in TypeScript. Each extension registers tools and optionally subscribes to Pi lifecycle events (session start, session shutdown, model selection) to modify agent behavior. Extension directories are symlinked from the dotfiles repository into `~/.pi/agent/extensions/`.
+A Pi **extension** is a module loaded by the Pi coding agent at startup, written in TypeScript. Each extension registers tools and optionally subscribes to Pi lifecycle events (session start, session shutdown, model selection) to modify agent behavior. Extension directories are selected per profile during profile build and deployed into that profile's runtime `extensions/` directory.
 
 | Field | Type | Constraints | Description |
 |-------|------|-------------|-------------|
@@ -206,7 +234,7 @@ A Pi **extension** is a module loaded by the Pi coding agent at startup, written
 
 ### Pi Sub-Agent Role
 
-A Pi **sub-agent role** is a named agent definition stored as a Markdown file in `pi/agents/` with YAML frontmatter. Each role pre-configures a model, provider, thinking level, allowed tools, and guardrail thresholds. The subagent extension reads these definitions at session start and injects them into the system prompt as an agent catalog, making them available for delegation via `subagent_run` or `subagent_fork`.
+A Pi **sub-agent role** is a named agent definition stored as a Markdown file in a profile's resolved `agents/` directory with YAML frontmatter. Each role pre-configures a model, provider, thinking level, allowed tools, and guardrail thresholds. The subagent extension reads these definitions at session start and injects them into the system prompt as an agent catalog, making them available for delegation via `subagent_run` or `subagent_fork`.
 
 | Field | Type | Constraints | Description |
 |-------|------|-------------|-------------|
@@ -304,7 +332,7 @@ A prescriptive mapping from subagent intent categories to model, provider, and t
 
 ### Shared Skills Directory
 
-The single canonical directory for cross-agent skills is `~/dotfiles/shared/skills/`. Non-Pi agent skill configuration paths MUST point here via symlinks. Pi's skill configuration path MUST point to `~/dotfiles/pi/skills/`, where shared skills appear as per-skill symlinks and Pi-only skills appear as real directories.
+The single canonical directory for cross-agent skills is `~/dotfiles/shared/skills/`. Non-Pi agent skill configuration paths MUST point here via symlinks. Pi profile builds MUST include this directory's contents in every resolved profile `skills/` directory.
 
 ---
 
@@ -340,7 +368,7 @@ For each agent, the install process deploys symlinks from the agent's config dir
 3. If the target path does not exist, the symlink MUST be created directly.
 4. Symlink creation MUST NOT fail if the source does not exist — the symlink is still created (dangling symlinks are acceptable for optional files).
 5. Non-Pi agents MUST symlink their skills target paths to `shared/skills/`.
-6. Pi MUST symlink its skills target path to `pi/skills/`.
+6. Pi MUST symlink each deployed profile runtime's skills target path to that profile's resolved `skills/` directory, and `~/.pi/agent/skills` MUST resolve through the active profile runtime.
 
 **Copy deployment (Codex config.toml only):**
 
@@ -355,9 +383,9 @@ The skills distribution system MUST satisfy:
 
 1. There is exactly ONE physical directory containing cross-agent skills: `~/dotfiles/shared/skills/`.
 2. Non-Pi agents' skills configuration paths are symlinks pointing to `~/dotfiles/shared/skills/`.
-3. Pi's skills configuration path is a symlink pointing to `~/dotfiles/pi/skills/`.
-4. `~/dotfiles/pi/skills/` contains real directories for Pi-specific subagent workflow skills and symlinks to cross-agent skills in `~/dotfiles/shared/skills/`.
-5. When a cross-agent skill is installed or updated in `~/dotfiles/shared/skills/`, it is visible to non-Pi agents immediately and to Pi when `pi/skills/` contains the corresponding symlink.
+3. Each Pi profile's skills configuration path is a symlink pointing to `~/dotfiles/pi/profiles/{profile}/resolved/skills/`.
+4. Every Pi profile's resolved `skills/` directory contains all cross-agent skills from `~/dotfiles/shared/skills/` plus any profile-local skills with unique names.
+5. When a cross-agent skill is installed or updated in `~/dotfiles/shared/skills/`, it is visible to non-Pi agents immediately and to Pi after the affected profiles are rebuilt.
 6. A skill MUST have a `SKILL.md` with frontmatter containing at minimum `name` and `description`.
 7. Skills MAY include cross-agent frontmatter fields: `metadata.short-description` (for Codex and Pi) and `allowed-tools` (for Claude Code).
 
@@ -381,8 +409,14 @@ The skills distribution system MUST satisfy:
 
 1. `settings.json` MUST set `enableSkillCommands` to `true` and define `defaultProvider`, `defaultModel`, `defaultThinkingLevel`, and `subagentModelRouting`.
 2. `models.json` MUST define providers with `baseUrl`, `api`, `apiKey` (env var reference), and model arrays specifying `id`, `name`, `contextWindow`, `maxTokens`, and optional flags `reasoning`, `input`, and `api` (for per-model API overrides). Model entries MUST include a `contextWindow` field defining the model's maximum token capacity.
-3. Sub-agent role definitions are stored as Markdown files under `pi/agents/`, symlinked to `~/.pi/agent/agents/`. Each role file MUST include YAML frontmatter with `name`, `description`, `model`, `provider`, and `thinking`; MAY include `tools`, `maxTurns`, `maxCost`, `maxTokens`, `maxTime`.
-4. Extensions are loaded from `~/.pi/agent/extensions/`, where each extension directory is a symlink to the dotfiles repo.
+3. Each Pi profile MUST resolve its own `settings.json`, `models.json`, `agents/`, `skills/`, and enabled `extensions/` into committed output under `pi/profiles/{profile}/resolved/`.
+4. Sub-agent role definitions are stored in each profile's resolved `agents/` directory and deployed to `~/.pi/profiles/{profile}/agent/agents/`. Each role file MUST include YAML frontmatter with `name`, `description`, `model`, `provider`, and `thinking`; MAY include `tools`, `maxTurns`, `maxCost`, `maxTokens`, `maxTime`.
+5. Extensions are loaded from the active profile runtime's `~/.pi/agent/extensions/`, where each enabled extension directory is a symlink to that profile's resolved output.
+6. The active profile compatibility path `~/.pi/agent` MUST be a symlink to one deployed profile runtime directory under `~/.pi/profiles/`.
+7. The `pim` command MUST manage Pi profiles with at least `list`, `current`, `use <profile>`, `path <profile>`, `doctor`, `create <profile>`, and `build [profile]`.
+8. `pim create <profile>` MUST scaffold authoring inputs and generate committed resolved output immediately.
+9. Bare `pi` and `pis` MUST target the active profile. Explicit wrappers `pi-<profile>` and `pis-<profile>` MUST target their named profile directly without changing the active profile.
+10. `pim use <profile>` MUST switch the active profile by updating the runtime pointer and active-profile file atomically. It MUST NOT rewrite wrapper scripts.
 
 #### B4.4: Gemini CLI Configuration
 
@@ -412,7 +446,7 @@ The subagent extension registers six tools and one command:
 
 | Command | Behavior |
 |---------|----------|
-| `/reload-agents` | Hot-reload agent catalog from `~/.pi/agent/agents/` without restarting Pi; used after adding or modifying agent role files. Does NOT update tool parameter descriptions — user must run `/reload` separately. |
+| `/reload-agents` | Hot-reload agent catalog from the active profile runtime `~/.pi/agent/agents/` without restarting Pi; used after adding or modifying agent role files. Does NOT update tool parameter descriptions — user must run `/reload` separately. |
 
 **Rules:**
 
@@ -439,7 +473,7 @@ The subagent extension registers six tools and one command:
 
 **Agent catalog injection rules:**
 
-21. On `before_agent_start`, the extension MUST build a markdown catalog of all agent role files in `~/.pi/agent/agents/`. The catalog MUST list each agent's name, description, model, provider, thinking level, tools, and guardrail thresholds (maxTurns, maxCost, maxTokens, maxTime).
+21. On `before_agent_start`, the extension MUST build a markdown catalog of all agent role files in the active profile runtime `~/.pi/agent/agents/`. The catalog MUST list each agent's name, description, model, provider, thinking level, tools, and guardrail thresholds (maxTurns, maxCost, maxTokens, maxTime).
 22. The catalog MUST be injected into the agent's system prompt exactly once per session. Subsequent agent starts within the same session MUST NOT re-inject the catalog.
 23. The `agent` parameter description for `subagent_run` and `subagent_fork` MUST be dynamically generated from the agent catalog, listing available agent names and their descriptions. If no agent files exist, the description MUST fall back to a static message.
 24. The `/reload-agents` command MUST reset the injection flag, allowing the catalog to be re-injected on the next agent start. It MUST log the count of discovered agents.
@@ -522,7 +556,7 @@ The `pis` script provides a Docker sandbox wrapper for the Pi coding agent.
 
 1. The Pi sandbox image MUST build from the shared sandbox base image (`dotfiles-dev-base:{UID}-{GID}`), ensuring that base image through a cached Docker build before rebuilding the Pi image.
 1. The current working directory MUST be mounted read-write at its original path inside the container.
-2. Pi agent state (sessions, auth, settings, models, skills, extensions) MUST be mounted into the container under the container user's home directory (`/home/{HOST_USER}/`, not `/root/`).
+2. The active Pi agent runtime (settings, models, skills, extensions, agents) plus shared auth and profile-local sessions/history MUST be mounted into the container under the container user's home directory (`/home/{HOST_USER}/`, not `/root/`).
 3. The container MUST run as the host user (`--user UID:GID`) so that files written to mounted volumes are owned by the host user, not root.
 4. The `HOME` environment variable inside the container MUST be set to `/home/{HOST_USER}/` so that tools (git, ssh, pi) resolve the correct home directory.
 5. The Dockerfile MUST create a user matching the host username, UID, and GID at build time via `HOST_USER`, `HOST_UID`, and `HOST_GID` build arguments, ensuring `/etc/passwd` has a proper entry for git and other tools that require a username.
@@ -661,8 +695,8 @@ The install script supports module-based installation:
 |-------|---------------|--------------|
 | Codex | `config.toml` (copy, not symlink) | `multi_agent = true`, `apps = true`, agent role definitions |
 | Claude | `settings.json` (symlink) | `DISABLE_AUTOUPDATER`, `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`, statusline command |
-| Pi | `settings.json` (symlink) | `enableSkillCommands`, `defaultProvider`, `defaultModel`, `defaultThinkingLevel`, `subagentModelRouting` |
-| Pi | `models.json` (symlink) | Provider definitions with models, context windows, API compatibility flags |
+| Pi | `settings.json` (per-profile symlink) | `enableSkillCommands`, `defaultProvider`, `defaultModel`, `defaultThinkingLevel`, `subagentModelRouting` |
+| Pi | `models.json` (per-profile symlink) | Provider definitions with models, context windows, API compatibility flags |
 | Gemini | `settings.json` (symlink) | `ide.enabled`, `security.auth.selectedType`, `general.disableAutoUpdate` |
 | Copilot | None | Auth via `copilot login` |
 
@@ -686,6 +720,7 @@ The install script supports module-based installation:
 | AIAGT-012 | Codex config overwrite attempted | `CODEX_CONFIG_TEMPLATE_MODE=overwrite` with existing file | Back up existing config, copy template | Restore from backup if needed |
 | AIAGT-013 | Subagent model routing missing | `subagentModelRouting` key absent from Pi settings.json | Extension logs warning; tool descriptions omit routing table | Fall back to parent agent's default model and thinking level |
 | AIAGT-014 | Widget render failure | Exception during widget rendering | Log error, skip re-render, widget may be stale | Widget continues on next successful render; user can check `subagent_status` as fallback |
+| AIAGT-015 | Duplicate skill name in Pi profile build | Same skill directory name exists in `shared/skills/` and a profile-local skills directory | Abort `pim build` or `pim create` with explicit duplicate name error | Rename or remove the profile-local skill, then rebuild |
 
 ---
 
@@ -697,7 +732,7 @@ The install script supports module-based installation:
 
 3. **fnm independence**: Installing agents with the `NPM_GLOBAL_PREFIX` prefix puts binaries in `~/.local/bin/`, which is outside fnm's managed path. This means switching Node versions with fnm does not remove or break agent installations.
 
-4. **Shared skills source**: Cross-agent skills live in `~/dotfiles/shared/skills/`. Non-Pi agents read that directory directly through symlinks. Pi reads from `~/dotfiles/pi/skills/`, which contains Pi-only skills plus symlinks to shared skills.
+4. **Shared skills source**: Cross-agent skills live in `~/dotfiles/shared/skills/`. Non-Pi agents read that directory directly through symlinks. Every Pi profile includes those skills in its resolved runtime `skills/` directory and MAY add profile-local skills if no names collide.
 
 5. **Pi subagent isolation**: Subagent processes are spawned as separate Pi child processes with isolation flags. Each subagent gets its own context window and system prompt. Extensions are NOT loaded by default in subagents (explicit opt-in required).
 
@@ -711,7 +746,7 @@ The install script supports module-based installation:
 
 9. **Pi model persistence**: The `inherit-last-model` extension writes to a temp file on every model change, ensuring that even if Pi crashes before a `/new` command, the last-selected model is still available for restoration.
 
-10. **Extension symlink pattern**: Pi extensions are symlinked as directories (not individual files), ensuring the extension's source code and compiled artifacts live in the dotfiles repository while appearing at the expected path in `~/.pi/agent/extensions/`.
+10. **Extension symlink pattern**: Pi extensions are symlinked as directories (not individual files), ensuring the extension's source code and compiled artifacts live in the dotfiles repository while appearing at the expected path in each profile runtime's `extensions/` directory.
 
 ---
 
@@ -738,14 +773,21 @@ Category: Integration
 Priority: Critical
 Preconditions: Fresh install completed for all five agents
 Input: Read the symlink target of `~/.claude/skills`, `~/.pi/agent/skills`, `~/.agents/skills`, `~/.gemini/skills`, `~/.config/copilot/skills`
-Expected Output: `~/.claude/skills`, `~/.agents/skills`, `~/.gemini/skills`, and `~/.config/copilot/skills` resolve to `~/dotfiles/shared/skills/`. `~/.pi/agent/skills` resolves to `~/dotfiles/pi/skills/`.
+Expected Output: `~/.claude/skills`, `~/.agents/skills`, `~/.gemini/skills`, and `~/.config/copilot/skills` resolve to `~/dotfiles/shared/skills/`. `~/.pi/agent/skills` resolves to the active profile runtime's resolved `skills/` directory, which contains all shared skills.
 
 **TS-AIAGT-004**: Skill availability across agents
 Category: Integration
 Priority: High
 Preconditions: A new skill is added to `~/dotfiles/shared/skills/my-skill/SKILL.md`
 Input: Check skill availability from each agent
-Expected Output: The new skill is immediately visible to non-Pi agents. The new skill is visible to Pi after adding `~/dotfiles/pi/skills/my-skill -> ../../shared/skills/my-skill`.
+Expected Output: The new skill is immediately visible to non-Pi agents. The new skill becomes visible to every Pi profile after rebuilding profile output.
+
+**TS-AIAGT-004a**: Duplicate skill names fail profile build
+Category: Integration
+Priority: High
+Preconditions: A Pi profile defines `pi/profiles/local/skills/my-skill/` and `shared/skills/my-skill/` already exists
+Input: Run `pim build local`
+Expected Output: Build fails with an error identifying the duplicate skill name; existing deployed profile output is not partially overwritten.
 
 **TS-AIAGT-005**: Codex config template preservation
 Category: Integration
@@ -1171,6 +1213,7 @@ Expected Output: `tools` is `undefined`; no tool bracket appears in any display 
 
 | Version | Date | Summary |
 |---------|------|---------|
+| 1.7.0 | 2026-06-02 | Added Pi profiles as first-class deployable agent-config variants. Specified `pim` as the profile manager, per-profile resolved output under `pi/profiles/{profile}/resolved/`, active profile switching via `~/.pi/agent` and `~/.pi/active-profile`, profile-specific settings/models/agents/extensions, shared skills inclusion across all profiles, profile-local skill layering, and duplicate-skill build errors. |
 | 1.6.0 | 2026-05-19 | Split Pi-specific subagent workflow skills into `pi/skills/`; Pi now links `~/.pi/agent/skills` to the composed Pi skills directory while non-Pi agents continue to link to `shared/skills/`. |
 | 1.5.0 | 2026-05-13 | Updated B9 Agent Role Definitions: B9.1 (Test Reviewer) matches actual `test-reviewer.md` agent behavior; B9.2 (Visual QA) expanded to full three-phase checklist workflow matching `visual-qa.md`; added B9.3 (Design Reviewer) from `design-reviewer.md` with multi-viewport rendering and severity-tagged review cards; added B9.4 (Premortem Reviewer) from `premortem-reviewer.md` with six failure mode categories. Added 9 test scenarios (TS-AIAGT-042 through TS-AIAGT-050) covering visual QA checklist execution and console error detection, design reviewer multi-viewport capture and missing-design-system fallback, premortem reviewer operational risk detection and resilience notes, blocking issue classification, step-failure continuation, and deployment risk identification. |
 | 1.0.0 | 2026-05-01 | Initial specification extracted from brownfield codebase. Covers all five agents, shared skills, Pi extensions (subagent, inherit-last-model, web-search), Pi sandbox, Ralph agentic loop, agent role definitions, symlink deployment, and error handling. |

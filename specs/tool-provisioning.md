@@ -1,7 +1,7 @@
 # Tool Provisioning
 
-> **Version**: 1.0.0
-> **Last Updated**: 2026-05-01
+> **Version**: 1.1.0
+> **Last Updated**: 2026-06-02
 > **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md), [Design Language](DESIGN_LANGUAGE.md), [Symlink Manager](symlink-manager.md)
 > **Depended By**: Install Orchestrator
 
@@ -16,6 +16,8 @@ The Tool Provisioning system is responsible for installing, upgrading, and verif
 3. **Mason packages** — LSP servers, formatters, and linters installed inside Neovim via headless Mason commands
 
 The system is **idempotent**: every function checks whether the tool is already present and at a satisfactory version before attempting installation. Re-running the full install produces the same result without errors, warnings, or unnecessary side effects.
+
+For Pi, tool provisioning installs one shared Pi binary. Profile-specific behavior is provided by deployed runtime configs and wrapper commands, not separate binary installs per profile.
 
 ---
 
@@ -136,6 +138,18 @@ Packages with different names across platforms MUST use the `install_package` fu
 | sandbox_base | docker | Shared Docker base image for agent sandboxes |
 | pi_sandbox | docker | Sandbox runs in Docker container |
 | codex_sandbox | docker | Codex `--yolo` sandbox runs in Docker container |
+
+### Pi Command Surface
+
+The Pi binary is installed once, but the provisioning system MUST ensure the following command surface exists after the `pi` module deploys config:
+
+| Command | Backing behavior |
+|---------|------------------|
+| `pi` | Launch Pi against the active profile runtime at `~/.pi/agent` |
+| `pi-<profile>` | Launch Pi against the named profile runtime |
+| `pis` | Launch sandboxed Pi against the active profile runtime |
+| `pis-<profile>` | Launch sandboxed Pi against the named profile runtime |
+| `pim` | Manage Pi profiles (`list`, `current`, `use`, `path`, `doctor`, `create`, `build`) |
 
 ---
 
@@ -817,4 +831,5 @@ Expected Output: EMIT warning about PATH shadowing; EMIT info about ensuring ~/.
 
 | Version | Date | Summary |
 |---------|------|---------|
+| 1.1.0 | 2026-06-02 | Clarified that Pi installs a single shared binary across all Pi profiles and specified the expected command surface: `pi`, `pi-<profile>`, `pis`, `pis-<profile>`, and `pim`. |
 | 1.0.0 | 2026-05-01 | Initial spec extracted from install.sh. Covers OS detection, package installation, tool downloads, fnm/Node.js, TUI tools, Mason packages, AI CLI tools, dependency resolution, and error handling. |

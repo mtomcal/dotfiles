@@ -1,7 +1,7 @@
 # Symlink Manager
 
-> **Version**: 1.1.0
-> **Last Updated**: 2026-05-19
+> **Version**: 1.2.0
+> **Last Updated**: 2026-06-02
 > **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md)
 > **Depended By**: [AI Agent Config](ai-agent-config.md), [Install Orchestrator](install-orchestrator.md), [Neovim Config](neovim-config.md)
 
@@ -58,9 +58,9 @@ All parameters referenced here are defined and rationalized in [Parameters](para
 
 ### Symlink Mapping
 
-The complete set of symlink deployments the system MUST establish. Each entry defines a source location within the dotfiles repository and a target location on the filesystem.
+The complete set of symlink deployments the system MUST establish. Most entries define a source location within the dotfiles repository and a target location on the filesystem. Runtime pointers, such as the active Pi profile symlink, MAY point to another managed runtime path.
 
-| Category | Target Path | Source Path (within dotfiles repo) | Deployment Type | Condition |
+| Category | Target Path | Source Path | Deployment Type | Condition |
 |----------|-------------|-------------------------------------|-----------------|-----------|
 | **Tmux** | ~/.tmux.conf | tmux/.tmux.conf | replace-symlink | Always |
 | **Neovim** | ~/.config/nvim/lua/custom | nvim/custom | replace-symlink (directory) | Always |
@@ -74,12 +74,13 @@ The complete set of symlink deployments the system MUST establish. Each entry de
 | **Claude Code** | ~/.claude/skills | shared/skills | replace-symlink (directory) | Always |
 | **Claude Code** | ~/.claude/settings.json | claude/settings.json | replace-symlink | Source file must exist |
 | **Claude Code** | ~/.claude/statusline.sh | claude/statusline.sh | replace-symlink | Source file must exist |
-| **Pi** | ~/.pi/agent/skills | pi/skills | replace-symlink (directory) | Always |
-| **Pi** | ~/.pi/agent/settings.json | pi/settings.json | replace-symlink | Source file must exist |
-| **Pi** | ~/.pi/agent/models.json | pi/models.json | replace-symlink | Source file must exist |
-| **Pi** | ~/.pi/agent/extensions/subagent | pi/extensions/subagent | replace-symlink (directory) | Always |
-| **Pi** | ~/.pi/agent/extensions/web-search | pi/extensions/web-search | replace-symlink (directory) | Always |
-| **Pi** | ~/.pi/agent/extensions/inherit-last-model | pi/extensions/inherit-last-model | replace-symlink (directory) | Always |
+| **Pi** | ~/.pi/profiles/{profile}/agent/skills | pi/profiles/{profile}/resolved/skills | replace-symlink (directory) | For every committed Pi profile |
+| **Pi** | ~/.pi/profiles/{profile}/agent/settings.json | pi/profiles/{profile}/resolved/settings.json | replace-symlink | Source file must exist |
+| **Pi** | ~/.pi/profiles/{profile}/agent/models.json | pi/profiles/{profile}/resolved/models.json | replace-symlink | Source file must exist |
+| **Pi** | ~/.pi/profiles/{profile}/agent/agents | pi/profiles/{profile}/resolved/agents | replace-symlink (directory) | For every committed Pi profile |
+| **Pi** | ~/.pi/profiles/{profile}/agent/extensions/{extension} | pi/profiles/{profile}/resolved/extensions/{extension} | replace-symlink (directory) | For every enabled profile extension |
+| **Pi** | ~/.pi/agent | ~/.pi/profiles/{active-profile}/agent | replace-symlink (directory) | Always |
+| **Pi** | ~/.pi/active-profile | {active-profile} | write-state-file | Always |
 | **Codex** | ~/.codex/config.toml | codex/config.toml | copy-from-template | Always (see Behavior section) |
 | **Codex** | ~/.codex/agents | codex/agents | replace-symlink (directory) | Always |
 | **Codex** | ~/.codex/AGENTS.md | codex/AGENTS.md | replace-symlink | Source file must exist |
@@ -102,6 +103,7 @@ The complete set of symlink deployments the system MUST establish. Each entry de
 | **replace-symlink (directory)** | Same as replace-symlink but the target and source are directories. Backs up existing non-symlink directories. | Yes, if target is a non-symlink directory |
 | **copy-from-template** | Copy the source file to the target location. This is NOT a symlink — the target is an independent local file. | Yes, if target exists and is not a symlink (mode-dependent; see Behavior) |
 | **append-source** | Append a source directive to the target file. Does not create a symlink. Never backs up. | No |
+| **write-state-file** | Write a small runtime state file whose content is derived during install or profile switching. This is NOT a symlink and is not sourced from the dotfiles repo. | Yes, if target exists and is not managed state |
 
 ### Conflict Classification
 
@@ -279,7 +281,7 @@ The installer runs in strict mode where any unhandled operation failure terminat
 
 ### Conditional Source Existence
 
-Some mappings have the condition "Source file must exist" — these are for optional configuration files that may or may not be present in the dotfiles repository. The system MUST check for source existence and skip deployment if the source is absent. Examples include `claude/settings.json`, `claude/statusline.sh`, `pi/settings.json`, and `pi/models.json`.
+Some mappings have the condition "Source file must exist" — these are for optional configuration files that may or may not be present in the dotfiles repository. The system MUST check for source existence and skip deployment if the source is absent. Examples include `claude/settings.json`, `claude/statusline.sh`, `pi/profiles/{profile}/resolved/settings.json`, and `pi/profiles/{profile}/resolved/models.json`.
 
 ### Zsh Source Append Idempotency
 
@@ -428,5 +430,6 @@ Expected Output: First run: all symlinks created, backups made for any conflicti
 
 | Version | Date | Summary |
 |---------|------|---------|
+| 1.2.0 | 2026-06-02 | Replaced single Pi config symlink mappings with Pi profile runtime mappings, active-profile compatibility symlink, and active-profile state file. |
 | 1.1.0 | 2026-05-19 | Changed Pi skills symlink source from `shared/skills` to `pi/skills` for Pi-specific skill composition |
 | 1.0.0 | 2026-05-01 | Initial brownfield extraction — complete specification of symlink management behavior from existing install.sh |

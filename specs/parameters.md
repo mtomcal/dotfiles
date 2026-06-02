@@ -1,7 +1,7 @@
 # Parameters
 
-> **Spec Version**: 1.4.0
-> **Last Updated**: 2026-05-19
+> **Spec Version**: 1.5.0
+> **Last Updated**: 2026-06-02
 > **Depends On**: None (foundational spec)
 > **Depended By**: All other specs
 
@@ -113,11 +113,15 @@ Parameters serve three purposes:
 | `AGENT_INSTALL_PREFIX` | ~/.local | path prefix | Shared prefix for npm-installed agents so binaries survive fnm Node version switches; matches NPM_GLOBAL_PREFIX |
 | `AGENT_CONFIG_DIR_CODEX` | ~/.codex | path | Codex CLI's canonical config directory |
 | `AGENT_CONFIG_DIR_CLAUDE` | ~/.claude | path | Claude Code's canonical config directory |
-| `AGENT_CONFIG_DIR_PI` | ~/.pi/agent | path | Pi coding agent's canonical config directory |
+| `AGENT_CONFIG_DIR_PI` | ~/.pi/agent | path | Compatibility symlink pointing to the active Pi profile runtime directory |
+| `PI_PROFILE_ROOT_DIR` | ~/.pi/profiles | path | Runtime parent directory containing one deployed Pi profile per subdirectory |
+| `PI_ACTIVE_PROFILE_FILE` | ~/.pi/active-profile | path | Stores the active Pi profile name so `pim current`, `pi`, and `pis` can resolve the selected profile |
+| `PI_ACTIVE_PROFILE_NAME` | coding | string | Default Pi profile selected after install unless changed with `pim use` |
+| `PI_PROFILE_SOURCE_ROOT` | ~/dotfiles/pi/profiles | path | Repository source root for Pi profile authoring inputs and committed resolved output |
 | `AGENT_CONFIG_DIR_GEMINI` | ~/.gemini | path | Gemini CLI's canonical config directory |
 | `AGENT_CONFIG_DIR_COPILOT` | ~/.config/copilot | path | Copilot CLI's canonical config directory (XDG-style) |
 | `AGENT_SKILLS_DIR_CODEX` | ~/.agents/skills | path | Codex CLI resolves skills from this path; symlinked to shared skills |
-| `AGENT_SKILLS_DIR_PI` | ~/.pi/agent/skills | path | Pi coding agent resolves skills from this path; symlinked to pi/skills |
+| `AGENT_SKILLS_DIR_PI` | ~/.pi/agent/skills | path | Pi resolves skills through the active profile runtime; every profile includes shared skills plus any profile-local skills |
 | `SANDBOX_BASE_IMAGE_NAME` | dotfiles-dev-base:{UID}-{GID} | Docker image tag | Shared sandbox base image containing common dev tools and host-matched user |
 | `SANDBOX_IMAGE_NAME` | pis:latest | Docker image tag | Default Pi sandbox Docker image name |
 | `CODEX_SANDBOX_IMAGE_NAME` | cods:latest | Docker image tag | Default Codex sandbox Docker image name |
@@ -170,6 +174,7 @@ Parameters serve three purposes:
 
 | Version | Date | Summary |
 |---------|------|---------|
+| 1.5.0 | 2026-06-02 | Added Pi profile parameters for runtime root, active profile state, profile source root, and active-profile-compatible config and skills paths. |
 | 1.4.0 | 2026-05-19 | Added AGENT_SKILLS_DIR_PI for Pi's composed skills directory |
 | 1.3.0 | 2026-05-13 | Updated REQUIRED_NVIM_VERSION from 0.10 to 0.12; added crof provider parameters for Pi models.json |
 | 1.2.0 | 2026-05-01 | Added subagent routing parameters (scout, planner, reviewer, implementer, expert 1st/2nd/3rd model/provider/thinking), tools display parameters (SUBAGENT_TOOLS_BRACKET_MAX_CHARS, SUBAGENT_TOOLS_DISPLAY_STATUS_FORMAT, SUBAGENT_TOOLS_DISPLAY_UNDEFINED) |
