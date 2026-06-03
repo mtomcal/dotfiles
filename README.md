@@ -856,6 +856,7 @@ All five agents share a single skills directory at `shared/skills/`. Every agent
 | `ralph` | Set up and launch a `loop.sh` iterative agentic job (PROMPT.md + IMPLEMENTATION_PLAN.md + ORCHESTRATOR.md) |
 | `improve-codebase-architecture` | Find and fix architectural friction — shallow modules, poor seams, testability gaps _(based on [mattpocock/skills](https://github.com/mattpocock/skills))_ |
 | `tmux-agent-orchestration` | Launch, steer, and monitor parallel CLI agents in tmux with per-worker clones |
+| `pi-profile-flavors` | Build and modify Pi profile variants with `pim`, including extensions, skills, settings, models, and agents |
 | `ubiquitous-language` | Extract a DDD-style glossary from a conversation and save it to `UBIQUITOUS_LANGUAGE.md` _(based on [mattpocock/skills](https://github.com/mattpocock/skills))_ |
 | `audit-shared-skills` | Audit `shared/skills/` for cross-agent frontmatter compatibility, flag and fix issues |
 | `grill-me` | Interview the user relentlessly about a plan or design, resolving each branch of the decision tree _(based on [mattpocock/skills](https://github.com/mattpocock/skills))_ |
