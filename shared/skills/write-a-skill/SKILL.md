@@ -25,6 +25,16 @@ metadata:
    - Anything missing or unclear?
    - Should any section be more/less detailed?
 
+## Decomposition Pattern
+
+Before writing one large skill, check whether the workflow really contains multiple layers:
+
+- **Workflow skill**: the tool-agnostic task logic or decision process
+- **Wrapper skill**: instructions for a specific tool or engine such as Playwright
+- **Artifact subskill**: a narrow reusable routine such as turning videos into contact sheets
+
+Prefer separate skills when the artifact routine is reusable outside the main domain, or when a tool-specific wrapper would otherwise make the broader workflow feel opinionated. Cross-link the skills instead of duplicating long instructions in each one.
+
 ## Skill Structure
 
 ```
@@ -106,6 +116,12 @@ Split into separate files when:
 - SKILL.md exceeds 100 lines
 - Content has distinct domains (finance vs sales schemas)
 - Advanced features are rarely needed
+
+Split into separate skills when:
+
+- One skill is mixing a reusable workflow with one particular tool
+- A repeated artifact pattern could help many unrelated domains
+- The "Use when..." trigger would be clearer if each skill had one primary job
 
 ## Review Checklist
 

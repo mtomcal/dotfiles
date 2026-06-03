@@ -1,12 +1,12 @@
 ---
-name: playwright-cli
-description: Automate browser interactions, test web pages and work with Playwright tests. Use when automating browser interactions, testing web pages, or working with Playwright tests.
+name: Playwright
+description: Automate browser interactions, scripted capture, and Playwright test workflows. Use when the task specifically calls for Playwright, deterministic browser automation, Playwright recordings, or working inside an existing Playwright test setup.
 allowed-tools: Bash(playwright-cli:*) Bash(npx:*) Bash(npm:*)
 metadata:
-  short-description: Browser automation with playwright-cli
+  short-description: Playwright usage and browser automation
 ---
 
-# Browser Automation with playwright-cli
+# Playwright
 
 ## Quick start
 
@@ -24,6 +24,8 @@ playwright-cli screenshot
 # close the browser
 playwright-cli close
 ```
+
+Use `visual-qa` when the task is pass/fail visual review, and use `video-to-contact-sheet` when a Playwright recording needs trimmed clips or frame-sampled evidence.
 
 ## Browser Binary Fallback
 

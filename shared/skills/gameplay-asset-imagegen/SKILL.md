@@ -49,7 +49,7 @@ Use a different key color when the subject needs green. Prefer single assets for
 - Inspect the asset against the real gameplay background; a sprite can pass alpha tests and still show matte spill.
 - Size held items, pickups, effects, and decals for gameplay-camera readability, not only for source-image neatness.
 - Update tests that guard dimensions, paths, source provenance, and runtime manifest completeness.
-- Run the project's visual validation or the `playwright-visual-qa` skill after integration when the game has a browser or video review path.
+- Run the project's visual validation or the `visual-qa` skill after integration when the game has a browser or video review path.
 
 ## Common Gotchas
 

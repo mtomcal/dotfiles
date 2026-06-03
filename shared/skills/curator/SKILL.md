@@ -152,6 +152,8 @@ If not proposing any new skill, explicitly account for the strongest new-skill c
 
 If the session reveals that a relevant skill was available but was not selected, consider that a skill ecosystem defect. Prefer a frontmatter or description update over creating a new skill when the missed trigger is caused by vague naming, missing keywords, weak "Use when" guidance, absent `metadata.short-description`, or misleading `allowed-tools`.
 
+When a skill bundles a broad workflow, a tool-specific wrapper, and a reusable artifact routine, treat that as a decomposition candidate. Prefer recommending a slimmer workflow skill plus cross-linked wrapper or artifact subskills when that split would improve triggers, reuse, or maintainability.
+
 ## Ranking Model
 
 Rank by expected compound value and efficiency gain, not confidence.
