@@ -963,86 +963,140 @@ install_pi() {
         return 1
     fi
 
+    if [ ! -L "$HOME/.local/bin/pi" ] || [ "$(readlink "$HOME/.local/bin/pi" 2>/dev/null || true)" != "$DOTFILES_DIR/pi/pi.sh" ]; then
+        mv "$HOME/.local/bin/pi" "$HOME/.local/bin/pi-bin"
+    fi
+
     if command -v pi &> /dev/null && [ "$(command -v pi)" != "$HOME/.local/bin/pi" ]; then
         print_warning "Another pi binary is earlier in PATH: $(command -v pi)"
         print_info "Ensure ~/.local/bin is first in PATH to use the shared Pi install"
     fi
-    print_success "Pi coding agent installed/updated at ~/.local/bin/pi"
+    print_success "Pi coding agent installed/updated at ~/.local/bin/pi-bin"
 
-    mkdir -p "$HOME/.pi/agent"
-
-    # Link skills
-    if [ -L "$HOME/.pi/agent/skills" ]; then
-        rm "$HOME/.pi/agent/skills"
-    elif [ -d "$HOME/.pi/agent/skills" ]; then
-        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-        mv "$HOME/.pi/agent/skills" "$HOME/.pi/agent/skills.backup.$TIMESTAMP"
-    fi
-    ln -s "$DOTFILES_DIR/pi/skills" "$HOME/.pi/agent/skills"
-
-    # Link settings.json
-    if [ -f "$HOME/.pi/agent/settings.json" ] && [ ! -L "$HOME/.pi/agent/settings.json" ]; then
-        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-        mv "$HOME/.pi/agent/settings.json" "$HOME/.pi/agent/settings.json.backup.$TIMESTAMP"
-    fi
-    if [ -L "$HOME/.pi/agent/settings.json" ]; then
-        rm "$HOME/.pi/agent/settings.json"
-    fi
-    if [ -f "$DOTFILES_DIR/pi/settings.json" ]; then
-        ln -s "$DOTFILES_DIR/pi/settings.json" "$HOME/.pi/agent/settings.json"
-    fi
-
-    # Link models.json
-    if [ -f "$HOME/.pi/agent/models.json" ] && [ ! -L "$HOME/.pi/agent/models.json" ]; then
-        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-        mv "$HOME/.pi/agent/models.json" "$HOME/.pi/agent/models.json.backup.$TIMESTAMP"
-    fi
-    if [ -L "$HOME/.pi/agent/models.json" ]; then
-        rm "$HOME/.pi/agent/models.json"
-    fi
-    if [ -f "$DOTFILES_DIR/pi/models.json" ]; then
-        ln -s "$DOTFILES_DIR/pi/models.json" "$HOME/.pi/agent/models.json"
-    fi
-
-    # Link agents directory
-    if [ -L "$HOME/.pi/agent/agents" ]; then
-        rm "$HOME/.pi/agent/agents"
-    elif [ -d "$HOME/.pi/agent/agents" ]; then
-        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-        mv "$HOME/.pi/agent/agents" "$HOME/.pi/agent/agents.backup.$TIMESTAMP"
-    fi
-    ln -s "$DOTFILES_DIR/pi/agents" "$HOME/.pi/agent/agents"
-
-    # Link subagent extension
-    if [ -L "$HOME/.pi/agent/extensions/subagent" ]; then
-        rm "$HOME/.pi/agent/extensions/subagent"
-    elif [ -d "$HOME/.pi/agent/extensions/subagent" ]; then
-        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-        mv "$HOME/.pi/agent/extensions/subagent" "$HOME/.pi/agent/extensions/subagent.backup.$TIMESTAMP"
-    fi
-    mkdir -p "$HOME/.pi/agent/extensions"
-    ln -s "$DOTFILES_DIR/pi/extensions/subagent" "$HOME/.pi/agent/extensions/subagent"
-
-    # Link web-search extension
-    if [ -L "$HOME/.pi/agent/extensions/web-search" ]; then
-        rm "$HOME/.pi/agent/extensions/web-search"
-    elif [ -d "$HOME/.pi/agent/extensions/web-search" ]; then
-        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-        mv "$HOME/.pi/agent/extensions/web-search" "$HOME/.pi/agent/extensions/web-search.backup.$TIMESTAMP"
-    fi
-    ln -s "$DOTFILES_DIR/pi/extensions/web-search" "$HOME/.pi/agent/extensions/web-search"
-
-    # Link inherit-last-model extension
-    if [ -L "$HOME/.pi/agent/extensions/inherit-last-model" ]; then
-        rm "$HOME/.pi/agent/extensions/inherit-last-model"
-    elif [ -d "$HOME/.pi/agent/extensions/inherit-last-model" ]; then
-        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-        mv "$HOME/.pi/agent/extensions/inherit-last-model" "$HOME/.pi/agent/extensions/inherit-last-model.backup.$TIMESTAMP"
-    fi
-    ln -s "$DOTFILES_DIR/pi/extensions/inherit-last-model" "$HOME/.pi/agent/extensions/inherit-last-model"
+    deploy_pi_profiles || return 1
 
     print_success "Pi coding agent configured"
     print_info "Run 'pi' to start (first launch prompts for authentication)"
+}
+
+backup_existing_path() {
+    local target="$1"
+    local timestamp
+    timestamp=$(date +%Y%m%d_%H%M%S)
+    mv "$target" "$target.backup.$timestamp"
+}
+
+replace_symlink() {
+    local source="$1"
+    local target="$2"
+
+    mkdir -p "$(dirname "$target")"
+    if [ -L "$target" ]; then
+        if [ "$(readlink "$target")" = "$source" ]; then
+            return 0
+        fi
+        rm "$target"
+    elif [ -e "$target" ]; then
+        backup_existing_path "$target"
+    fi
+    ln -s "$source" "$target"
+}
+
+deploy_pi_profile_runtime() {
+    local profile="$1"
+    local resolved="$DOTFILES_DIR/pi/profiles/$profile/resolved"
+    local runtime="$HOME/.pi/profiles/$profile/agent"
+    local extension
+
+    if [ ! -d "$resolved" ]; then
+        print_error "Pi profile '$profile' is missing resolved output: $resolved"
+        return 1
+    fi
+    for required in settings.json models.json agents skills extensions; do
+        if [ ! -e "$resolved/$required" ] && [ ! -L "$resolved/$required" ]; then
+            print_error "Pi profile '$profile' resolved output is missing $required"
+            return 1
+        fi
+    done
+
+    mkdir -p "$runtime/extensions" "$runtime/sessions"
+    replace_symlink "$resolved/settings.json" "$runtime/settings.json"
+    replace_symlink "$resolved/models.json" "$runtime/models.json"
+    replace_symlink "$resolved/agents" "$runtime/agents"
+    replace_symlink "$resolved/skills" "$runtime/skills"
+    replace_symlink "$HOME/.pi/auth.json" "$runtime/auth.json"
+
+    for extension in "$resolved/extensions"/*; do
+        [ -e "$extension" ] || [ -L "$extension" ] || continue
+        replace_symlink "$extension" "$runtime/extensions/$(basename "$extension")"
+    done
+}
+
+prepare_pi_shared_auth() {
+    mkdir -p "$HOME/.pi"
+    if [ -f "$HOME/.pi/auth.json" ]; then
+        return 0
+    fi
+
+    if [ ! -L "$HOME/.pi/agent" ] && [ -f "$HOME/.pi/agent/auth.json" ]; then
+        cp "$HOME/.pi/agent/auth.json" "$HOME/.pi/auth.json"
+    else
+        printf '{}\n' > "$HOME/.pi/auth.json"
+    fi
+}
+
+deploy_pi_wrappers() {
+    local bin_dir="$HOME/.local/bin"
+    local profile_dir profile
+    mkdir -p "$bin_dir"
+
+    replace_symlink "$DOTFILES_DIR/pi/pim.sh" "$bin_dir/pim"
+    replace_symlink "$DOTFILES_DIR/pi/pi.sh" "$bin_dir/pi"
+    replace_symlink "$DOTFILES_DIR/pi/pis.sh" "$bin_dir/pis"
+
+    for profile_dir in "$DOTFILES_DIR/pi/profiles"/*; do
+        [ -d "$profile_dir" ] || continue
+        profile="$(basename "$profile_dir")"
+        replace_symlink "$DOTFILES_DIR/pi/pi.sh" "$bin_dir/pi-$profile"
+        replace_symlink "$DOTFILES_DIR/pi/pis.sh" "$bin_dir/pis-$profile"
+    done
+}
+
+deploy_pi_profiles() {
+    local profiles_dir="$DOTFILES_DIR/pi/profiles"
+    local profile_dir profile active_profile active_runtime
+
+    if [ ! -d "$profiles_dir" ]; then
+        print_error "Pi profiles directory not found: $profiles_dir"
+        return 1
+    fi
+
+    prepare_pi_shared_auth
+
+    for profile_dir in "$profiles_dir"/*; do
+        [ -d "$profile_dir" ] || continue
+        profile="$(basename "$profile_dir")"
+        deploy_pi_profile_runtime "$profile" || return 1
+    done
+
+    mkdir -p "$HOME/.pi"
+    if [ -f "$HOME/.pi/active-profile" ]; then
+        active_profile="$(sed -n '1p' "$HOME/.pi/active-profile")"
+    else
+        active_profile="coding"
+    fi
+    if [ ! -d "$HOME/.pi/profiles/$active_profile/agent" ]; then
+        active_profile="coding"
+    fi
+    active_runtime="$HOME/.pi/profiles/$active_profile/agent"
+    if [ ! -d "$active_runtime" ]; then
+        print_error "Active Pi profile runtime not found: $active_runtime"
+        return 1
+    fi
+
+    replace_symlink "$active_runtime" "$HOME/.pi/agent"
+    printf '%s\n' "$active_profile" > "$HOME/.pi/active-profile"
+    deploy_pi_wrappers
 }
 
 install_pi_sandbox() {
@@ -1975,5 +2029,7 @@ main() {
     fi
 }
 
-# Run main function
-main "$@"
+# Run main function unless the script is being sourced by tests.
+if [ "${INSTALL_SH_NO_MAIN:-0}" != "1" ]; then
+    main "$@"
+fi

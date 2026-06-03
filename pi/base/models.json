@@ -1,0 +1,77 @@
+{
+  "providers": {
+    "ollama-cloud": {
+      "baseUrl": "https://ollama.com/v1",
+      "api": "openai-completions",
+      "apiKey": "OLLAMA_API_KEY",
+      "compat": {
+        "supportsDeveloperRole": false,
+        "supportsReasoningEffort": true
+      },
+      "models": [
+        { "id": "glm-5.1", "name": "GLM 5.1 (198K)", "contextWindow": 198000, "maxTokens": 16384 },
+        { "id": "minimax-m2.7", "name": "MiniMax M2.7 (200K)", "contextWindow": 200000, "maxTokens": 16384 },
+        { "id": "kimi-k2.6", "name": "Kimi K2.6 (256K)", "contextWindow": 256000, "maxTokens": 16384, "input": ["text", "image"] },
+        { "id": "deepseek-v4-pro", "name": "DeepSeek V4 Pro (1M)", "contextWindow": 1000000, "maxTokens": 16384, "reasoning": true },
+        { "id": "deepseek-v4-flash", "name": "DeepSeek V4 Flash (1M)", "contextWindow": 1000000, "maxTokens": 16384, "reasoning": true }
+      ]
+    },
+    "crof": {
+      "baseUrl": "https://crof.ai/v1",
+      "api": "openai-completions",
+      "apiKey": "CROFAI_API_KEY",
+      "compat": {
+        "supportsDeveloperRole": true,
+        "supportsReasoningEffort": true
+      },
+      "models": [
+        { "id": "deepseek-v4-pro", "name": "DeepSeek V4 Pro (1M)", "contextWindow": 1000000, "maxTokens": 131072, "reasoning": true },
+        { "id": "deepseek-v4-pro-precision", "name": "DeepSeek V4 Pro Precision Q8 (1M)", "contextWindow": 1000000, "maxTokens": 131072, "reasoning": true },
+        { "id": "deepseek-v4-flash", "name": "DeepSeek V4 Flash (1M)", "contextWindow": 1000000, "maxTokens": 131072, "reasoning": true },
+        { "id": "deepseek-v3.2", "name": "DeepSeek V3.2 (164K)", "contextWindow": 163840, "maxTokens": 163840 },
+        { "id": "mimo-v2.5-pro", "name": "MiMo V2.5 Pro (1M)", "contextWindow": 1000000, "maxTokens": 131072, "reasoning": true },
+        { "id": "mimo-v2.5-pro-precision", "name": "MiMo V2.5 Pro Precision Q8 (1M)", "contextWindow": 1000000, "maxTokens": 131072, "reasoning": true },
+        { "id": "glm-5.1", "name": "GLM 5.1 (203K)", "contextWindow": 202752, "maxTokens": 202752, "reasoning": true },
+        { "id": "glm-5.1-precision", "name": "GLM 5.1 Precision Q8 (203K)", "contextWindow": 202752, "maxTokens": 202752, "reasoning": true },
+        { "id": "glm-5", "name": "GLM 5 (203K)", "contextWindow": 202752, "maxTokens": 202752 },
+        { "id": "glm-4.7", "name": "GLM 4.7 (203K)", "contextWindow": 202752, "maxTokens": 202752 },
+        { "id": "glm-4.7-flash", "name": "GLM 4.7 Flash (203K)", "contextWindow": 202752, "maxTokens": 131072 },
+        { "id": "kimi-k2.6", "name": "Kimi K2.6 (262K)", "contextWindow": 262144, "maxTokens": 262144, "input": ["text", "image"], "reasoning": true },
+        { "id": "kimi-k2.6-precision", "name": "Kimi K2.6 Precision int4 (262K)", "contextWindow": 262144, "maxTokens": 262144, "input": ["text", "image"], "reasoning": true },
+        { "id": "kimi-k2.5", "name": "Kimi K2.5 (262K)", "contextWindow": 262144, "maxTokens": 262144, "input": ["text", "image"], "reasoning": true },
+        { "id": "kimi-k2.5-lightning", "name": "Kimi K2.5 Lightning (131K)", "contextWindow": 131072, "maxTokens": 32768, "reasoning": true },
+        { "id": "minimax-m2.5", "name": "MiniMax M2.5 (205K)", "contextWindow": 204800, "maxTokens": 131072 },
+        { "id": "qwen3.6-27b", "name": "Qwen3.6 27B (262K)", "contextWindow": 262144, "maxTokens": 262144, "reasoning": true },
+        { "id": "qwen3.5-397b-a17b", "name": "Qwen3.5 397B A17B (262K)", "contextWindow": 262144, "maxTokens": 262144, "reasoning": true },
+        { "id": "qwen3.5-9b", "name": "Qwen3.5 9B (262K)", "contextWindow": 262144, "maxTokens": 262144, "reasoning": true },
+        { "id": "qwen3.5-9b-chat", "name": "Qwen3.5 9B Chat (262K)", "contextWindow": 262144, "maxTokens": 262144, "reasoning": true },
+        { "id": "gemma-4-31b-it", "name": "Gemma 4 31B (262K)", "contextWindow": 262144, "maxTokens": 262144, "reasoning": true },
+        { "id": "greg", "name": "Experiment: Greg (200K)", "contextWindow": 200000, "maxTokens": 200000 }
+      ]
+    },
+    "opencode-go": {
+      "baseUrl": "https://opencode.ai/zen/go/v1",
+      "api": "openai-completions",
+      "apiKey": "OPENCODE_GO_API_KEY",
+      "compat": {
+        "supportsDeveloperRole": false
+      },
+      "models": [
+        { "id": "glm-5.1", "name": "GLM 5.1 (198K)", "contextWindow": 198000, "maxTokens": 16384 },
+        { "id": "glm-5", "name": "GLM 5 (128K)", "contextWindow": 128000, "maxTokens": 16384 },
+        { "id": "kimi-k2.5", "name": "Kimi K2.5 (256K)", "contextWindow": 256000, "maxTokens": 16384, "input": ["text", "image"] },
+        { "id": "kimi-k2.6", "name": "Kimi K2.6 (256K)", "contextWindow": 256000, "maxTokens": 16384, "input": ["text", "image"] },
+        { "id": "mimo-v2-pro", "name": "MiMo V2 Pro (128K)", "contextWindow": 128000, "maxTokens": 16384 },
+        { "id": "mimo-v2-omni", "name": "MiMo V2 Omni (128K)", "contextWindow": 128000, "maxTokens": 16384 },
+        { "id": "mimo-v2.5-pro", "name": "MiMo V2.5 Pro (128K)", "contextWindow": 128000, "maxTokens": 16384 },
+        { "id": "mimo-v2.5", "name": "MiMo V2.5 (256K)", "contextWindow": 256000, "maxTokens": 16384 },
+        { "id": "minimax-m2.7", "name": "MiniMax M2.7 (200K)", "api": "anthropic-messages", "contextWindow": 200000, "maxTokens": 16384 },
+        { "id": "minimax-m2.5", "name": "MiniMax M2.5 (128K)", "api": "anthropic-messages", "contextWindow": 128000, "maxTokens": 16384 },
+        { "id": "qwen3.5-plus", "name": "Qwen3.5 Plus (128K)", "contextWindow": 128000, "maxTokens": 16384 },
+        { "id": "qwen3.6-plus", "name": "Qwen3.6 Plus (128K)", "contextWindow": 128000, "maxTokens": 16384 },
+        { "id": "deepseek-v4-pro", "name": "DeepSeek V4 Pro (1M)", "contextWindow": 1000000, "maxTokens": 16384, "reasoning": true },
+        { "id": "deepseek-v4-flash", "name": "DeepSeek V4 Flash (1M)", "contextWindow": 1000000, "maxTokens": 16384, "reasoning": true }
+      ]
+    }
+  }
+}

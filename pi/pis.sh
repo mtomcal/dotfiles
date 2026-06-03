@@ -16,8 +16,19 @@
 set -e
 
 IMAGE_NAME="pis:latest"
-DOCKERFILE_DIR="$(cd "$(dirname "$0")" && pwd)"
+SCRIPT_PATH="${BASH_SOURCE[0]}"
+if [[ -L "$SCRIPT_PATH" ]]; then
+    LINK_TARGET="$(readlink "$SCRIPT_PATH")"
+    if [[ "$LINK_TARGET" = /* ]]; then
+        SCRIPT_PATH="$LINK_TARGET"
+    else
+        SCRIPT_PATH="$(cd "$(dirname "$SCRIPT_PATH")" && cd "$(dirname "$LINK_TARGET")" && pwd)/$(basename "$LINK_TARGET")"
+    fi
+fi
+DOCKERFILE_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
 DOTFILES_DIR="$(cd "$DOCKERFILE_DIR/.." && pwd)"
+# shellcheck source=lib/pim.sh
+source "$DOCKERFILE_DIR/lib/pim.sh"
 
 # Colors
 RED='\033[0;31m'
@@ -81,6 +92,22 @@ while [[ $# -gt 0 ]]; do
     fi
 done
 
+PIS_COMMAND_NAME="${0##*/}"
+PIS_EXPLICIT_PROFILE="$(pim_profile_from_command_name "$PIS_COMMAND_NAME" "pis")"
+if [[ "$BUILD_ONLY" != true ]]; then
+    pim_resolve_runtime_profile "$HOME" "$PIS_EXPLICIT_PROFILE"
+    PI_AGENT_DIR="$PIM_RESOLVED_RUNTIME"
+    PI_PROFILE_NAME="$PIM_RESOLVED_PROFILE"
+
+    if [[ "${PIS_DRY_RUN:-0}" == "1" ]]; then
+        printf 'profile=%s\n' "$PI_PROFILE_NAME"
+        printf 'runtime=%s\n' "$PI_AGENT_DIR"
+        printf 'sessions=%s\n' "$PI_AGENT_DIR/sessions"
+        printf 'auth=%s\n' "$PI_AGENT_DIR/auth.json"
+        exit 0
+    fi
+fi
+
 # ===========================
 # Build image if needed
 # ===========================
@@ -140,7 +167,6 @@ fi
 # ===========================
 
 HOST_CWD="$(pwd)"
-PI_AGENT_DIR="$HOME/.pi/agent"
 
 HOST_USER="$(whoami)"
 HOST_UID="$(id -u)"

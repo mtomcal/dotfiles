@@ -35,6 +35,8 @@ Personal development environment configuration for tmux, neovim, and zsh.
     - [Codex CLI](#codex-cli)
     - [Claude Code](#claude-code)
     - [Pi Coding Agent](#pi-coding-agent)
+      - [Pi Profiles](#pi-profiles)
+      - [Subagents](#subagents)
       - [Pi Sandbox (`pis`)](#pi-sandbox-pis)
     - [Gemini CLI](#gemini-cli)
     - [GitHub Copilot CLI](#github-copilot-cli)
@@ -185,13 +187,14 @@ dotfiles/
 │   ├── settings.json      # Claude Code settings
 │   └── README.md          # Claude Code documentation
 ├── pi/
-│   ├── settings.json      # Pi settings (symlinked to ~/.pi/agent/)
-│   ├── models.json        # Pi custom provider definitions (Ollama Cloud)
-│   ├── agents/            # Subagent definitions (scout, planner, reviewer, worker)
-│   ├── prompts/           # Workflow prompt templates (implement, scout-and-plan, etc.)
-│   ├── extensions/        # Pi extensions (subagent tool)
-│   ├── Dockerfile         # Pi sandbox Docker image
-│   └── pis.sh             # Pi sandbox wrapper script (~/.local/bin/pis)
+│   ├── base/              # Base settings, models, and agent roles for Pi profiles
+│   ├── profiles/          # Profile authoring inputs + committed resolved output
+│   ├── extensions/        # Pi extensions (subagent, web-search, inherit-last-model)
+│   ├── lib/               # Pi profile manager shell helpers
+│   ├── pim.sh             # Pi profile manager (~/.local/bin/pim)
+│   ├── pi.sh              # Pi profile-aware wrapper (~/.local/bin/pi, pi-<profile>)
+│   ├── pis.sh             # Pi sandbox wrapper (~/.local/bin/pis, pis-<profile>)
+│   └── Dockerfile         # Pi sandbox Docker image
 ├── gemini/
 
 │   ├── agents/            # Gemini CLI user-level subagents (Markdown)
@@ -934,36 +937,61 @@ pi  # First launch prompts for authentication
 
 **Usage**:
 ```bash
-pi  # Start interactive session
+pi                 # Start interactive session with the active profile
+pi-coding          # Start Pi with the coding profile directly
+pim current        # Show the active profile
+pim list           # List available profiles
+pim use coding     # Switch the active profile
 ```
+
+##### Pi Profiles
+
+Pi uses profile-specific runtime configs while sharing one installed binary. The installer preserves the npm-installed executable as `~/.local/bin/pi-bin`, then installs profile-aware wrappers:
+
+| Command | Purpose |
+|---------|---------|
+| `pim list` | List profiles under `pi/profiles/` |
+| `pim current` | Print the active profile from `~/.pi/active-profile` |
+| `pim use <profile>` | Update `~/.pi/agent` to point at the selected deployed profile |
+| `pim path <profile>` | Print `~/.pi/profiles/<profile>/agent` |
+| `pim doctor` | Validate active profile state and duplicate skill rules |
+| `pim create <profile>` | Scaffold a profile and generate its resolved output |
+| `pim build [profile]` | Regenerate committed `resolved/` output |
+
+Each profile lives under `pi/profiles/<profile>/`:
+
+| Path | Purpose |
+|------|---------|
+| `profile.env` | Profile metadata |
+| `settings.json`, `models.json` | Optional full-file overrides; missing files fall back to `pi/base/` |
+| `agents/` | Optional agent role additions or overrides |
+| `skills/` | Profile-local skills; names must not duplicate `shared/skills/` |
+| `extensions.list` | Enabled extension names from `pi/extensions/`, one per line |
+| `resolved/` | Generated deployable output; committed to git |
+
+Every resolved profile includes all `shared/skills/` plus any profile-local skills. Install deploys committed profile output to `~/.pi/profiles/<profile>/agent/`, keeps sessions profile-local, and shares auth through `~/.pi/auth.json`.
 
 ##### Subagents
 
 Pi includes a subagent extension for delegating tasks to specialized agents with isolated context windows. Each subagent runs as a separate `pi` process.
 
-**Agents** (in `pi/agents/`, symlinked to `~/.pi/agent/agents/`):
+**Agent roles** live in `pi/base/agents/` and are deployed through the active profile's resolved `agents/` directory:
 
 | Agent | Purpose | Tools |
 |-------|---------|-------|
-| `scout` | Fast codebase recon, returns compressed context | read, grep, find, ls, bash |
-| `planner` | Creates implementation plans (read-only) | read, grep, find, ls |
-| `reviewer` | Code review for quality and security | read, grep, find, ls, bash |
-| `worker` | General-purpose with full capabilities | all |
-
-All agents inherit the active model — switch models with `Ctrl+P` and subagents follow.
+| `implementer` | TDD implementation worker | read, write, bash, edit |
+| `test-reviewer` | Test assertion and weakness review | read, bash |
+| `quality-reviewer` | Code structure and spec adherence review | read, bash |
+| `premortem-reviewer` | Forward-looking operational risk review | read, bash |
+| `security-reviewer` | Security review for attack surfaces and data exposure | read, bash |
+| `design-reviewer` | Rendered UI design review | read, bash, write |
+| `visual-qa` | Browser-based functional QA | bash, write, read |
+| `sage` | High-authority escalation and plan review | read, write, edit, bash, web_search, web_fetch |
 
 **Three execution modes**:
-- **Single**: `Use scout to find all authentication code`
-- **Parallel**: `Run 2 scouts in parallel: one to find models, one to find providers` (max 8 tasks, 4 concurrent)
-- **Chain**: `Use a chain: scout finds the code, planner creates a plan, worker implements it`
-
-**Workflow prompts** (in `pi/prompts/`, symlinked to `~/.pi/agent/prompts/`):
-
-| Prompt | Flow |
-|--------|------|
-| `/implement <task>` | scout → planner → worker |
-| `/scout-and-plan <task>` | scout → planner (no implementation) |
-| `/implement-and-review <task>` | worker → reviewer → worker |
+- **Single**: `Use implementer to fix the failing test`
+- **Parallel**: `Run test-reviewer and quality-reviewer in parallel on this diff`
+- **Chain**: `Use implementer, then quality-reviewer, then implementer again for fixes`
 
 ##### Pi Sandbox (`pis`)
 
@@ -973,7 +1001,8 @@ Run Pi inside a Docker container for safe agentic coding. The container is ephem
 
 **Basic usage**:
 ```bash
-pis                     # Run pi in cwd (sandboxed)
+pis                     # Run active-profile Pi in cwd (sandboxed)
+pis-coding              # Run the coding profile directly
 pis --build             # Rebuild the Docker image
 ```
 
@@ -997,14 +1026,13 @@ pis ~/Code/lib -- --mode rpc            # Extra dir + pi args
 |-----------|---------------|------|
 | Current directory | Same absolute path | read-write |
 | Extra directories | Same absolute path | read-only (or `-rw`) |
-| `~/.pi/agent/sessions/` | `/root/.pi/agent/sessions/` | read-write |
-| `~/.pi/agent/auth.json` | `/root/.pi/agent/auth.json` | read-only |
-| `~/.pi/agent/settings.json` | `/root/.pi/agent/settings.json` | read-only |
-| `~/.pi/agent/models.json` | `/root/.pi/agent/models.json` | read-only |
-| `~/.pi/agent/skills/` | `/root/.pi/agent/skills/` | read-only |
-| `~/.pi/agent/agents/` | `/root/.pi/agent/agents/` | read-only |
-| `~/.pi/agent/prompts/` | `/root/.pi/agent/prompts/` | read-only |
-| `~/.pi/agent/extensions/` | `/root/.pi/agent/extensions/` | read-only |
+| `~/.pi/profiles/<profile>/agent/sessions/` | `/home/<user>/.pi/agent/sessions/` | read-write |
+| `~/.pi/profiles/<profile>/agent/auth.json` | `/home/<user>/.pi/agent/auth.json` | read-only |
+| `~/.pi/profiles/<profile>/agent/settings.json` | `/home/<user>/.pi/agent/settings.json` | read-only |
+| `~/.pi/profiles/<profile>/agent/models.json` | `/home/<user>/.pi/agent/models.json` | read-only |
+| `~/.pi/profiles/<profile>/agent/skills/` | `/home/<user>/.pi/agent/skills/` | read-only |
+| `~/.pi/profiles/<profile>/agent/agents/` | `/home/<user>/.pi/agent/agents/` | read-only |
+| `~/.pi/profiles/<profile>/agent/extensions/` | `/home/<user>/.pi/agent/extensions/` | read-only |
 
 **Environment**: API key env vars (`*_API_KEY`) are forwarded automatically.
 
