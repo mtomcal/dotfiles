@@ -957,6 +957,7 @@ Pi uses profile-specific runtime configs while sharing one installed binary. The
 | `pim doctor` | Validate active profile state and duplicate skill rules |
 | `pim create <profile>` | Scaffold a profile and generate its resolved output |
 | `pim build [profile]` | Regenerate committed `resolved/` output |
+| `pim deploy [profile]` | Deploy resolved output to `~/.pi/profiles/` |
 
 Each profile lives under `pi/profiles/<profile>/`:
 

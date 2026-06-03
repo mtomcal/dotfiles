@@ -91,6 +91,84 @@ pim_active_agent_link() {
     printf '%s/.pi/agent\n' "$home"
 }
 
+pim_replace_symlink() {
+    local source="$1"
+    local target="$2"
+
+    mkdir -p "$(dirname "$target")"
+    if [[ -L "$target" ]]; then
+        if [[ "$(readlink "$target")" == "$source" ]]; then
+            return 0
+        fi
+        rm "$target"
+    elif [[ -e "$target" ]]; then
+        printf 'pim: target exists and is not a symlink: %s\n' "$target" >&2
+        return 1
+    fi
+    ln -s "$source" "$target"
+}
+
+pim_prepare_shared_auth() {
+    local home="$1"
+
+    mkdir -p "$home/.pi"
+    if [[ ! -f "$home/.pi/auth.json" ]]; then
+        printf '{}\n' > "$home/.pi/auth.json"
+    fi
+}
+
+pim_deploy_profile() {
+    local profile="$1"
+    local root home profile_dir resolved runtime extension required
+    root="$(pim_dotfiles_dir)"
+    home="$(pim_home_dir)"
+    profile_dir="$(pim_profile_source_dir "$root" "$profile")"
+    resolved="$profile_dir/resolved"
+    runtime="$(pim_profile_runtime_dir "$home" "$profile")"
+
+    if ! pim_validate_profile_name "$profile"; then
+        printf 'pim: invalid profile name: %s\n' "$profile" >&2
+        return 1
+    fi
+    if [[ ! -d "$profile_dir" ]]; then
+        printf 'pim: profile not found: %s\n' "$profile" >&2
+        return 1
+    fi
+    if [[ ! -d "$resolved" ]]; then
+        printf 'pim: profile has no resolved output: %s\n' "$profile" >&2
+        return 1
+    fi
+    for required in settings.json models.json agents skills extensions; do
+        if [[ ! -e "$resolved/$required" && ! -L "$resolved/$required" ]]; then
+            printf 'pim: resolved output for profile "%s" is missing %s\n' "$profile" "$required" >&2
+            return 1
+        fi
+    done
+
+    pim_prepare_shared_auth "$home"
+    mkdir -p "$runtime/extensions" "$runtime/sessions"
+    pim_replace_symlink "$resolved/settings.json" "$runtime/settings.json"
+    pim_replace_symlink "$resolved/models.json" "$runtime/models.json"
+    pim_replace_symlink "$resolved/agents" "$runtime/agents"
+    pim_replace_symlink "$resolved/skills" "$runtime/skills"
+    pim_replace_symlink "$home/.pi/auth.json" "$runtime/auth.json"
+
+    for extension in "$resolved/extensions"/*; do
+        [[ -e "$extension" || -L "$extension" ]] || continue
+        pim_replace_symlink "$extension" "$runtime/extensions/$(basename "$extension")"
+    done
+}
+
+pim_deploy_all_profiles() {
+    local root profile_dir profile
+    root="$(pim_dotfiles_dir)"
+    for profile_dir in "$root/pi/profiles"/*; do
+        [[ -d "$profile_dir" ]] || continue
+        profile="$(basename "$profile_dir")"
+        pim_deploy_profile "$profile"
+    done
+}
+
 pim_resolve_profile_paths() {
     local profile="$1"
     local root

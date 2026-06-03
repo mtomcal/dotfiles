@@ -26,6 +26,7 @@ Commands:
   doctor               Validate active profile state
   create <profile>     Scaffold and build a profile
   build [profile]      Build one profile, or all profiles
+  deploy [profile]     Deploy resolved output to ~/.pi/profiles
 EOF
 }
 
@@ -93,8 +94,7 @@ cmd_use() {
         exit 1
     fi
     if [[ ! -d "$runtime" ]]; then
-        printf 'pim: runtime not deployed for profile: %s\n' "$profile" >&2
-        exit 1
+        pim_deploy_profile "$profile" || exit 1
     fi
 
     mkdir -p "$home/.pi"
@@ -171,6 +171,20 @@ cmd_build() {
     done
 }
 
+cmd_deploy() {
+    local profile="${1:-}"
+
+    if [[ -n "$profile" ]]; then
+        require_profile "$profile"
+        pim_deploy_profile "$profile"
+        printf 'deployed profile: %s\n' "$profile"
+        return 0
+    fi
+
+    pim_deploy_all_profiles
+    printf 'deployed profiles\n'
+}
+
 main() {
     local command="${1:-}"
     shift || true
@@ -183,6 +197,7 @@ main() {
         doctor) cmd_doctor "$@" ;;
         create) cmd_create "${1:-}" ;;
         build) cmd_build "${1:-}" ;;
+        deploy) cmd_deploy "${1:-}" ;;
         -h|--help|help) usage ;;
         *) usage; exit 2 ;;
     esac

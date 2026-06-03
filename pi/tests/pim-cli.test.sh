@@ -115,6 +115,33 @@ test_use_updates_active_profile_state() {
     assert_symlink_to "$home/.pi/agent" "$home/.pi/profiles/coding/agent"
 }
 
+test_use_deploys_built_profile_when_runtime_is_missing() {
+    local root home
+    root="$(new_tmp)"
+    home="$(new_tmp)"
+    make_repo "$root"
+    run_pim "$root" "$home" build local >/dev/null
+
+    run_pim "$root" "$home" use local >/dev/null
+
+    assert_eq "$(cat "$home/.pi/active-profile")" "local"
+    assert_symlink_to "$home/.pi/agent" "$home/.pi/profiles/local/agent"
+    assert_symlink_to "$home/.pi/profiles/local/agent/settings.json" "$root/pi/profiles/local/resolved/settings.json"
+    assert_symlink_to "$home/.pi/profiles/local/agent/auth.json" "$home/.pi/auth.json"
+}
+
+test_deploy_command_deploys_built_profile() {
+    local root home
+    root="$(new_tmp)"
+    home="$(new_tmp)"
+    make_repo "$root"
+    run_pim "$root" "$home" build coding >/dev/null
+
+    run_pim "$root" "$home" deploy coding >/dev/null
+
+    assert_symlink_to "$home/.pi/profiles/coding/agent/models.json" "$root/pi/profiles/coding/resolved/models.json"
+}
+
 test_doctor_fails_for_missing_active_runtime() {
     local root home
     root="$(new_tmp)"
@@ -175,6 +202,8 @@ test_list_works_through_installed_symlink
 test_current_reads_active_profile_file
 test_path_prints_runtime_path
 test_use_updates_active_profile_state
+test_use_deploys_built_profile_when_runtime_is_missing
+test_deploy_command_deploys_built_profile
 test_doctor_fails_for_missing_active_runtime
 test_doctor_fails_for_duplicate_profile_skill
 test_create_scaffolds_and_builds_profile
