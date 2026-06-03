@@ -116,8 +116,9 @@ Parameters serve three purposes:
 | `AGENT_CONFIG_DIR_PI` | ~/.pi/agent | path | Compatibility symlink pointing to the active Pi profile runtime directory |
 | `PI_PROFILE_ROOT_DIR` | ~/.pi/profiles | path | Runtime parent directory containing one deployed Pi profile per subdirectory |
 | `PI_ACTIVE_PROFILE_FILE` | ~/.pi/active-profile | path | Stores the active Pi profile name so `pim current`, `pi`, and `pis` can resolve the selected profile |
-| `PI_ACTIVE_PROFILE_NAME` | coding | string | Default Pi profile selected after install unless changed with `pim use` |
-| `PI_PROFILE_SOURCE_ROOT` | ~/dotfiles/pi/profiles | path | Repository source root for Pi profile authoring inputs and committed resolved output |
+| `PI_ACTIVE_PROFILE_NAME` | coding | string | Default Pi profile name selected during install; activated via `pim activate` or bare `pim <profile>` |
+| `PI_PROFILE_RUNTIME_DIR` | ~/.pi/profiles/<profile>/agent | template | Runtime parent directory containing one deployed Pi profile per subdirectory; `{profile}` is substituted at runtime. This is where the symlinked runtime files land — not the repository source root. |
+| `PI_PROFILE_SOURCE_ROOT` | ~/dotfiles/pi/profiles | path | Repository source root for Pi profile authoring inputs and committed resolved output, **not** the same as the runtime directory under `~/.pi/`
 | `AGENT_CONFIG_DIR_GEMINI` | ~/.gemini | path | Gemini CLI's canonical config directory |
 | `AGENT_CONFIG_DIR_COPILOT` | ~/.config/copilot | path | Copilot CLI's canonical config directory (XDG-style) |
 | `AGENT_SKILLS_DIR_CODEX` | ~/.agents/skills | path | Codex CLI resolves skills from this path; symlinked to shared skills |
