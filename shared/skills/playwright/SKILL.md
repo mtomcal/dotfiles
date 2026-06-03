@@ -1,5 +1,5 @@
 ---
-name: Playwright
+name: playwright
 description: Automate browser interactions, scripted capture, and Playwright test workflows. Use when the task specifically calls for Playwright, deterministic browser automation, Playwright recordings, or working inside an existing Playwright test setup.
 allowed-tools: Bash(playwright-cli:*) Bash(npx:*) Bash(npm:*)
 metadata:

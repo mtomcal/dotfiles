@@ -59,7 +59,7 @@ The system MUST ensure that:
 | `AGENT_CONFIG_DIR_GEMINI` | `~/.gemini` | path | Gemini CLI's canonical config directory |
 | `AGENT_CONFIG_DIR_COPILOT` | `~/.config/copilot` | path | Copilot CLI's canonical config directory |
 | `AGENT_SKILLS_DIR_CODEX` | `~/.agents/skills` | path | Codex CLI resolves skills from this path; symlinked to shared skills |
-| `PI_ACTIVE_PROFILE_NAME` | `coding` | string | Default Pi profile selected after install unless the human switches it with `pim use` |
+| `PI_ACTIVE_PROFILE_NAME` | `coding` | string | Default Pi profile name selected during install; activated at runtime via `pim activate` or bare `pim <profile>` |
 | `AGENT_SKILLS_DIR_PI` | `~/.pi/agent/skills` | path | Pi resolves skills from the active profile runtime's composed skills directory |
 | `SANDBOX_BASE_IMAGE_NAME` | `dotfiles-dev-base:{UID}-{GID}` | image reference | Shared Docker base image for agent sandboxes, tagged by host UID/GID |
 | `SANDBOX_IMAGE_NAME` | `pis:latest` | image reference | Default Pi sandbox container image |
@@ -413,10 +413,13 @@ The skills distribution system MUST satisfy:
 4. Sub-agent role definitions are stored in each profile's resolved `agents/` directory and deployed to `~/.pi/profiles/{profile}/agent/agents/`. Each role file MUST include YAML frontmatter with `name`, `description`, `model`, `provider`, and `thinking`; MAY include `tools`, `maxTurns`, `maxCost`, `maxTokens`, `maxTime`.
 5. Extensions are loaded from the active profile runtime's `~/.pi/agent/extensions/`, where each enabled extension directory is a symlink to that profile's resolved output.
 6. The active profile compatibility path `~/.pi/agent` MUST be a symlink to one deployed profile runtime directory under `~/.pi/profiles/`.
-7. The `pim` command MUST manage Pi profiles with at least `list`, `current`, `use <profile>`, `path <profile>`, `doctor`, `create <profile>`, and `build [profile]`.
-8. `pim create <profile>` MUST scaffold authoring inputs and generate committed resolved output immediately.
-9. Bare `pi` and `pis` MUST target the active profile. Explicit wrappers `pi-<profile>` and `pis-<profile>` MUST target their named profile directly without changing the active profile.
-10. `pim use <profile>` MUST switch the active profile by updating the runtime pointer and active-profile file atomically. It MUST NOT rewrite wrapper scripts.
+7. The `pim` command manages Pi profiles with the surface commands: `list`, `current`, `path <profile>`, `doctor`, `create <profile>`. Zero arguments displays a dashboard listing all available profiles under `pi/profiles/`, showing each profile name, its runtime directory path, and whether it has valid resolved output plus deployed runtime. The active profile is clearly marked.
+
+8. Profile activation (the single unified entry point for build + deploy) always compiles the source profile into resolved output, then deploys all symlinks to the runtime directory regardless of whether resolved output already exists. If either phase fails, abort without updating active state — leave existing active profile completely unmodified. The profile may be activated via: `pim activate <profile>`, `pim use <profile>`, or bare `pim <profile>` when `<profile>` is not a recognized subcommand.
+
+9. `pim create <profile>` MUST ONLY scaffold authoring inputs (profile.env, agents/, skills/ directories, extensions.list, optional settings/models). It does NOT generate resolved output or deploy. The user must run profile activation separately.
+
+10. Bare `pi` and `pis` MUST target the active profile. Explicit wrappers `pi-<profile>` and `pis-<profile>` MUST target their named profile directly without changing the active profile.
 
 #### B4.4: Gemini CLI Configuration
 
@@ -720,7 +723,7 @@ The install script supports module-based installation:
 | AIAGT-012 | Codex config overwrite attempted | `CODEX_CONFIG_TEMPLATE_MODE=overwrite` with existing file | Back up existing config, copy template | Restore from backup if needed |
 | AIAGT-013 | Subagent model routing missing | `subagentModelRouting` key absent from Pi settings.json | Extension logs warning; tool descriptions omit routing table | Fall back to parent agent's default model and thinking level |
 | AIAGT-014 | Widget render failure | Exception during widget rendering | Log error, skip re-render, widget may be stale | Widget continues on next successful render; user can check `subagent_status` as fallback |
-| AIAGT-015 | Duplicate skill name in Pi profile build | Same skill directory name exists in `shared/skills/` and a profile-local skills directory | Abort `pim build` or `pim create` with explicit duplicate name error | Rename or remove the profile-local skill, then rebuild |
+| AIAGT-015 | Duplicate skill name in Pi profile build | Same skill directory name exists in `shared/skills/` and a profile-local skills directory | Abort profile activation or profile creation with explicit duplicate name error, preserving existing active state | Rename or remove the profile-local skill, then activate |
 
 ---
 
@@ -782,12 +785,12 @@ Preconditions: A new skill is added to `~/dotfiles/shared/skills/my-skill/SKILL.
 Input: Check skill availability from each agent
 Expected Output: The new skill is immediately visible to non-Pi agents. The new skill becomes visible to every Pi profile after rebuilding profile output.
 
-**TS-AIAGT-004a**: Duplicate skill names fail profile build
+**TS-AIAGT-004a**: Duplicate skill names fail profile activation
 Category: Integration
 Priority: High
 Preconditions: A Pi profile defines `pi/profiles/local/skills/my-skill/` and `shared/skills/my-skill/` already exists
-Input: Run `pim build local`
-Expected Output: Build fails with an error identifying the duplicate skill name; existing deployed profile output is not partially overwritten.
+Input: Run `pim activate local`
+Expected Output: Profile activation fails with an error identifying the duplicate skill name; existing deployed profile output and active state are not modified.
 
 **TS-AIAGT-005**: Codex config template preservation
 Category: Integration

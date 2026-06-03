@@ -1,0 +1,7 @@
+{
+  "enableSkillCommands": true,
+  "lastChangelogVersion": "0.78.0",
+  "defaultProvider": "ollama-local",
+  "defaultModel": "qwen3.6:27b-mlx",
+  "defaultThinkingLevel": "medium"
+}
