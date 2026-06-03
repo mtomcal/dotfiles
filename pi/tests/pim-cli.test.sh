@@ -67,6 +67,19 @@ test_list_prints_profiles() {
     assert_eq "$output" $'coding\nlocal'
 }
 
+test_list_works_through_installed_symlink() {
+    local root home wrapper output
+    root="$(new_tmp)"
+    home="$(new_tmp)"
+    make_repo "$root"
+    mkdir -p "$home/.local/bin"
+    wrapper="$home/.local/bin/pim"
+    ln -s "$PIM" "$wrapper"
+
+    output="$(PIM_DOTFILES_DIR="$root" PIM_HOME="$home" bash "$wrapper" list)"
+    assert_eq "$output" $'coding\nlocal'
+}
+
 test_current_reads_active_profile_file() {
     local root home output
     root="$(new_tmp)"
@@ -158,6 +171,7 @@ test_build_command_builds_profile() {
 }
 
 test_list_prints_profiles
+test_list_works_through_installed_symlink
 test_current_reads_active_profile_file
 test_path_prints_runtime_path
 test_use_updates_active_profile_state

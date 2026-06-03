@@ -1,7 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_PATH="${BASH_SOURCE[0]}"
+if [[ -L "$SCRIPT_PATH" ]]; then
+    LINK_TARGET="$(readlink "$SCRIPT_PATH")"
+    if [[ "$LINK_TARGET" = /* ]]; then
+        SCRIPT_PATH="$LINK_TARGET"
+    else
+        SCRIPT_PATH="$(cd "$(dirname "$SCRIPT_PATH")" && cd "$(dirname "$LINK_TARGET")" && pwd)/$(basename "$LINK_TARGET")"
+    fi
+fi
+SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
 # shellcheck source=lib/pim.sh
 source "$SCRIPT_DIR/lib/pim.sh"
 
