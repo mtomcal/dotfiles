@@ -55,6 +55,13 @@ test_deploys_all_committed_profile_outputs() {
     assert_symlink_to "$runtime/agents" "$DOTFILES_DIR/pi/profiles/coding/resolved/agents"
     assert_symlink_to "$runtime/skills" "$DOTFILES_DIR/pi/profiles/coding/resolved/skills"
     assert_symlink_to "$runtime/extensions/subagent" "$DOTFILES_DIR/pi/profiles/coding/resolved/extensions/subagent"
+
+    runtime="$home/.pi/profiles/local/agent"
+    assert_symlink_to "$runtime/settings.json" "$DOTFILES_DIR/pi/profiles/local/resolved/settings.json"
+    assert_symlink_to "$runtime/models.json" "$DOTFILES_DIR/pi/profiles/local/resolved/models.json"
+    assert_symlink_to "$runtime/agents" "$DOTFILES_DIR/pi/profiles/local/resolved/agents"
+    assert_symlink_to "$runtime/skills" "$DOTFILES_DIR/pi/profiles/local/resolved/skills"
+    [[ ! -e "$runtime/extensions/subagent" ]] || fail "local profile should not deploy subagent extension"
 }
 
 test_sets_active_profile_on_first_install() {
@@ -107,6 +114,8 @@ test_deploys_profile_wrappers() {
     assert_symlink_to "$bin/pis" "$DOTFILES_DIR/pi/pis.sh"
     assert_symlink_to "$bin/pi-coding" "$DOTFILES_DIR/pi/pi.sh"
     assert_symlink_to "$bin/pis-coding" "$DOTFILES_DIR/pi/pis.sh"
+    assert_symlink_to "$bin/pi-local" "$DOTFILES_DIR/pi/pi.sh"
+    assert_symlink_to "$bin/pis-local" "$DOTFILES_DIR/pi/pis.sh"
 }
 
 test_profiles_share_auth_but_keep_profile_sessions() {

@@ -1,0 +1,21 @@
+{
+  "providers": {
+    "ollama-local": {
+      "baseUrl": "http://127.0.0.1:11434/v1",
+      "api": "openai-completions",
+      "apiKey": "$OLLAMA_API_KEY",
+      "compat": {
+        "supportsDeveloperRole": false
+      },
+      "models": [
+        {
+          "id": "qwen3.6:27b-mlx",
+          "name": "Qwen 3.6 27B MLX",
+          "contextWindow": 262144,
+          "maxTokens": 8192,
+          "reasoning": true
+        }
+      ]
+    }
+  }
+}
