@@ -90,6 +90,16 @@ After retrospective intake, inspect enough local context to avoid duplicate or l
     unavailable when needed, rank durable guidance for the fallback path and for
     verifying automation availability before future publish/deploy work.
 12. Use the retrospective to target evidence, but still check for duplicate guidance and runtime availability before recommending durable changes.
+13. Identify the session's hardest stuck moment, if one existed. Prefer concrete evidence such as repeated failed attempts, repeated corrections, loops without progress, explicit statements of being stuck, or a late-discovered assumption that invalidated earlier work.
+14. For that moment, classify the routing:
+    - Was there an oracle: a passing test, successful build, measurable property, or other objective check?
+    - Was the task large enough to decompose into smaller slices with independent done-states?
+    - Was the task a discrete structural cliff with no valid halfway state, such as a migration, conversion, or repository restructure?
+15. Before treating the moment as a capability ceiling or decomposition problem, check the cheaper causes in order:
+    - Did the failure reveal a missing assumption or missing context that should have been supplied?
+    - Was there a worked example, prior slice, or sharp target spec that should have been used first?
+    - Only after those should curator frame the moment as a genuine ceiling, a decomposition problem, or a valid case to set down with a dated reason.
+16. Keep this stuck-point analysis ephemeral. It informs one advisory paragraph on the final confirmation screen only. It is not a recommendation, does not enter the approval flow, and is never written to durable state by itself.
 
 ## Worktree Triage
 
@@ -225,6 +235,20 @@ Rules for default sequential review:
 7. If the user is using terse repeated approvals such as "approve", "yes", or "agreed", keep the response short but include the running approval count or latest approved title before showing the next recommendation. This prevents ambiguity without slowing down the review.
 8. After all active recommendations have been reviewed, show the tentative approval list and ask for final confirmation before applying any writes:
 
+   If the session had a meaningful stall, also show one short advisory paragraph under the heading `Advice for Next Time:`. This paragraph is advisory prose only:
+   - it is not a recommendation to approve, skip, edit, rerank, or stop
+   - it never enters the one-at-a-time decision flow
+   - it never writes to durable state
+   - it is shown once, only on the final confirmation screen
+
+   Write the paragraph to name the concrete stuck moment and the better routing:
+   - Oracle + large task: recommend decomposition into smaller pieces with clear done-states so each piece is machine-checked independently.
+   - Oracle + discrete structural cliff: recommend one deliberate hand-driven change rather than looping or prompting harder.
+   - No oracle: recommend a human-in-the-loop loop with a cheap judgment turn, and consider whether decomposition would make each judgment smaller and less confounded.
+   - Before framing the problem as a ceiling or decomposition issue, reflect whether the cheaper causes were skipped: reading the failure for its hidden assumptions and trying a worked example, prior slice, or sharp target spec first.
+   - If no meaningful stall occurred, say so in one line instead of inventing advice.
+   - Keep it to one tight paragraph, specific to what actually happened in the session, not a generic restatement of the procedure.
+
    ```md
    Ready for final confirmation:
    - `Apply approved recommendations`
@@ -232,6 +256,13 @@ Rules for default sequential review:
    - `Apply, commit, and push approved recommendations`
    - `Revise before applying: <change>`
    - `Cancel without applying`
+
+   Tentatively approved:
+   - <approved item>
+   - <approved item>
+
+   Advice for Next Time:
+   <one short paragraph, or one line saying no meaningful stall occurred>
    ```
 
    Include commit/push options only when the approved writes affect files in a git repository. If the approved writes span multiple repositories, say which repositories would be committed or pushed separately. Applying, committing, and pushing still requires explicit final confirmation; a tentative approval is not enough.
