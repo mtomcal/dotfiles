@@ -24,13 +24,13 @@ Use this skill when a recording needs to become something a human or agent can s
 2. Probe the recording.
    - Run `ffprobe -v error -show_entries format=duration,size -show_streams "<video>"`.
    - Call out missing audio explicitly instead of assuming silence is a product bug.
-3. Build a low-frequency overview first.
+3. Build a high-resolution overview first.
    - Example:
 
 ```bash
 mkdir -p /tmp/video-review
 ffmpeg -y -i "<video>" \
-  -vf "fps=1,scale=320:-1,tile=4x4" \
+  -vf "fps=1/2,scale=640:-1,tile=3x3" \
   -frames:v 1 /tmp/video-review/contact.png
 ```
 
@@ -40,7 +40,7 @@ ffmpeg -y -i "<video>" \
 ```bash
 ffmpeg -y -ss 1.5 -i "<video>" -c copy /tmp/video-review/review.webm
 ffmpeg -y -i /tmp/video-review/review.webm \
-  -vf "fps=1,scale=320:-1,tile=4x4" \
+  -vf "fps=1/2,scale=640:-1,tile=3x3" \
   -frames:v 1 /tmp/video-review/contact-trimmed.png
 ```
 
@@ -66,7 +66,8 @@ ffmpeg -y -ss 2.0 -t 2.0 -i "<video>" \
 ## Review Rules
 
 - Artifact existence is not enough; the contact sheet must show the meaningful behavior.
+- If the visual complaint is attachment, occlusion, directional read, or any other fighter-scale issue, do not stop at the overview sheet. Generate a higher-resolution crop focused on the object under discussion.
 - If the first sheet is black, blank, or all setup, trim and rebuild instead of arguing from the raw recording.
-- Prefer one-second sampling for broad state coverage, then increase FPS only around the interesting window.
+- Prefer a high-resolution overview for broad state coverage, then increase FPS or crop tighter around the interesting window.
 - Keep the raw video as source evidence and point reviewers at the trimmed clip when it is more truthful.
 - If logs say "pass" but the sampled frames still look wrong, preserve that mismatch in the report.
