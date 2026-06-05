@@ -1,7 +1,7 @@
 # AI Agent Configuration Specification
 
-> **Version**: 1.7.0
-> **Last Updated**: 2026-06-02
+> **Version**: 1.8.0
+> **Last Updated**: 2026-06-05
 > **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md), [Design Language](DESIGN_LANGUAGE.md)
 > **Depended By**: Install Orchestrator (INSTL)
 > **Prefix**: AIAGT
@@ -40,7 +40,7 @@ The system MUST ensure that:
 | Spec | Relationship |
 |------|-------------|
 | [Parameters](parameters.md) | Defines `NODE_LTS_VERSION` and all installation parameters |
-| [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md) | Defines **agent**, **skill**, **shared skills directory**, **agent config**, **deploy** |
+| [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md) | Defines **agent**, **skill**, **shared skills directory**, **profile source**, **resolved output**, **profile runtime**, **compatibility path**, **agent config**, **deploy** |
 | [Design Language](DESIGN_LANGUAGE.md) | Defines CLI output formatting tokens |
 | [Symlink Manager](symlink-manager.md) | Defines the deploy/backup pattern used for all agent symlinks |
 
@@ -113,6 +113,18 @@ Describes one Pi profile's source inputs, generated output, and deployed runtime
 | `localSkillsDir` | string | Optional | Directory of profile-local skills layered on top of shared skills |
 | `enabledExtensions` | list of strings | Required | Extension names included in the resolved runtime directory |
 | `isDefault` | boolean | Optional | Whether install selects this profile as the initial active profile |
+
+### Pi Profile Lifecycle
+
+Describes the distinct layers that one Pi profile moves through from authoring to execution.
+
+| Layer | Type | Constraints | Description |
+|-------|------|-------------|-------------|
+| `profileSource` | path | Required; repo-relative | Authoring inputs under `pi/profiles/{profile}/` |
+| `resolvedOutput` | path | Required; repo-relative | Committed deployable artifact under `pi/profiles/{profile}/resolved/` |
+| `profileRuntime` | path | Required; absolute path | Deployed runtime tree under `~/.pi/profiles/{profile}/agent/` |
+| `compatibilityPath` | path | Required; absolute path | Stable active-profile pointer at `~/.pi/agent` |
+| `enabledExtensionSet` | list of strings | Required; MAY be empty | Extension names selected for the profile |
 
 ### Symlink Mapping
 
@@ -409,17 +421,30 @@ The skills distribution system MUST satisfy:
 
 1. `settings.json` MUST set `enableSkillCommands` to `true` and define `defaultProvider`, `defaultModel`, `defaultThinkingLevel`, and `subagentModelRouting`.
 2. `models.json` MUST define providers with `baseUrl`, `api`, `apiKey` (env var reference), and model arrays specifying `id`, `name`, `contextWindow`, `maxTokens`, and optional flags `reasoning`, `input`, and `api` (for per-model API overrides). Model entries MUST include a `contextWindow` field defining the model's maximum token capacity.
-3. Each Pi profile MUST resolve its own `settings.json`, `models.json`, `agents/`, `skills/`, and enabled `extensions/` into committed output under `pi/profiles/{profile}/resolved/`.
-4. Sub-agent role definitions are stored in each profile's resolved `agents/` directory and deployed to `~/.pi/profiles/{profile}/agent/agents/`. Each role file MUST include YAML frontmatter with `name`, `description`, `model`, `provider`, and `thinking`; MAY include `tools`, `maxTurns`, `maxCost`, `maxTokens`, `maxTime`.
-5. Extensions are loaded from the active profile runtime's `~/.pi/agent/extensions/`, where each enabled extension directory is a symlink to that profile's resolved output.
-6. The active profile compatibility path `~/.pi/agent` MUST be a symlink to one deployed profile runtime directory under `~/.pi/profiles/`.
-7. The `pim` command manages Pi profiles with the surface commands: `list`, `current`, `path <profile>`, `doctor`, `create <profile>`. Zero arguments displays a dashboard listing all available profiles under `pi/profiles/`, showing each profile name, its runtime directory path, and whether it has valid resolved output plus deployed runtime. The active profile is clearly marked.
+3. Every Pi profile MUST preserve four distinct layers: **profile source**, **resolved output**, **profile runtime**, and the active **compatibility path**. Specs and implementation MUST NOT blur these layers together.
+4. Each Pi profile MUST resolve its own `settings.json`, `models.json`, `agents/`, `skills/`, and enabled `extensions/` into committed **resolved output** under `pi/profiles/{profile}/resolved/`.
+5. `pim build <profile>` MUST compose **profile source** into **resolved output** only. It MUST NOT deploy runtime symlinks or modify the active profile.
+6. Profile build failures MUST preserve the previous committed **resolved output** for that profile.
+7. A Pi profile whose **enabled extension set** is empty MAY have no committed `resolved/extensions/` directory, because Git cannot represent empty directories. Deployment and installation MUST treat a missing resolved `extensions/` directory as an empty set, not as corruption.
+8. Sub-agent role definitions are stored in each profile's resolved `agents/` directory and deployed to `~/.pi/profiles/{profile}/agent/agents/`. Each role file MUST include YAML frontmatter with `name`, `description`, `model`, `provider`, and `thinking`; MAY include `tools`, `maxTurns`, `maxCost`, `maxTokens`, `maxTime`.
+9. Extensions are loaded from the active profile runtime's `~/.pi/agent/extensions/`, where each enabled extension directory is a symlink to that profile's resolved output.
+10. The active profile compatibility path `~/.pi/agent` MUST be a symlink to one deployed profile runtime directory under `~/.pi/profiles/`.
+11. The `pim` command manages Pi profiles with the surface commands: `list`, `current`, `path <profile>`, `doctor`, `create <profile>`, `build <profile>`, `activate <profile>`, and `use <profile>`. Zero arguments displays a dashboard listing all available profiles under `pi/profiles/`, showing each profile name plus whether it has resolved output and a deployed runtime. The active profile is clearly marked.
+12. Profile activation (the single unified entry point for build + deploy) always compiles the source profile into resolved output, then deploys all symlinks to the runtime directory regardless of whether resolved output already exists. If either phase fails, abort without updating active state — leave existing active profile completely unmodified. The profile may be activated via: `pim activate <profile>`, `pim use <profile>`, or bare `pim <profile>` when `<profile>` is not a recognized subcommand.
+13. `pim create <profile>` MUST ONLY scaffold authoring inputs (`profile.env`, `agents/`, `skills/`, `extensions.list`, and optional settings/models). It does NOT generate resolved output or deploy. The user must run build or activation separately.
+14. The install process MUST deploy committed resolved output for every profile without rebuilding it. This separation allows resolved artifacts to be reviewed and versioned independently from runtime deployment.
+15. Bare `pi` and `pis` MUST target the active profile. Explicit wrappers `pi-<profile>` and `pis-<profile>` MUST target their named profile directly without changing the active profile.
 
-8. Profile activation (the single unified entry point for build + deploy) always compiles the source profile into resolved output, then deploys all symlinks to the runtime directory regardless of whether resolved output already exists. If either phase fails, abort without updating active state — leave existing active profile completely unmodified. The profile may be activated via: `pim activate <profile>`, `pim use <profile>`, or bare `pim <profile>` when `<profile>` is not a recognized subcommand.
+#### B4.3a: Pi Profile Lifecycle Decision Table
 
-9. `pim create <profile>` MUST ONLY scaffold authoring inputs (profile.env, agents/, skills/ directories, extensions.list, optional settings/models). It does NOT generate resolved output or deploy. The user must run profile activation separately.
-
-10. Bare `pi` and `pis` MUST target the active profile. Explicit wrappers `pi-<profile>` and `pis-<profile>` MUST target their named profile directly without changing the active profile.
+| Condition | Action |
+|-----------|--------|
+| Profile source changes but no build runs | Resolved output and runtime remain unchanged |
+| `pim build <profile>` succeeds | Replace that profile's resolved output only; leave runtime and active state unchanged |
+| `pim build <profile>` fails | Preserve the previous resolved output |
+| Enabled extension set is empty | Allow resolved output to omit `extensions/`; deploy treats the missing directory as an empty set |
+| Install deploys profiles | Deploy from committed resolved output; do not rebuild profiles during install |
+| Activation build or deploy fails | Preserve the existing active profile and compatibility path |
 
 #### B4.4: Gemini CLI Configuration
 
@@ -791,6 +816,20 @@ Priority: High
 Preconditions: A Pi profile defines `pi/profiles/local/skills/my-skill/` and `shared/skills/my-skill/` already exists
 Input: Run `pim activate local`
 Expected Output: Profile activation fails with an error identifying the duplicate skill name; existing deployed profile output and active state are not modified.
+
+**TS-AIAGT-004b**: Pi build refreshes resolved output without activating
+Category: Integration
+Priority: High
+Preconditions: A Pi profile exists and no active-profile change is desired
+Input: Run `pim build local`
+Expected Output: The profile's committed resolved output is regenerated. The active profile file and compatibility path are unchanged.
+
+**TS-AIAGT-004c**: Empty enabled extension set deploys successfully
+Category: Integration
+Priority: High
+Preconditions: A Pi profile's enabled extension set is empty and the committed resolved output has no `extensions/` directory
+Input: Deploy the profile via install or profile deployment
+Expected Output: Deployment succeeds, runtime `extensions/` exists as an empty directory, and the profile is treated as valid rather than incomplete.
 
 **TS-AIAGT-005**: Codex config template preservation
 Category: Integration
@@ -1216,6 +1255,7 @@ Expected Output: `tools` is `undefined`; no tool bracket appears in any display 
 
 | Version | Date | Summary |
 |---------|------|---------|
+| 1.8.0 | 2026-06-05 | Clarified the Pi profile lifecycle model by separating profile source, resolved output, profile runtime, and compatibility path. Added `pim build <profile>` to the user-facing surface, specified that build preserves active state, specified that build failures preserve previous resolved output, documented that an empty enabled extension set may omit committed `resolved/extensions/` because Git cannot represent empty directories, and added two Pi profile test scenarios covering build-only behavior and empty-extension deployment. |
 | 1.7.0 | 2026-06-02 | Added Pi profiles as first-class deployable agent-config variants. Specified `pim` as the profile manager, per-profile resolved output under `pi/profiles/{profile}/resolved/`, active profile switching via `~/.pi/agent` and `~/.pi/active-profile`, profile-specific settings/models/agents/extensions, shared skills inclusion across all profiles, profile-local skill layering, and duplicate-skill build errors. |
 | 1.6.0 | 2026-05-19 | Split Pi-specific subagent workflow skills into `pi/skills/`; Pi now links `~/.pi/agent/skills` to the composed Pi skills directory while non-Pi agents continue to link to `shared/skills/`. |
 | 1.5.0 | 2026-05-13 | Updated B9 Agent Role Definitions: B9.1 (Test Reviewer) matches actual `test-reviewer.md` agent behavior; B9.2 (Visual QA) expanded to full three-phase checklist workflow matching `visual-qa.md`; added B9.3 (Design Reviewer) from `design-reviewer.md` with multi-viewport rendering and severity-tagged review cards; added B9.4 (Premortem Reviewer) from `premortem-reviewer.md` with six failure mode categories. Added 9 test scenarios (TS-AIAGT-042 through TS-AIAGT-050) covering visual QA checklist execution and console error detection, design reviewer multi-viewport capture and missing-design-system fallback, premortem reviewer operational risk detection and resilience notes, blocking issue classification, step-failure continuation, and deployment risk identification. |

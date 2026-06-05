@@ -1,7 +1,7 @@
 # Personal Dotfiles Manager Specification Suite
 
-> **Version**: 0.2.0
-> **Last Updated**: 2026-06-02
+> **Version**: 0.2.1
+> **Last Updated**: 2026-06-05
 > **Purpose**: Complete specification for the personal dotfiles manager — automates setup of a tmux + neovim + zsh dev environment across Linux and macOS. Primarily for personal use, serves as reference/inspiration for others.
 
 ---
@@ -105,7 +105,7 @@ graph TD
 | [shell-config.md](shell-config.md) | Zsh + Oh My Zsh configuration | 0.1.0 |
 | [tmux-config.md](tmux-config.md) | Tmux keybindings and nested sessions | 0.1.0 |
 | [neovim-config.md](neovim-config.md) | Kickstart + custom plugin layer | 0.1.0 |
-| [ai-agent-config.md](ai-agent-config.md) | AI agent configs and shared skills | 1.7.0 |
+| [ai-agent-config.md](ai-agent-config.md) | AI agent configs and shared skills | 1.8.0 |
 | [install-orchestrator.md](install-orchestrator.md) | Top-level idempotent setup orchestrator | 1.2.0 |
 
 ---
