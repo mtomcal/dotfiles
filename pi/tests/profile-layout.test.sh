@@ -77,11 +77,11 @@ test_local_profile_uses_profile_specific_runtime_inputs() {
     assert_same_target_or_content "$resolved/models.json" "$DOTFILES_DIR/pi/profiles/local/models.json"
     assert_exists "$resolved/agents"
     assert_exists "$resolved/skills"
-    assert_exists "$resolved/extensions"
 }
 
 test_local_profile_disables_subagent_extensions() {
     local resolved="$DOTFILES_DIR/pi/profiles/local/resolved/extensions"
+    [[ -d "$resolved" ]] || return 0
     [[ -z "$(find "$resolved" -mindepth 1 -maxdepth 1 -print)" ]] || fail "expected local profile to have no enabled extensions"
 }
 

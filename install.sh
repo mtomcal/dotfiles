@@ -1012,7 +1012,7 @@ deploy_pi_profile_runtime() {
         print_error "Pi profile '$profile' is missing resolved output: $resolved"
         return 1
     fi
-    for required in settings.json models.json agents skills extensions; do
+    for required in settings.json models.json agents skills; do
         if [ ! -e "$resolved/$required" ] && [ ! -L "$resolved/$required" ]; then
             print_error "Pi profile '$profile' resolved output is missing $required"
             return 1
@@ -1026,10 +1026,12 @@ deploy_pi_profile_runtime() {
     replace_symlink "$resolved/skills" "$runtime/skills"
     replace_symlink "$HOME/.pi/auth.json" "$runtime/auth.json"
 
-    for extension in "$resolved/extensions"/*; do
-        [ -e "$extension" ] || [ -L "$extension" ] || continue
-        replace_symlink "$extension" "$runtime/extensions/$(basename "$extension")"
-    done
+    if [ -d "$resolved/extensions" ]; then
+        for extension in "$resolved/extensions"/*; do
+            [ -e "$extension" ] || [ -L "$extension" ] || continue
+            replace_symlink "$extension" "$runtime/extensions/$(basename "$extension")"
+        done
+    fi
 }
 
 prepare_pi_shared_auth() {

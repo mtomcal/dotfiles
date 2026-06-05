@@ -15,7 +15,7 @@ SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
 source "$SCRIPT_DIR/lib/pim.sh"
 
 # Subcommands that pim recognizes (used for bare-arg disambiguation)
-_KNOWN_CMDS="list current path doctor create activate use help -h --help"
+_KNOWN_CMDS="list current path doctor create build activate use help -h --help"
 
 usage() {
     cat >&2 <<'EOF'
@@ -28,6 +28,7 @@ Commands:
   path <profile>       Print deployed runtime path
   doctor               Validate active profile state
   create <profile>     Scaffold a profile
+  build <profile>      Build resolved output only
   activate <profile>   Build and deploy, activate the profile
                           (same as 'use', listed for readability)
 EOF
@@ -115,6 +116,25 @@ cmd_path() {
     local profile="$1"
     require_profile "$profile"
     pim_profile_runtime_dir "$(pim_home_dir)" "$profile"
+}
+
+cmd_build() {
+    local profile="$1"
+    require_profile "$profile"
+
+    local root
+    root="$(pim_dotfiles_dir)"
+    if ! profile_exists "$root" "$profile"; then
+        printf 'pim: profile not found: %s\n' "$profile" >&2
+        exit 1
+    fi
+
+    PIM_DOTFILES_DIR="$root" pim_build_profile "$profile" || {
+        printf 'pim: build failed\n' >&2
+        return 1
+    }
+
+    printf 'built profile: %s\n' "$profile"
 }
 
 # Activate a profile: always build→deploy, then atomically swap active state.
@@ -216,6 +236,8 @@ main() {
         list)     cmd_list "$@" ;;
         current)  cmd_current "$@" ;;
         path)     cmd_path "${1:-}" ;;
+        build)    [[ -n "${1:-}" ]] || { usage; exit 2; }
+                  cmd_build "$1" ;;
         activate | use)
                     [[ -n "${1:-}" ]] || { usage; exit 2; }
                     cmd_activate "$1" ;;

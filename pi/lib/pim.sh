@@ -138,7 +138,7 @@ pim_deploy_profile() {
         printf 'pim: profile has no resolved output: %s\n' "$profile" >&2
         return 1
     fi
-    for required in settings.json models.json agents skills extensions; do
+    for required in settings.json models.json agents skills; do
         if [[ ! -e "$resolved/$required" && ! -L "$resolved/$required" ]]; then
             printf 'pim: resolved output for profile "%s" is missing %s\n' "$profile" "$required" >&2
             return 1
@@ -153,10 +153,12 @@ pim_deploy_profile() {
     pim_replace_symlink "$resolved/skills" "$runtime/skills"
     pim_replace_symlink "$home/.pi/auth.json" "$runtime/auth.json"
 
-    for extension in "$resolved/extensions"/*; do
-        [[ -e "$extension" || -L "$extension" ]] || continue
-        pim_replace_symlink "$extension" "$runtime/extensions/$(basename "$extension")"
-    done
+    if [[ -d "$resolved/extensions" ]]; then
+        for extension in "$resolved/extensions"/*; do
+            [[ -e "$extension" || -L "$extension" ]] || continue
+            pim_replace_symlink "$extension" "$runtime/extensions/$(basename "$extension")"
+        done
+    fi
 }
 
 pim_deploy_all_profiles() {

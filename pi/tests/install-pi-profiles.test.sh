@@ -87,6 +87,26 @@ test_missing_resolved_output_fails() {
     fi
 }
 
+test_deploy_accepts_profile_without_resolved_extensions_dir() {
+    local root home runtime
+    root="$(new_tmp)"
+    home="$(new_tmp)"
+    mkdir -p "$root/pi/profiles/local/resolved/agents" "$root/pi/profiles/local/resolved/skills"
+    printf '{"settings":true}\n' > "$root/pi/profiles/local/resolved/settings.json"
+    printf '{"models":true}\n' > "$root/pi/profiles/local/resolved/models.json"
+
+    source_install
+    HOME="$home" prepare_pi_shared_auth
+    HOME="$home" DOTFILES_DIR="$root" deploy_pi_profile_runtime local
+
+    runtime="$home/.pi/profiles/local/agent"
+    assert_symlink_to "$runtime/settings.json" "$root/pi/profiles/local/resolved/settings.json"
+    assert_symlink_to "$runtime/models.json" "$root/pi/profiles/local/resolved/models.json"
+    assert_symlink_to "$runtime/agents" "$root/pi/profiles/local/resolved/agents"
+    assert_symlink_to "$runtime/skills" "$root/pi/profiles/local/resolved/skills"
+    [[ -d "$runtime/extensions" ]] || fail "missing runtime extensions dir"
+}
+
 test_reinstall_is_idempotent_for_profile_symlinks() {
     local home before after
     home="$(new_tmp)"
@@ -145,6 +165,7 @@ test_install_code_has_no_single_profile_pi_source_dependencies() {
 test_deploys_all_committed_profile_outputs
 test_sets_active_profile_on_first_install
 test_missing_resolved_output_fails
+test_deploy_accepts_profile_without_resolved_extensions_dir
 test_reinstall_is_idempotent_for_profile_symlinks
 test_deploys_profile_wrappers
 test_profiles_share_auth_but_keep_profile_sessions

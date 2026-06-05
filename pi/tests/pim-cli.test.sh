@@ -248,6 +248,20 @@ test_create_is_scaffold_only() {
     [[ ! -d "$root/pi/profiles/review/resolved" ]]   || fail "resolved should NOT exist after create"
 }
 
+test_build_creates_resolved_without_activating() {
+    local root home output
+    root="$(new_tmp)"
+    home="$(new_tmp)"
+    make_repo "$root"
+
+    output="$(run_pim "$root" "$home" build local)"
+
+    [[ -d "$root/pi/profiles/local/resolved" ]] || fail "build should create resolved output"
+    [[ "$output" == "built profile: local" ]] || fail "unexpected build output: $output"
+    [[ ! -e "$home/.pi/active-profile" ]] || fail "build should not activate the profile"
+    [[ ! -L "$home/.pi/agent" ]] || fail "build should not create the active agent symlink"
+}
+
 test_use_on_fresh_scaffolded_profile_deploys() {
     local root home
     root="$(new_tmp)"
@@ -365,6 +379,7 @@ test_activate_always_builds_then_deploys
 test_use_always_rebuilds_even_when_runtime_exists
 test_activate_preserves_active_state_on_build_failure
 test_create_is_scaffold_only
+test_build_creates_resolved_without_activating
 test_use_on_fresh_scaffolded_profile_deploys
 test_list_prints_profiles
 test_list_works_through_installed_symlink
