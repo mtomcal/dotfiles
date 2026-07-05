@@ -10,6 +10,8 @@ Personal development environment configuration for Herdr, tmux fallback, neovim,
   - [Post-Installation](#post-installation)
 - [Structure](#structure)
 - [Configuration Details](#configuration-details)
+  - [Herdr](#herdr)
+    - [Agent Integrations](#agent-integrations)
   - [Tmux](#tmux)
     - [Session Management](#session-management)
     - [Windows & Panes](#windows--panes)
@@ -110,6 +112,9 @@ The installer provides a **menu-driven interface** with multiple installation pr
 # Go development environment
 ./install.sh --modules golang_full,neovim,nvim_config
 
+# Herdr workspace manager and agent integrations
+./install.sh --modules herdr,herdr_config,herdr_integrations
+
 # View all options
 ./install.sh --help
 ```
@@ -120,8 +125,8 @@ The installer provides a **menu-driven interface** with multiple installation pr
 - `nvim_config` - Kickstart.nvim + custom plugins
 - `tmux_config` - Tmux configuration with vim bindings
 - `herdr` - Herdr terminal workspace manager via official curl installer
-- `herdr_config` - Herdr config symlink to `~/.config/herdr/config.toml`
-- `herdr_integrations` - Repo-owned Herdr integrations for managed agents
+- `herdr_config` - Symlinks `herdr/config.toml` to `~/.config/herdr/config.toml`
+- `herdr_integrations` - Deploys repo-owned Herdr hooks and Pi integration wiring
 - `zsh_ohmyzsh` - Zsh + Oh My Zsh installation
 - `zsh_config` - Custom zsh configuration
 - `golang` - Go 1.24+ toolchain only (basic)
@@ -177,6 +182,7 @@ dotfiles/
 │       ├── ralph/
 │       ├── write-a-skill/
 │       ├── improve-codebase-architecture/
+│       ├── herdr/
 │       ├── tmux-agent-orchestration/
 │       ├── ubiquitous-language/
 │       ├── audit-shared-skills/
@@ -193,7 +199,7 @@ dotfiles/
 ├── pi/
 │   ├── base/              # Base settings, models, and agent roles for Pi profiles
 │   ├── profiles/          # Profile authoring inputs + committed resolved output
-│   ├── extensions/        # Pi extensions (subagent, web-search, inherit-last-model)
+│   ├── extensions/        # Pi extensions (subagent, web-search, inherit-last-model, herdr-agent-state)
 │   ├── lib/               # Pi profile manager shell helpers
 │   ├── pim.sh             # Pi profile manager (~/.local/bin/pim)
 │   ├── pi.sh              # Pi profile-aware wrapper (~/.local/bin/pi, pi-<profile>)
@@ -206,7 +212,7 @@ dotfiles/
 │   └── README.md          # Gemini CLI documentation
 ├── herdr/
 │   ├── config.toml        # Herdr config (~/.config/herdr/config.toml)
-│   └── integrations/      # Repo-owned Herdr hooks for managed agents
+│   └── integrations/      # Repo-owned Herdr hooks for claude/codex/copilot
 ├── copilot/
 
 │   └── agents/            # Copilot CLI agents
@@ -235,6 +241,44 @@ dotfiles/
 ```
 
 ## Configuration Details
+
+### Herdr
+
+Herdr is the primary terminal workspace manager for persistent workspaces, tabs, panes, and AI agent session reporting. Tmux remains installed and configured as a fallback, especially for older workflows and sandboxed sessions.
+
+**Config**:
+
+| Source | Target |
+|--------|--------|
+| `herdr/config.toml` | `~/.config/herdr/config.toml` |
+
+**Basic commands**:
+
+| Command | Action |
+|---------|--------|
+| `herdr` or `h` | Start Herdr |
+| `ha` | Attach to a Herdr session |
+| `hl` | List Herdr sessions |
+| `hu` | Update Herdr |
+
+#### Agent Integrations
+
+The `herdr_integrations` module deploys repo-owned integration artifacts from `herdr/integrations/{claude,codex,copilot}/` so Herdr can report agent session state:
+
+| Agent | Integration |
+|-------|-------------|
+| Claude Code | `herdr/integrations/claude/herdr-agent-state.sh` symlinked into `~/.claude/hooks/` |
+| Codex CLI | `herdr/integrations/codex/herdr-agent-state.sh` symlinked into `~/.codex/` |
+| GitHub Copilot CLI | `herdr/integrations/copilot/herdr-agent-state.sh` symlinked into `~/.config/copilot/hooks/` |
+| Pi | `pi/extensions/herdr-agent-state/` enabled through Pi profile `extensions.list` |
+
+Agents also share the `shared/skills/herdr/` skill, which lets agents running inside Herdr inspect panes, split workspaces, wait on output, and coordinate other panes through the `herdr` CLI.
+
+Re-run integrations after changing agent config:
+
+```bash
+./install.sh --modules herdr,herdr_config,herdr_integrations
+```
 
 ### Tmux
 
@@ -427,7 +471,7 @@ xclip -o -selection clipboard | tmux load-buffer -   # Linux local → remote tm
 - Mouse support enabled
 - 50,000 line scrollback
 - Vim-style copy mode
-- Auto tmux on SSH login (Ubuntu)
+- Fallback SSH multiplexer when `DOTFILES_SSH_MULTIPLEXER=tmux`
 - Automatic window naming with folder name and current process
 - Adjacent window creation for parallel development workflows
 - Nested tmux session support for orchestration systems
@@ -627,6 +671,14 @@ vim.keymap.set('n', '<leader>x', '<cmd>MyCommand<CR>', { desc = 'My custom comma
 - Neovim set as default editor
 - Auto-attach to Herdr on SSH, with tmux fallback via `DOTFILES_SSH_MULTIPLEXER=tmux`
 - fnm (Fast Node Manager) integration
+
+**SSH multiplexer selection**:
+
+| Setting | Behavior |
+|---------|----------|
+| unset / `DOTFILES_SSH_MULTIPLEXER=herdr` | Start Herdr on SSH login |
+| `DOTFILES_SSH_MULTIPLEXER=tmux` | Attach/create tmux session `${TMUX_AUTO_SESSION:-0}` |
+| `DOTFILES_SSH_MULTIPLEXER=none` | Do not auto-start a multiplexer |
 
 **Aliases**:
 
@@ -866,6 +918,7 @@ All five agents share a single skills directory at `shared/skills/`. Every agent
 | `test-quality-verifier` | Audit tests for vague assertions, improve coverage, produce a structured report |
 | `ralph` | Set up and launch a `loop.sh` iterative agentic job (PROMPT.md + IMPLEMENTATION_PLAN.md + ORCHESTRATOR.md) |
 | `improve-codebase-architecture` | Find and fix architectural friction — shallow modules, poor seams, testability gaps _(based on [mattpocock/skills](https://github.com/mattpocock/skills))_ |
+| `herdr` | Control Herdr workspaces, tabs, panes, agent status, and output from inside a Herdr pane |
 | `tmux-agent-orchestration` | Launch, steer, and monitor parallel CLI agents in tmux with per-worker clones |
 | `pi-profile-flavors` | Build and modify Pi profile variants with `pim`, including extensions, skills, settings, models, and agents |
 | `ubiquitous-language` | Extract a DDD-style glossary from a conversation and save it to `UBIQUITOUS_LANGUAGE.md` _(based on [mattpocock/skills](https://github.com/mattpocock/skills))_ |
@@ -944,6 +997,7 @@ pi  # First launch prompts for authentication
 - 30+ LLM providers (Anthropic, OpenAI, Google, and more)
 - Ollama Cloud models (GLM 5.1, MiniMax M2.7, Kimi K2.6, DeepSeek V4 Pro/Flash)
 - TypeScript extensions for custom tools and workflows
+- Herdr agent-state extension enabled in profile runtimes
 - Session tree navigation and branching
 - Multiple modes: interactive TUI, print, JSON, RPC
 
@@ -1176,6 +1230,12 @@ cd ~/dotfiles
 ./install.sh
 ```
 
+To refresh only Herdr and its managed integrations:
+
+```bash
+./install.sh --modules herdr,herdr_config,herdr_integrations
+```
+
 ## Customization
 
 ### Modifying Tmux Config
@@ -1265,6 +1325,37 @@ ls -la ~/.config/nvim/lua/custom
 ```
 
 Should point to `~/dotfiles/nvim/custom`
+
+### Herdr agent sessions not showing
+
+Refresh Herdr and the managed agent integrations:
+
+```bash
+cd ~/dotfiles
+./install.sh --modules herdr,herdr_config,herdr_integrations
+```
+
+Then verify the expected links exist:
+
+```bash
+ls -la ~/.config/herdr/config.toml
+ls -la ~/.claude/hooks/herdr-agent-state.sh
+ls -la ~/.codex/herdr-agent-state.sh
+ls -la ~/.config/copilot/hooks/herdr-agent-state.sh
+```
+
+Start an agent inside Herdr and check that the pane reports agent state:
+
+```bash
+herdr pane list
+```
+
+For Pi, rebuild/deploy profiles after changing extension lists:
+
+```bash
+pim build
+pim deploy
+```
 
 ## Requirements
 
