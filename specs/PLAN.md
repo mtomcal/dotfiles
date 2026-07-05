@@ -8,7 +8,7 @@
 
 ## Project Context
 
-A personal dotfiles manager that automates setup of a tmux + neovim + zsh development environment across Linux (Ubuntu/Debian) and macOS. Uses a symlink-based architecture where configs live in the version-controlled repo and symlinks deploy them to standard system locations. The install script is idempotent and safe to re-run. Primarily for personal use, but structured to serve as reference or inspiration for others.
+A personal dotfiles manager that automates setup of a Herdr-first terminal workspace with tmux retained as fallback, plus neovim and zsh, across Linux (Ubuntu/Debian) and macOS. Uses a symlink-based architecture where configs live in the version-controlled repo and symlinks deploy them to standard system locations. The install script is idempotent and safe to re-run. Primarily for personal use, but structured to serve as reference or inspiration for others.
 
 ---
 

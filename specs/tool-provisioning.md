@@ -1,7 +1,7 @@
 # Tool Provisioning
 
-> **Version**: 1.1.0
-> **Last Updated**: 2026-06-02
+> **Version**: 1.2.0
+> **Last Updated**: 2026-07-05
 > **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md), [Design Language](DESIGN_LANGUAGE.md), [Symlink Manager](symlink-manager.md)
 > **Depended By**: Install Orchestrator
 
@@ -14,6 +14,7 @@ The Tool Provisioning system is responsible for installing, upgrading, and verif
 1. **System packages** — installed via the native package manager (apt or brew)
 2. **Downloaded binaries** — fetched from upstream release URLs with architecture detection and placed in system or user-local paths
 3. **Mason packages** — LSP servers, formatters, and linters installed inside Neovim via headless Mason commands
+4. **Direct upstream installers** — official curl installers for selected user-local tools whose update path is owned by the tool itself
 
 The system is **idempotent**: every function checks whether the tool is already present and at a satisfactory version before attempting installation. Re-running the full install produces the same result without errors, warnings, or unnecessary side effects.
 
@@ -54,6 +55,7 @@ For Pi, tool provisioning installs one shared Pi binary. Profile-specific behavi
 | `GO_INSTALL_PATH` | /usr/local/go | path | Official Go binary installation directory on Ubuntu/Debian |
 | `GO_WORKSPACE` | ~/go-workspace | path | Go workspace directory (GOPATH); must be on PATH alongside Go install path; binaries installed via `go install` land in `~/go-workspace/bin/` |
 | `FNM_INSTALL_SCRIPT` | https://fnm.vercel.app/install | URL | Official fnm install script; not available via apt/brew on all platforms |
+| `HERDR_INSTALL_SCRIPT` | https://herdr.dev/install.sh | URL | Official Herdr direct installer; used on Linux and macOS to keep `herdr update` as the consistent update path |
 
 ---
 
@@ -98,6 +100,7 @@ Packages with different names across platforms MUST use the `install_package` fu
 | lazygit | GitHub release tarball (architecture-specific) | Homebrew | GitHub `/releases/latest` endpoint `tag_name` field |
 | yazi | GitHub release zip (architecture-specific) | Homebrew | GitHub `/releases/latest` endpoint `tag_name` field |
 | zoxide | curl \| sh install script | Homebrew | N/A (script manages version) |
+| Herdr | curl \| sh installer | curl \| sh installer | Herdr stable channel; update via `herdr update` |
 | Codex CLI | npm global install (NPM_GLOBAL_PREFIX) | same as Ubuntu | npm resolves @latest |
 | Pi Coding Agent | npm global install (NPM_GLOBAL_PREFIX) | same as Ubuntu | npm resolves @latest |
 | Gemini CLI | npm global install (NPM_GLOBAL_PREFIX) | same as Ubuntu | npm resolves @latest |
@@ -128,6 +131,9 @@ Packages with different names across platforms MUST use the `install_package` fu
 | nvim_config | git, neovim | Config clone needs git; Mason commands need nvim binary |
 | zsh_ohmyzsh | zsh, git | Oh My Zsh clone needs git and zsh |
 | tmux_config | tmux | Config deployment needs tmux installed |
+| herdr | curl | Direct installer download |
+| herdr_config | herdr | Config deployment assumes Herdr can be launched after install |
+| herdr_integrations | herdr, relevant agent configs | Repo-owned integration source generation/deployment |
 | zsh_config | zsh | Shell config sourcing needs zsh |
 | claude | curl | Installer needs curl |
 | pi | npm | npm global install for Pi binary |
@@ -328,6 +334,21 @@ END IF
 
 **Critical rule**: npm global installs for AI CLI tools (Codex, Pi, Gemini) MUST use `--prefix` pointing to `NPM_GLOBAL_PREFIX` (`~/.local`) so that binaries survive fnm Node version switches. The `~/.local/bin` directory MUST be on PATH.
 
+### Herdr Installation
+
+```
+IF herdr is not found
+    INSTALL Herdr by running the official direct installer from HERDR_INSTALL_SCRIPT
+    VERIFY herdr is available on PATH
+ELSE
+    EMIT success "Herdr already installed"
+END IF
+```
+
+Herdr MUST use the official curl installer on both Linux and macOS. Homebrew, mise, and Nix MUST NOT be used by the dotfiles installer for Herdr. This keeps updates on the same `herdr update` channel across supported platforms.
+
+The Herdr install function MUST be idempotent: if `command -v herdr` succeeds, it MUST skip the installer. If Herdr is installed but not on PATH, the function MUST report a PATH warning rather than installing duplicate binaries blindly.
+
 ### Go Full Development Environment
 
 ```
@@ -527,6 +548,7 @@ Dependencies are resolved dynamically at runtime by checking whether prerequisit
 | Neovim version parse fails | Floating-point comparison fails or returns error | TREAT as version 0.0 (triggers upgrade) | Full reinstall always safe |
 | Go below minimum version | `go version` returns version < 1.24 | UPGRADE via Homebrew (macOS); WARN (Ubuntu, binary path) | On macOS: brew upgrade; On Ubuntu: user must re-run install |
 | Go version fetch fails | Version endpoint returns empty result | EMIT error "Failed to fetch version" | RETURN failure from golang module; user may retry |
+| Herdr installer fails | Official installer exits non-zero or `herdr` is still unavailable after install | EMIT error "Herdr install failed" | RETURN failure from herdr module; user may retry after checking network and PATH |
 
 ### Download Failures
 
@@ -581,6 +603,8 @@ Dependencies are resolved dynamically at runtime by checking whether prerequisit
 3. **Platform divergence is localized**. The `install_package` function abstracts the apt/brew split. For tools that require different download methods per platform, the OS check is inside the specific install function. The architecture mapping is always inside the Ubuntu branch since macOS Homebrew handles architecture automatically.
 
 4. **Version comparison uses two mechanisms**. Go version checks use version-sort comparison, while the Neovim version check on Ubuntu uses floating-point comparison. Both ensure that `0.9 < 0.10` evaluates correctly (unlike lexicographic string comparison). The implementation MUST use version-sort ordering for Go and floating-point comparison for Neovim.
+
+5. **Herdr direct installer exception**. Herdr intentionally bypasses Homebrew on macOS. This is a tool-specific exception so `herdr update` remains the consistent update path across Linux and macOS direct installs.
 
 5. **npm global prefix MUST be NPM_GLOBAL_PREFIX**. AI CLI tools (Codex, Pi, Gemini) all install with `npm install -g --prefix` pointing to `NPM_GLOBAL_PREFIX` (`~/.local`). This ensures binaries land in `~/.local/bin/` and survive fnm Node version switches. Never use the fnm-managed Node directory as the global prefix.
 
@@ -825,11 +849,30 @@ Input: install_codex module
 Expected Output: EMIT warning about PATH shadowing; EMIT info about ensuring ~/.local/bin is first in PATH; installation still succeeds
 ```
 
+```
+TS-TOOL-026: Herdr direct installer used on Linux and macOS
+Category: Integration
+Priority: Critical
+Preconditions: herdr is not installed; curl is available
+Input: herdr module on Linux or macOS
+Expected Output: Official HERDR_INSTALL_SCRIPT is executed; Homebrew is not used; command -v herdr succeeds after install
+```
+
+```
+TS-TOOL-027: Herdr install is idempotent
+Category: Unit
+Priority: High
+Preconditions: herdr is already available on PATH
+Input: herdr module
+Expected Output: Installer is skipped and success is emitted without reinstalling or changing channel state
+```
+
 ---
 
 ## Changelog
 
 | Version | Date | Summary |
 |---------|------|---------|
+| 1.2.0 | 2026-07-05 | Added Herdr direct-installer provisioning, Herdr modules, error handling, and tests. |
 | 1.1.0 | 2026-06-02 | Clarified that Pi installs a single shared binary across all Pi profiles and specified the expected command surface: `pi`, `pi-<profile>`, `pis`, `pis-<profile>`, and `pim`. |
 | 1.0.0 | 2026-05-01 | Initial spec extracted from install.sh. Covers OS detection, package installation, tool downloads, fnm/Node.js, TUI tools, Mason packages, AI CLI tools, dependency resolution, and error handling. |

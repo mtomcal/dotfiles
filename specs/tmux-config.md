@@ -1,7 +1,7 @@
 # Tmux Configuration Specification
 
-> **Version**: 1.0.0
-> **Last Updated**: 2026-05-01
+> **Version**: 1.1.0
+> **Last Updated**: 2026-07-05
 > **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md), [Design Language](DESIGN_LANGUAGE.md)
 > **Depended By**: Install Orchestrator, Shell Config
 
@@ -9,7 +9,9 @@
 
 ## Overview
 
-The tmux configuration provides a terminal multiplexer setup optimized for Neovim-centric development within tmux sessions. It defines a complete keybinding scheme, visual theme, session behavior, and nested-session support that together form the developer's primary workspace shell.
+The tmux configuration provides a terminal multiplexer setup optimized for Neovim-centric development within tmux sessions. It defines a complete keybinding scheme, visual theme, session behavior, and nested-session support.
+
+As of the Herdr migration, tmux remains installed and configured as a legacy fallback rather than the default SSH multiplexer. This spec remains authoritative for tmux behavior whenever tmux is launched manually or selected through the SSH fallback override.
 
 The configuration is deployed as a single symlink from `~/.tmux.conf` pointing to the version-controlled source in the dotfiles repository. All behavioral requirements in this spec apply equally to the configuration file and any supporting scripts.
 
@@ -19,6 +21,7 @@ The configuration is deployed as a single symlink from `~/.tmux.conf` pointing t
 - First-class nested tmux session support with visual mode feedback
 - True color rendering for modern terminal applications
 - Ergonomic prefix key on Ctrl-a instead of default Ctrl-b
+- Compatibility fallback while Herdr becomes the default terminal workspace manager
 
 ---
 
@@ -38,7 +41,7 @@ The configuration is deployed as a single symlink from `~/.tmux.conf` pointing t
 |------|--------|
 | [Parameters](parameters.md) | Authoritative source for `TMUX_PREFIX`, `TMUX_ESCAPE_TIME`, `TMUX_DEFAULT_TERMINAL`, `TMUX_FOCUS_EVENTS`, `NESTED_SESSION_KEY` |
 | [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md) | Shared terms: prefix key, deploy, backup, idempotent |
-| [Design Language](DESIGN_LANGUAGE.md) | Visual tokens: `prefix-key`, `nested-dim`, prefix command patterns |
+| [Design Language](DESIGN_LANGUAGE.md) | Visual tokens: `multiplexer-prefix-key`, `tmux-nested-dim`, prefix command patterns |
 
 ---
 
@@ -431,4 +434,5 @@ Expected Output: Modified key sequences are passed through correctly to the appl
 
 | Version | Date | Summary |
 |---------|------|---------|
+| 1.1.0 | 2026-07-05 | Clarified tmux's role as a legacy fallback during Herdr migration while preserving all existing tmux behavior requirements. |
 | 1.0.0 | 2026-05-01 | Initial specification extracted from existing tmux configuration and install script |

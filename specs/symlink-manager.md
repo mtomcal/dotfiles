@@ -1,9 +1,9 @@
 # Symlink Manager
 
-> **Version**: 1.2.0
-> **Last Updated**: 2026-06-02
+> **Version**: 1.3.0
+> **Last Updated**: 2026-07-05
 > **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md)
-> **Depended By**: [AI Agent Config](ai-agent-config.md), [Install Orchestrator](install-orchestrator.md), [Neovim Config](neovim-config.md)
+> **Depended By**: [AI Agent Config](ai-agent-config.md), [Herdr Config](herdr-config.md), [Install Orchestrator](install-orchestrator.md), [Neovim Config](neovim-config.md), [Shell Config](shell-config.md), [Tmux Config](tmux-config.md)
 
 ---
 
@@ -62,6 +62,7 @@ The complete set of symlink deployments the system MUST establish. Most entries 
 
 | Category | Target Path | Source Path | Deployment Type | Condition |
 |----------|-------------|-------------------------------------|-----------------|-----------|
+| **Herdr** | ~/.config/herdr/config.toml | herdr/config.toml | replace-symlink | Source file must exist |
 | **Tmux** | ~/.tmux.conf | tmux/.tmux.conf | replace-symlink | Always |
 | **Neovim** | ~/.config/nvim/lua/custom | nvim/custom | replace-symlink (directory) | Always |
 | **Lazygit** | ~/.config/lazygit/config.yml (Linux) or ~/Library/Application Support/lazygit/config.yml (macOS) | lazygit/config.yml | replace-symlink | Always |
@@ -168,6 +169,10 @@ END IF
 ```
 
 The source directive MUST be wrapped in a conditional that checks for file existence before sourcing. This prevents errors if the dotfiles repository is moved or removed.
+
+#### Herdr Configuration Deployment
+
+The Herdr config is deployed as a single TOML file symlink. The system MUST create `~/.config/herdr/` before deploying `~/.config/herdr/config.toml`. Herdr runtime state, including session files and pane history, MUST NOT be deployed from the dotfiles repo and MUST NOT be represented as symlink mappings.
 
 #### Codex Configuration (copy-from-template)
 
@@ -430,6 +435,7 @@ Expected Output: First run: all symlinks created, backups made for any conflicti
 
 | Version | Date | Summary |
 |---------|------|---------|
+| 1.3.0 | 2026-07-05 | Added Herdr config symlink deployment and clarified that Herdr runtime state is not deployed from the dotfiles repo. |
 | 1.2.0 | 2026-06-02 | Replaced single Pi config symlink mappings with Pi profile runtime mappings, active-profile compatibility symlink, and active-profile state file. |
 | 1.1.0 | 2026-05-19 | Changed Pi skills symlink source from `shared/skills` to `pi/skills` for Pi-specific skill composition |
 | 1.0.0 | 2026-05-01 | Initial brownfield extraction — complete specification of symlink management behavior from existing install.sh |

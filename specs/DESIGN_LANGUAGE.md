@@ -1,7 +1,7 @@
 # Design Language
 
-> **Version**: 0.1.0
-> **Last Updated**: 2026-05-01
+> **Version**: 0.2.0
+> **Last Updated**: 2026-07-05
 > **Purpose**: Shared interface vocabulary and visual tokens for all user-facing specs. Read this before authoring any UI, CLI, or config spec.
 
 ---
@@ -21,13 +21,13 @@
 | **Phase header** | A formatted section marker indicating the start of a major install phase | At the beginning of each major section of install.sh | For sub-steps within a phase — use status messages |
 | **Backup notice** | A message indicating an existing file was moved to a timestamped copy | When deploy encounters a non-symlink file at the target path | When the target path is already a symlink — silent skip is preferred |
 
-### Config UI (Tmux Keybindings)
+### Config UI (Terminal Multiplexers)
 
 | Element | Definition | When to use | When NOT to use |
 |---------|-----------|-------------|-----------------|
-| **Prefix command** | A key sequence starting with the tmux prefix key (Ctrl-a) | All tmux operations — pane management, window management, resizing | Direct keybindings (no prefix) — only for rarely-used operations |
-| **Vim-style navigation** | h/j/k/l for pane movement, H/J/K/L for resize | Pane navigation and resize operations | When vim-style would conflict with running applications |
-| **Toggle indicator** | Visual change in the tmux status bar indicating a mode change | When F12 switches between inner/outer session control | For transient notifications — only persistent mode changes get indicators |
+| **Prefix command** | A key sequence starting with a multiplexer prefix key (Ctrl-a in this dotfiles environment) | Herdr and tmux operations such as pane management, tab/window management, resizing, copy mode | Direct keybindings (no prefix) |
+| **Vim-style navigation** | h/j/k/l for pane movement, H/J/K/L or Herdr equivalents for resize/swap | Pane navigation and resize operations | When vim-style would conflict with running applications |
+| **Toggle indicator** | Visual change in a multiplexer UI indicating a mode change | Persistent mode changes such as tmux F12 inner/outer control | For transient notifications |
 
 ### Config UI (Neovim)
 
@@ -51,13 +51,14 @@
 | `error-msg` | `echo "✗ {text}" >&2` | Fatal errors that halt the script |
 | `prompt-fmt` | `read -p "{text}"` | Interactive user input |
 
-### Tmux Visual Tokens
+### Multiplexer Visual Tokens
 
 | Token | Value | Usage |
 |-------|-------|-------|
-| `prefix-key` | Ctrl-a | All tmux command sequences |
-| `prefix-indicator` | Status line prefix display | Shows active prefix state |
-| `nested-dim` | Darker status bar background | Visual indicator when F12 toggles to inner session |
+| `multiplexer-prefix-key` | Ctrl-a | Herdr and tmux command sequences |
+| `tmux-prefix-indicator` | Status line prefix display | Shows active tmux prefix state |
+| `tmux-nested-dim` | Darker status bar background | Visual indicator when F12 toggles tmux to inner session |
+| `herdr-workspace` | Workspace label/list item | Herdr top-level repo/task/investigation unit |
 
 ### Indentation Tokens
 
@@ -76,5 +77,6 @@
 | Neovim plugin files | Kebab-case Lua modules | `go.lua`, `neo-tree.lua`, `formatting.lua` |
 | Spec file names | Kebab-case | `symlink-manager.md`, `tool-provisioning.md` |
 | Test scenario prefixes | TS-{PREFIX}-{NUMBER} | `TS-SYMLK-001`, `TS-TMUX-012` |
-| Zsh aliases | Short lowercase abbreviations | `lg`, `y`, `z`, `ta`, `tn` |
+| Zsh aliases | Short lowercase abbreviations | `lg`, `y`, `z`, `ta`, `tn`, `h`, `ha` |
 | Tmux keybindings | Mnemonic single keys after prefix | `c` (create window), `|` (split vertical), `-` (split horizontal) |
+| Herdr keybindings | Herdr action names with prefix-compatible bindings | `new_tab = "prefix+c"`, `split_horizontal = "prefix+minus"` |

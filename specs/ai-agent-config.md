@@ -1,8 +1,8 @@
 # AI Agent Configuration Specification
 
-> **Version**: 1.8.0
-> **Last Updated**: 2026-06-05
-> **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md), [Design Language](DESIGN_LANGUAGE.md)
+> **Version**: 1.9.0
+> **Last Updated**: 2026-07-05
+> **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md), [Design Language](DESIGN_LANGUAGE.md), [Herdr Config](herdr-config.md)
 > **Depended By**: Install Orchestrator (INSTL)
 > **Prefix**: AIAGT
 
@@ -20,6 +20,7 @@ The system MUST ensure that:
 4. Each agent is installed to a user-local prefix that survives Node.js version manager switches.
 5. The install process is **idempotent** — re-running it produces the same end state without errors or data loss.
 6. Pi profile switching MUST change only the active runtime pointer and MUST NOT rewrite or mutate other deployed profiles.
+7. Herdr integrations for managed agents are repo-owned and deployed through dotfiles-managed config paths rather than installed directly into live default paths by Herdr's installer.
 
 ---
 
@@ -43,6 +44,7 @@ The system MUST ensure that:
 | [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md) | Defines **agent**, **skill**, **shared skills directory**, **profile source**, **resolved output**, **profile runtime**, **compatibility path**, **agent config**, **deploy** |
 | [Design Language](DESIGN_LANGUAGE.md) | Defines CLI output formatting tokens |
 | [Symlink Manager](symlink-manager.md) | Defines the deploy/backup pattern used for all agent symlinks |
+| [Herdr Config](herdr-config.md) | Defines Herdr integration ownership and shared Herdr skill requirements |
 
 ---
 
@@ -79,6 +81,7 @@ The system MUST ensure that:
 | `RALPH_DEFAULT_ITERATIONS` | `25` | count | Default max loop iterations for Ralph agentic loop |
 | `RALPH_DONE_PATTERN` | `/done` | string | Pattern that signals loop completion in Ralph worker output |
 | `PI_PROFILE_SOURCE_ROOT` | `~/dotfiles/pi/profiles/` | path | Source root for Pi profile definitions, overrides, and generated output |
+| `HERDR_SKILL_DIR` | `~/dotfiles/shared/skills/herdr/` | path | Tracked shared Herdr skill source available to all supported agents |
 
 ---
 
@@ -234,6 +237,8 @@ Rules:
 
 The skill directory MUST contain a `SKILL.md` file with YAML frontmatter containing the fields above. A skill MAY include additional files (`REFERENCE.md`, `EXAMPLES.md`, helper scripts) in the same directory.
 
+The Herdr skill MUST be stored at `~/dotfiles/shared/skills/herdr/`. Non-Pi agents receive it through their shared skills symlink. Pi receives it after each profile's resolved skills directory is rebuilt.
+
 ### Pi Extension
 
 A Pi **extension** is a module loaded by the Pi coding agent at startup, written in TypeScript. Each extension registers tools and optionally subscribes to Pi lifecycle events (session start, session shutdown, model selection) to modify agent behavior. Extension directories are selected per profile during profile build and deployed into that profile's runtime `extensions/` directory.
@@ -243,6 +248,18 @@ A Pi **extension** is a module loaded by the Pi coding agent at startup, written
 | `name` | string | Required; matches directory name under `pi/extensions/` | Extension identifier |
 | `tools` | list | Required | Registered tool names and their schemas |
 | `lifecycleHooks` | list | Optional | Pi lifecycle events the extension subscribes to (session lifecycle and model selection events) |
+
+### Herdr Integration
+
+A Herdr integration is a hook, plugin, extension, or agent config entry that reports agent lifecycle/session state to Herdr.
+
+| Field | Type | Constraints | Description |
+|-------|------|-------------|-------------|
+| `agent` | enum | `codex`, `claude`, `pi`, `copilot` for first-pass support | Managed agent receiving the integration |
+| `sourceMode` | enum | Must be `repo-owned` | Integration files are tracked or generated in the dotfiles repo first |
+| `deployTarget` | path | Agent-specific | Dotfiles-managed source or profile source path that deploys into runtime |
+| `usesDefaultInstallerPath` | boolean | Must be `false` | Herdr's live-path installer is not the authoritative deployment mechanism |
+| `reportsSessionIdentity` | boolean | Optional | Whether the integration reports native session id for restore |
 
 ### Pi Sub-Agent Role
 
@@ -346,6 +363,8 @@ A prescriptive mapping from subagent intent categories to model, provider, and t
 
 The single canonical directory for cross-agent skills is `~/dotfiles/shared/skills/`. Non-Pi agent skill configuration paths MUST point here via symlinks. Pi profile builds MUST include this directory's contents in every resolved profile `skills/` directory.
 
+The Herdr skill MUST be present in the shared skills directory and MUST use the same cross-agent frontmatter contract as other shared skills.
+
 ---
 
 ## Behavior
@@ -400,6 +419,23 @@ The skills distribution system MUST satisfy:
 5. When a cross-agent skill is installed or updated in `~/dotfiles/shared/skills/`, it is visible to non-Pi agents immediately and to Pi after the affected profiles are rebuilt.
 6. A skill MUST have a `SKILL.md` with frontmatter containing at minimum `name` and `description`.
 7. Skills MAY include cross-agent frontmatter fields: `metadata.short-description` (for Codex and Pi) and `allowed-tools` (for Claude Code).
+
+### B3a: Herdr Skill Distribution
+
+1. The Herdr skill MUST exist under `shared/skills/herdr/`.
+2. The Herdr skill MUST include the cross-agent frontmatter required by shared skills: `name`, `description`, `metadata.short-description`, and `allowed-tools`.
+3. The Herdr skill MUST NOT be installed only through a global external skill command. The tracked shared skill is the source of truth.
+4. Adding or updating the Herdr skill MUST trigger the same shared-skill validation used for other shared skills.
+
+### B3b: Repo-Owned Herdr Integrations
+
+1. Herdr integrations MUST be installed automatically by the dotfiles install flow.
+2. Herdr integrations MUST be repo-owned. The implementation MAY run Herdr's upstream integration installer in a scratch or inspection mode to discover generated files, but the steady-state install MUST deploy files from the dotfiles repo.
+3. First-pass managed integrations are Codex, Claude Code, Pi, and GitHub Copilot CLI.
+4. Gemini is not first-pass unless Herdr documents a supported Gemini integration and this repo adds a corresponding managed mapping.
+5. If a managed agent config directory is missing, the Herdr integration deployment MUST skip that agent without failing the whole module.
+6. The module MUST NOT install integrations for unmanaged tools such as Devin, Droid, Kimi, OpenCode, Kilo, Hermes, Qoder, Cursor, or OMP unless this repo later adds those tools as managed agent configs.
+7. For Pi, integration source MUST enter the Pi profile source/resolved output lifecycle. It MUST NOT be written directly to the active `~/.pi/agent` compatibility path as the source of truth.
 
 ### B4: Agent-Specific Configuration
 
@@ -749,6 +785,8 @@ The install script supports module-based installation:
 | AIAGT-013 | Subagent model routing missing | `subagentModelRouting` key absent from Pi settings.json | Extension logs warning; tool descriptions omit routing table | Fall back to parent agent's default model and thinking level |
 | AIAGT-014 | Widget render failure | Exception during widget rendering | Log error, skip re-render, widget may be stale | Widget continues on next successful render; user can check `subagent_status` as fallback |
 | AIAGT-015 | Duplicate skill name in Pi profile build | Same skill directory name exists in `shared/skills/` and a profile-local skills directory | Abort profile activation or profile creation with explicit duplicate name error, preserving existing active state | Rename or remove the profile-local skill, then activate |
+| AIAGT-016 | Herdr integration target missing | A first-pass managed agent config directory is absent | Skip that agent's Herdr integration and continue | Install that agent module and re-run `herdr_integrations` |
+| AIAGT-017 | Direct Herdr installer mutated live config path | Herdr integration files appear only under live config paths and not in dotfiles-managed source paths | Treat as implementation violation; do not rely on those files as source of truth | Capture the desired generated files into repo-owned sources, deploy, and remove accidental live-only state if needed |
 
 ---
 
@@ -775,6 +813,8 @@ The install script supports module-based installation:
 9. **Pi model persistence**: The `inherit-last-model` extension writes to a temp file on every model change, ensuring that even if Pi crashes before a `/new` command, the last-selected model is still available for restoration.
 
 10. **Extension symlink pattern**: Pi extensions are symlinked as directories (not individual files), ensuring the extension's source code and compiled artifacts live in the dotfiles repository while appearing at the expected path in each profile runtime's `extensions/` directory.
+
+11. **Herdr integration ownership**: Herdr integration artifacts cross agent boundaries. They must be tracked or generated in this repo and deployed through each agent's normal config flow so Herdr does not become a second, hidden owner of Codex, Claude, Copilot, or Pi runtime config.
 
 ---
 
@@ -809,6 +849,13 @@ Priority: High
 Preconditions: A new skill is added to `~/dotfiles/shared/skills/my-skill/SKILL.md`
 Input: Check skill availability from each agent
 Expected Output: The new skill is immediately visible to non-Pi agents. The new skill becomes visible to every Pi profile after rebuilding profile output.
+
+**TS-AIAGT-004d**: Herdr skill is shared across agents
+Category: Integration
+Priority: High
+Preconditions: `shared/skills/herdr/SKILL.md` exists
+Input: Check skill availability from Codex, Claude, Gemini, Copilot, and a rebuilt Pi profile
+Expected Output: Non-Pi agents resolve the Herdr skill through `shared/skills`; Pi's resolved skills include `herdr`
 
 **TS-AIAGT-004a**: Duplicate skill names fail profile activation
 Category: Integration
@@ -867,6 +914,20 @@ Priority: Medium
 Preconditions: Claude Code has a `playwright` MCP server configured
 Input: Run install script for Claude module
 Expected Output: Legacy `playwright` MCP server is removed from Claude's config.
+
+**TS-AIAGT-009a**: Herdr integrations are repo-owned
+Category: Integration
+Priority: Critical
+Preconditions: Herdr integrations module is selected; Codex, Claude, Pi, and Copilot configs exist
+Input: Run install
+Expected Output: Herdr integration artifacts are deployed from dotfiles-managed sources or Pi profile source/resolved output; no live-only default Herdr integration installer mutation is required for steady state.
+
+**TS-AIAGT-009b**: Herdr integrations skip missing agents
+Category: Integration
+Priority: High
+Preconditions: Herdr integrations module is selected; only Codex config exists
+Input: Run install
+Expected Output: Codex Herdr integration deploys; Claude, Pi, and Copilot integrations are skipped with non-fatal notices.
 
 **TS-AIAGT-010**: Pi model inheritance across sessions
 Category: Unit
@@ -1255,6 +1316,7 @@ Expected Output: `tools` is `undefined`; no tool bracket appears in any display 
 
 | Version | Date | Summary |
 |---------|------|---------|
+| 1.9.0 | 2026-07-05 | Added Herdr shared skill distribution and repo-owned Herdr integration contracts for Codex, Claude, Pi, and Copilot. |
 | 1.8.0 | 2026-06-05 | Clarified the Pi profile lifecycle model by separating profile source, resolved output, profile runtime, and compatibility path. Added `pim build <profile>` to the user-facing surface, specified that build preserves active state, specified that build failures preserve previous resolved output, documented that an empty enabled extension set may omit committed `resolved/extensions/` because Git cannot represent empty directories, and added two Pi profile test scenarios covering build-only behavior and empty-extension deployment. |
 | 1.7.0 | 2026-06-02 | Added Pi profiles as first-class deployable agent-config variants. Specified `pim` as the profile manager, per-profile resolved output under `pi/profiles/{profile}/resolved/`, active profile switching via `~/.pi/agent` and `~/.pi/active-profile`, profile-specific settings/models/agents/extensions, shared skills inclusion across all profiles, profile-local skill layering, and duplicate-skill build errors. |
 | 1.6.0 | 2026-05-19 | Split Pi-specific subagent workflow skills into `pi/skills/`; Pi now links `~/.pi/agent/skills` to the composed Pi skills directory while non-Pi agents continue to link to `shared/skills/`. |

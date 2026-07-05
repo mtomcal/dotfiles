@@ -1,7 +1,7 @@
 # Spec-of-Specs: Personal Dotfiles Manager Documentation Blueprint
 
-> **Version**: 1.0.0
-> **Last Updated**: 2026-05-01
+> **Version**: 1.1.0
+> **Last Updated**: 2026-07-05
 > **Purpose**: Define the structure, content requirements, and templates for all specification files in `specs/`.
 > **Target Audience**: AI agents extracting specifications from an existing codebase with zero prior context.
 
@@ -79,6 +79,7 @@ The `PREFIX` should be a 2-6 character abbreviation of the spec name:
 | Tool Provisioning | TOOL |
 | Shell Config | SHELL |
 | Tmux Config | TMUX |
+| Herdr Config | HERDR |
 | Neovim Config | NVIM |
 | AI Agent Config | AIAGT |
 | Install Orchestrator | INSTL |

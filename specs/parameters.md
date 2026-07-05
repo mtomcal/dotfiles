@@ -1,7 +1,7 @@
 # Parameters
 
-> **Spec Version**: 1.5.0
-> **Last Updated**: 2026-06-02
+> **Spec Version**: 1.6.0
+> **Last Updated**: 2026-07-05
 > **Depends On**: None (foundational spec)
 > **Depended By**: All other specs
 
@@ -59,6 +59,22 @@ Parameters serve three purposes:
 | `TMUX_STATUS_LEFT_LENGTH` | 20 | characters | Maximum width for session name and username in status-left; truncates long session names cleanly |
 | `TMUX_STATUS_RIGHT_LENGTH` | 150 | characters | Maximum width for clock and date in status-right; generous enough for full date-time display |
 
+## Herdr
+
+| Parameter | Value | Unit | Rationale |
+|-----------|-------|------|-----------|
+| `HERDR_CONFIG_SOURCE` | ~/dotfiles/herdr/config.toml | path | Single tracked Herdr config source in the dotfiles repository |
+| `HERDR_CONFIG_TARGET` | ~/.config/herdr/config.toml | path | Herdr's XDG TOML config location |
+| `HERDR_INSTALL_SCRIPT` | https://herdr.dev/install.sh | URL | Official direct installer; chosen over Homebrew on both Linux and macOS for one update model |
+| `HERDR_UPDATE_COMMAND` | herdr update | command | Herdr's update path for direct-installer installs |
+| `HERDR_PREFIX` | ctrl+a | key | Matches existing tmux muscle memory and migration parity requirements |
+| `HERDR_PANE_HISTORY` | true | boolean | Pane history is acceptable as local runtime state as long as it remains out of git |
+| `HERDR_ALLOW_NESTED` | false | boolean | Prevents accidental Herdr-inside-Herdr sessions; tmux remains available as fallback |
+| `HERDR_RESUME_AGENTS_ON_RESTORE` | true | boolean | Enables supported agent panes to resume native sessions after Herdr restore |
+| `HERDR_SCROLLBACK_LIMIT_BYTES` | 10485760 | bytes | Matches Herdr's documented 10 MiB scrollback example and provides useful process output history |
+| `HERDR_TOAST_DELIVERY` | off | enum | Keeps popup notifications quiet by default |
+| `HERDR_SOUND_ENABLED` | false | boolean | Avoids unexpected audio on shared or remote machines |
+
 ## Neovim
 
 | Parameter | Value | Unit | Rationale |
@@ -94,6 +110,10 @@ Parameters serve three purposes:
 | `ZSH_ALIAS_TMUX_LIST` | tl | string | Mnemonic: tmux list |
 | `ZSH_ALIAS_TMUX_KILL` | tk | string | Mnemonic: tmux kill |
 | `ZSH_ALIAS_TMUX_DETACH` | td | string | Mnemonic: tmux detach |
+| `ZSH_ALIAS_HERDR` | h | string | Herdr-specific launcher that does not steal tmux's existing `t` alias |
+| `ZSH_ALIAS_HERDR_ATTACH` | ha | string | Mnemonic: Herdr attach |
+| `ZSH_ALIAS_HERDR_LIST` | hl | string | Mnemonic: Herdr list |
+| `ZSH_ALIAS_HERDR_UPDATE` | hu | string | Mnemonic: Herdr update |
 | `ZSH_ALIAS_VIM` | nvim | string | Muscle-memory redirect; all vim invocations launch neovim |
 | `ZSH_ALIAS_VI` | nvim | string | Same redirect for the shorter invocation |
 | `ZSH_ALIAS_CODEX` | cx | string | Two-char alias for Codex CLI |
@@ -104,7 +124,9 @@ Parameters serve three purposes:
 | `GOPATH` | ~/go-workspace | path | Isolated from system Go; user owns the entire workspace |
 | `FNM_PATH` | ~/.local/share/fnm | path | Default fnm installation directory; used to guard fnm initialization |
 | `TERM` | xterm-256color | string | Ensures 256-color support for tmux and neovim integration |
-| `TMUX_AUTO_SESSION` | 0 | session name | SSH auto-attach target session number; attaches to existing session 0 or creates one |
+| `TMUX_AUTO_SESSION` | 0 | session name | Legacy SSH tmux fallback target session number; attaches to existing session 0 or creates one |
+| `SSH_MULTIPLEXER_DEFAULT` | herdr | enum: herdr, tmux, none | SSH sessions default to Herdr as the tmux replacement path |
+| `SSH_MULTIPLEXER_OVERRIDE_ENV` | DOTFILES_SSH_MULTIPLEXER | env var | Allows per-machine fallback to tmux or disabling SSH auto-attach without editing tracked shell config |
 
 ## AI Agent Configuration
 
@@ -123,6 +145,7 @@ Parameters serve three purposes:
 | `AGENT_CONFIG_DIR_COPILOT` | ~/.config/copilot | path | Copilot CLI's canonical config directory (XDG-style) |
 | `AGENT_SKILLS_DIR_CODEX` | ~/.agents/skills | path | Codex CLI resolves skills from this path; symlinked to shared skills |
 | `AGENT_SKILLS_DIR_PI` | ~/.pi/agent/skills | path | Pi resolves skills through the active profile runtime; every profile includes shared skills plus any profile-local skills |
+| `HERDR_SKILL_DIR` | ~/dotfiles/shared/skills/herdr | path | Tracked shared Herdr skill source available to every supported agent |
 | `SANDBOX_BASE_IMAGE_NAME` | dotfiles-dev-base:{UID}-{GID} | Docker image tag | Shared sandbox base image containing common dev tools and host-matched user |
 | `SANDBOX_IMAGE_NAME` | pis:latest | Docker image tag | Default Pi sandbox Docker image name |
 | `CODEX_SANDBOX_IMAGE_NAME` | cods:latest | Docker image tag | Default Codex sandbox Docker image name |
@@ -175,6 +198,7 @@ Parameters serve three purposes:
 
 | Version | Date | Summary |
 |---------|------|---------|
+| 1.6.0 | 2026-07-05 | Added Herdr install, config, alias, SSH multiplexer, pane history, and shared skill parameters for the Herdr replacement path. |
 | 1.5.0 | 2026-06-02 | Added Pi profile parameters for runtime root, active profile state, profile source root, and active-profile-compatible config and skills paths. |
 | 1.4.0 | 2026-05-19 | Added AGENT_SKILLS_DIR_PI for Pi's composed skills directory |
 | 1.3.0 | 2026-05-13 | Updated REQUIRED_NVIM_VERSION from 0.10 to 0.12; added crof provider parameters for Pi models.json |

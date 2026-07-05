@@ -1,8 +1,8 @@
 # Shell Configuration Specification
 
-> **Version**: 1.0.0
-> **Last Updated**: 2026-05-01
-> **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md), [Design Language](DESIGN_LANGUAGE.md)
+> **Version**: 1.1.0
+> **Last Updated**: 2026-07-05
+> **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md), [Design Language](DESIGN_LANGUAGE.md), [Herdr Config](herdr-config.md)
 > **Depended By**: Install Orchestrator
 
 ---
@@ -27,6 +27,8 @@ The design is deliberately additive: the custom shell config is sourced at the e
 | fnm | Latest | Fast Node Manager — manages Node.js versions | Curl-based install script |
 | zoxide | Latest | Smart directory navigation (replaces cd) | apt / brew / curl script |
 | Go | 1.24+ | GOPATH/bin must appear on PATH | apt (Ubuntu binary) / brew (macOS) |
+| Herdr | stable | Default SSH multiplexer | Direct curl installer |
+| tmux | 3.2+ | Legacy SSH fallback multiplexer | apt / brew |
 
 ### Spec Dependencies
 
@@ -53,6 +55,10 @@ The design is deliberately additive: the custom shell config is sourced at the e
 | `ZSH_ALIAS_TMUX_LIST` | tl | string | Mnemonic: tmux list |
 | `ZSH_ALIAS_TMUX_KILL` | tk | string | Mnemonic: tmux kill |
 | `ZSH_ALIAS_TMUX_DETACH` | td | string | Mnemonic: tmux detach |
+| `ZSH_ALIAS_HERDR` | h | string | Herdr launcher shortcut; does not replace tmux's `t` alias |
+| `ZSH_ALIAS_HERDR_ATTACH` | ha | string | Mnemonic: Herdr attach |
+| `ZSH_ALIAS_HERDR_LIST` | hl | string | Mnemonic: Herdr list |
+| `ZSH_ALIAS_HERDR_UPDATE` | hu | string | Mnemonic: Herdr update |
 | `ZSH_ALIAS_VIM` | vim → nvim | alias | Muscle-memory redirect; all vim invocations launch neovim |
 | `ZSH_ALIAS_VI` | vi → nvim | alias | Same redirect for the shorter invocation |
 | `ZSH_ALIAS_CODEX` | cx | string | Two-character alias for Codex CLI |
@@ -63,7 +69,9 @@ The design is deliberately additive: the custom shell config is sourced at the e
 | `GOPATH` | ~/go-workspace | path | Isolated from system Go; user owns the entire workspace |
 | `FNM_PATH` | ~/.local/share/fnm | path | Default fnm installation directory |
 | `TERM` | xterm-256color | string | Ensures 256-color support for tmux and neovim integration |
-| `TMUX_AUTO_SESSION` | 0 | session name string | SSH auto-attach target; the value "0" is a session name string, not a boolean. Attaches to existing session "0" or creates one |
+| `TMUX_AUTO_SESSION` | 0 | session name string | Legacy SSH tmux fallback target; the value "0" is a session name string, not a boolean. Attaches to existing session "0" or creates one |
+| `SSH_MULTIPLEXER_DEFAULT` | herdr | enum | Default SSH multiplexer when no override is set |
+| `SSH_MULTIPLEXER_OVERRIDE_ENV` | DOTFILES_SSH_MULTIPLEXER | env var | Optional per-machine override: `herdr`, `tmux`, or `none` |
 
 ---
 
@@ -82,7 +90,7 @@ The custom shell config is a sourced file — not a standalone script. It MUST N
 | go_config | map{string: string} | Keys: GOPATH, PATH additions | Go-specific environment variables and PATH entries |
 | fnm_config | conditional{string} | Guarded by directory existence check | fnm environment initialization |
 | zoxide_config | conditional{string} | Guarded by command existence check | zoxide shell integration |
-| ssh_tmux_rule | conditional{string} | Guarded by TMUX and SSH_CONNECTION checks | Auto-attach rule for SSH sessions |
+| ssh_multiplexer_rule | conditional{string} | Guarded by SSH_CONNECTION, HERDR_ENV, TMUX, and DOTFILES_SSH_MULTIPLEXER checks | Auto-attach rule for SSH sessions |
 
 ### Oh My Zsh Installation Record
 
@@ -154,17 +162,33 @@ On every shell session startup, the following tmux aliases MUST be available:
 | `tk` | `tmux kill-session -t` |
 | `td` | `tmux detach` |
 
-### BR-SHELL-008: SSH Auto-Attach to Tmux
+### BR-SHELL-008: Register Herdr Aliases
+
+On every shell session startup, the following Herdr aliases MUST be available:
+
+| Alias | Expansion |
+|-------|-----------|
+| `h` | `herdr` |
+| `ha` | `herdr session attach` |
+| `hl` | `herdr session list` |
+| `hu` | `herdr update` |
+
+The tmux aliases MUST NOT be repointed to Herdr. Herdr receives its own `h*` alias family.
+
+### BR-SHELL-008a: SSH Auto-Attach to Multiplexer
 
 On shell session startup, the system MUST evaluate the following conditions in order:
 
 | Condition | Action |
 |-----------|--------|
+| `$DOTFILES_SSH_MULTIPLEXER` is `none` | Do nothing |
+| `$HERDR_ENV` is `1` | Do nothing - already inside a Herdr session |
 | `$TMUX` environment variable is set | Do nothing — already inside a tmux session |
 | `$SSH_CONNECTION` environment variable is empty | Do nothing — not an SSH session |
-| `$TMUX` is unset AND `$SSH_CONNECTION` is set | Attempt to attach to tmux session `$TMUX_AUTO_SESSION`; if that session does not exist, create a new session named `$TMUX_AUTO_SESSION` |
+| `$DOTFILES_SSH_MULTIPLEXER` is `tmux` AND `$SSH_CONNECTION` is set | Attempt to attach to tmux session `$TMUX_AUTO_SESSION`; if that session does not exist, create a new session named `$TMUX_AUTO_SESSION` |
+| `$DOTFILES_SSH_MULTIPLEXER` is unset or `herdr` AND `$SSH_CONNECTION` is set | Start or attach Herdr by running `herdr` |
 
-This ensures remote SSH sessions always start inside tmux, while local sessions and nested tmux sessions are unaffected.
+This ensures remote SSH sessions start inside Herdr by default, while local sessions and nested multiplexer sessions are unaffected. Tmux remains available as a per-machine fallback through `DOTFILES_SSH_MULTIPLEXER=tmux`.
 
 ### BR-SHELL-009: Register Editor Aliases
 
@@ -304,11 +328,20 @@ The install script's dependency resolver MUST enforce the following before execu
 | **Response** | Skip zoxide initialization silently; `z` command will not be available |
 | **Recovery** | Run `install.sh --modules tui_tools` to install zoxide, then restart shell |
 
-### EH-SHELL-007: SSH Tmux Attach Fails on No Sessions
+### EH-SHELL-007: SSH Herdr Launch Fails
 
 | Attribute | Value |
 |-----------|-------|
-| **Trigger** | SSH session starts but no tmux session named `$TMUX_AUTO_SESSION` exists |
+| **Trigger** | SSH session starts with Herdr as the selected SSH multiplexer but `herdr` cannot launch |
+| **Detection** | `herdr` command exits non-zero or is not found |
+| **Response** | Print the shell error normally; do not silently start tmux unless `DOTFILES_SSH_MULTIPLEXER=tmux` is set |
+| **Recovery** | Install Herdr or set `DOTFILES_SSH_MULTIPLEXER=tmux` for that machine |
+
+### EH-SHELL-007a: SSH Tmux Fallback Attach Fails on No Sessions
+
+| Attribute | Value |
+|-----------|-------|
+| **Trigger** | SSH session starts with `DOTFILES_SSH_MULTIPLEXER=tmux` but no tmux session named `$TMUX_AUTO_SESSION` exists |
 | **Detection** | Attach attempt to session `$TMUX_AUTO_SESSION` returns non-zero |
 | **Response** | Fallback: create a new tmux session named `$TMUX_AUTO_SESSION` |
 | **Recovery** | Automatic; no user intervention needed |
@@ -340,7 +373,9 @@ The install script's dependency resolver MUST enforce the following before execu
 
 7. **The ~/.local/bin PATH prepension appears twice**: Once at the top of the custom shell config (before fnm) and once after fnm initialization. The second prepension is NOT redundant — it ensures that user-installed npm global packages (installed into `~/.local/bin`) remain ahead of fnm's managed Node binaries in the PATH order.
 
-8. **SSH tmux auto-attach target**: The session name `0` (`TMUX_AUTO_SESSION`) is a string, not a boolean. The value "0" is used as a tmux session name — it avoids ambiguity with named sessions and matches the default tmux session numbering.
+8. **SSH multiplexer default**: SSH sessions default to Herdr. Tmux is a fallback selected explicitly with `DOTFILES_SSH_MULTIPLEXER=tmux`, and `DOTFILES_SSH_MULTIPLEXER=none` disables SSH auto-attach.
+
+9. **SSH tmux fallback target**: The session name `0` (`TMUX_AUTO_SESSION`) is a string, not a boolean. The value "0" is used as a tmux session name — it avoids ambiguity with named sessions and matches the default tmux session numbering.
 
 ---
 
@@ -394,37 +429,53 @@ The install script's dependency resolver MUST enforce the following before execu
 **Input**: `alias t`, `alias ta`, `alias tn`, `alias tl`, `alias tk`, `alias td`
 **Expected Output**: Each alias expands to its corresponding tmux command
 
-### TS-SHELL-007: SSH Auto-Attach Creates Session
+### TS-SHELL-006a: Herdr Aliases Available
+
+**Category**: Unit
+**Priority**: High
+**Preconditions**: Custom shell config is sourced
+**Input**: `alias h`, `alias ha`, `alias hl`, `alias hu`
+**Expected Output**: Each alias expands to its corresponding Herdr command; tmux aliases remain unchanged
+
+### TS-SHELL-007: SSH Auto-Attach Starts Herdr By Default
+
+**Category**: Integration
+**Priority**: Critical
+**Preconditions**: SSH session starts; `$DOTFILES_SSH_MULTIPLEXER` is unset; `$HERDR_ENV` and `$TMUX` are unset
+**Input**: SSH login to the machine
+**Expected Output**: User is placed in Herdr automatically
+
+### TS-SHELL-008: SSH Auto-Attach Uses Tmux Fallback
 
 **Category**: Integration
 **Priority**: High
-**Preconditions**: SSH session starts; no tmux sessions exist
+**Preconditions**: SSH session starts; `$DOTFILES_SSH_MULTIPLEXER=tmux`; no tmux sessions exist
 **Input**: SSH login to the machine
 **Expected Output**: User is placed in tmux session 0 automatically
-
-### TS-SHELL-008: SSH Auto-Attach Reuses Existing Session
-
-**Category**: Integration
-**Priority**: High
-**Preconditions**: SSH session starts; tmux session 0 already exists
-**Input**: SSH login to the machine
-**Expected Output**: User is attached to the existing tmux session 0
 
 ### TS-SHELL-009: No Auto-Attach in Local Session
 
 **Category**: Unit
 **Priority**: High
-**Preconditions**: `$SSH_CONNECTION` is empty (local session); `$TMUX` is empty
+**Preconditions**: `$SSH_CONNECTION` is empty (local session); `$HERDR_ENV` and `$TMUX` are empty
 **Input**: Start a new terminal on the local machine
-**Expected Output**: No tmux auto-attach occurs; user remains in a plain zsh session
+**Expected Output**: No multiplexer auto-attach occurs; user remains in a plain zsh session
 
-### TS-SHELL-010: No Auto-Attach When Already in Tmux
+### TS-SHELL-010: No Auto-Attach When Already in a Multiplexer
 
 **Category**: Unit
 **Priority**: Medium
-**Preconditions**: `$TMUX` is set (already inside a tmux session); `$SSH_CONNECTION` is non-empty
-**Input**: Nested SSH into a machine where tmux is already running
-**Expected Output**: No second tmux attach attempt; existing tmux session continues
+**Preconditions**: `$HERDR_ENV` is `1` or `$TMUX` is set; `$SSH_CONNECTION` is non-empty
+**Input**: Nested SSH from inside an existing multiplexer
+**Expected Output**: No second multiplexer attach attempt; existing multiplexer session continues
+
+### TS-SHELL-010a: SSH Auto-Attach Can Be Disabled
+
+**Category**: Unit
+**Priority**: Medium
+**Preconditions**: `$DOTFILES_SSH_MULTIPLEXER=none`; `$SSH_CONNECTION` is non-empty
+**Input**: SSH login to the machine
+**Expected Output**: No Herdr or tmux auto-attach occurs
 
 ### TS-SHELL-011: AUTO_CD Disabled
 
@@ -520,4 +571,5 @@ The install script's dependency resolver MUST enforce the following before execu
 
 | Version | Date | Summary |
 |---------|------|---------|
+| 1.1.0 | 2026-07-05 | Added Herdr aliases, changed SSH auto-attach default from tmux to Herdr, and specified tmux/none environment overrides. |
 | 1.0.0 | 2026-05-01 | Initial specification: Zsh/Oh My Zsh installation, custom shell config deployment, aliases, PATH configuration, SSH tmux auto-attach, Go environment, fnm/zoxide conditional init |
