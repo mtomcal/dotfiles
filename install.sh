@@ -893,6 +893,10 @@ herdr_hook_command() {
     printf '%s\n' "$command"
 }
 
+portable_claude_herdr_hook_command() {
+    printf '%s\n' 'bash "$HOME/.claude/hooks/herdr-agent-state.sh" session'
+}
+
 ensure_json_object_file() {
     local path="$1"
 
@@ -907,14 +911,73 @@ ensure_json_object_file() {
     fi
 }
 
+absolute_path() {
+    local path="$1"
+    local dir
+
+    dir="$(cd "$(dirname "$path")" && pwd)" || return 1
+    printf '%s/%s\n' "$dir" "$(basename "$path")"
+}
+
+json_update_path() {
+    local path="$1"
+    local target
+    local target_dir
+
+    if [ ! -L "$path" ]; then
+        printf '%s\n' "$path"
+        return 0
+    fi
+
+    target="$(readlink "$path")" || return 1
+    case "$target" in
+        /*)
+            printf '%s\n' "$target"
+            ;;
+        *)
+            target_dir="$(cd "$(dirname "$path")" && cd "$(dirname "$target")" && pwd)" || return 1
+            printf '%s/%s\n' "$target_dir" "$(basename "$target")"
+            ;;
+    esac
+}
+
+is_dotfiles_managed_claude_settings() {
+    local settings_path="$1"
+    local update_path
+    local managed_path
+
+    [ -L "$settings_path" ] || return 1
+    update_path="$(json_update_path "$settings_path")" || return 1
+    managed_path="$(absolute_path "$DOTFILES_DIR/claude/settings.json")" || return 1
+    [ "$update_path" = "$managed_path" ]
+}
+
+has_nested_session_hook() {
+    local settings_path="$1"
+    local command="$2"
+    local matcher="${3:-}"
+
+    if [ -n "$matcher" ]; then
+        jq -e --arg command "$command" --arg matcher "$matcher" '
+            any(.hooks.SessionStart[]?; .matcher == $matcher and any(.hooks[]?; .type == "command" and .command == $command))
+        ' "$settings_path" >/dev/null
+    else
+        jq -e --arg command "$command" '
+            any(.hooks.SessionStart[]?; any(.hooks[]?; .type == "command" and .command == $command))
+        ' "$settings_path" >/dev/null
+    fi
+}
+
 jq_update_file() {
     local path="$1"
     shift
+    local update_path
     local tmp
 
-    tmp="$(mktemp "$path.tmp.XXXXXX")" || return 1
+    update_path="$(json_update_path "$path")" || return 1
+    tmp="$(mktemp "$update_path.tmp.XXXXXX")" || return 1
     if jq "$@" "$path" > "$tmp"; then
-        mv "$tmp" "$path"
+        mv "$tmp" "$update_path"
     else
         rm -f "$tmp"
         return 1
@@ -1034,7 +1097,14 @@ configure_herdr_integrations() {
         mkdir -p "$HOME/.claude/hooks"
         replace_symlink "$DOTFILES_DIR/herdr/integrations/claude/herdr-agent-state.sh" "$claude_hook"
         ensure_json_object_file "$HOME/.claude/settings.json" || return 1
-        add_nested_session_hook "$HOME/.claude/settings.json" "$(herdr_hook_command "$claude_hook" session)" "*" || return 1
+        if is_dotfiles_managed_claude_settings "$HOME/.claude/settings.json"; then
+            if ! has_nested_session_hook "$HOME/.claude/settings.json" "$(portable_claude_herdr_hook_command)" "*"; then
+                print_error "Dotfiles-managed Claude settings missing portable Herdr hook"
+                return 1
+            fi
+        else
+            add_nested_session_hook "$HOME/.claude/settings.json" "$(herdr_hook_command "$claude_hook" session)" "*" || return 1
+        fi
         print_success "Claude Herdr integration configured"
         configured=$((configured + 1))
     else
@@ -1846,13 +1916,13 @@ show_profile_menu() {
 
     case $choice in
         1)
-            SELECTED_MODULES=(base_tools neovim nvim_config tmux_config herdr herdr_config herdr_integrations zsh_ohmyzsh zsh_config golang_full nodejs tui_tools codex codex_sandbox claude playwright pi pi_sandbox gemini copilot)
+            SELECTED_MODULES=(base_tools neovim nvim_config tmux_config herdr herdr_config zsh_ohmyzsh zsh_config golang_full nodejs tui_tools codex codex_sandbox claude playwright pi pi_sandbox gemini copilot herdr_integrations)
             ;;
         2)
             SELECTED_MODULES=(base_tools neovim nvim_config tmux_config herdr herdr_config herdr_integrations)
             ;;
         3)
-            SELECTED_MODULES=(base_tools neovim nvim_config tmux_config herdr herdr_config herdr_integrations tui_tools copilot)
+            SELECTED_MODULES=(base_tools neovim nvim_config tmux_config herdr herdr_config tui_tools copilot herdr_integrations)
             ;;
         4)
             show_custom_menu
@@ -2031,6 +2101,7 @@ show_installation_summary() {
 
 execute_modules() {
     local modules=("$@")
+    local run_herdr_integrations=0
 
     for module in "${modules[@]}"; do
         case "$module" in
@@ -2065,9 +2136,7 @@ execute_modules() {
                 fi
                 ;;
             "herdr_integrations")
-                if ! configure_herdr_integrations; then
-                    FAILED_MODULES+=("herdr_integrations")
-                fi
+                run_herdr_integrations=1
                 ;;
             "zsh_ohmyzsh")
                 if ! install_zsh; then
@@ -2141,6 +2210,12 @@ execute_modules() {
                 ;;
         esac
     done
+
+    if [ "$run_herdr_integrations" -eq 1 ]; then
+        if ! configure_herdr_integrations; then
+            FAILED_MODULES+=("herdr_integrations")
+        fi
+    fi
 }
 
 # ===========================
@@ -2157,13 +2232,13 @@ parse_arguments() {
             --profile)
                 case $2 in
                     full)
-                        SELECTED_MODULES=(base_tools neovim nvim_config tmux_config herdr herdr_config herdr_integrations zsh_ohmyzsh zsh_config golang_full nodejs tui_tools codex codex_sandbox claude playwright pi pi_sandbox gemini copilot)
+                        SELECTED_MODULES=(base_tools neovim nvim_config tmux_config herdr herdr_config zsh_ohmyzsh zsh_config golang_full nodejs tui_tools codex codex_sandbox claude playwright pi pi_sandbox gemini copilot herdr_integrations)
                         ;;
                     minimal)
                         SELECTED_MODULES=(base_tools neovim nvim_config tmux_config herdr herdr_config herdr_integrations)
                         ;;
                     work)
-                        SELECTED_MODULES=(base_tools neovim nvim_config tmux_config herdr herdr_config herdr_integrations tui_tools copilot)
+                        SELECTED_MODULES=(base_tools neovim nvim_config tmux_config herdr herdr_config tui_tools copilot herdr_integrations)
                         ;;
                     *)
                         print_error "Unknown profile: $2"
