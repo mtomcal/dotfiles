@@ -839,6 +839,245 @@ configure_tmux() {
     print_success "Tmux configuration linked"
 }
 
+install_herdr() {
+    print_header "Installing Herdr"
+
+    if command -v herdr &> /dev/null; then
+        print_success "Herdr is already installed"
+        return 0
+    fi
+
+    if ! command -v curl &> /dev/null; then
+        print_error "curl not found. Install base tools first."
+        return 1
+    fi
+
+    print_info "Installing Herdr via official installer..."
+    curl -fsSL https://herdr.dev/install.sh | sh
+    export PATH="$HOME/.local/bin:$PATH"
+
+    if ! command -v herdr &> /dev/null; then
+        print_error "Herdr install failed: herdr not found on PATH"
+        print_info "Ensure ~/.local/bin is on PATH, then re-run the herdr module"
+        return 1
+    fi
+
+    print_success "Herdr installed"
+}
+
+configure_herdr() {
+    print_header "Configuring Herdr"
+
+    if [ ! -f "$DOTFILES_DIR/herdr/config.toml" ]; then
+        print_error "Herdr config source not found: $DOTFILES_DIR/herdr/config.toml"
+        return 1
+    fi
+
+    replace_symlink "$DOTFILES_DIR/herdr/config.toml" "$HOME/.config/herdr/config.toml"
+    print_success "Herdr configuration linked"
+}
+
+shell_single_quote() {
+    printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\"'\"'/g")"
+}
+
+herdr_hook_command() {
+    local hook_path="$1"
+    local action="${2:-}"
+    local command
+
+    command="bash $(shell_single_quote "$hook_path")"
+    if [ -n "$action" ]; then
+        command="$command $action"
+    fi
+    printf '%s\n' "$command"
+}
+
+ensure_json_object_file() {
+    local path="$1"
+
+    if [ ! -f "$path" ]; then
+        printf '{}\n' > "$path"
+        return 0
+    fi
+
+    if ! jq -e 'type == "object"' "$path" >/dev/null; then
+        print_error "Expected JSON object in $path"
+        return 1
+    fi
+}
+
+jq_update_file() {
+    local path="$1"
+    shift
+    local tmp
+
+    tmp="$(mktemp "$path.tmp.XXXXXX")" || return 1
+    if jq "$@" "$path" > "$tmp"; then
+        mv "$tmp" "$path"
+    else
+        rm -f "$tmp"
+        return 1
+    fi
+}
+
+add_nested_session_hook() {
+    local settings_path="$1"
+    local command="$2"
+    local matcher="${3:-}"
+
+    if [ -n "$matcher" ]; then
+        jq_update_file "$settings_path" --arg command "$command" --arg matcher "$matcher" '
+            .hooks = (.hooks // {}) |
+            .hooks.SessionStart = (.hooks.SessionStart // []) |
+            if any(.hooks.SessionStart[]?; any(.hooks[]?; .type == "command" and .command == $command)) then
+                .
+            else
+                .hooks.SessionStart += [{
+                    matcher: $matcher,
+                    hooks: [{ type: "command", command: $command, timeout: 10 }]
+                }]
+            end
+        '
+    else
+        jq_update_file "$settings_path" --arg command "$command" '
+            .hooks = (.hooks // {}) |
+            .hooks.SessionStart = (.hooks.SessionStart // []) |
+            if any(.hooks.SessionStart[]?; any(.hooks[]?; .type == "command" and .command == $command)) then
+                .
+            else
+                .hooks.SessionStart += [{
+                    hooks: [{ type: "command", command: $command, timeout: 10 }]
+                }]
+            end
+        '
+    fi
+}
+
+add_direct_session_hook() {
+    local settings_path="$1"
+    local command="$2"
+
+    jq_update_file "$settings_path" --arg command "$command" '
+        .hooks = (.hooks // {}) |
+        .hooks.SessionStart = (.hooks.SessionStart // []) |
+        if any(.hooks.SessionStart[]?; (.bash == $command) or (.command == $command) or (.powershell == $command)) then
+            .
+        else
+            .hooks.SessionStart += [{
+                type: "command",
+                bash: $command,
+                timeoutSec: 10
+            }]
+        end
+    '
+}
+
+ensure_codex_hooks_feature() {
+    local config_path="$1"
+    local tmp
+
+    if [ ! -f "$config_path" ]; then
+        printf '[features]\nhooks = true\n' > "$config_path"
+        return 0
+    fi
+
+    tmp="$(mktemp "$config_path.tmp.XXXXXX")" || return 1
+    awk '
+        BEGIN { in_features = 0; saw_features = 0; saw_hooks = 0 }
+        /^[[:space:]]*codex_hooks[[:space:]]*=/ { next }
+        /^\[[^]]+\][[:space:]]*$/ {
+            if (in_features && !saw_hooks) {
+                print "hooks = true"
+            }
+            in_features = 0
+        }
+        /^\[features\][[:space:]]*$/ {
+            saw_features = 1
+            in_features = 1
+            saw_hooks = 0
+        }
+        in_features && /^[[:space:]]*hooks[[:space:]]*=/ {
+            print "hooks = true"
+            saw_hooks = 1
+            next
+        }
+        { print }
+        END {
+            if (in_features && !saw_hooks) {
+                print "hooks = true"
+            }
+            if (!saw_features) {
+                print ""
+                print "[features]"
+                print "hooks = true"
+            }
+        }
+    ' "$config_path" > "$tmp" && mv "$tmp" "$config_path" || {
+        rm -f "$tmp"
+        return 1
+    }
+}
+
+configure_herdr_integrations() {
+    print_header "Configuring Herdr Integrations"
+
+    if ! command -v jq &> /dev/null; then
+        print_error "jq not found. Install base tools first."
+        return 1
+    fi
+
+    local configured=0
+
+    if [ -d "$HOME/.claude" ]; then
+        local claude_hook="$HOME/.claude/hooks/herdr-agent-state.sh"
+        mkdir -p "$HOME/.claude/hooks"
+        replace_symlink "$DOTFILES_DIR/herdr/integrations/claude/herdr-agent-state.sh" "$claude_hook"
+        ensure_json_object_file "$HOME/.claude/settings.json" || return 1
+        add_nested_session_hook "$HOME/.claude/settings.json" "$(herdr_hook_command "$claude_hook" session)" "*" || return 1
+        print_success "Claude Herdr integration configured"
+        configured=$((configured + 1))
+    else
+        print_info "Skipping Claude Herdr integration; ~/.claude not found"
+    fi
+
+    if [ -d "$HOME/.codex" ]; then
+        local codex_hook="$HOME/.codex/herdr-agent-state.sh"
+        replace_symlink "$DOTFILES_DIR/herdr/integrations/codex/herdr-agent-state.sh" "$codex_hook"
+        ensure_json_object_file "$HOME/.codex/hooks.json" || return 1
+        add_nested_session_hook "$HOME/.codex/hooks.json" "$(herdr_hook_command "$codex_hook" session)" || return 1
+        ensure_codex_hooks_feature "$HOME/.codex/config.toml" || return 1
+        print_success "Codex Herdr integration configured"
+        configured=$((configured + 1))
+    else
+        print_info "Skipping Codex Herdr integration; ~/.codex not found"
+    fi
+
+    if [ -d "$HOME/.config/copilot" ]; then
+        local copilot_hook="$HOME/.config/copilot/hooks/herdr-agent-state.sh"
+        mkdir -p "$HOME/.config/copilot/hooks"
+        replace_symlink "$DOTFILES_DIR/herdr/integrations/copilot/herdr-agent-state.sh" "$copilot_hook"
+        ensure_json_object_file "$HOME/.config/copilot/settings.json" || return 1
+        add_direct_session_hook "$HOME/.config/copilot/settings.json" "$(herdr_hook_command "$copilot_hook")" || return 1
+        print_success "Copilot Herdr integration configured"
+        configured=$((configured + 1))
+    else
+        print_info "Skipping Copilot Herdr integration; ~/.config/copilot not found"
+    fi
+
+    if [ -d "$HOME/.pi" ]; then
+        deploy_pi_profiles || return 1
+        print_success "Pi Herdr integration deployed through profile runtimes"
+        configured=$((configured + 1))
+    else
+        print_info "Skipping Pi Herdr integration; ~/.pi not found"
+    fi
+
+    if [ "$configured" -eq 0 ]; then
+        print_info "No existing managed agent configs found for Herdr integrations"
+    fi
+}
+
 configure_zsh() {
     print_header "Configuring Zsh"
 
@@ -1431,11 +1670,11 @@ resolve_dependencies() {
             "nvim_config")
                 # Neovim config needs git and neovim
                 if ! command -v git &> /dev/null; then
-                    print_warning "Adding git (required by neovim config)"
+                    print_warning "Adding git (required by neovim config)" >&2
                     resolved+=("base_tools")
                 fi
                 if ! command -v nvim &> /dev/null; then
-                    print_warning "Adding neovim (required by neovim config)"
+                    print_warning "Adding neovim (required by neovim config)" >&2
                     resolved+=("neovim")
                 fi
                 resolved+=("nvim_config")
@@ -1443,11 +1682,11 @@ resolve_dependencies() {
             "zsh_ohmyzsh")
                 # Oh My Zsh needs zsh and git
                 if ! command -v zsh &> /dev/null; then
-                    print_warning "Adding zsh (required by Oh My Zsh)"
+                    print_warning "Adding zsh (required by Oh My Zsh)" >&2
                     resolved+=("base_tools")
                 fi
                 if ! command -v git &> /dev/null; then
-                    print_warning "Adding git (required by Oh My Zsh)"
+                    print_warning "Adding git (required by Oh My Zsh)" >&2
                     resolved+=("base_tools")
                 fi
                 resolved+=("zsh_ohmyzsh")
@@ -1455,15 +1694,49 @@ resolve_dependencies() {
             "tmux_config")
                 # Tmux config needs tmux
                 if ! command -v tmux &> /dev/null; then
-                    print_warning "Adding tmux (required by tmux config)"
+                    print_warning "Adding tmux (required by tmux config)" >&2
                     resolved+=("base_tools")
                 fi
                 resolved+=("tmux_config")
                 ;;
+            "herdr")
+                # Herdr direct installer needs curl.
+                if ! command -v curl &> /dev/null; then
+                    print_warning "Adding curl (required by Herdr)" >&2
+                    resolved+=("base_tools")
+                fi
+                resolved+=("herdr")
+                ;;
+            "herdr_config")
+                if ! command -v herdr &> /dev/null; then
+                    print_warning "Adding Herdr (required by Herdr config)" >&2
+                    if ! command -v curl &> /dev/null; then
+                        print_warning "Adding curl (required by Herdr)" >&2
+                        resolved+=("base_tools")
+                    fi
+                    resolved+=("herdr")
+                fi
+                resolved+=("herdr_config")
+                ;;
+            "herdr_integrations")
+                if ! command -v jq &> /dev/null; then
+                    print_warning "Adding jq (required by Herdr integrations)" >&2
+                    resolved+=("base_tools")
+                fi
+                if ! command -v herdr &> /dev/null; then
+                    print_warning "Adding Herdr (required by Herdr integrations)" >&2
+                    if ! command -v curl &> /dev/null; then
+                        print_warning "Adding curl (required by Herdr)" >&2
+                        resolved+=("base_tools")
+                    fi
+                    resolved+=("herdr")
+                fi
+                resolved+=("herdr_integrations")
+                ;;
             "zsh_config")
                 # Zsh config needs zsh
                 if ! command -v zsh &> /dev/null; then
-                    print_warning "Adding zsh (required by zsh config)"
+                    print_warning "Adding zsh (required by zsh config)" >&2
                     resolved+=("base_tools")
                 fi
                 resolved+=("zsh_config")
@@ -1471,7 +1744,7 @@ resolve_dependencies() {
             "claude")
                 # Claude Code needs curl
                 if ! command -v curl &> /dev/null; then
-                    print_warning "Adding curl (required by Claude Code)"
+                    print_warning "Adding curl (required by Claude Code)" >&2
                     resolved+=("base_tools")
                 fi
                 resolved+=("claude")
@@ -1479,7 +1752,7 @@ resolve_dependencies() {
             "pi")
                 # Pi coding agent uses npm
                 if ! command -v npm &> /dev/null; then
-                    print_warning "Adding Node.js (required by Pi coding agent)"
+                    print_warning "Adding Node.js (required by Pi coding agent)" >&2
                     resolved+=("nodejs")
                 fi
                 resolved+=("pi")
@@ -1487,17 +1760,17 @@ resolve_dependencies() {
             "pi_sandbox")
                 # Pi sandbox needs Docker (not installed by this script) and pi
                 if ! command -v docker &> /dev/null; then
-                    print_warning "Docker required for Pi sandbox (install Docker separately)"
+                    print_warning "Docker required for Pi sandbox (install Docker separately)" >&2
                 fi
                 resolved+=("pi_sandbox")
                 ;;
             "codex_sandbox")
                 # Codex sandbox needs Docker (not installed by this script), npm, and Codex config.
                 if ! command -v docker &> /dev/null; then
-                    print_warning "Docker required for Codex sandbox (install Docker separately)"
+                    print_warning "Docker required for Codex sandbox (install Docker separately)" >&2
                 fi
                 if ! command -v npm &> /dev/null; then
-                    print_warning "Adding Node.js (required by Codex sandbox)"
+                    print_warning "Adding Node.js (required by Codex sandbox)" >&2
                     resolved+=("nodejs")
                 fi
                 resolved+=("codex")
@@ -1506,7 +1779,7 @@ resolve_dependencies() {
             "codex")
                 # Codex CLI install uses npm
                 if ! command -v npm &> /dev/null; then
-                    print_warning "Adding Node.js (required by Codex CLI)"
+                    print_warning "Adding Node.js (required by Codex CLI)" >&2
                     resolved+=("nodejs")
                 fi
                 resolved+=("codex")
@@ -1514,7 +1787,7 @@ resolve_dependencies() {
             "gemini")
                 # Gemini CLI install uses npm
                 if ! command -v npm &> /dev/null; then
-                    print_warning "Adding Node.js (required by Gemini CLI)"
+                    print_warning "Adding Node.js (required by Gemini CLI)" >&2
                     resolved+=("nodejs")
                 fi
                 resolved+=("gemini")
@@ -1522,7 +1795,7 @@ resolve_dependencies() {
             "copilot")
                 # Copilot CLI uses curl installer
                 if ! command -v curl &> /dev/null; then
-                    print_warning "Adding curl (required by Copilot CLI)"
+                    print_warning "Adding curl (required by Copilot CLI)" >&2
                     resolved+=("base_tools")
                 fi
                 resolved+=("copilot")
@@ -1530,7 +1803,7 @@ resolve_dependencies() {
             "playwright")
                 # Playwright CLI needs npm (Node.js)
                 if ! command -v npm &> /dev/null; then
-                    print_warning "Adding Node.js (required by Playwright CLI)"
+                    print_warning "Adding Node.js (required by Playwright CLI)" >&2
                     resolved+=("nodejs")
                 fi
                 resolved+=("playwright")
@@ -1555,13 +1828,13 @@ show_profile_menu() {
     echo "Select installation profile:"
     echo ""
     echo "  1) Full Installation"
-    echo "     Everything: Neovim, Tmux, Zsh, Go, Node.js, AI agents"
+    echo "     Everything: Neovim, Tmux, Herdr, Zsh, Go, Node.js, AI agents"
     echo ""
     echo "  2) Minimal (editors only)"
-    echo "     Neovim + config, Tmux + config"
+    echo "     Neovim + config, Tmux fallback, Herdr"
     echo ""
     echo "  3) Work Profile"
-    echo "     Neovim, Tmux, TUI tools, Copilot CLI"
+    echo "     Neovim, Tmux fallback, Herdr, TUI tools, Copilot CLI"
     echo ""
     echo "  4) Custom (pick components)"
     echo "     Interactive component selection"
@@ -1573,13 +1846,13 @@ show_profile_menu() {
 
     case $choice in
         1)
-            SELECTED_MODULES=(base_tools neovim nvim_config tmux_config zsh_ohmyzsh zsh_config golang_full nodejs tui_tools codex codex_sandbox claude playwright pi pi_sandbox gemini copilot)
+            SELECTED_MODULES=(base_tools neovim nvim_config tmux_config herdr herdr_config herdr_integrations zsh_ohmyzsh zsh_config golang_full nodejs tui_tools codex codex_sandbox claude playwright pi pi_sandbox gemini copilot)
             ;;
         2)
-            SELECTED_MODULES=(base_tools neovim nvim_config tmux_config)
+            SELECTED_MODULES=(base_tools neovim nvim_config tmux_config herdr herdr_config herdr_integrations)
             ;;
         3)
-            SELECTED_MODULES=(base_tools neovim nvim_config tmux_config tui_tools copilot)
+            SELECTED_MODULES=(base_tools neovim nvim_config tmux_config herdr herdr_config herdr_integrations tui_tools copilot)
             ;;
         4)
             show_custom_menu
@@ -1606,6 +1879,9 @@ show_custom_menu() {
         "neovim:Neovim 0.12+"
         "nvim_config:Neovim Configuration (kickstart + custom)"
         "tmux_config:Tmux Configuration"
+        "herdr:Herdr Terminal Workspace Manager"
+        "herdr_config:Herdr Configuration"
+        "herdr_integrations:Herdr Agent Integrations"
         "zsh_ohmyzsh:Zsh + Oh My Zsh"
         "zsh_config:Zsh Custom Configuration"
         "golang_full:Go Development (toolchain + LSP + tools)"
@@ -1712,6 +1988,9 @@ show_installation_summary() {
             "neovim") echo "  • Neovim 0.12+" ;;
             "nvim_config") echo "  • Neovim Configuration (kickstart + custom)" ;;
             "tmux_config") echo "  • Tmux Configuration" ;;
+            "herdr") echo "  • Herdr Terminal Workspace Manager" ;;
+            "herdr_config") echo "  • Herdr Configuration" ;;
+            "herdr_integrations") echo "  • Herdr Agent Integrations" ;;
             "zsh_ohmyzsh") echo "  • Zsh + Oh My Zsh" ;;
             "zsh_config") echo "  • Zsh Custom Configuration" ;;
             "golang") echo "  • Go 1.24+ Toolchain (basic)" ;;
@@ -1773,6 +2052,21 @@ execute_modules() {
             "tmux_config")
                 if ! configure_tmux; then
                     FAILED_MODULES+=("tmux_config")
+                fi
+                ;;
+            "herdr")
+                if ! install_herdr; then
+                    FAILED_MODULES+=("herdr")
+                fi
+                ;;
+            "herdr_config")
+                if ! configure_herdr; then
+                    FAILED_MODULES+=("herdr_config")
+                fi
+                ;;
+            "herdr_integrations")
+                if ! configure_herdr_integrations; then
+                    FAILED_MODULES+=("herdr_integrations")
                 fi
                 ;;
             "zsh_ohmyzsh")
@@ -1863,13 +2157,13 @@ parse_arguments() {
             --profile)
                 case $2 in
                     full)
-                        SELECTED_MODULES=(base_tools neovim nvim_config tmux_config zsh_ohmyzsh zsh_config golang_full nodejs tui_tools codex codex_sandbox claude playwright pi pi_sandbox gemini copilot)
+                        SELECTED_MODULES=(base_tools neovim nvim_config tmux_config herdr herdr_config herdr_integrations zsh_ohmyzsh zsh_config golang_full nodejs tui_tools codex codex_sandbox claude playwright pi pi_sandbox gemini copilot)
                         ;;
                     minimal)
-                        SELECTED_MODULES=(base_tools neovim nvim_config tmux_config)
+                        SELECTED_MODULES=(base_tools neovim nvim_config tmux_config herdr herdr_config herdr_integrations)
                         ;;
                     work)
-                        SELECTED_MODULES=(base_tools neovim nvim_config tmux_config tui_tools copilot)
+                        SELECTED_MODULES=(base_tools neovim nvim_config tmux_config herdr herdr_config herdr_integrations tui_tools copilot)
                         ;;
                     *)
                         print_error "Unknown profile: $2"
@@ -1918,14 +2212,17 @@ Options:
 
 Profiles:
   full                Everything (includes Go development environment)
-  minimal             Editors only (Neovim + Tmux)
-  work                Work setup (Neovim, Tmux, Copilot - no Go)
+  minimal             Editors plus terminal workspace (Neovim + Tmux fallback + Herdr)
+  work                Work setup (Neovim, Tmux fallback, Herdr, Copilot - no Go)
 
 Modules:
   base_tools          Base tools (git, curl, tmux, zsh, etc.)
   neovim              Neovim 0.12+
   nvim_config         Neovim configuration (kickstart + custom)
   tmux_config         Tmux configuration
+  herdr               Herdr terminal workspace manager
+  herdr_config        Herdr configuration
+  herdr_integrations  Herdr agent integrations
   zsh_ohmyzsh         Zsh + Oh My Zsh
   zsh_config          Zsh custom configuration
   golang              Go 1.24+ toolchain only
@@ -1947,6 +2244,7 @@ Examples:
   $0 --profile minimal                     # Minimal installation
   $0 --profile work                        # Work profile (no Go)
   $0 --modules neovim,nvim_config,tmux_config  # Custom modules
+  $0 --modules herdr,herdr_config,herdr_integrations  # Herdr only
   $0 --modules golang_full,neovim          # Go dev environment
   $0 --modules codex --codex-config-template overwrite  # Refresh ~/.codex/config.toml
 
@@ -2013,7 +2311,7 @@ main() {
     echo ""
     print_info "Next steps:"
     echo "  1. Restart your shell or run: source ~/.zshrc"
-    echo "  2. Start tmux: tmux"
+    echo "  2. Start Herdr: herdr"
     echo "  3. Launch neovim: nvim"
     echo ""
     print_info "For AI agents:"

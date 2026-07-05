@@ -55,6 +55,7 @@ test_deploys_all_committed_profile_outputs() {
     assert_symlink_to "$runtime/agents" "$DOTFILES_DIR/pi/profiles/coding/resolved/agents"
     assert_symlink_to "$runtime/skills" "$DOTFILES_DIR/pi/profiles/coding/resolved/skills"
     assert_symlink_to "$runtime/extensions/subagent" "$DOTFILES_DIR/pi/profiles/coding/resolved/extensions/subagent"
+    assert_symlink_to "$runtime/extensions/herdr-agent-state" "$DOTFILES_DIR/pi/profiles/coding/resolved/extensions/herdr-agent-state"
 
     runtime="$home/.pi/profiles/local/agent"
     assert_symlink_to "$runtime/settings.json" "$DOTFILES_DIR/pi/profiles/local/resolved/settings.json"
@@ -62,6 +63,7 @@ test_deploys_all_committed_profile_outputs() {
     assert_symlink_to "$runtime/agents" "$DOTFILES_DIR/pi/profiles/local/resolved/agents"
     assert_symlink_to "$runtime/skills" "$DOTFILES_DIR/pi/profiles/local/resolved/skills"
     [[ ! -e "$runtime/extensions/subagent" ]] || fail "local profile should not deploy subagent extension"
+    assert_symlink_to "$runtime/extensions/herdr-agent-state" "$DOTFILES_DIR/pi/profiles/local/resolved/extensions/herdr-agent-state"
 }
 
 test_sets_active_profile_on_first_install() {

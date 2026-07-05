@@ -68,6 +68,7 @@ test_coding_profile_enables_current_extensions() {
     assert_exists "$resolved/subagent"
     assert_exists "$resolved/web-search"
     assert_exists "$resolved/inherit-last-model"
+    assert_exists "$resolved/herdr-agent-state"
 }
 
 test_local_profile_uses_profile_specific_runtime_inputs() {
@@ -79,10 +80,12 @@ test_local_profile_uses_profile_specific_runtime_inputs() {
     assert_exists "$resolved/skills"
 }
 
-test_local_profile_disables_subagent_extensions() {
+test_local_profile_enables_only_herdr_extension() {
     local resolved="$DOTFILES_DIR/pi/profiles/local/resolved/extensions"
-    [[ -d "$resolved" ]] || return 0
-    [[ -z "$(find "$resolved" -mindepth 1 -maxdepth 1 -print)" ]] || fail "expected local profile to have no enabled extensions"
+    assert_exists "$resolved/herdr-agent-state"
+    [[ ! -e "$resolved/subagent" ]] || fail "local profile should not enable subagent extension"
+    [[ ! -e "$resolved/web-search" ]] || fail "local profile should not enable web-search extension"
+    [[ ! -e "$resolved/inherit-last-model" ]] || fail "local profile should not enable inherit-last-model extension"
 }
 
 test_legacy_single_profile_sources_are_retained_for_compatibility() {
@@ -97,7 +100,7 @@ test_coding_profile_includes_current_agents
 test_coding_profile_includes_shared_and_pi_only_skills
 test_coding_profile_enables_current_extensions
 test_local_profile_uses_profile_specific_runtime_inputs
-test_local_profile_disables_subagent_extensions
+test_local_profile_enables_only_herdr_extension
 test_legacy_single_profile_sources_are_retained_for_compatibility
 
 echo "profile-layout tests passed"

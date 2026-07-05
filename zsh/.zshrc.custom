@@ -11,8 +11,14 @@ export VISUAL='nvim'
 export PATH="$HOME/.local/bin:$PATH"
 
 # ===========================
-# Tmux + Neovim Configuration
+# Herdr + Tmux + Neovim Configuration
 # ===========================
+
+# Herdr aliases
+alias h='herdr'
+alias ha='herdr session attach'
+alias hl='herdr session list'
+alias hu='herdr update'
 
 # Tmux aliases
 alias t='tmux'
@@ -22,10 +28,21 @@ alias tl='tmux ls'
 alias tk='tmux kill-session -t'
 alias td='tmux detach'
 
-# Start tmux on login (skip if already in tmux or not in SSH)
-if [[ -z "$TMUX" ]] && [[ -n "$SSH_CONNECTION" ]]; then
-  # Attach to existing session or create new one
-  tmux attach -t 0 || tmux new -s 0
+# Start the selected multiplexer on SSH login.
+# DOTFILES_SSH_MULTIPLEXER accepts: herdr (default), tmux, none.
+if [[ -n "$SSH_CONNECTION" ]] && [[ -z "$HERDR_ENV" ]] && [[ -z "$TMUX" ]]; then
+  case "${DOTFILES_SSH_MULTIPLEXER:-herdr}" in
+    herdr)
+      herdr
+      ;;
+    tmux)
+      if command -v tmux >/dev/null 2>&1; then
+        tmux attach -t "${TMUX_AUTO_SESSION:-0}" || tmux new -s "${TMUX_AUTO_SESSION:-0}"
+      fi
+      ;;
+    none)
+      ;;
+  esac
 fi
 
 # Neovim aliases

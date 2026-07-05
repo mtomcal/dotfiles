@@ -1,10 +1,10 @@
 # AI Agent Instructions
 
-This file provides guidance to AI coding agents when working with this dotfiles repo — a tmux + neovim + zsh environment using symlinks to deploy configs. Claude Code, Codex, Pi, and Gemini CLI all share context through this file. Cross-agent skills live in `shared/skills/`; Pi-specific subagent workflow skills live in `pi/skills/`.
+This file provides guidance to AI coding agents when working with this dotfiles repo — a Herdr + tmux fallback + neovim + zsh environment using symlinks to deploy configs. Claude Code, Codex, Pi, Gemini CLI, and GitHub Copilot CLI all share context through this file. Cross-agent skills live in `shared/skills/`; Pi-specific subagent workflow skills live in `pi/skills/`.
 
 ## Map
 
-<!-- TREE-HASH: 42d3d4fe7ff0fdb92c9aeca3291724c417ea679a3b66351ec52ccf356321a417 -->
+<!-- TREE-HASH: a94c941abb8fb4e4aa7c9835dbb301d287468bbb530b72176030c651215c7050 -->
 
 <!-- TREE-START -->
 ```
@@ -13,10 +13,18 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 |   `-- agents
 |-- codex
 |   `-- agents
+|-- copilot
+|   |-- agents
+|   `-- commands
 |-- docker
 |-- gemini
 |   |-- agents
 |   `-- commands
+|-- herdr
+|   `-- integrations
+|       |-- claude
+|       |-- codex
+|       `-- copilot
 |-- lazygit
 |-- nvim
 |   `-- custom
@@ -26,6 +34,7 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 |   |-- base
 |   |   `-- agents
 |   |-- extensions
+|   |   |-- herdr-agent-state
 |   |   |-- inherit-last-model
 |   |   |-- subagent
 |   |   |   `-- tests
@@ -58,6 +67,7 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 |   |   |-- create-subagent-skill
 |   |   |-- em-train -> ../../shared/skills/em-train
 |   |   |-- grill-me -> ../../shared/skills/grill-me
+|   |   |-- herdr -> ../../shared/skills/herdr
 |   |   |-- improve-codebase-architecture -> ../../shared/skills/improve-codebase-architecture
 |   |   |-- orchestrate
 |   |   |-- pi-profile-flavors -> ../../shared/skills/pi-profile-flavors
@@ -88,6 +98,7 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 |       |   `-- scripts
 |       |-- gameplay-asset-imagegen
 |       |-- grill-me
+|       |-- herdr
 |       |-- image-comparison-judge
 |       |-- image-diff-describer
 |       |-- improve-codebase-architecture
@@ -108,6 +119,7 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 |       |-- visual-qa
 |       `-- write-a-skill
 |-- specs
+|-- tests
 |-- tmux
 |-- yazi
 `-- zsh
@@ -116,12 +128,19 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 
 ## Modules
 
-### Agent configs (`claude/`, `codex/`, `pi/`, `gemini/`)
+### Agent configs (`claude/`, `codex/`, `pi/`, `gemini/`, `copilot/`)
 - **Purpose**: Each directory holds one AI agent's role files, settings, and (for pi) TypeScript extensions. All are symlinked into `~/.<agent>/` by `install.sh`.
-- **Owns**: Per-agent: `agents/` (role MD files), `settings.json` / `config.toml` / `models.json`. Pi also owns `extensions/` (custom TypeScript) and `skills/` (Pi-specific subagent workflow skills plus symlinks to shared skills).
+- **Owns**: Per-agent: `agents/` (role MD files), `commands/` where supported, `settings.json` / `config.toml` / `models.json`. Pi also owns `extensions/` (custom TypeScript) and `skills/` (Pi-specific subagent workflow skills plus symlinks to shared skills).
 - **Depends on**: `shared/skills/` for cross-agent skills. Pi's runtime skills path resolves to `pi/skills/`, which composes Pi-only skills with symlinks to `shared/skills/`.
 - **Rules**: Agents never reference each other's configs. Shared skills `npx skills@latest add` into any non-Pi agent lands in `shared/skills/` automatically. Pi-specific skills that require `subagent_run`, `subagent_fork`, Pi role files, or `/tree` handoff live in `pi/skills/`. Before changing `pim`, Pi profile deployment, or Pi profile specs, read `pi/PIM_DESIGN.md` so source, resolved output, runtime, and active-pointer changes do not get conflated. Role MD files use frontmatter: `name`, `description`, `metadata.short-description`, `allowed-tools`.
 - **Entry points**: Agent root dirs. Each contains the settings file(s) the agent loads at startup. For Pi profile lifecycle work, also read `pi/PIM_DESIGN.md`.
+
+### `herdr/`
+- **Purpose**: Herdr terminal workspace manager config and repo-owned Herdr integration artifacts.
+- **Owns**: `herdr/config.toml`, `herdr/integrations/{claude,codex,copilot}/herdr-agent-state.sh`.
+- **Depends on**: Managed agent config directories at deployment time only; integration sources are tracked here and deployed by `install.sh`.
+- **Rules**: Do not run `herdr integration install` as the steady-state dotfiles deployment path. Capture/update repo-owned integration sources, then deploy symlinks or config entries through `install.sh`. Runtime state, sessions, logs, and pane history stay under Herdr's local config/state directories and out of git.
+- **Entry points**: `install.sh` modules `herdr`, `herdr_config`, `herdr_integrations`; source config at `herdr/config.toml`.
 
 ### `docker/`
 - **Purpose**: Shared Docker base image definitions for agent sandboxes.
@@ -141,7 +160,7 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 - **Purpose**: TUI tool and shell configs, each with a single config file (or small set of files) symlinked to the system location by `install.sh`.
 - **Owns**: `lazygit/config.yml`, `yazi/*.toml`, `tmux/.tmux.conf`, `zsh/.zshrc.custom`.
 - **Depends on**: none.
-- **Rules**: `tmux/.tmux.conf` — prefix is Ctrl-a, escape-time 0, focus-events on. F12 toggles outer/inner session control; Ctrl-a Ctrl-a sends prefix to inner session. `zsh/.zshrc.custom` is sourced (not symlinked) from `~/.zshrc`. On SSH, tmux auto-attaches to session "1".
+- **Rules**: `tmux/.tmux.conf` — prefix is Ctrl-a, escape-time 0, focus-events on. F12 toggles outer/inner session control; Ctrl-a Ctrl-a sends prefix to inner session. `zsh/.zshrc.custom` is sourced (not symlinked) from `~/.zshrc`. On SSH, Herdr starts by default; set `DOTFILES_SSH_MULTIPLEXER=tmux` to attach/create tmux session `${TMUX_AUTO_SESSION:-0}`, or `none` to disable auto-attach.
 - **Entry points**: The config file for each tool.
 
 ### `shared/skills/`
@@ -167,7 +186,7 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 
 ## Installation
 
-Primary entry point: `./install.sh` — idempotent, safe to re-run. Auto-detects OS (Ubuntu/Debian vs macOS), installs dependencies, sets up Oh My Zsh, clones kickstart.nvim, creates symlinks for all configs, installs Go 1.24+, fnm/Node.js, and AI tools. Uses the `install_package` function for platform-specific package names (use it when adding deps).
+Primary entry point: `./install.sh` — idempotent, safe to re-run. Auto-detects OS (Ubuntu/Debian vs macOS), installs dependencies, sets up Herdr and tmux fallback, sets up Oh My Zsh, clones kickstart.nvim, creates symlinks for all configs, installs Go 1.24+, fnm/Node.js, and AI tools. Uses the `install_package` function for platform-specific package names (use it when adding deps).
 
 ## Dependency Rules
 

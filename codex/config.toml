@@ -4,6 +4,7 @@
 [features]
 multi_agent = true
 apps = true
+hooks = true
 
 # Agent roles (invoked via @name).
 # Each role points to a role-specific config file under ~/.codex/agents/.

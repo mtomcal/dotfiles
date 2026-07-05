@@ -1,6 +1,6 @@
 # Dotfiles
 
-Personal development environment configuration for tmux, neovim, and zsh.
+Personal development environment configuration for Herdr, tmux fallback, neovim, and zsh.
 
 ## Table of Contents
 
@@ -52,9 +52,10 @@ Personal development environment configuration for tmux, neovim, and zsh.
 
 ## Features
 
-- **Tmux**: Vim-style navigation and keybindings with optimized settings for neovim
+- **Herdr**: Default terminal workspace manager for persistent agent/workspace sessions
+- **Tmux**: Legacy fallback with vim-style navigation and keybindings optimized for neovim
 - **Neovim**: Official [kickstart.nvim](https://github.com/nvim-lua/kickstart.nvim) base with custom plugin layer
-- **Zsh**: Oh My Zsh with custom aliases and tmux integration
+- **Zsh**: Oh My Zsh with custom aliases and Herdr-first SSH auto-attach
 - **TUI Tools**: lazygit, yazi file manager, zoxide smart directory jumping
 - **AI Coding Tools**: Codex CLI, Claude Code, Pi, Gemini CLI, and GitHub Copilot CLI with shared instructions
 - **Language Support**:
@@ -88,9 +89,9 @@ The installer provides a **menu-driven interface** with multiple installation pr
 
 | Profile | Includes | Best For |
 |---------|----------|----------|
-| **Full** | Everything (Neovim, Tmux, Zsh, Go dev, Node.js, TUI tools, AI agents) | Complete development setup |
-| **Minimal** | Neovim + Tmux configs only | Quick editor setup |
-| **Work** | Neovim, Tmux, TUI tools, Copilot CLI | Work machines |
+| **Full** | Everything (Neovim, Tmux fallback, Herdr, Zsh, Go dev, Node.js, TUI tools, AI agents) | Complete development setup |
+| **Minimal** | Neovim + Tmux fallback + Herdr | Quick editor and workspace setup |
+| **Work** | Neovim, Tmux fallback, Herdr, TUI tools, Copilot CLI | Work machines |
 
 **Non-Interactive Mode** (command-line flags):
 ```bash
@@ -118,6 +119,9 @@ The installer provides a **menu-driven interface** with multiple installation pr
 - `neovim` - Neovim 0.10+ (AppImage on Ubuntu, Homebrew on macOS)
 - `nvim_config` - Kickstart.nvim + custom plugins
 - `tmux_config` - Tmux configuration with vim bindings
+- `herdr` - Herdr terminal workspace manager via official curl installer
+- `herdr_config` - Herdr config symlink to `~/.config/herdr/config.toml`
+- `herdr_integrations` - Repo-owned Herdr integrations for managed agents
 - `zsh_ohmyzsh` - Zsh + Oh My Zsh installation
 - `zsh_config` - Custom zsh configuration
 - `golang` - Go 1.24+ toolchain only (basic)
@@ -151,8 +155,8 @@ After installation completes:
 # Restart your shell
 source ~/.zshrc
 
-# Start tmux
-tmux
+# Start Herdr
+herdr
 
 # Launch neovim
 nvim
@@ -200,6 +204,9 @@ dotfiles/
 │   ├── agents/            # Gemini CLI user-level subagents (Markdown)
 │   ├── settings.json      # Gemini CLI settings (~/.gemini/settings.json)
 │   └── README.md          # Gemini CLI documentation
+├── herdr/
+│   ├── config.toml        # Herdr config (~/.config/herdr/config.toml)
+│   └── integrations/      # Repo-owned Herdr hooks for managed agents
 ├── copilot/
 
 │   └── agents/            # Copilot CLI agents
@@ -618,7 +625,7 @@ vim.keymap.set('n', '<leader>x', '<cmd>MyCommand<CR>', { desc = 'My custom comma
 - Oh My Zsh framework
 - Custom aliases for tmux and neovim
 - Neovim set as default editor
-- Auto-attach to tmux on SSH (Ubuntu)
+- Auto-attach to Herdr on SSH, with tmux fallback via `DOTFILES_SSH_MULTIPLEXER=tmux`
 - fnm (Fast Node Manager) integration
 
 **Aliases**:
@@ -628,6 +635,10 @@ vim.keymap.set('n', '<leader>x', '<cmd>MyCommand<CR>', { desc = 'My custom comma
 | `vim`, `vi` | `nvim` |
 | `lg` | `lazygit` |
 | `y` | `yazi` |
+| `h` | `herdr` |
+| `ha` | `herdr session attach` |
+| `hl` | `herdr session list` |
+| `hu` | `herdr update` |
 | `t` | `tmux` |
 | `ta <name>` | `tmux attach -t <name>` |
 | `tn <name>` | `tmux new -s <name>` |
