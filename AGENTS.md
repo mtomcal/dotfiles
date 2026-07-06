@@ -225,7 +225,7 @@ Per-cycle checklist:
 
 ### Review Gates
 
-- **install.sh changes**: Test on both Ubuntu/Debian and macOS. Verify idempotency (re-run).
+- **install.sh changes**: Run `bash tests/run.sh`, test on both Ubuntu/Debian and macOS, and verify idempotency (re-run).
 - **Neovim plugins**: Restart neovim, verify lazy.nvim loads without errors.
 - **Skills/agents**: Run `audit-shared-skills` to verify cross-agent frontmatter.
 - **Symlink changes**: Run `install.sh` to verify all links resolve.

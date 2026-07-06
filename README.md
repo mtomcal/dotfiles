@@ -8,6 +8,7 @@ Personal development environment configuration for Herdr, tmux fallback, neovim,
 - [Quick Start](#quick-start)
   - [Installation](#installation)
   - [Post-Installation](#post-installation)
+- [Testing](#testing)
 - [Structure](#structure)
 - [Configuration Details](#configuration-details)
   - [Herdr](#herdr)
@@ -167,6 +168,16 @@ herdr
 nvim
 ```
 
+## Testing
+
+Run the shell test suite with:
+
+```bash
+bash tests/run.sh
+```
+
+The runner syntax-checks the shell test files, discovers `tests/*.test.sh` in sorted order, and runs each file. Use this before committing changes to `install.sh`, installer helpers, or shell test coverage. Full installer changes still need platform/idempotency checks beyond these unit-style tests.
+
 ## Structure
 
 ```
@@ -174,6 +185,7 @@ dotfiles/
 ├── install.sh              # Installation script (Ubuntu + macOS)
 ├── README.md              # This file
 ├── AGENTS.md              # Shared AI agent instructions (all agents read this)
+├── tests/                 # Shell test runner, harness, and install-script tests
 ├── shared/
 │   └── skills/            # Canonical skills dir — symlinked into every agent
 │       ├── playwright-cli/

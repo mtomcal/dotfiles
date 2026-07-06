@@ -1,39 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-TEST_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DOTFILES_DIR="$(cd "$TEST_DIR/.." && pwd)"
-TMP_DIRS=()
-
-cleanup() {
-    if [[ ${#TMP_DIRS[@]} -gt 0 ]]; then
-        rm -rf "${TMP_DIRS[@]}"
-    fi
-}
-trap cleanup EXIT
-
-fail() {
-    echo "FAIL: $*" >&2
-    exit 1
-}
-
-new_tmp() {
-    local tmp
-    tmp="$(mktemp -d)"
-    TMP_DIRS+=("$tmp")
-    printf '%s\n' "$tmp"
-}
-
-assert_symlink_to() {
-    local path="$1"
-    local target="$2"
-    [[ -L "$path" ]] || fail "expected symlink: $path"
-    [[ "$(readlink "$path")" == "$target" ]] || fail "expected $path -> $target, got $(readlink "$path")"
-}
-
-source_install() {
-    INSTALL_SH_NO_MAIN=1 source "$DOTFILES_DIR/install.sh"
-}
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/harness.sh"
 
 test_configure_herdr_links_config() {
     local home
@@ -240,13 +208,4 @@ test_execute_modules_runs_herdr_integrations_after_agent_modules() {
     [[ "$(cat "$log")" == $'claude\nherdr_integrations' ]] || fail "expected herdr_integrations to run last, got: $(cat "$log")"
 }
 
-test_configure_herdr_links_config
-test_profiles_include_herdr_modules
-test_agent_profiles_configure_herdr_integrations_after_agents
-test_dependency_resolution_keeps_warnings_out_of_modules
-test_configure_herdr_integrations_preserves_claude_settings_symlink
-test_configure_herdr_integrations_does_not_mutate_tracked_claude_settings
-test_install_claude_preserves_local_settings_backup_and_deploys_symlink
-test_execute_modules_runs_herdr_integrations_after_agent_modules
-
-echo "install-herdr tests passed"
+run_tests "install-herdr tests"

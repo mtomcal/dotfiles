@@ -1,39 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-TEST_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DOTFILES_DIR="$(cd "$TEST_DIR/.." && pwd)"
-TMP_DIRS=()
-
-cleanup() {
-    if [[ ${#TMP_DIRS[@]} -gt 0 ]]; then
-        rm -rf "${TMP_DIRS[@]}"
-    fi
-}
-trap cleanup EXIT
-
-fail() {
-    echo "FAIL: $*" >&2
-    exit 1
-}
-
-new_tmp() {
-    local tmp
-    tmp="$(mktemp -d)"
-    TMP_DIRS+=("$tmp")
-    printf '%s\n' "$tmp"
-}
-
-assert_symlink_to() {
-    local path="$1"
-    local target="$2"
-    [[ -L "$path" ]] || fail "expected symlink: $path"
-    [[ "$(readlink "$path")" == "$target" ]] || fail "expected $path -> $target, got $(readlink "$path")"
-}
-
-source_install() {
-    INSTALL_SH_NO_MAIN=1 source "$DOTFILES_DIR/install.sh"
-}
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/harness.sh"
 
 test_install_claude_runs_latest_installer_when_claude_already_exists() {
     local home
@@ -146,9 +114,4 @@ test_install_claude_discards_installer_generated_settings_on_fresh_install() {
     [[ -z "$backup" ]] || fail "did not expect a backup for installer-generated fresh settings"
 }
 
-test_install_claude_runs_latest_installer_when_claude_already_exists
-test_install_claude_fails_when_latest_installer_does_not_create_binary
-test_install_claude_does_not_let_upstream_installer_mutate_tracked_settings
-test_install_claude_discards_installer_generated_settings_on_fresh_install
-
-echo "install-claude tests passed"
+run_tests "install-claude tests"

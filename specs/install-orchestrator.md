@@ -1,6 +1,6 @@
 # Install Orchestrator
 
-> **Spec Version**: 1.3.1
+> **Spec Version**: 1.3.2
 > **Last Updated**: 2026-07-06
 > **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md), [Design Language](DESIGN_LANGUAGE.md), [Tool Provisioning](tool-provisioning.md), [Symlink Manager](symlink-manager.md), [Herdr Config](herdr-config.md)
 > **Depended By**: None (this is the top-level orchestrator)
@@ -300,6 +300,8 @@ When Neovim's Lazy plugin sync reports local changes in cached plugins:
 
 11. **Git config prompting**: Git user.name and user.email prompting is described in AGENTS.md but is **not currently implemented** in the install script. This feature may be added in a future version; for now, users must configure git identity manually.
 
+12. **Shell test suite**: Install-script unit tests MUST be runnable through `bash tests/run.sh`. The runner MUST syntax-check the runner, shared harness, and all top-level `tests/*.test.sh` files before execution. It MUST discover top-level `tests/*.test.sh` files in sorted order so new install-script tests are included by convention. Shared shell-test helpers SHOULD live in `tests/lib/harness.sh` to keep individual test files focused on behavior.
+
 ---
 
 ## Test Scenarios
@@ -507,12 +509,20 @@ Preconditions: Fresh system; Herdr is not installed
 Input: Run each standard installation profile (`full`, `minimal`, `work`)
 Expected Output: Each profile resolves `herdr`, `herdr_config`, and `herdr_integrations`. Herdr config is deployed, and missing agent integration targets are skipped without failing minimal/work profiles.
 
+### TS-INSTL-030: Shell Test Runner Discovers Install Tests
+Category: Unit
+Priority: High
+Preconditions: Top-level shell tests exist under `tests/*.test.sh`
+Input: `bash tests/run.sh`
+Expected Output: The runner syntax-checks shell test files, executes each top-level `*.test.sh` file in sorted order, reports per-file execution, and exits non-zero if syntax checking or any test file fails.
+
 ---
 
 ## Changelog
 
 | Version | Date | Summary |
 |---------|------|---------|
+| 1.3.2 | 2026-07-06 | Added the shell test suite contract: `bash tests/run.sh` discovers top-level shell tests, syntax-checks them, and uses a shared harness for install-script unit tests. |
 | 1.3.1 | 2026-07-06 | Clarified idempotency wording for modules that run official updater paths such as Claude Code's `latest` installer. |
 | 1.3.0 | 2026-07-05 | Added Herdr modules, included Herdr in every standard installation profile, specified Herdr integration skip behavior, and documented the Herdr default replacement migration rule. |
 | 1.2.0 | 2026-06-02 | Added Pi profile-aware deployment requirements for the `pi` module: deploy all committed profile runtimes, maintain `~/.pi/agent` and `~/.pi/active-profile`, install Pi wrapper commands including `pim`, and fail fast when required profile output is missing. |
