@@ -1,7 +1,7 @@
 # Symlink Manager
 
-> **Version**: 1.3.0
-> **Last Updated**: 2026-07-05
+> **Version**: 1.3.1
+> **Last Updated**: 2026-07-06
 > **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md)
 > **Depended By**: [AI Agent Config](ai-agent-config.md), [Herdr Config](herdr-config.md), [Install Orchestrator](install-orchestrator.md), [Neovim Config](neovim-config.md), [Shell Config](shell-config.md), [Tmux Config](tmux-config.md)
 
@@ -427,7 +427,7 @@ Category: End-to-End
 Priority: Critical
 Preconditions: Clean system; dotfiles repo is populated
 Input: Run full install, then re-run the same full install
-Expected Output: First run: all symlinks created, backups made for any conflicting files. Second run: all symlinks remain correct, no new backups created, no errors, all steps report "already installed" or "already linked"
+Expected Output: First run: all symlinks created, backups made for any conflicting files. Second run: all symlinks remain correct, no new backups created, no errors, and install steps either report existing state or complete their idempotent update path successfully
 
 ---
 
@@ -435,6 +435,7 @@ Expected Output: First run: all symlinks created, backups made for any conflicti
 
 | Version | Date | Summary |
 |---------|------|---------|
+| 1.3.1 | 2026-07-06 | Clarified full-install idempotency expectations for modules that complete official updater paths rather than reporting only existing state. |
 | 1.3.0 | 2026-07-05 | Added Herdr config symlink deployment and clarified that Herdr runtime state is not deployed from the dotfiles repo. |
 | 1.2.0 | 2026-06-02 | Replaced single Pi config symlink mappings with Pi profile runtime mappings, active-profile compatibility symlink, and active-profile state file. |
 | 1.1.0 | 2026-05-19 | Changed Pi skills symlink source from `shared/skills` to `pi/skills` for Pi-specific skill composition |

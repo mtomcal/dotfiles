@@ -1,7 +1,7 @@
 # Install Orchestrator
 
-> **Spec Version**: 1.3.0
-> **Last Updated**: 2026-07-05
+> **Spec Version**: 1.3.1
+> **Last Updated**: 2026-07-06
 > **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md), [Design Language](DESIGN_LANGUAGE.md), [Tool Provisioning](tool-provisioning.md), [Symlink Manager](symlink-manager.md), [Herdr Config](herdr-config.md)
 > **Depended By**: None (this is the top-level orchestrator)
 
@@ -278,7 +278,7 @@ When Neovim's Lazy plugin sync reports local changes in cached plugins:
 1. **Shell compatibility**: The interactive menu system uses indexed arrays (parallel arrays), not associative arrays, to remain compatible with the default shell on all supported platforms (including macOS). All module menus and selection state MUST use indexed arrays.
 
 2. **Idempotency contract**: Every module function MUST be safe to run multiple times. The script MUST NOT fail, produce errors, or cause data loss when re-run with already-installed state. This is achieved through:
-   - Checking for existing installations before installing
+   - Checking for existing installations before installing, except for tools such as Claude Code that delegate idempotent updates to their official installer
    - Backing up (never overwriting) existing non-symlink configuration files
    - Removing and recreating symlinks to ensure they point to the correct target
 
@@ -337,7 +337,7 @@ Category: Integration
 Priority: Critical
 Preconditions: Full profile already installed
 Input: `--profile full` (second run)
-Expected Output: All module functions detect existing installations and log "already installed" messages. No packages reinstalled. No backups created for already-symlinked configs. No data loss.
+Expected Output: Module functions either detect existing installations and log "already installed" messages, or run an idempotent official updater such as Claude Code's `latest` installer. No backups are created for already-symlinked configs. No data loss.
 
 ### TS-INSTL-006: Symlink Conflict Creates Timestamped Backup
 Category: Unit
@@ -513,6 +513,7 @@ Expected Output: Each profile resolves `herdr`, `herdr_config`, and `herdr_integ
 
 | Version | Date | Summary |
 |---------|------|---------|
+| 1.3.1 | 2026-07-06 | Clarified idempotency wording for modules that run official updater paths such as Claude Code's `latest` installer. |
 | 1.3.0 | 2026-07-05 | Added Herdr modules, included Herdr in every standard installation profile, specified Herdr integration skip behavior, and documented the Herdr default replacement migration rule. |
 | 1.2.0 | 2026-06-02 | Added Pi profile-aware deployment requirements for the `pi` module: deploy all committed profile runtimes, maintain `~/.pi/agent` and `~/.pi/active-profile`, install Pi wrapper commands including `pim`, and fail fast when required profile output is missing. |
 | 1.1.0 | 2026-05-19 | Updated skills deployment expectations for Pi's composed skills directory |

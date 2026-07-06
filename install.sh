@@ -1174,14 +1174,46 @@ configure_zsh() {
 install_claude() {
     print_header "Installing Claude Code"
 
-    if ! command -v claude &> /dev/null; then
-        print_info "Installing Claude Code CLI..."
-        curl -fsSL https://claude.ai/install.sh | bash
-        export PATH="$HOME/.local/bin:$PATH"
-        print_success "Claude Code CLI installed"
-    else
-        print_success "Claude Code CLI is already installed"
+    local claude_settings="$HOME/.claude/settings.json"
+    local settings_existed_before=0
+    local protect_managed_settings=0
+
+    if [ -e "$claude_settings" ] || [ -L "$claude_settings" ]; then
+        settings_existed_before=1
     fi
+
+    if is_dotfiles_managed_claude_settings "$claude_settings"; then
+        protect_managed_settings=1
+        rm "$claude_settings"
+    fi
+
+    print_info "Installing/updating Claude Code CLI to latest..."
+    if ! curl -fsSL https://claude.ai/install.sh | bash -s latest; then
+        if [ "$protect_managed_settings" -eq 1 ] && [ ! -e "$claude_settings" ]; then
+            ln -s "$DOTFILES_DIR/claude/settings.json" "$claude_settings"
+        fi
+        return 1
+    fi
+    export PATH="$HOME/.local/bin:$PATH"
+
+    if { [ "$protect_managed_settings" -eq 1 ] || [ "$settings_existed_before" -eq 0 ]; } &&
+        [ -f "$claude_settings" ] && [ ! -L "$claude_settings" ]; then
+        rm "$claude_settings"
+    fi
+
+    if [ ! -x "$HOME/.local/bin/claude" ]; then
+        print_error "Claude Code CLI install failed: ~/.local/bin/claude not found"
+        if [ "$protect_managed_settings" -eq 1 ] && [ ! -e "$claude_settings" ]; then
+            ln -s "$DOTFILES_DIR/claude/settings.json" "$claude_settings"
+        fi
+        return 1
+    fi
+
+    if command -v claude &> /dev/null && [ "$(command -v claude)" != "$HOME/.local/bin/claude" ]; then
+        print_warning "Another claude binary is earlier in PATH: $(command -v claude)"
+    fi
+
+    print_success "Claude Code CLI installed/updated at ~/.local/bin/claude"
 
     mkdir -p "$HOME/.claude"
 

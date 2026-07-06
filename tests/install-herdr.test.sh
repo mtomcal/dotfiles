@@ -207,8 +207,14 @@ test_install_claude_preserves_local_settings_backup_and_deploys_symlink() {
         return 1
     }
 
+    curl() {
+        printf '%s\n' 'mkdir -p "$HOME/.local/bin"'
+        printf '%s\n' 'printf "#!/usr/bin/env bash\nprintf \"2.1.201 (Claude Code)\\n\"\n" > "$HOME/.local/bin/claude"'
+        printf '%s\n' 'chmod +x "$HOME/.local/bin/claude"'
+    }
+
     HOME="$home" DOTFILES_DIR="$DOTFILES_DIR" install_claude >/tmp/install-herdr-claude-install.out
-    unset -f claude
+    unset -f claude curl
 
     assert_symlink_to "$home/.claude/settings.json" "$DOTFILES_DIR/claude/settings.json"
     backup="$(find "$home/.claude" -maxdepth 1 -name 'settings.json.backup.*' -print -quit)"

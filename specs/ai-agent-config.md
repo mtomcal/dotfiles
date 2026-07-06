@@ -1,7 +1,7 @@
 # AI Agent Configuration Specification
 
-> **Version**: 1.9.0
-> **Last Updated**: 2026-07-05
+> **Version**: 1.9.1
+> **Last Updated**: 2026-07-06
 > **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md), [Design Language](DESIGN_LANGUAGE.md), [Herdr Config](herdr-config.md)
 > **Depended By**: Install Orchestrator (INSTL)
 > **Prefix**: AIAGT
@@ -376,7 +376,7 @@ Each agent MUST be installed via its designated method:
 | Agent | Install Method | Command |
 |-------|---------------|---------|
 | Codex CLI | npm | `npm install -g --prefix ~/.local @openai/codex@latest` |
-| Claude Code | curl | `curl -fsSL https://claude.ai/install.sh \| bash` |
+| Claude Code | curl | `curl -fsSL https://claude.ai/install.sh \| bash -s latest` |
 | Pi | npm | `npm install -g --prefix ~/.local @earendil-works/pi-coding-agent@latest` |
 | Gemini CLI | npm | `npm install -g --prefix ~/.local @google/gemini-cli@latest` |
 | Copilot CLI | curl | `curl -fsSL https://gh.io/copilot-install \| bash` |
@@ -387,6 +387,7 @@ Each agent MUST be installed via its designated method:
 2. After installation, the system MUST verify the binary exists at the expected path.
 3. If another binary with the same name is earlier in PATH, a warning MUST be displayed.
 4. Each agent MUST prompt the user to authenticate on first run (see B6).
+5. Claude Code MUST run its official installer with the `latest` target on every Claude module execution, even if `claude` is already on PATH, because dotfiles-managed Claude settings disable the auto-updater.
 
 ### B2: Symlink Deployment
 
@@ -452,6 +453,8 @@ The skills distribution system MUST satisfy:
 2. Agent definitions MUST be Markdown files under `agents/` with YAML frontmatter containing `name`, `tools`, and `model`.
 3. Custom commands MUST be Markdown files under `commands/` and are invoked as `/command-name` within Claude Code.
 4. On deployment, the install script MUST remove any legacy Playwright MCP server entry from Claude Code's MCP configuration.
+5. Because `DISABLE_AUTOUPDATER` is set, the install script MUST be the explicit Claude Code update path and MUST refresh the CLI to the latest release when the Claude module runs.
+6. When `~/.claude/settings.json` is already the dotfiles-managed symlink, the install script MUST protect the tracked settings file from upstream installer writes by temporarily removing the symlink during the installer run and restoring dotfiles deployment afterward.
 
 #### B4.3: Pi Configuration
 
@@ -1316,6 +1319,7 @@ Expected Output: `tools` is `undefined`; no tool bracket appears in any display 
 
 | Version | Date | Summary |
 |---------|------|---------|
+| 1.9.1 | 2026-07-06 | Made `install.sh` the explicit Claude Code update path when `DISABLE_AUTOUPDATER` is set, requiring `bash -s latest` on every Claude module run and protecting the tracked settings symlink from upstream installer writes. |
 | 1.9.0 | 2026-07-05 | Added Herdr shared skill distribution and repo-owned Herdr integration contracts for Codex, Claude, Pi, and Copilot. |
 | 1.8.0 | 2026-06-05 | Clarified the Pi profile lifecycle model by separating profile source, resolved output, profile runtime, and compatibility path. Added `pim build <profile>` to the user-facing surface, specified that build preserves active state, specified that build failures preserve previous resolved output, documented that an empty enabled extension set may omit committed `resolved/extensions/` because Git cannot represent empty directories, and added two Pi profile test scenarios covering build-only behavior and empty-extension deployment. |
 | 1.7.0 | 2026-06-02 | Added Pi profiles as first-class deployable agent-config variants. Specified `pim` as the profile manager, per-profile resolved output under `pi/profiles/{profile}/resolved/`, active profile switching via `~/.pi/agent` and `~/.pi/active-profile`, profile-specific settings/models/agents/extensions, shared skills inclusion across all profiles, profile-local skill layering, and duplicate-skill build errors. |

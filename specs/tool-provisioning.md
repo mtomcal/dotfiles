@@ -1,7 +1,7 @@
 # Tool Provisioning
 
-> **Version**: 1.2.0
-> **Last Updated**: 2026-07-05
+> **Version**: 1.2.1
+> **Last Updated**: 2026-07-06
 > **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md), [Design Language](DESIGN_LANGUAGE.md), [Symlink Manager](symlink-manager.md)
 > **Depended By**: Install Orchestrator
 
@@ -16,7 +16,7 @@ The Tool Provisioning system is responsible for installing, upgrading, and verif
 3. **Mason packages** — LSP servers, formatters, and linters installed inside Neovim via headless Mason commands
 4. **Direct upstream installers** — official curl installers for selected user-local tools whose update path is owned by the tool itself
 
-The system is **idempotent**: every function checks whether the tool is already present and at a satisfactory version before attempting installation. Re-running the full install produces the same result without errors, warnings, or unnecessary side effects.
+The system is **idempotent**: every function either checks whether the tool is already present and at a satisfactory version before attempting installation, or delegates idempotent update behavior to the tool's official installer. Re-running the full install produces the same result without errors, warnings, or unnecessary side effects.
 
 For Pi, tool provisioning installs one shared Pi binary. Profile-specific behavior is provided by deployed runtime configs and wrapper commands, not separate binary installs per profile.
 
@@ -106,7 +106,7 @@ Packages with different names across platforms MUST use the `install_package` fu
 | Gemini CLI | npm global install (NPM_GLOBAL_PREFIX) | same as Ubuntu | npm resolves @latest |
 | Playwright CLI | npm global install (no prefix — inconsistent) | same as Ubuntu | npm resolves @latest |
 | Copilot CLI | curl \| bash installer | same as Ubuntu | Official installer script; binary lands in ~/.local/bin |
-| Claude Code | curl \| bash installer | same as Ubuntu | Official installer script; binary lands in ~/.local/bin |
+| Claude Code | curl \| bash installer with `latest` target | same as Ubuntu | Official installer script resolves latest release; binary lands in ~/.local/bin |
 
 ### Mason Package Set
 
@@ -497,8 +497,16 @@ DEPLOY config symlinks for settings, agents, skills
 | Pi Coding Agent | npm global | `npm install -g --prefix ~/.local` | `~/.local/bin/` |
 | Gemini CLI | npm global | `npm install -g --prefix ~/.local` | `~/.local/bin/` |
 | Playwright CLI | npm global (no prefix) | `npm install -g` | fnm Node directory |
-| Claude Code | curl installer | `curl -fsSL https://claude.ai/install.sh \| bash` | `~/.local/bin/` |
+| Claude Code | curl installer | `curl -fsSL https://claude.ai/install.sh \| bash -s latest` | `~/.local/bin/` |
 | Copilot CLI | curl installer | `curl -fsSL https://gh.io/copilot-install \| bash` | `~/.local/bin/` |
+
+**Claude Code update rule**: The Claude Code module MUST run the official installer with the `latest` target on every module execution:
+
+```
+curl -fsSL https://claude.ai/install.sh | bash -s latest
+```
+
+This rule applies even when `command -v claude` succeeds. The dotfiles-managed Claude settings disable Claude Code's auto-updater, so skipping the installer would leave stale binaries in place. After the installer runs, the module MUST verify that `~/.local/bin/claude` exists and is executable. If another `claude` binary appears earlier in `PATH`, the module MUST emit a warning.
 
 **Codex config.toml special case**: The config.toml file MUST be copied (not symlinked) from the dotfiles template because Codex writes machine-specific values into it. The behavior is controlled by the `CODEX_CONFIG_TEMPLATE_MODE` parameter:
 - `preserve` (default): If a local config.toml exists, keep it; if only a symlink exists, convert it to a local copy
@@ -648,7 +656,7 @@ Category: Integration
 Priority: Critical
 Preconditions: Full installation already completed
 Input: --profile full (re-run)
-Expected Output: Every tool reports "already installed" or "already at required version"; no backups created; no downloads attempted; exit code 0
+Expected Output: Every tool reports "already installed", "already at required version", or runs its idempotent official updater; no backups created; no unnecessary duplicate installs; exit code 0
 ```
 
 ```
@@ -873,6 +881,7 @@ Expected Output: Installer is skipped and success is emitted without reinstallin
 
 | Version | Date | Summary |
 |---------|------|---------|
+| 1.2.1 | 2026-07-06 | Required Claude Code to run the official installer with the `latest` target on every Claude module execution, with user-local binary verification. |
 | 1.2.0 | 2026-07-05 | Added Herdr direct-installer provisioning, Herdr modules, error handling, and tests. |
 | 1.1.0 | 2026-06-02 | Clarified that Pi installs a single shared binary across all Pi profiles and specified the expected command surface: `pi`, `pi-<profile>`, `pis`, `pis-<profile>`, and `pim`. |
 | 1.0.0 | 2026-05-01 | Initial spec extracted from install.sh. Covers OS detection, package installation, tool downloads, fnm/Node.js, TUI tools, Mason packages, AI CLI tools, dependency resolution, and error handling. |
