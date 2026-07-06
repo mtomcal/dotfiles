@@ -13,7 +13,7 @@ allowed-tools:
 
 # Curator
 
-Curator turns session evidence into a ranked, human-approved proposal for improving durable agent state. It is a router and ranker, not an autonomous writer.
+Curator turns a retrospective from a human into a ranked, human-approved proposal for improving durable agent state. It is a router and ranker, not an autonomous writer.
 
 ## Operating Rules
 
@@ -21,16 +21,11 @@ Curator turns session evidence into a ranked, human-approved proposal for improv
 - Do not edit files until the user has reviewed recommendations and gives final confirmation to apply the tentative approvals.
 - Always produce 3-5 recommendations, ranked by expected compound value and efficiency gain.
 - Prefer updating, delegating to, consolidating, renaming, or removing existing durable state before creating something new.
-- Treat the existing skill ecosystem as first-class evidence and routing infrastructure.
-- Before gathering evidence, invite the human to provide an optional retrospective from their perspective. Human steering is evidence, not an override; use it to focus inspection, interpret tradeoffs, and rank recommendations.
-- Include improvements to `curator` itself when the session reveals a reusable improvement to evidence scanning, ranking, routing, approval phrases, privacy handling, or dead-weight detection.
-- Always consider at least one new-skill candidate during ranking. Recommend it only if it clears the quality bar; otherwise note briefly that no new skill was recommended and why existing durable state is the better target.
-- Do not overfit `curator` to one session. Self-improvement recommendations need a clear future trigger or repeated failure mode.
-- Minimize sensitive details from history. Summarize patterns instead of quoting private user text, secrets, credentials, or unrelated project details.
+- Invite the human to provide an optional retrospective from their perspective. Use it to focus inspection, interpret tradeoffs, and rank recommendations.
+- Include improvements to `curator` itself when the session reveals a reusable improvement to retrospective, evidence scanning, ranking, routing, approval phrases, privacy handling, or dead-weight detection.
+- Always consider at least one new-skill candidate during ranking.
 
 ## Human Retrospective Intake
-
-Before proposing or gathering local evidence, give the human a chance to steer curator with their own retrospective. This happens before repository, history, skill, or worktree inspection so human context can shape what evidence is worth gathering.
 
 Ask for a brief optional retrospective unless the user has already supplied one in the request. Keep the prompt lightweight:
 
@@ -77,29 +72,17 @@ After retrospective intake, inspect enough local context to avoid duplicate or l
 7. For recommendations that add or change skills, commands, wrappers, symlinks, agent configs, or other runtime-loaded artifacts, inspect how the active agent discovers that artifact and whether it will be available in the next session.
 8. When the current session implements or closes a planned follow-up, compare `PLAN.md`, `CHANGELOG.md`, `AGENTS.md`, specs, and related recipes for stale open-item language. Recommend removing or rewriting stale "current follow-up", TODO, unknown-unknown, or workaround guidance when it would mislead future agents.
 9. When logs, tests, schemas, or structured events pass but video, screenshots, or visual review reveal a different issue, flag the cross-evidence mismatch. Recommend durable capture in specs, QA recipes, or visual-review skills when future agents need to compare machine truth with human-visible causality.
-10. When the session includes extracting a prototype, archived app, demo, or standalone repo from another codebase, check whether durable guidance should capture the extraction boundary and runtime verification lessons:
-   - the source artifact and extracted repository should have a clear source-of-truth relationship
-   - generated artifacts and tool-owned browser artifacts should be ignored
-   - a build should be paired with a browser smoke check when a UI can build while rendering blank
-   - optional secret-backed integrations should fail gracefully without local secrets
-   - private repo creation and push status should be verified when publication is part of the task
-11. When the session includes release, deploy, publish, package, upload, or CI/CD
-    work, compare assumed automation with runtime availability. If a checked-in
-    workflow, script, connector, or remote job exists but is disabled,
-    unregistered, missing permissions, branch-scoped away, or otherwise
-    unavailable when needed, rank durable guidance for the fallback path and for
-    verifying automation availability before future publish/deploy work.
-12. Use the retrospective to target evidence, but still check for duplicate guidance and runtime availability before recommending durable changes.
-13. Identify the session's hardest stuck moment, if one existed. Prefer concrete evidence such as repeated failed attempts, repeated corrections, loops without progress, explicit statements of being stuck, or a late-discovered assumption that invalidated earlier work.
-14. For that moment, classify the routing:
+10. Use the retrospective to target evidence, but still check for duplicate guidance and runtime availability before recommending durable changes.
+11. Identify the session's hardest stuck moment, if one existed. Prefer concrete evidence such as repeated failed attempts, repeated corrections, loops without progress, explicit statements of being stuck, or a late-discovered assumption that invalidated earlier work.
+12. For that moment, classify the routing:
     - Was there an oracle: a passing test, successful build, measurable property, or other objective check?
     - Was the task large enough to decompose into smaller slices with independent done-states?
     - Was the task a discrete structural cliff with no valid halfway state, such as a migration, conversion, or repository restructure?
-15. Before treating the moment as a capability ceiling or decomposition problem, check the cheaper causes in order:
+13. Before treating the moment as a capability ceiling or decomposition problem, check the cheaper causes in order:
     - Did the failure reveal a missing assumption or missing context that should have been supplied?
     - Was there a worked example, prior slice, or sharp target spec that should have been used first?
     - Only after those should curator frame the moment as a genuine ceiling, a decomposition problem, or a valid case to set down with a dated reason.
-16. Keep this stuck-point analysis ephemeral. It informs one advisory paragraph on the final confirmation screen only. It is not a recommendation, does not enter the approval flow, and is never written to durable state by itself.
+14. Keep this stuck-point analysis ephemeral. It informs one advisory paragraph on the final confirmation screen only. It is not a recommendation, does not enter the approval flow, and is never written to durable state by itself.
 
 ## Worktree Triage
 
