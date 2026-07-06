@@ -3,12 +3,7 @@
     "DISABLE_AUTOUPDATER": "1",
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
   },
-  "statusLine": {
-    "type": "command",
-    "command": "~/.claude/statusline.sh"
-  },
-  "alwaysThinkingEnabled": false,
-  "skipDangerousModePermissionPrompt": true,
+  "model": "opus",
   "hooks": {
     "SessionStart": [
       {
@@ -22,5 +17,13 @@
         ]
       }
     ]
-  }
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "~/.claude/statusline.sh"
+  },
+  "alwaysThinkingEnabled": false,
+  "tui": "fullscreen",
+  "skipDangerousModePermissionPrompt": true,
+  "effortLevel": "medium"
 }
