@@ -13,6 +13,10 @@ assert_exists() {
     [[ -e "$1" || -L "$1" ]] || fail "expected path to exist: $1"
 }
 
+assert_absent() {
+    [[ ! -e "$1" && ! -L "$1" ]] || fail "expected path to be absent: $1"
+}
+
 assert_same_target_or_content() {
     local actual="$1"
     local expected="$2"
@@ -40,8 +44,8 @@ assert_resolved_contains_dir_entries() {
 test_coding_profile_has_resolved_runtime_outputs() {
     local resolved="$DOTFILES_DIR/pi/profiles/coding/resolved"
 
-    assert_same_target_or_content "$resolved/settings.json" "$DOTFILES_DIR/pi/settings.json"
-    assert_same_target_or_content "$resolved/models.json" "$DOTFILES_DIR/pi/models.json"
+    assert_same_target_or_content "$resolved/settings.json" "$DOTFILES_DIR/pi/base/settings.json"
+    assert_same_target_or_content "$resolved/models.json" "$DOTFILES_DIR/pi/base/models.json"
     assert_exists "$resolved/agents"
     assert_exists "$resolved/skills"
     assert_exists "$resolved/extensions"
@@ -75,7 +79,7 @@ test_local_profile_uses_profile_specific_runtime_inputs() {
     local resolved="$DOTFILES_DIR/pi/profiles/local/resolved"
 
     assert_same_target_or_content "$resolved/settings.json" "$DOTFILES_DIR/pi/profiles/local/settings.json"
-    assert_same_target_or_content "$resolved/models.json" "$DOTFILES_DIR/pi/profiles/local/models.json"
+    assert_same_target_or_content "$resolved/models.json" "$DOTFILES_DIR/pi/base/models.json"
     assert_exists "$resolved/agents"
     assert_exists "$resolved/skills"
 }
@@ -83,9 +87,9 @@ test_local_profile_uses_profile_specific_runtime_inputs() {
 test_local_profile_enables_only_herdr_extension() {
     local resolved="$DOTFILES_DIR/pi/profiles/local/resolved/extensions"
     assert_exists "$resolved/herdr-agent-state"
-    [[ ! -e "$resolved/subagent" ]] || fail "local profile should not enable subagent extension"
-    [[ ! -e "$resolved/web-search" ]] || fail "local profile should not enable web-search extension"
-    [[ ! -e "$resolved/inherit-last-model" ]] || fail "local profile should not enable inherit-last-model extension"
+    assert_absent "$resolved/subagent"
+    assert_absent "$resolved/web-search"
+    assert_absent "$resolved/inherit-last-model"
 }
 
 test_legacy_single_profile_sources_are_retained_for_compatibility() {

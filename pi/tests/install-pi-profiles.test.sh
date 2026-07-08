@@ -31,6 +31,11 @@ assert_symlink_to() {
     [[ "$(readlink "$path")" == "$target" ]] || fail "expected $path -> $target, got $(readlink "$path")"
 }
 
+assert_absent() {
+    local path="$1"
+    [[ ! -e "$path" && ! -L "$path" ]] || fail "expected path to be absent: $path"
+}
+
 assert_file_contains() {
     local path="$1"
     local text="$2"
@@ -62,7 +67,7 @@ test_deploys_all_committed_profile_outputs() {
     assert_symlink_to "$runtime/models.json" "$DOTFILES_DIR/pi/profiles/local/resolved/models.json"
     assert_symlink_to "$runtime/agents" "$DOTFILES_DIR/pi/profiles/local/resolved/agents"
     assert_symlink_to "$runtime/skills" "$DOTFILES_DIR/pi/profiles/local/resolved/skills"
-    [[ ! -e "$runtime/extensions/subagent" ]] || fail "local profile should not deploy subagent extension"
+    assert_absent "$runtime/extensions/subagent"
     assert_symlink_to "$runtime/extensions/herdr-agent-state" "$DOTFILES_DIR/pi/profiles/local/resolved/extensions/herdr-agent-state"
 }
 
@@ -107,6 +112,21 @@ test_deploy_accepts_profile_without_resolved_extensions_dir() {
     assert_symlink_to "$runtime/agents" "$root/pi/profiles/local/resolved/agents"
     assert_symlink_to "$runtime/skills" "$root/pi/profiles/local/resolved/skills"
     [[ -d "$runtime/extensions" ]] || fail "missing runtime extensions dir"
+}
+
+test_deploy_prunes_stale_runtime_extension_symlinks() {
+    local home runtime stale_target
+    home="$(new_tmp)"
+    source_install
+
+    HOME="$home" DOTFILES_DIR="$DOTFILES_DIR" deploy_pi_profiles
+    runtime="$home/.pi/profiles/coding/agent"
+    stale_target="$DOTFILES_DIR/pi/profiles/coding/resolved/extensions/disabled-extension"
+    ln -s "$stale_target" "$runtime/extensions/disabled-extension"
+
+    HOME="$home" DOTFILES_DIR="$DOTFILES_DIR" deploy_pi_profiles
+
+    assert_absent "$runtime/extensions/disabled-extension"
 }
 
 test_reinstall_is_idempotent_for_profile_symlinks() {
@@ -168,6 +188,7 @@ test_deploys_all_committed_profile_outputs
 test_sets_active_profile_on_first_install
 test_missing_resolved_output_fails
 test_deploy_accepts_profile_without_resolved_extensions_dir
+test_deploy_prunes_stale_runtime_extension_symlinks
 test_reinstall_is_idempotent_for_profile_symlinks
 test_deploys_profile_wrappers
 test_profiles_share_auth_but_keep_profile_sessions

@@ -1,7 +1,7 @@
 # Personal Dotfiles Manager Specification Suite
 
 > **Version**: 0.3.0
-> **Last Updated**: 2026-07-05
+> **Last Updated**: 2026-07-08
 > **Purpose**: Complete specification for the personal dotfiles manager — automates setup of a Herdr/tmux + neovim + zsh dev environment across Linux and macOS. Primarily for personal use, serves as reference/inspiration for others.
 
 ---
@@ -54,7 +54,6 @@ For an extracting or implementing agent, read specs in this order:
 8. **[tmux-config.md](tmux-config.md)** — Tmux keybindings, nested sessions, legacy fallback integration
 9. **[neovim-config.md](neovim-config.md)** — Kickstart base + custom plugin layer
 10. **[ai-agent-config.md](ai-agent-config.md)** — AI agent configs, shared skills, symlink wiring
-
 ### Phase 4: Leaf
 
 11. **[install-orchestrator.md](install-orchestrator.md)** — Top-level orchestrator that calls everything
