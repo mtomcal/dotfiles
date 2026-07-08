@@ -1136,8 +1136,8 @@ configure_herdr_integrations() {
     fi
 
     if [ -d "$HOME/.pi" ]; then
-        deploy_pi_profiles || return 1
-        print_success "Pi Herdr integration deployed through profile runtimes"
+        deploy_pi_config || return 1
+        print_success "Pi Herdr integration deployed through Pi agent config"
         configured=$((configured + 1))
     else
         print_info "Skipping Pi Herdr integration; ~/.pi not found"
@@ -1314,7 +1314,8 @@ install_pi() {
     fi
     print_success "Pi coding agent installed/updated at ~/.local/bin/pi-bin"
 
-    deploy_pi_profiles || return 1
+    deploy_pi_config || return 1
+    deploy_pi_wrappers
 
     print_success "Pi coding agent configured"
     print_info "Run 'pi' to start (first launch prompts for authentication)"
@@ -1344,8 +1345,9 @@ replace_symlink() {
 }
 
 prune_pi_extension_symlinks() {
-    local resolved_extensions="$1"
+    local source_extensions="$1"
     local runtime_extensions="$2"
+    local allowed="$3"
     local entry name
 
     [ -d "$runtime_extensions" ] || return 0
@@ -1353,7 +1355,7 @@ prune_pi_extension_symlinks() {
     for entry in "$runtime_extensions"/*; do
         [ -e "$entry" ] || [ -L "$entry" ] || continue
         name="$(basename "$entry")"
-        if [ -e "$resolved_extensions/$name" ] || [ -L "$resolved_extensions/$name" ]; then
+        if printf '%s\n' $allowed | grep -qx "$name" && { [ -e "$source_extensions/$name" ] || [ -L "$source_extensions/$name" ]; }; then
             continue
         fi
         if [ -L "$entry" ]; then
@@ -1365,104 +1367,64 @@ prune_pi_extension_symlinks() {
     done
 }
 
-deploy_pi_profile_runtime() {
-    local profile="$1"
-    local resolved="$DOTFILES_DIR/pi/profiles/$profile/resolved"
-    local runtime="$HOME/.pi/profiles/$profile/agent"
-    local extension
-
-    if [ ! -d "$resolved" ]; then
-        print_error "Pi profile '$profile' is missing resolved output: $resolved"
-        return 1
-    fi
-    for required in settings.json models.json agents skills; do
-        if [ ! -e "$resolved/$required" ] && [ ! -L "$resolved/$required" ]; then
-            print_error "Pi profile '$profile' resolved output is missing $required"
-            return 1
-        fi
-    done
-
-    mkdir -p "$runtime/extensions" "$runtime/sessions"
-    replace_symlink "$resolved/settings.json" "$runtime/settings.json"
-    replace_symlink "$resolved/models.json" "$runtime/models.json"
-    replace_symlink "$resolved/agents" "$runtime/agents"
-    replace_symlink "$resolved/skills" "$runtime/skills"
-    replace_symlink "$HOME/.pi/auth.json" "$runtime/auth.json"
-
-    prune_pi_extension_symlinks "$resolved/extensions" "$runtime/extensions" || return 1
-    if [ -d "$resolved/extensions" ]; then
-        for extension in "$resolved/extensions"/*; do
-            [ -e "$extension" ] || [ -L "$extension" ] || continue
-            replace_symlink "$extension" "$runtime/extensions/$(basename "$extension")"
-        done
-    fi
-}
-
-prepare_pi_shared_auth() {
-    mkdir -p "$HOME/.pi"
-    if [ -f "$HOME/.pi/auth.json" ]; then
-        return 0
-    fi
-
-    if [ ! -L "$HOME/.pi/agent" ] && [ -f "$HOME/.pi/agent/auth.json" ]; then
-        cp "$HOME/.pi/agent/auth.json" "$HOME/.pi/auth.json"
-    else
-        printf '{}\n' > "$HOME/.pi/auth.json"
-    fi
-}
-
 deploy_pi_wrappers() {
     local bin_dir="$HOME/.local/bin"
-    local profile_dir profile
+    local wrapper target
     mkdir -p "$bin_dir"
 
-    replace_symlink "$DOTFILES_DIR/pi/pim.sh" "$bin_dir/pim"
     replace_symlink "$DOTFILES_DIR/pi/pi.sh" "$bin_dir/pi"
     replace_symlink "$DOTFILES_DIR/pi/pis.sh" "$bin_dir/pis"
 
-    for profile_dir in "$DOTFILES_DIR/pi/profiles"/*; do
-        [ -d "$profile_dir" ] || continue
-        profile="$(basename "$profile_dir")"
-        replace_symlink "$DOTFILES_DIR/pi/pi.sh" "$bin_dir/pi-$profile"
-        replace_symlink "$DOTFILES_DIR/pi/pis.sh" "$bin_dir/pis-$profile"
+    if [ -L "$bin_dir/pim" ]; then
+        rm "$bin_dir/pim"
+    fi
+    for wrapper in "$bin_dir"/pi-* "$bin_dir"/pis-*; do
+        [ -L "$wrapper" ] || continue
+        target="$(readlink "$wrapper")"
+        if [ "$target" = "$DOTFILES_DIR/pi/pi.sh" ] || [ "$target" = "$DOTFILES_DIR/pi/pis.sh" ]; then
+            rm "$wrapper"
+        fi
     done
 }
 
-deploy_pi_profiles() {
-    local profiles_dir="$DOTFILES_DIR/pi/profiles"
-    local profile_dir profile active_profile active_runtime
+prepare_pi_agent_auth() {
+    local agent="$HOME/.pi/agent"
 
-    if [ ! -d "$profiles_dir" ]; then
-        print_error "Pi profiles directory not found: $profiles_dir"
-        return 1
+    mkdir -p "$agent"
+    if [ -L "$agent/auth.json" ]; then
+        rm "$agent/auth.json"
     fi
-
-    prepare_pi_shared_auth
-
-    for profile_dir in "$profiles_dir"/*; do
-        [ -d "$profile_dir" ] || continue
-        profile="$(basename "$profile_dir")"
-        deploy_pi_profile_runtime "$profile" || return 1
-    done
-
-    mkdir -p "$HOME/.pi"
-    if [ -f "$HOME/.pi/active-profile" ]; then
-        active_profile="$(sed -n '1p' "$HOME/.pi/active-profile")"
+    if [ -f "$agent/auth.json" ]; then
+        return 0
+    fi
+    if [ -f "$HOME/.pi/auth.json" ]; then
+        cp "$HOME/.pi/auth.json" "$agent/auth.json"
     else
-        active_profile="coding"
+        printf '{}\n' > "$agent/auth.json"
     fi
-    if [ ! -d "$HOME/.pi/profiles/$active_profile/agent" ]; then
-        active_profile="coding"
-    fi
-    active_runtime="$HOME/.pi/profiles/$active_profile/agent"
-    if [ ! -d "$active_runtime" ]; then
-        print_error "Active Pi profile runtime not found: $active_runtime"
-        return 1
-    fi
+}
 
-    replace_symlink "$active_runtime" "$HOME/.pi/agent"
-    printf '%s\n' "$active_profile" > "$HOME/.pi/active-profile"
-    deploy_pi_wrappers
+deploy_pi_config() {
+    local agent="$HOME/.pi/agent"
+    local source_extensions="$DOTFILES_DIR/pi/extensions"
+    local enabled_extensions="herdr-agent-state inherit-last-model web-search"
+    local extension
+
+    mkdir -p "$agent/extensions" "$agent/sessions"
+    prepare_pi_agent_auth
+
+    replace_symlink "$DOTFILES_DIR/pi/settings.json" "$agent/settings.json"
+    replace_symlink "$DOTFILES_DIR/pi/models.json" "$agent/models.json"
+    replace_symlink "$DOTFILES_DIR/pi/skills" "$agent/skills"
+
+    prune_pi_extension_symlinks "$source_extensions" "$agent/extensions" "$enabled_extensions" || return 1
+    for extension in $enabled_extensions; do
+        if [ ! -e "$source_extensions/$extension" ] && [ ! -L "$source_extensions/$extension" ]; then
+            print_error "Pi extension missing: $source_extensions/$extension"
+            return 1
+        fi
+        replace_symlink "$source_extensions/$extension" "$agent/extensions/$extension"
+    done
 }
 
 install_pi_sandbox() {
@@ -1655,78 +1617,6 @@ install_codex_sandbox() {
     print_success "Codex sandbox configured (run 'cods' to launch)"
 }
 
-install_gemini() {
-    print_header "Installing Gemini CLI"
-
-    # Gemini CLI is distributed as an npm package.
-    # Install to ~/.local so it is shared across fnm Node versions
-    # (same pattern as Codex CLI).
-    if ! command -v npm &> /dev/null; then
-        print_warning "npm not found. Installing Node.js first..."
-        install_nodejs || return 1
-    fi
-
-    mkdir -p "$HOME/.local/bin"
-    print_info "Installing/updating Gemini CLI via npm into ~/.local..."
-    npm install -g --prefix "$HOME/.local" @google/gemini-cli@latest
-
-    if [ ! -x "$HOME/.local/bin/gemini" ]; then
-        print_error "Gemini CLI install failed: ~/.local/bin/gemini not found"
-        return 1
-    fi
-
-    if command -v gemini &> /dev/null && [ "$(command -v gemini)" != "$HOME/.local/bin/gemini" ]; then
-        print_warning "Another gemini binary is earlier in PATH: $(command -v gemini)"
-        print_info "Ensure ~/.local/bin is first in PATH to use the shared Gemini install"
-    fi
-    print_success "Gemini CLI installed/updated at ~/.local/bin/gemini"
-
-    mkdir -p "$HOME/.gemini"
-
-    # Link settings.json
-    if [ -f "$HOME/.gemini/settings.json" ] && [ ! -L "$HOME/.gemini/settings.json" ]; then
-        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-        mv "$HOME/.gemini/settings.json" "$HOME/.gemini/settings.json.backup.$TIMESTAMP"
-        print_warning "Backed up existing ~/.gemini/settings.json"
-    fi
-    if [ -L "$HOME/.gemini/settings.json" ]; then
-        rm "$HOME/.gemini/settings.json"
-    fi
-    if [ -f "$DOTFILES_DIR/gemini/settings.json" ]; then
-        ln -s "$DOTFILES_DIR/gemini/settings.json" "$HOME/.gemini/settings.json"
-    fi
-
-    # Link commands directory
-    if [ -L "$HOME/.gemini/commands" ]; then
-        rm "$HOME/.gemini/commands"
-    elif [ -d "$HOME/.gemini/commands" ]; then
-        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-        mv "$HOME/.gemini/commands" "$HOME/.gemini/commands.backup.$TIMESTAMP"
-    fi
-    ln -s "$DOTFILES_DIR/gemini/commands" "$HOME/.gemini/commands"
-
-    # Link agents directory
-    if [ -L "$HOME/.gemini/agents" ]; then
-        rm "$HOME/.gemini/agents"
-    elif [ -d "$HOME/.gemini/agents" ]; then
-        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-        mv "$HOME/.gemini/agents" "$HOME/.gemini/agents.backup.$TIMESTAMP"
-    fi
-    ln -s "$DOTFILES_DIR/gemini/agents" "$HOME/.gemini/agents"
-
-    # Link skills directory
-    if [ -L "$HOME/.gemini/skills" ]; then
-        rm "$HOME/.gemini/skills"
-    elif [ -d "$HOME/.gemini/skills" ]; then
-        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-        mv "$HOME/.gemini/skills" "$HOME/.gemini/skills.backup.$TIMESTAMP"
-    fi
-    ln -s "$DOTFILES_DIR/shared/skills" "$HOME/.gemini/skills"
-
-    print_success "Gemini CLI configured"
-    print_info "Run 'gemini' to authenticate (Google account / API key)"
-}
-
 install_copilot() {
     print_header "Installing GitHub Copilot CLI"
 
@@ -1909,14 +1799,6 @@ resolve_dependencies() {
                 fi
                 resolved+=("codex")
                 ;;
-            "gemini")
-                # Gemini CLI install uses npm
-                if ! command -v npm &> /dev/null; then
-                    print_warning "Adding Node.js (required by Gemini CLI)" >&2
-                    resolved+=("nodejs")
-                fi
-                resolved+=("gemini")
-                ;;
             "copilot")
                 # Copilot CLI uses curl installer
                 if ! command -v curl &> /dev/null; then
@@ -1971,7 +1853,7 @@ show_profile_menu() {
 
     case $choice in
         1)
-            SELECTED_MODULES=(base_tools neovim nvim_config tmux_config herdr herdr_config zsh_ohmyzsh zsh_config golang_full nodejs tui_tools codex codex_sandbox claude playwright pi pi_sandbox gemini copilot herdr_integrations)
+            SELECTED_MODULES=(base_tools neovim nvim_config tmux_config herdr herdr_config zsh_ohmyzsh zsh_config golang_full nodejs tui_tools codex codex_sandbox claude playwright pi pi_sandbox copilot herdr_integrations)
             ;;
         2)
             SELECTED_MODULES=(base_tools neovim nvim_config tmux_config herdr herdr_config herdr_integrations)
@@ -2016,7 +1898,6 @@ show_custom_menu() {
         "claude:Claude Code CLI"
         "pi:Pi Coding Agent"
         "pi_sandbox:Pi Sandbox (Docker)"
-        "gemini:Gemini CLI"
         "tui_tools:TUI Tools (lazygit, yazi, zoxide)"
         "playwright:Playwright CLI (browser automation)"
         "copilot:GitHub Copilot CLI"
@@ -2126,7 +2007,6 @@ show_installation_summary() {
             "claude") echo "  • Claude Code CLI" ;;
             "pi") echo "  • Pi Coding Agent" ;;
             "pi_sandbox") echo "  • Pi Sandbox (Docker)" ;;
-            "gemini") echo "  • Gemini CLI" ;;
             "tui_tools") echo "  • TUI Tools (lazygit, yazi, zoxide)" ;;
             "playwright") echo "  • Playwright CLI (browser automation)" ;;
             "copilot") echo "  • GitHub Copilot CLI" ;;
@@ -2228,11 +2108,6 @@ execute_modules() {
                     FAILED_MODULES+=("codex_sandbox")
                 fi
                 ;;
-            "gemini")
-                if ! install_gemini; then
-                    FAILED_MODULES+=("gemini")
-                fi
-                ;;
             "claude")
                 if ! install_claude; then
                     FAILED_MODULES+=("claude")
@@ -2287,7 +2162,7 @@ parse_arguments() {
             --profile)
                 case $2 in
                     full)
-                        SELECTED_MODULES=(base_tools neovim nvim_config tmux_config herdr herdr_config zsh_ohmyzsh zsh_config golang_full nodejs tui_tools codex codex_sandbox claude playwright pi pi_sandbox gemini copilot herdr_integrations)
+                        SELECTED_MODULES=(base_tools neovim nvim_config tmux_config herdr herdr_config zsh_ohmyzsh zsh_config golang_full nodejs tui_tools codex codex_sandbox claude playwright pi pi_sandbox copilot herdr_integrations)
                         ;;
                     minimal)
                         SELECTED_MODULES=(base_tools neovim nvim_config tmux_config herdr herdr_config herdr_integrations)
@@ -2364,7 +2239,6 @@ Modules:
   claude              Claude Code CLI
   pi                  Pi Coding Agent
   pi_sandbox          Pi Sandbox (Docker image + pis script)
-  gemini              Gemini CLI
   copilot             GitHub Copilot CLI
   playwright          Playwright CLI (browser automation)
 
@@ -2448,7 +2322,6 @@ main() {
     echo "  • Codex: codex login"
     echo "  • Claude Code: claude auth login"
     echo "  • Pi: pi (first launch prompts for auth)"
-    echo "  • Gemini CLI: gemini (first run prompts for auth)"
     echo "  • Copilot CLI: copilot login"
     echo ""
     print_success "Happy coding!"

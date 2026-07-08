@@ -58,7 +58,6 @@ alias lg='lazygit'
 alias y='yazi'
 
 # AI Coding Assistant aliases
-alias gm='gemini'
 alias cop='copilot'
 
 _sync_codex_shared_skills() {

@@ -1,1 +1,0 @@
-../../../../base/agents/design-reviewer.md

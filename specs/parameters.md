@@ -36,7 +36,7 @@ Parameters serve three purposes:
 | `DOTFILES_DIR` | Resolved via `dirname` of `$BASH_SOURCE` | path | Repository root is auto-detected from the script location; never hard-coded |
 | `MAX_PROFILE_CHOICE` | 4 | integer | Highest valid choice on the interactive profile menu (Full=1, Minimal=2, Work=3, Custom=4) |
 | `CODEX_CONFIG_TEMPLATE_MODE` | preserve | enum: preserve, overwrite | Controls whether an existing local Codex config is kept (preserve) or replaced from the dotfiles template (overwrite); preserve avoids losing user-customized runtime values |
-| `NPM_GLOBAL_PREFIX` | ~/.local | path | All npm-based global installs (Codex, Pi, Gemini) use this prefix so binaries land in ~/.local/bin/ and survive fnm Node version switches |
+| `NPM_GLOBAL_PREFIX` | ~/.local | path | npm-based global installs (Codex and Pi) use this prefix so binaries land in ~/.local/bin/ and survive fnm Node version switches |
 | `GO_INSTALL_PATH` | /usr/local/go | path | Official Go binary installation directory on Ubuntu/Debian; standard location for system-wide Go |
 | `GO_WORKSPACE` | ~/go-workspace | path | GOPATH for Go user binaries (govulncheck, etc.); isolated from system Go install; must be on PATH alongside Go install path |
 | `BACKUP_SUFFIX_SEPARATOR` | .backup. | string | Delimiter between original filename and timestamp in backup names; unambiguous and unlikely to collide with real filenames |
@@ -117,7 +117,6 @@ Parameters serve three purposes:
 | `ZSH_ALIAS_VIM` | nvim | string | Muscle-memory redirect; all vim invocations launch neovim |
 | `ZSH_ALIAS_VI` | nvim | string | Same redirect for the shorter invocation |
 | `ZSH_ALIAS_CODEX` | cx | string | Two-char alias for Codex CLI |
-| `ZSH_ALIAS_GEMINI` | gm | string | Two-char alias for Gemini CLI |
 | `ZSH_ALIAS_COPILOT` | cop | string | Short alias for Copilot CLI |
 | `EDITOR` | nvim | string | Ensures all tools respecting EDITOR use neovim |
 | `VISUAL` | nvim | string | Ensures all tools respecting VISUAL use neovim |
@@ -135,16 +134,10 @@ Parameters serve three purposes:
 | `AGENT_INSTALL_PREFIX` | ~/.local | path prefix | Shared prefix for npm-installed agents so binaries survive fnm Node version switches; matches NPM_GLOBAL_PREFIX |
 | `AGENT_CONFIG_DIR_CODEX` | ~/.codex | path | Codex CLI's canonical config directory |
 | `AGENT_CONFIG_DIR_CLAUDE` | ~/.claude | path | Claude Code's canonical config directory |
-| `AGENT_CONFIG_DIR_PI` | ~/.pi/agent | path | Compatibility symlink pointing to the active Pi profile runtime directory |
-| `PI_PROFILE_ROOT_DIR` | ~/.pi/profiles | path | Runtime parent directory containing one deployed Pi profile per subdirectory |
-| `PI_ACTIVE_PROFILE_FILE` | ~/.pi/active-profile | path | Stores the active Pi profile name so `pim current`, `pi`, and `pis` can resolve the selected profile |
-| `PI_ACTIVE_PROFILE_NAME` | coding | string | Default Pi profile name selected during install; activated via `pim activate` or bare `pim <profile>` |
-| `PI_PROFILE_RUNTIME_DIR` | ~/.pi/profiles/<profile>/agent | template | Runtime parent directory containing one deployed Pi profile per subdirectory; `{profile}` is substituted at runtime. This is where the symlinked runtime files land — not the repository source root. |
-| `PI_PROFILE_SOURCE_ROOT` | ~/dotfiles/pi/profiles | path | Repository source root for Pi profile authoring inputs and committed resolved output, **not** the same as the runtime directory under `~/.pi/`
-| `AGENT_CONFIG_DIR_GEMINI` | ~/.gemini | path | Gemini CLI's canonical config directory |
+| `AGENT_CONFIG_DIR_PI` | ~/.pi/agent | path | Pi's single runtime config directory |
 | `AGENT_CONFIG_DIR_COPILOT` | ~/.config/copilot | path | Copilot CLI's canonical config directory (XDG-style) |
 | `AGENT_SKILLS_DIR_CODEX` | ~/.agents/skills | path | Codex CLI resolves skills from this path; symlinked to shared skills |
-| `AGENT_SKILLS_DIR_PI` | ~/.pi/agent/skills | path | Pi resolves skills through the active profile runtime; every profile includes shared skills plus any profile-local skills |
+| `AGENT_SKILLS_DIR_PI` | ~/.pi/agent/skills | path | Pi resolves skills through the single runtime config directory |
 | `HERDR_SKILL_DIR` | ~/dotfiles/shared/skills/herdr | path | Tracked shared Herdr skill source available to every supported agent |
 | `SANDBOX_BASE_IMAGE_NAME` | dotfiles-dev-base:{UID}-{GID} | Docker image tag | Shared sandbox base image containing common dev tools and host-matched user |
 | `SANDBOX_IMAGE_NAME` | pis:latest | Docker image tag | Default Pi sandbox Docker image name |
@@ -156,37 +149,8 @@ Parameters serve three purposes:
 | `SANDBOX_HOST_USER_ARG` | `HOST_USER` | string | Docker build arg name for the host username; defaults to `mtomcal` in the Dockerfile, overridden by `pis` script at build time |
 | `SANDBOX_HOST_UID_ARG` | `HOST_UID` | string | Docker build arg name for the host user UID; defaults to `1000` in the Dockerfile, overridden by `pis` script at build time |
 | `SANDBOX_HOST_GID_ARG` | `HOST_GID` | string | Docker build arg name for the host user GID; defaults to `1000` in the Dockerfile, overridden by `pis` script at build time |
-| `SUBAGENT_MAX_RUNNING_JOBS` | 8 | count | Maximum concurrent async subagent jobs |
-| `SUBAGENT_MAX_PARALLEL_TASKS` | 20 | count | Maximum tasks in a single parallel subagent_run call |
-| `SUBAGENT_WAIT_TIMEOUT_DEFAULT` | 300 | seconds | Default timeout for subagent_wait blocking calls |
 | `RALPH_DEFAULT_ITERATIONS` | 25 | count | Default max loop iterations for Ralph agentic loop |
 | `RALPH_DONE_PATTERN` | /done | string | Pattern that signals loop completion in Ralph worker output |
-| `SUBAGENT_ROUTING_SCOUT_MODEL` | deepseek-v4-flash | string | Flash-tier model for fast read-only codebase recon; no reasoning needed, speed and cost efficiency prioritize |
-| `SUBAGENT_ROUTING_SCOUT_PROVIDER` | ollama-cloud | string | Provider for scout-tier subagent models |
-| `SUBAGENT_ROUTING_SCOUT_THINKING` | low | enum: off, minimal, low, medium, high, xhigh | Minimal thinking for retrieval tasks; reasoning depth is wasted on scouting |
-| `SUBAGENT_ROUTING_PLANNER_MODEL` | glm-5.1 | string | Good instruction-following and breadth for planning; medium-tier model balances capability and cost |
-| `SUBAGENT_ROUTING_PLANNER_PROVIDER` | ollama-cloud | string | Provider for planner-tier subagent models |
-| `SUBAGENT_ROUTING_PLANNER_THINKING` | medium | enum: off, minimal, low, medium, high, xhigh | Balanced thinking for analysis and plan generation |
-| `SUBAGENT_ROUTING_REVIEWER_MODEL` | deepseek-v4-pro | string | Reasoning model for deep code analysis, security audit, and architecture review |
-| `SUBAGENT_ROUTING_REVIEWER_PROVIDER` | ollama-cloud | string | Provider for reviewer-tier subagent models |
-| `SUBAGENT_ROUTING_REVIEWER_THINKING` | high | enum: off, minimal, low, medium, high, xhigh | High thinking for catching subtle bugs and security issues |
-| `SUBAGENT_ROUTING_IMPLEMENTER_MODEL` | glm-5.1 | string | Workhorse model for code generation; sufficient for most implementation tasks |
-| `SUBAGENT_ROUTING_IMPLEMENTER_PROVIDER` | ollama-cloud | string | Provider for implementer-tier subagent models |
-| `SUBAGENT_ROUTING_IMPLEMENTER_THINKING` | medium | enum: off, minimal, low, medium, high, xhigh | Medium thinking balances generation quality with cost |
-| `SUBAGENT_ROUTING_EXPERT_1ST_MODEL` | deepseek-v4-pro | string | Primary expert model for deep domain problems and first consultation when stuck |
-| `SUBAGENT_ROUTING_EXPERT_1ST_PROVIDER` | ollama-cloud | string | Provider for primary expert model |
-| `SUBAGENT_ROUTING_EXPERT_1ST_THINKING` | high | enum: off, minimal, low, medium, high, xhigh | Maximum reasoning depth for hardest problems |
-| `SUBAGENT_ROUTING_EXPERT_2ND_MODEL` | glm-5.1 | string | Fallback expert model for second consultation — different architectural perspective on same issue |
-| `SUBAGENT_ROUTING_EXPERT_2ND_PROVIDER` | ollama-cloud | string | Provider for second consultation expert model |
-| `SUBAGENT_ROUTING_EXPERT_2ND_THINKING` | high | enum: off, minimal, low, medium, high, xhigh | High thinking on GLM-5.1 provides deeper reasoning than the default medium used in main sessions |
-| `SUBAGENT_ROUTING_EXPERT_3RD_MODEL` | kimi-k2.6 | string | Final fallback expert model — third architecture for fresh perspective before user escalation |
-| `SUBAGENT_ROUTING_EXPERT_3RD_PROVIDER` | opencode-go | string | Provider for third consultation expert model (overridden by crof in current settings) |
-| `SUBAGENT_ROUTING_EXPERT_3RD_THINKING` | high | enum: off, minimal, low, medium, high, xhigh | High reasoning for final consultation attempt |
-| `SUBAGENT_ROUTING_CROF_PROVIDER_ENABLED` | crof | string | Additional provider added to models.json with 22 models including DeepSeek V4, MiMo V2.5, GLM 5.x, Kimi K2.x, Qwen3.x, Gemma 4, and experimental models; used as active defaultProvider in Pi settings.json |
-| `SUBAGENT_ROUTING_CROF_DEFAULT_MODEL` | deepseek-v4-pro | string | Default model on crof provider for main Pi session |
-| `SUBAGENT_TOOLS_BRACKET_MAX_CHARS` | 30 | characters | Maximum character length for the `[tools]` bracket in display surfaces; brackets exceeding this length are truncated with `+N` overflow showing the count of remaining tools |
-| `SUBAGENT_TOOLS_DISPLAY_STATUS_FORMAT` | `**Tools:** tool1, tool2, ...` | format | Format for displaying tools in `subagent_status` and `subagent_results` markdown output; comma-separated with spaces for readability |
-| `SUBAGENT_TOOLS_DISPLAY_UNDEFINED` | omit | behavior | When `tools` is `undefined` (all default tools), no tool bracket or label is displayed on any surface; absence indicates unrestricted access |
 
 ---
 
@@ -199,7 +163,5 @@ Parameters serve three purposes:
 | Version | Date | Summary |
 |---------|------|---------|
 | 1.6.0 | 2026-07-05 | Added Herdr install, config, alias, SSH multiplexer, pane history, and shared skill parameters for the Herdr replacement path. |
-| 1.5.0 | 2026-06-02 | Added Pi profile parameters for runtime root, active profile state, profile source root, and active-profile-compatible config and skills paths. |
 | 1.4.0 | 2026-05-19 | Added AGENT_SKILLS_DIR_PI for Pi's composed skills directory |
 | 1.3.0 | 2026-05-13 | Updated REQUIRED_NVIM_VERSION from 0.10 to 0.12; added crof provider parameters for Pi models.json |
-| 1.2.0 | 2026-05-01 | Added subagent routing parameters (scout, planner, reviewer, implementer, expert 1st/2nd/3rd model/provider/thinking), tools display parameters (SUBAGENT_TOOLS_BRACKET_MAX_CHARS, SUBAGENT_TOOLS_DISPLAY_STATUS_FORMAT, SUBAGENT_TOOLS_DISPLAY_UNDEFINED) |

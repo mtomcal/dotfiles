@@ -27,8 +27,6 @@ if [[ -L "$SCRIPT_PATH" ]]; then
 fi
 DOCKERFILE_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
 DOTFILES_DIR="$(cd "$DOCKERFILE_DIR/.." && pwd)"
-# shellcheck source=lib/pim.sh
-source "$DOCKERFILE_DIR/lib/pim.sh"
 
 # Colors
 RED='\033[0;31m'
@@ -92,15 +90,10 @@ while [[ $# -gt 0 ]]; do
     fi
 done
 
-PIS_COMMAND_NAME="${0##*/}"
-PIS_EXPLICIT_PROFILE="$(pim_profile_from_command_name "$PIS_COMMAND_NAME" "pis")"
 if [[ "$BUILD_ONLY" != true ]]; then
-    pim_resolve_runtime_profile "$HOME" "$PIS_EXPLICIT_PROFILE"
-    PI_AGENT_DIR="$PIM_RESOLVED_RUNTIME"
-    PI_PROFILE_NAME="$PIM_RESOLVED_PROFILE"
+    PI_AGENT_DIR="$HOME/.pi/agent"
 
     if [[ "${PIS_DRY_RUN:-0}" == "1" ]]; then
-        printf 'profile=%s\n' "$PI_PROFILE_NAME"
         printf 'runtime=%s\n' "$PI_AGENT_DIR"
         printf 'sessions=%s\n' "$PI_AGENT_DIR/sessions"
         printf 'auth=%s\n' "$PI_AGENT_DIR/auth.json"
@@ -208,7 +201,7 @@ DOCKER_ARGS=(
 DOCKER_ARGS+=("${EXTRA_VOLUMES[@]}")
 
 # Forward API key env vars that are set
-for VAR in ANTHROPIC_API_KEY OPENAI_API_KEY GOOGLE_API_KEY GEMINI_API_KEY; do
+for VAR in ANTHROPIC_API_KEY OPENAI_API_KEY GOOGLE_API_KEY; do
     if [[ -n "${!VAR}" ]]; then
         DOCKER_ARGS+=("-e" "$VAR")
     fi
@@ -220,7 +213,7 @@ while IFS='=' read -r key _; do
         *API_KEY|*API_TOKEN|*APIKEY)
             # Skip if already added above
             case "$key" in
-                ANTHROPIC_API_KEY|OPENAI_API_KEY|GOOGLE_API_KEY|GEMINI_API_KEY) ;;
+                ANTHROPIC_API_KEY|OPENAI_API_KEY|GOOGLE_API_KEY) ;;
                 *) DOCKER_ARGS+=("-e" "$key") ;;
             esac
             ;;

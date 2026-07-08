@@ -118,7 +118,7 @@ the live body remains visible and axis-aligned during roll.`
 | 7 | Per-item config | Full config on each tasks[]/chain[] item |
 | 8 | Naming | agent → name, label-only, no lookup |
 | 9 | Agent files | Dead. Skills teach. Pure LLM instructions |
-| 10 | agents.ts | → subagent-config.ts (keep parseModelField, normalizeOptional, new SubagentConfig) |
+| 10 | legacy presets | → task-config.ts (keep parseModelField, normalizeOptional, new TaskConfig) |
 ```
 
 ### Current Code State (decision-driven variant)
@@ -129,22 +129,22 @@ the live body remains visible and axis-aligned during roll.`
 - Tool registration pattern is established.
 
 ### What is currently out of alignment with decisions
-- agents.ts discovers agent .md files — decision 9 says agent files are dead.
-- AgentScope and discoverAgents must be removed.
+- Legacy preset discovery is still active — decision 9 says preset files are dead.
+- PresetScope and discoverPresets must be removed.
 - `agent` parameter must be renamed to `name` (decision 8).
-- subagent-config.ts does not exist yet (decision 10).
+- task-config.ts does not exist yet (decision 10).
 ```
 
 ### Red/Green Slice (decision-tracing variant)
 
 ```markdown
-### Cycle 1: subagent-config.ts — Config Types and Resolution
+### Cycle 1: task-config.ts — Config Types and Resolution
 
 #### Red
 
 Tests to write **before** touching implementation code:
 
-- Test file: `tests/subagent-config.test.ts`
+- Test file: `tests/task-config.test.ts`
 - What the test proves: config resolution matches all 10 resolved decisions
 - Assertion strategy: direct assertion on resolved config fields
 - Existing tests to rewrite: none (new module)
@@ -155,13 +155,13 @@ Tests to write **before** touching implementation code:
   - model shorthand parses provider and thinking (decision 5)
   - per-item values override top-level (decision 7)
 
-All tests must fail — `subagent-config.ts` does not exist yet. Run the test suite to confirm every new test fails before writing implementation.
+All tests must fail — `task-config.ts` does not exist yet. Run the test suite to confirm every new test fails before writing implementation.
 
 #### Green
 
 Implementation changes to make the red test pass (only after observing the red failure):
 
-- Source file: `subagent-config.ts` (new file)
+- Source file: `task-config.ts` (new file)
 - What to create: `resolveConfig`, `deriveName`, `parseModelField`, `parseTools` per decisions 1-10
 - Constraint: no Pi extension imports — pure TypeScript, no framework dependency
 - Decisions this satisfies: 1, 2, 3, 5, 7, 8, 10

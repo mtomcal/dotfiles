@@ -21,6 +21,11 @@ Thumbs.db
 # Logs
 *.log
 
+# Node/test caches
+node_modules/
+.vite/
+coverage/
+
 # Local Claude Code config (machine-specific, not the tracked claude/ directory)
 .claude/
 

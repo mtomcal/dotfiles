@@ -38,10 +38,7 @@ Personal development environment configuration for Herdr, tmux fallback, neovim,
     - [Codex CLI](#codex-cli)
     - [Claude Code](#claude-code)
     - [Pi Coding Agent](#pi-coding-agent)
-      - [Pi Profiles](#pi-profiles)
-      - [Subagents](#subagents)
       - [Pi Sandbox (`pis`)](#pi-sandbox-pis)
-    - [Gemini CLI](#gemini-cli)
     - [GitHub Copilot CLI](#github-copilot-cli)
 - [Platform-Specific Notes](#platform-specific-notes)
   - [Ubuntu/Debian](#ubuntudebian)
@@ -60,7 +57,7 @@ Personal development environment configuration for Herdr, tmux fallback, neovim,
 - **Neovim**: Official [kickstart.nvim](https://github.com/nvim-lua/kickstart.nvim) base with custom plugin layer
 - **Zsh**: Oh My Zsh with custom aliases and Herdr-first SSH auto-attach
 - **TUI Tools**: lazygit, yazi file manager, zoxide smart directory jumping
-- **AI Coding Tools**: Codex CLI, Claude Code, Pi, Gemini CLI, and GitHub Copilot CLI with shared instructions
+- **AI Coding Tools**: Codex CLI, Claude Code, Pi, and GitHub Copilot CLI with shared instructions
 - **Language Support**:
   - **Python**: Pyright LSP + Ruff linting/formatting with Poetry auto-detection
   - **Go (Golang)**: Full toolchain (gopls, delve debugger, gofumpt, goimports) with testing and debugging support
@@ -144,7 +141,6 @@ The installer provides a **menu-driven interface** with multiple installation pr
 - `claude` - Claude Code CLI + MCP servers
 - `pi` - Pi Coding Agent
 - `pi_sandbox` - Pi Sandbox (Docker image + `pis` script)
-- `gemini` - Gemini CLI (Google's open-source AI agent)
 - `copilot` - GitHub Copilot CLI (curl installer, work-network friendly)
 
 **Features**:
@@ -209,19 +205,13 @@ dotfiles/
 │   ├── settings.json      # Claude Code settings
 │   └── README.md          # Claude Code documentation
 ├── pi/
-│   ├── base/              # Base settings, models, and agent roles for Pi profiles
-│   ├── profiles/          # Profile authoring inputs + committed resolved output
-│   ├── extensions/        # Pi extensions (subagent, web-search, inherit-last-model, herdr-agent-state)
-│   ├── lib/               # Pi profile manager shell helpers
-│   ├── pim.sh             # Pi profile manager (~/.local/bin/pim)
-│   ├── pi.sh              # Pi profile-aware wrapper (~/.local/bin/pi, pi-<profile>)
-│   ├── pis.sh             # Pi sandbox wrapper (~/.local/bin/pis, pis-<profile>)
+│   ├── extensions/        # Pi extensions (web-search, inherit-last-model, herdr-agent-state)
+│   ├── settings.json      # Pi settings (~/.pi/agent/settings.json)
+│   ├── models.json        # Pi model/provider config (~/.pi/agent/models.json)
+│   ├── skills/            # Pi-visible skills
+│   ├── pi.sh              # Pi wrapper (~/.local/bin/pi)
+│   ├── pis.sh             # Pi sandbox wrapper (~/.local/bin/pis)
 │   └── Dockerfile         # Pi sandbox Docker image
-├── gemini/
-
-│   ├── agents/            # Gemini CLI user-level subagents (Markdown)
-│   ├── settings.json      # Gemini CLI settings (~/.gemini/settings.json)
-│   └── README.md          # Gemini CLI documentation
 ├── herdr/
 │   ├── config.toml        # Herdr config (~/.config/herdr/config.toml)
 │   └── integrations/      # Repo-owned Herdr hooks for claude/codex/copilot
@@ -282,7 +272,7 @@ The `herdr_integrations` module deploys repo-owned integration artifacts from `h
 | Claude Code | `herdr/integrations/claude/herdr-agent-state.sh` symlinked into `~/.claude/hooks/` |
 | Codex CLI | `herdr/integrations/codex/herdr-agent-state.sh` symlinked into `~/.codex/` |
 | GitHub Copilot CLI | `herdr/integrations/copilot/herdr-agent-state.sh` symlinked into `~/.config/copilot/hooks/` |
-| Pi | `pi/extensions/herdr-agent-state/` enabled through Pi profile `extensions.list` |
+| Pi | `pi/extensions/herdr-agent-state/` deployed to `~/.pi/agent/extensions/` |
 
 Agents also share the `shared/skills/herdr/` skill, which lets agents running inside Herdr inspect panes, split workspaces, wait on output, and coordinate other panes through the `herdr` CLI.
 
@@ -711,7 +701,6 @@ vim.keymap.set('n', '<leader>x', '<cmd>MyCommand<CR>', { desc = 'My custom comma
 | `td` | `tmux detach` |
 | `pi` | Pi coding agent (no alias, binary name) |
 | `cx` | `codex` |
-| `gm` | `gemini` |
 | `cop` | `copilot` |
 
 ### Node.js (fnm)
@@ -919,7 +908,7 @@ Five AI coding assistants are configured:
 
 #### Shared Skills
 
-All five agents share a single skills directory at `shared/skills/`. Every agent's skills path is symlinked here, so a skill installed via `npx skills@latest add` into any agent lands in one canonical place and is instantly available to all agents.
+Codex, Claude, Pi, and Copilot share a single skills directory at `shared/skills/`. Non-Pi agents symlink their skills path directly to it; Pi exposes shared skills through `pi/skills/`.
 
 **Available skills**:
 
@@ -932,7 +921,6 @@ All five agents share a single skills directory at `shared/skills/`. Every agent
 | `improve-codebase-architecture` | Find and fix architectural friction — shallow modules, poor seams, testability gaps _(based on [mattpocock/skills](https://github.com/mattpocock/skills))_ |
 | `herdr` | Control Herdr workspaces, tabs, panes, agent status, and output from inside a Herdr pane |
 | `tmux-agent-orchestration` | Launch, steer, and monitor parallel CLI agents in tmux with per-worker clones |
-| `pi-profile-flavors` | Build and modify Pi profile variants with `pim`, including extensions, skills, settings, models, and agents |
 | `ubiquitous-language` | Extract a DDD-style glossary from a conversation and save it to `UBIQUITOUS_LANGUAGE.md` _(based on [mattpocock/skills](https://github.com/mattpocock/skills))_ |
 | `audit-shared-skills` | Audit `shared/skills/` for cross-agent frontmatter compatibility, flag and fix issues |
 | `grill-me` | Interview the user relentlessly about a plan or design, resolving each branch of the decision tree _(based on [mattpocock/skills](https://github.com/mattpocock/skills))_ |
@@ -940,7 +928,7 @@ All five agents share a single skills directory at `shared/skills/`. Every agent
 
 **Adding a new skill**:
 
-Skills from any GitHub-hosted collection can be installed with one command. Because all agent skills paths are symlinked to `shared/skills/`, installing into any agent puts the skill everywhere.
+Skills from any GitHub-hosted collection can be installed with one command. Because shared skills are canonical, installing into a supported agent puts the skill in `shared/skills/`.
 
 ```bash
 # Install from a GitHub skills repo (e.g. mattpocock/skills)
@@ -1009,68 +997,29 @@ pi  # First launch prompts for authentication
 - 30+ LLM providers (Anthropic, OpenAI, Google, and more)
 - Ollama Cloud models (GLM 5.1, MiniMax M2.7, Kimi K2.6, DeepSeek V4 Pro/Flash)
 - TypeScript extensions for custom tools and workflows
-- Herdr agent-state extension enabled in profile runtimes
+- Herdr agent-state extension enabled in the Pi runtime
 - Session tree navigation and branching
 - Multiple modes: interactive TUI, print, JSON, RPC
 
 **Usage**:
 ```bash
-pi                 # Start interactive session with the active profile
-pi-coding          # Start Pi with the coding profile directly
-pim current        # Show the active profile
-pim list           # List available profiles
-pim use coding     # Switch the active profile
+pi                 # Start interactive session
 ```
 
-##### Pi Profiles
+**Config layout**:
 
-Pi uses profile-specific runtime configs while sharing one installed binary. The installer preserves the npm-installed executable as `~/.local/bin/pi-bin`, then installs profile-aware wrappers:
+The installer preserves the npm-installed executable as `~/.local/bin/pi-bin`, then installs the repo wrapper at `~/.local/bin/pi`. Pi reads one repo-owned config tree at `~/.pi/agent`.
 
-| Command | Purpose |
-|---------|---------|
-| `pim list` | List profiles under `pi/profiles/` |
-| `pim current` | Print the active profile from `~/.pi/active-profile` |
-| `pim use <profile>` | Update `~/.pi/agent` to point at the selected deployed profile |
-| `pim path <profile>` | Print `~/.pi/profiles/<profile>/agent` |
-| `pim doctor` | Validate active profile state and duplicate skill rules |
-| `pim create <profile>` | Scaffold a profile and generate its resolved output |
-| `pim build [profile]` | Regenerate committed `resolved/` output |
-| `pim deploy [profile]` | Deploy resolved output to `~/.pi/profiles/` |
+| Target | Source |
+|--------|--------|
+| `~/.pi/agent/settings.json` | `pi/settings.json` |
+| `~/.pi/agent/models.json` | `pi/models.json` |
+| `~/.pi/agent/skills` | `pi/skills` |
+| `~/.pi/agent/extensions/herdr-agent-state` | `pi/extensions/herdr-agent-state` |
+| `~/.pi/agent/extensions/inherit-last-model` | `pi/extensions/inherit-last-model` |
+| `~/.pi/agent/extensions/web-search` | `pi/extensions/web-search` |
 
-Each profile lives under `pi/profiles/<profile>/`:
-
-| Path | Purpose |
-|------|---------|
-| `profile.env` | Profile metadata |
-| `settings.json`, `models.json` | Optional full-file overrides; missing files fall back to `pi/base/` |
-| `agents/` | Optional agent role additions or overrides |
-| `skills/` | Profile-local skills; names must not duplicate `shared/skills/` |
-| `extensions.list` | Enabled extension names from `pi/extensions/`, one per line |
-| `resolved/` | Generated deployable output; committed to git |
-
-Every resolved profile includes all `shared/skills/` plus any profile-local skills. Install deploys committed profile output to `~/.pi/profiles/<profile>/agent/`, keeps sessions profile-local, and shares auth through `~/.pi/auth.json`.
-
-##### Subagents
-
-Pi includes a subagent extension for delegating tasks to specialized agents with isolated context windows. Each subagent runs as a separate `pi` process.
-
-**Agent roles** live in `pi/base/agents/` and are deployed through the active profile's resolved `agents/` directory:
-
-| Agent | Purpose | Tools |
-|-------|---------|-------|
-| `implementer` | TDD implementation worker | read, write, bash, edit |
-| `test-reviewer` | Test assertion and weakness review | read, bash |
-| `quality-reviewer` | Code structure and spec adherence review | read, bash |
-| `premortem-reviewer` | Forward-looking operational risk review | read, bash |
-| `security-reviewer` | Security review for attack surfaces and data exposure | read, bash |
-| `design-reviewer` | Rendered UI design review | read, bash, write |
-| `visual-qa` | Browser-based functional QA | bash, write, read |
-| `sage` | High-authority escalation and plan review | read, write, edit, bash, web_search, web_fetch |
-
-**Three execution modes**:
-- **Single**: `Use implementer to fix the failing test`
-- **Parallel**: `Run test-reviewer and quality-reviewer in parallel on this diff`
-- **Chain**: `Use implementer, then quality-reviewer, then implementer again for fixes`
+Sessions and auth stay local under `~/.pi/agent/` and are not tracked.
 
 ##### Pi Sandbox (`pis`)
 
@@ -1080,8 +1029,7 @@ Run Pi inside a Docker container for safe agentic coding. The container is ephem
 
 **Basic usage**:
 ```bash
-pis                     # Run active-profile Pi in cwd (sandboxed)
-pis-coding              # Run the coding profile directly
+pis                     # Run Pi in cwd (sandboxed)
 pis --build             # Rebuild the Docker image
 ```
 
@@ -1105,38 +1053,16 @@ pis ~/Code/lib -- --mode rpc            # Extra dir + pi args
 |-----------|---------------|------|
 | Current directory | Same absolute path | read-write |
 | Extra directories | Same absolute path | read-only (or `-rw`) |
-| `~/.pi/profiles/<profile>/agent/sessions/` | `/home/<user>/.pi/agent/sessions/` | read-write |
-| `~/.pi/profiles/<profile>/agent/auth.json` | `/home/<user>/.pi/agent/auth.json` | read-only |
-| `~/.pi/profiles/<profile>/agent/settings.json` | `/home/<user>/.pi/agent/settings.json` | read-only |
-| `~/.pi/profiles/<profile>/agent/models.json` | `/home/<user>/.pi/agent/models.json` | read-only |
-| `~/.pi/profiles/<profile>/agent/skills/` | `/home/<user>/.pi/agent/skills/` | read-only |
-| `~/.pi/profiles/<profile>/agent/agents/` | `/home/<user>/.pi/agent/agents/` | read-only |
-| `~/.pi/profiles/<profile>/agent/extensions/` | `/home/<user>/.pi/agent/extensions/` | read-only |
+| `~/.pi/agent/sessions/` | `/home/<user>/.pi/agent/sessions/` | read-write |
+| `~/.pi/agent/auth.json` | `/home/<user>/.pi/agent/auth.json` | read-only |
+| `~/.pi/agent/settings.json` | `/home/<user>/.pi/agent/settings.json` | read-only |
+| `~/.pi/agent/models.json` | `/home/<user>/.pi/agent/models.json` | read-only |
+| `~/.pi/agent/skills/` | `/home/<user>/.pi/agent/skills/` | read-only |
+| `~/.pi/agent/extensions/` | `/home/<user>/.pi/agent/extensions/` | read-only |
 
 **Environment**: API key env vars (`*_API_KEY`) are forwarded automatically.
 
 **Container toolchains**: Ubuntu 24.04, Node.js LTS (fnm), Python 3, Go 1.24+, tmux, git, ripgrep, fd, jq, gh, build-essential, zsh.
-
-#### Gemini CLI
-
-[Google's open-source AI agent](https://github.com/google-gemini/gemini-cli) for the terminal,
-backed by Gemini models with a generous free tier (60 req/min, 1000 req/day with a personal
-Google account). See [gemini/README.md](gemini/README.md) for details.
-
-**Authentication**:
-```bash
-gemini  # First launch prompts for Google account / API key
-```
-
-**Features**:
-- User-level subagents in `~/.gemini/agents/`
-- User-level skills in `~/.gemini/skills/`
-- MCP server support via `~/.gemini/settings.json`
-
-**Usage**:
-```bash
-gemini  # or `gm`
-```
 
 #### GitHub Copilot CLI
 
@@ -1362,12 +1288,7 @@ Start an agent inside Herdr and check that the pane reports agent state:
 herdr pane list
 ```
 
-For Pi, rebuild/deploy profiles after changing extension lists:
-
-```bash
-pim build
-pim deploy
-```
+For Pi, rerun the `pi` install module after changing tracked Pi config or extension sources.
 
 ## Requirements
 

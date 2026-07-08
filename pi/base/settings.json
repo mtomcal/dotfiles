@@ -1,8 +1,0 @@
-{
-  "enableSkillCommands": true,
-  "lastChangelogVersion": "0.80.3",
-  "defaultProvider": "ollama-cloud",
-  "defaultModel": "gpt-oss:120b",
-  "defaultThinkingLevel": "medium",
-  "theme": "dark"
-}

@@ -58,7 +58,7 @@ All parameters referenced here are defined and rationalized in [Parameters](para
 
 ### Symlink Mapping
 
-The complete set of symlink deployments the system MUST establish. Most entries define a source location within the dotfiles repository and a target location on the filesystem. Runtime pointers, such as the active Pi profile symlink, MAY point to another managed runtime path.
+The complete set of symlink deployments the system MUST establish. Most entries define a source location within the dotfiles repository and a target location on the filesystem.
 
 | Category | Target Path | Source Path | Deployment Type | Condition |
 |----------|-------------|-------------------------------------|-----------------|-----------|
@@ -75,21 +75,16 @@ The complete set of symlink deployments the system MUST establish. Most entries 
 | **Claude Code** | ~/.claude/skills | shared/skills | replace-symlink (directory) | Always |
 | **Claude Code** | ~/.claude/settings.json | claude/settings.json | replace-symlink | Source file must exist |
 | **Claude Code** | ~/.claude/statusline.sh | claude/statusline.sh | replace-symlink | Source file must exist |
-| **Pi** | ~/.pi/profiles/{profile}/agent/skills | pi/profiles/{profile}/resolved/skills | replace-symlink (directory) | For every committed Pi profile |
-| **Pi** | ~/.pi/profiles/{profile}/agent/settings.json | pi/profiles/{profile}/resolved/settings.json | replace-symlink | Source file must exist |
-| **Pi** | ~/.pi/profiles/{profile}/agent/models.json | pi/profiles/{profile}/resolved/models.json | replace-symlink | Source file must exist |
-| **Pi** | ~/.pi/profiles/{profile}/agent/agents | pi/profiles/{profile}/resolved/agents | replace-symlink (directory) | For every committed Pi profile |
-| **Pi** | ~/.pi/profiles/{profile}/agent/extensions/{extension} | pi/profiles/{profile}/resolved/extensions/{extension} | replace-symlink (directory) | For every enabled profile extension |
-| **Pi** | ~/.pi/agent | ~/.pi/profiles/{active-profile}/agent | replace-symlink (directory) | Always |
-| **Pi** | ~/.pi/active-profile | {active-profile} | write-state-file | Always |
+| **Pi** | ~/.pi/agent/settings.json | pi/settings.json | replace-symlink | Always |
+| **Pi** | ~/.pi/agent/models.json | pi/models.json | replace-symlink | Always |
+| **Pi** | ~/.pi/agent/skills | pi/skills | replace-symlink (directory) | Always |
+| **Pi** | ~/.pi/agent/extensions/herdr-agent-state | pi/extensions/herdr-agent-state | replace-symlink (directory) | Always |
+| **Pi** | ~/.pi/agent/extensions/inherit-last-model | pi/extensions/inherit-last-model | replace-symlink (directory) | Always |
+| **Pi** | ~/.pi/agent/extensions/web-search | pi/extensions/web-search | replace-symlink (directory) | Always |
 | **Codex** | ~/.codex/config.toml | codex/config.toml | copy-from-template | Always (see Behavior section) |
 | **Codex** | ~/.codex/agents | codex/agents | replace-symlink (directory) | Always |
 | **Codex** | ~/.codex/AGENTS.md | codex/AGENTS.md | replace-symlink | Source file must exist |
 | **Codex** | ~/.agents/skills | shared/skills | replace-symlink (directory) | Always |
-| **Gemini** | ~/.gemini/settings.json | gemini/settings.json | replace-symlink | Always |
-| **Gemini** | ~/.gemini/commands | gemini/commands | replace-symlink (directory) | Always |
-| **Gemini** | ~/.gemini/agents | gemini/agents | replace-symlink (directory) | Always |
-| **Gemini** | ~/.gemini/skills | shared/skills | replace-symlink (directory) | Always |
 | **Copilot** | ~/.config/copilot/commands | copilot/commands | replace-symlink (directory) | Always |
 | **Copilot** | ~/.config/copilot/agents | copilot/agents | replace-symlink (directory) | Always |
 | **Copilot** | ~/.config/copilot/skills | shared/skills | replace-symlink (directory) | Always |
@@ -228,7 +223,6 @@ Multiple agent configs share a single canonical skills directory through symlink
 - `~/.claude/skills` → shared/skills
 - `~/.pi/agent/skills` → shared/skills
 - `~/.codex/../agents/skills` (via `~/.agents/skills`) → shared/skills
-- `~/.gemini/skills` → shared/skills
 - `~/.config/copilot/skills` → shared/skills
 
 All skill directory symlinks point to the same source directory in the dotfiles repository. This means installing a skill into any one agent's skills directory immediately makes it available to all agents. This is an intentional architectural choice — the system MUST NOT break this shared reference pattern.
@@ -286,7 +280,7 @@ The installer runs in strict mode where any unhandled operation failure terminat
 
 ### Conditional Source Existence
 
-Some mappings have the condition "Source file must exist" — these are for optional configuration files that may or may not be present in the dotfiles repository. The system MUST check for source existence and skip deployment if the source is absent. Examples include `claude/settings.json`, `claude/statusline.sh`, `pi/profiles/{profile}/resolved/settings.json`, and `pi/profiles/{profile}/resolved/models.json`.
+Some mappings have the condition "Source file must exist" — these are for optional configuration files that may or may not be present in the dotfiles repository. The system MUST check for source existence and skip deployment if the source is absent. Examples include `claude/settings.json` and `claude/statusline.sh`.
 
 ### Zsh Source Append Idempotency
 
@@ -363,7 +357,7 @@ Expected Output: The symlink is removed; the dotfiles template is copied as a re
 Category: Integration
 Priority: Critical
 Preconditions: Dotfiles repo is populated with shared/skills directory
-Input: Run all agent modules (Claude, Pi, Codex, Gemini, Copilot)
+Input: Run all agent modules (Claude, Pi, Codex, Copilot)
 Expected Output: All five skill directory symlinks resolve to the same canonical directory in the dotfiles repository; adding a skill file to any one of them makes it immediately visible in all others
 
 ### TS-SYMLK-011: Lazygit config uses correct platform path
@@ -437,6 +431,6 @@ Expected Output: First run: all symlinks created, backups made for any conflicti
 |---------|------|---------|
 | 1.3.1 | 2026-07-06 | Clarified full-install idempotency expectations for modules that complete official updater paths rather than reporting only existing state. |
 | 1.3.0 | 2026-07-05 | Added Herdr config symlink deployment and clarified that Herdr runtime state is not deployed from the dotfiles repo. |
-| 1.2.0 | 2026-06-02 | Replaced single Pi config symlink mappings with Pi profile runtime mappings, active-profile compatibility symlink, and active-profile state file. |
+| 1.2.0 | 2026-06-02 | Documented Pi config symlink mappings. |
 | 1.1.0 | 2026-05-19 | Changed Pi skills symlink source from `shared/skills` to `pi/skills` for Pi-specific skill composition |
 | 1.0.0 | 2026-05-01 | Initial brownfield extraction — complete specification of symlink management behavior from existing install.sh |

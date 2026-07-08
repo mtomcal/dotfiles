@@ -62,7 +62,6 @@ The design is deliberately additive: the custom shell config is sourced at the e
 | `ZSH_ALIAS_VIM` | vim → nvim | alias | Muscle-memory redirect; all vim invocations launch neovim |
 | `ZSH_ALIAS_VI` | vi → nvim | alias | Same redirect for the shorter invocation |
 | `ZSH_ALIAS_CODEX` | cx | string | Two-character alias for Codex CLI |
-| `ZSH_ALIAS_GEMINI` | gm | string | Two-character alias for Gemini CLI |
 | `ZSH_ALIAS_COPILOT` | cop | string | Short alias for Copilot CLI |
 | `EDITOR` | nvim | string | Ensures all tools respecting EDITOR use neovim |
 | `VISUAL` | nvim | string | Ensures all tools respecting VISUAL use neovim |
@@ -147,7 +146,7 @@ On every shell session startup, the custom shell config MUST set both `EDITOR` a
 
 ### BR-SHELL-006: Configure PATH
 
-On every shell session startup, the custom shell config MUST prepend `~/.local/bin` to PATH. This ensures user-local binaries (fnm-managed Node, globally installed npm packages like Codex, Pi, Gemini) take precedence over system packages.
+On every shell session startup, the custom shell config MUST prepend `~/.local/bin` to PATH. This ensures user-local binaries (fnm-managed Node, globally installed npm packages like Codex and Pi) take precedence over system packages.
 
 ### BR-SHELL-007: Register Tmux Aliases
 
@@ -219,7 +218,6 @@ On every shell session startup, the following AI agent aliases MUST be available
 | Alias | Expansion |
 |-------|-----------|
 | `cx` | `codex` |
-| `gm` | `gemini` |
 | `cop` | `copilot` |
 
 ### BR-SHELL-013: Set Terminal Type
@@ -258,7 +256,7 @@ On every shell session startup, the system MUST conditionally initialize fnm:
 
 The `--use-on-cd` flag causes fnm to automatically switch to the Node version specified by `.node-version` or `.nvmrc` files when changing directories.
 
-The second `~/.local/bin` PATH prepend after fnm initialization is critical: without it, fnm's managed Node binaries would shadow user-installed global npm tools (such as Codex CLI, Pi, Gemini CLI) installed via `npm install -g --prefix ~/.local`.
+The second `~/.local/bin` PATH prepend after fnm initialization is critical: without it, fnm's managed Node binaries would shadow user-installed global npm tools (such as Codex CLI and Pi) installed via `npm install -g --prefix ~/.local`.
 
 ### BR-SHELL-017: Dependency Resolution for Zsh Modules
 
@@ -506,8 +504,8 @@ The install script's dependency resolver MUST enforce the following before execu
 **Category**: Unit
 **Priority**: Medium
 **Preconditions**: Custom shell config is sourced
-**Input**: `alias cx`, `alias gm`, `alias cop`
-**Expected Output**: `cx` expands to `codex`; `gm` expands to `gemini`; `cop` expands to `copilot`
+**Input**: `alias cx`, `alias cop`
+**Expected Output**: `cx` expands to `codex`; `cop` expands to `copilot`
 
 ### TS-SHELL-015: Go GOPATH and PATH on Linux
 

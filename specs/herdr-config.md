@@ -134,7 +134,7 @@ Herdr integrations for agents managed by this repo MUST be repo-owned. The imple
 
 ### HERDR-CONFIG-008: Shared Skill Distribution
 
-The Herdr skill MUST live under `shared/skills/herdr/`. Non-Pi agents receive it through their shared skills symlink. Pi receives it through each Pi profile's resolved skills composition.
+The Herdr skill MUST live under `shared/skills/herdr/`. Non-Pi agents receive it through their shared skills symlink. Pi receives it through `pi/skills/`.
 
 ---
 
@@ -158,9 +158,9 @@ The Herdr skill MUST live under `shared/skills/herdr/`. Non-Pi agents receive it
 
 3. **Direct installer consistency**: Herdr MUST be installed through the official curl installer on both Linux and macOS. Homebrew is intentionally not used for this tool so `herdr update` remains the consistent update path.
 
-4. **Integration ownership boundary**: Herdr integrations cross into agent config ownership. For Codex, Claude, Copilot, and Pi, implementation must add tracked source files and deploy them through existing agent config or Pi profile lifecycle paths.
+4. **Integration ownership boundary**: Herdr integrations cross into agent config ownership. For Codex, Claude, Copilot, and Pi, implementation must add tracked source files and deploy them through existing agent config paths.
 
-5. **Pi layer boundary**: Herdr's Pi integration MUST target Pi profile source/resolved output. It MUST NOT write directly to the active profile runtime or the compatibility path as the source of truth.
+5. **Pi layer boundary**: Herdr's Pi integration MUST target `pi/extensions/herdr-agent-state/` and deploy through the Pi agent config. It MUST NOT be installed by mutating live runtime files directly.
 
 ---
 
@@ -219,9 +219,9 @@ Expected Output: Integration files are deployed from dotfiles-managed sources; n
 TS-HERDR-008: Herdr skill is available to all agents
 Category: Integration
 Priority: High
-Preconditions: shared/skills/herdr/SKILL.md exists and Pi profiles have been rebuilt
-Input: Inspect non-Pi skills symlinks and Pi resolved skills
-Expected Output: Non-Pi agents resolve herdr through shared/skills; Pi profiles include herdr in resolved skills
+Preconditions: shared/skills/herdr/SKILL.md exists
+Input: Inspect non-Pi skills symlinks and Pi skills
+Expected Output: Non-Pi agents resolve herdr through shared/skills; Pi includes herdr through pi/skills
 ```
 
 ---

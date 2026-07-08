@@ -1,6 +1,6 @@
 # AI Agent Instructions
 
-This file provides guidance to AI coding agents when working with this dotfiles repo — a Herdr + tmux fallback + neovim + zsh environment using symlinks to deploy configs. Claude Code, Codex, Pi, Gemini CLI, and GitHub Copilot CLI all share context through this file. Cross-agent skills live in `shared/skills/`; Pi-specific subagent workflow skills live in `pi/skills/`.
+This file provides guidance to AI coding agents when working with this dotfiles repo — a Herdr + tmux fallback + neovim + zsh environment using symlinks to deploy configs. Claude Code, Codex, Pi, and GitHub Copilot CLI all share context through this file. Cross-agent skills live in `shared/skills/`; Pi sees those skills through `pi/skills/`.
 
 ## Map
 
@@ -17,9 +17,6 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 |   |-- agents
 |   `-- commands
 |-- docker
-|-- gemini
-|   |-- agents
-|   `-- commands
 |-- herdr
 |   `-- integrations
 |       |-- claude
@@ -30,57 +27,37 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 |   `-- custom
 |       `-- plugins
 |-- pi
-|   |-- agents
-|   |-- base
-|   |   `-- agents
 |   |-- extensions
 |   |   |-- herdr-agent-state
 |   |   |-- inherit-last-model
-|   |   |-- subagent
-|   |   |   `-- tests
 |   |   `-- web-search
-|   |-- lib
-|   |-- profiles
-|   |   |-- coding
-|   |   |   |-- resolved
-|   |   |   |   |-- agents
-|   |   |   |   |-- extensions
-|   |   |   |   `-- skills
-|   |   |   `-- skills
-|   |   |       |-- create-slice-plan
-|   |   |       |-- create-subagent-skill
-|   |   |       |-- orchestrate
-|   |   |       |-- plan
-|   |   |       `-- review
-|   |   `-- local
-|   |       `-- resolved
-|   |           |-- agents
-|   |           |-- extensions
-|   |           `-- skills
 |   |-- skills
 |   |   |-- audit-shared-skills -> ../../shared/skills/audit-shared-skills
 |   |   |-- bootstrap-specs -> ../../shared/skills/bootstrap-specs
 |   |   |-- create-agents-md -> ../../shared/skills/create-agents-md
 |   |   |-- create-explainer -> ../../shared/skills/create-explainer
 |   |   |-- create-plan -> ../../shared/skills/create-plan
-|   |   |-- create-slice-plan
-|   |   |-- create-subagent-skill
+|   |   |-- curator -> ../../shared/skills/curator
+|   |   |-- design-md -> ../../shared/skills/design-md
 |   |   |-- em-train -> ../../shared/skills/em-train
+|   |   |-- gameplay-asset-imagegen -> ../../shared/skills/gameplay-asset-imagegen
 |   |   |-- grill-me -> ../../shared/skills/grill-me
 |   |   |-- herdr -> ../../shared/skills/herdr
+|   |   |-- image-comparison-judge -> ../../shared/skills/image-comparison-judge
+|   |   |-- image-diff-describer -> ../../shared/skills/image-diff-describer
 |   |   |-- improve-codebase-architecture -> ../../shared/skills/improve-codebase-architecture
-|   |   |-- orchestrate
-|   |   |-- pi-profile-flavors -> ../../shared/skills/pi-profile-flavors
-|   |   |-- plan
+|   |   |-- playwright -> ../../shared/skills/playwright
 |   |   |-- playwright-cli -> ../../shared/skills/playwright-cli
+|   |   |-- playwright-visual-qa -> ../../shared/skills/playwright-visual-qa
 |   |   |-- prototype -> ../../shared/skills/prototype
 |   |   |-- ralph -> ../../shared/skills/ralph
-|   |   |-- review
 |   |   |-- tdd -> ../../shared/skills/tdd
 |   |   |-- test-quality-verifier -> ../../shared/skills/test-quality-verifier
 |   |   |-- tmux-agent-orchestration -> ../../shared/skills/tmux-agent-orchestration
 |   |   |-- ubiquitous-language -> ../../shared/skills/ubiquitous-language
 |   |   |-- update-specs -> ../../shared/skills/update-specs
+|   |   |-- video-to-contact-sheet -> ../../shared/skills/video-to-contact-sheet
+|   |   |-- visual-qa -> ../../shared/skills/visual-qa
 |   |   `-- write-a-skill -> ../../shared/skills/write-a-skill
 |   `-- tests
 |-- shared
@@ -102,7 +79,6 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 |       |-- image-comparison-judge
 |       |-- image-diff-describer
 |       |-- improve-codebase-architecture
-|       |-- pi-profile-flavors
 |       |-- playwright
 |       |-- playwright-cli
 |       |   `-- references
@@ -128,12 +104,12 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 
 ## Modules
 
-### Agent configs (`claude/`, `codex/`, `pi/`, `gemini/`, `copilot/`)
-- **Purpose**: Each directory holds one AI agent's role files, settings, and (for pi) TypeScript extensions. All are symlinked into `~/.<agent>/` by `install.sh`.
-- **Owns**: Per-agent: `agents/` (role MD files), `commands/` where supported, `settings.json` / `config.toml` / `models.json`. Pi also owns `extensions/` (custom TypeScript) and `skills/` (Pi-specific subagent workflow skills plus symlinks to shared skills).
-- **Depends on**: `shared/skills/` for cross-agent skills. Pi's runtime skills path resolves to `pi/skills/`, which composes Pi-only skills with symlinks to `shared/skills/`.
-- **Rules**: Agents never reference each other's configs. Shared skills `npx skills@latest add` into any non-Pi agent lands in `shared/skills/` automatically. Pi-specific skills that require `subagent_run`, `subagent_fork`, Pi role files, or `/tree` handoff live in `pi/skills/`. Before changing `pim`, Pi profile deployment, or Pi profile specs, read `pi/PIM_DESIGN.md` so source, resolved output, runtime, and active-pointer changes do not get conflated. Role MD files use frontmatter: `name`, `description`, `metadata.short-description`, `allowed-tools`.
-- **Entry points**: Agent root dirs. Each contains the settings file(s) the agent loads at startup. For Pi profile lifecycle work, also read `pi/PIM_DESIGN.md`.
+### Agent configs (`claude/`, `codex/`, `pi/`, `copilot/`)
+- **Purpose**: Each directory holds one AI agent's role files, settings, commands, or runtime wrappers. All are deployed by `install.sh`.
+- **Owns**: Per-agent: `agents/` where supported, `commands/` where supported, `settings.json` / `config.toml` / `models.json`. Pi also owns `extensions/` (custom TypeScript), `skills/` (Pi-visible shared skill symlinks), and the `pi`/`pis` wrappers.
+- **Depends on**: `shared/skills/` for cross-agent skills. Pi's runtime skills path resolves to `pi/skills/`, which is a visibility layer of symlinks to shared skills.
+- **Rules**: Agents never reference each other's configs. Shared skills `npx skills@latest add` into any non-Pi agent lands in `shared/skills/` automatically. Pi has one repo-owned runtime config at `~/.pi/agent`; do not reintroduce Pi profiles, `pim`, subagent roles, or the subagent extension.
+- **Entry points**: Agent root dirs. Each contains the settings file(s), wrappers, or config sources the agent loads at startup.
 
 ### `herdr/`
 - **Purpose**: Herdr terminal workspace manager config and repo-owned Herdr integration artifacts.
@@ -171,17 +147,17 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 - **Entry points**: `ls shared/skills/` to list current skills, then load the relevant `SKILL.md`.
 
 ### `pi/skills/`
-- **Purpose**: Pi's runtime skills directory. Owns Pi-specific subagent workflow skills and symlinks each cross-agent skill from `shared/skills/` so Pi still has the full skill catalog.
-- **Owns**: Pi-only skills that depend on `subagent_run`, `subagent_fork`, Pi role files, or `/tree` handoff.
+- **Purpose**: Pi's runtime skills directory. Symlinks cross-agent skills from `shared/skills/` so Pi has the shared skill catalog.
+- **Owns**: Pi-visible skill symlinks.
 - **Depends on**: `shared/skills/` through per-skill symlinks for cross-agent skills.
-- **Rules**: Do not move general cross-agent skills here. If a Pi-visible workflow becomes useful across Codex, Claude, Gemini, and Pi in this repo, promote it to `shared/skills/` and keep only the Pi symlink here. When adding a shared skill, add a matching symlink in `pi/skills/` if Pi should see it.
-- **Entry points**: `ls pi/skills/` to list Pi-visible skills; real directories are Pi-only, symlinks point to shared skills.
+- **Rules**: Do not move general cross-agent skills here. If a Pi-visible workflow becomes useful across Codex, Claude, Copilot, and Pi in this repo, promote it to `shared/skills/` and keep only the Pi symlink here. When adding a shared skill, add a matching symlink in `pi/skills/` if Pi should see it.
+- **Entry points**: `ls pi/skills/` to list Pi-visible skills; entries should be symlinks to shared skills.
 
 ### `specs/`
 - **Purpose**: Specification suite for the dotfiles manager — business rules, behavior contracts, and design language. Built via the bootstrap-specs skill.
 - **Owns**: `specs/*.md`. Spec files define what symlink management, install orchestration, and tool provisioning must do.
 - **Depends on**: none — specs inform all implementation modules.
-- **Rules**: Specs are the behavioral source of truth. `install.sh` and all configs conform to specs, not the reverse. Changes to deployment or tool setup must be reflected here. For Pi profile lifecycle changes, pair the specs with `pi/PIM_DESIGN.md`: the spec captures the contract, the design note captures the rationale and layer boundaries.
+- **Rules**: Specs are the behavioral source of truth. `install.sh` and all configs conform to specs, not the reverse. Changes to deployment or tool setup must be reflected here.
 - **Entry points**: `specs/SPEC-OF-SPECS.md`, `specs/README.md`.
 
 ## Installation
@@ -192,7 +168,7 @@ Primary entry point: `./install.sh` — idempotent, safe to re-run. Auto-detects
 
 - **`shared/skills/` is a cross-agent leaf**: Shared skills never depend on or reference individual agent configs. Dependency flows one way: agents → skills.
 - **`specs/` informs all modules**: Implementation conforms to specs, not the reverse.
-- **Agent configs are independent**: `claude/`, `codex/`, `pi/`, `gemini/` never reference each other. Pi-specific subagent workflow skills stay in `pi/skills/`; cross-agent skills stay in `shared/skills/`.
+- **Agent configs are independent**: `claude/`, `codex/`, `pi/`, and `copilot/` never reference each other. Cross-agent skills stay in `shared/skills/`.
 - **Neovim extends kickstart, never patches**: Custom plugins must work with current kickstart without monkey-patching. Must survive `git pull` updates to kickstart.
 - **install.sh is the sole deployment entry point**: No other script replicates installation logic.
 
@@ -229,15 +205,6 @@ Per-cycle checklist:
 - **Neovim plugins**: Restart neovim, verify lazy.nvim loads without errors.
 - **Skills/agents**: Run `audit-shared-skills` to verify cross-agent frontmatter.
 - **Symlink changes**: Run `install.sh` to verify all links resolve.
-
-### Built-in Review Pipeline
-
-The `/review` skill (`pi/skills/review/SKILL.md`) provides Pi's auto-detecting multi-dimension subagent code review:
-- Always fires: test-reviewer, quality-reviewer, **premortem-reviewer**
-- File-signal-gated: security-reviewer, design-reviewer, visual-qa
-- Runs on `git diff` by default, specific files via path args, `--full` for full audit
-- Produces consolidated report with summary card and per-reviewer verdicts
-- Referenced as the canonical review source by `/orchestrate`
 
 ## Development Workflows
 

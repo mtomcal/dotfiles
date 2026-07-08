@@ -35,7 +35,6 @@ Build a discrepancy table:
 ```md
 | # | Spec File | Type | What Changed | What Spec Says | Action |
 |---|-----------|------|-------------|----------------|--------|
-| 1 | ai-agent-config.md | reasoning gap | `pim` fix depended on Git empty-dir behavior | Specs mention `resolved/extensions/` but not the empty-set invariant | Add lifecycle rationale and edge-case rule |
 ```
 
 ## Execution Plan

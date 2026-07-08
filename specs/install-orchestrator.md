@@ -11,7 +11,7 @@
 
 The Install Orchestrator is the top-level entry point for deploying the entire dotfiles-managed development environment. It detects the platform, resolves module dependencies, presents an interactive or command-line-driven module selection interface, and then executes each selected module in dependency order. The orchestrator guarantees idempotency — running it multiple times with the same module list MUST produce the same system state without errors, data loss, or redundant operations.
 
-For Pi, the orchestrator deploys all committed **deployable profile output** directories, installs wrapper commands, and selects an initial **active profile** without rebuilding profile output at install time.
+For Pi, the orchestrator deploys the single repo-owned runtime config under `~/.pi/agent` and installs wrapper commands.
 
 The orchestrator does NOT implement any module's internal logic (package installation, symlink creation, etc.). It calls per-module functions that own those details. This spec governs the orchestration flow, phase ordering, platform branching, module dependency resolution, interactive menu behavior, and failure reporting.
 
@@ -50,7 +50,7 @@ The orchestrator does NOT implement any module's internal logic (package install
 | `DOTFILES_DIR` | Auto-detected script directory | path | The repository root MUST be auto-detected from the script's own location at runtime, never hard-coded |
 | `CODEX_CONFIG_TEMPLATE_MODE` | `preserve` | enum: `preserve`, `overwrite` | Controls whether an existing local Codex config is kept or replaced from the dotfiles template |
 | `MAX_PROFILE_CHOICE` | 4 | integer | Highest valid choice on the profile menu (Full, Minimal, Work, Custom) |
-| `NPM_GLOBAL_PREFIX` | `~/.local` | path | All npm-based global installs (Codex, Pi, Gemini) use this prefix so they survive fnm Node version switches |
+| `NPM_GLOBAL_PREFIX` | `~/.local` | path | All npm-based global installs (Codex and Pi) use this prefix so they survive fnm Node version switches |
 
 ---
 
@@ -70,23 +70,22 @@ The orchestrator does NOT implement any module's internal logic (package install
 | `name` | string | One of the valid module identifiers | Unique identifier for a selectable install unit |
 | `label` | string | Human-readable description | Displayed in menus and summaries |
 
-**Valid module identifiers**: `base_tools`, `neovim`, `nvim_config`, `tmux_config`, `herdr`, `herdr_config`, `herdr_integrations`, `zsh_ohmyzsh`, `zsh_config`, `golang` (toolchain only), `golang_full` (toolchain + LSP + tools), `nodejs`, `tui_tools`, `codex`, `codex_sandbox`, `claude`, `pi`, `pi_sandbox`, `gemini`, `copilot`, `playwright`
+**Valid module identifiers**: `base_tools`, `neovim`, `nvim_config`, `tmux_config`, `herdr`, `herdr_config`, `herdr_integrations`, `zsh_ohmyzsh`, `zsh_config`, `golang` (toolchain only), `golang_full` (toolchain + LSP + tools), `nodejs`, `tui_tools`, `codex`, `codex_sandbox`, `claude`, `pi`, `pi_sandbox`, `copilot`, `playwright`
 
 ### Pi Module Deployment Contract
 
 When the `pi` module is selected, the orchestrator MUST:
 
 1. Install the shared Pi binary once.
-2. Deploy every committed Pi profile runtime from `pi/profiles/{profile}/resolved/` into `~/.pi/profiles/{profile}/agent/`.
-3. Create or refresh the active-profile compatibility path `~/.pi/agent -> ~/.pi/profiles/{active-profile}/agent`.
-4. Create or refresh `~/.pi/active-profile` with the selected active profile name.
-5. Deploy wrapper commands `pi`, `pis`, `pi-<profile>`, `pis-<profile>`, and `pim`.
+2. Deploy `pi/settings.json`, `pi/models.json`, `pi/skills`, and enabled Pi extensions into `~/.pi/agent/`.
+3. Preserve local Pi auth and session state under `~/.pi/agent/`.
+4. Deploy wrapper commands `pi` and `pis`.
 
 ### Installation Profile
 
 | Profile | Modules Included |
 |---------|-----------------|
-| `full` | base_tools, neovim, nvim_config, tmux_config, herdr, herdr_config, herdr_integrations, zsh_ohmyzsh, zsh_config, golang_full, nodejs, tui_tools, codex, codex_sandbox, claude, playwright, pi, pi_sandbox, gemini, copilot |
+| `full` | base_tools, neovim, nvim_config, tmux_config, herdr, herdr_config, herdr_integrations, zsh_ohmyzsh, zsh_config, golang_full, nodejs, tui_tools, codex, codex_sandbox, claude, playwright, pi, pi_sandbox, copilot |
 | `minimal` | base_tools, neovim, nvim_config, tmux_config, herdr, herdr_config, herdr_integrations |
 | `work` | base_tools, neovim, nvim_config, tmux_config, herdr, herdr_config, herdr_integrations, tui_tools, copilot |
 
@@ -110,7 +109,6 @@ Modules declare implicit prerequisites via the dependency resolver. The resolver
 | `pi_sandbox` | Docker (external) | Not auto-installed; warning issued if missing |
 | `codex` | `nodejs` | Only if `npm` is not found |
 | `codex_sandbox` | `codex`, `nodejs`, Docker (external) | `nodejs` only if `npm` is not found; Docker warning issued if missing |
-| `gemini` | `nodejs` | Only if `npm` is not found |
 | `playwright` | `nodejs` | Only if `npm` is not found |
 | `golang_full` | `golang` | Always (golang_full calls golang install internally) |
 
@@ -204,7 +202,7 @@ Phase 7: COMPLETION REPORT
 
 **Precedence**: CLI arguments override interactive menu. If `--profile` or `--modules` is provided, the interactive menu is skipped entirely.
 
-**Terminology rule**: The `--profile` flag in `install.sh` refers to an installation profile (`full`, `minimal`, `work`), not a Pi profile. Pi profile selection is managed by `pim`.
+**Terminology rule**: The `--profile` flag in `install.sh` refers to an installation profile (`full`, `minimal`, `work`).
 
 ### Module Execution Semantics
 
@@ -261,13 +259,11 @@ When Neovim's Lazy plugin sync reports local changes in cached plugins:
 | Homebrew install failure | Homebrew installation script exits non-zero | `setup_package_manager` | Script exits | User troubleshoots Homebrew install manually |
 | Lazy sync dirty cache | `Lazy! sync` reports local changes in plugins | Plugin sync phase | Clean dirty plugin caches, retry once | Automatic; manual Lazy sync if retry fails |
 | Mason package install failure | MasonInstall command exits non-zero | Mason installation phase | Print warning with manual remediation command | User runs `:Mason` inside Neovim |
-| npm not found for agent install | Node.js/npm is not available when installing Codex, Pi, or Gemini | Dependency resolver | Auto-add `nodejs` module to resolved list | Automatic; user notified via warning message |
+| npm not found for agent install | Node.js/npm is not available when installing Codex or Pi | Dependency resolver | Auto-add `nodejs` module to resolved list | Automatic; user notified via warning message |
 | Docker not found for Pi sandbox | Docker command not found when installing `pi_sandbox` | `install_pi_sandbox` module | Print error, skip module | User must install Docker separately before re-running |
 | Docker not found for Codex sandbox | Docker command not found when installing `codex_sandbox` | `install_codex_sandbox` module | Print error, skip module | User must install Docker separately before re-running |
 | Herdr install failure | Herdr direct installer exits non-zero or `herdr` remains unavailable | `herdr` module | Append `herdr` to failed modules; continue with remaining modules | Check network/PATH and re-run install |
 | Herdr integration target missing | A managed agent config directory does not exist when `herdr_integrations` runs | `herdr_integrations` module | Skip that agent integration and continue | Install the relevant agent module and re-run |
-| Active Pi profile missing after deploy | `~/.pi/agent` points to a profile runtime that does not exist | `install_pi` or `pim doctor` validation | Reset active profile to configured default and recreate symlink; inform user to run `pim activate <default_profile>` |
-| Pi profile output missing | A source profile exists but `pi/profiles/{profile}/resolved/` is absent | `install_pi` validation | Print error naming the missing profile output and fail the `pi` module | Run `pim activate <profile>` then re-run install |
 | Go version fetch failure | Version endpoint returns empty result | `install_golang` module | Print error, signal module failure | Module fails; user retries or installs Go manually || PATH conflict for npm-installed agents | The agent binary is found via PATH but not at `~/.local/bin/` | Post-install verification | Print warning identifying the conflicting binary path | User must ensure `~/.local/bin` is earlier in PATH |
 | Codex config symlink detected | Existing `~/.codex/config.toml` is a symlink | `install_codex` module | Remove symlink, copy template as regular file | Automatic; local config file created from template |
 
@@ -286,7 +282,7 @@ When Neovim's Lazy plugin sync reports local changes in cached plugins:
 
 4. **Module isolation**: Each module function is self-contained — it performs its own prerequisite checks (e.g., checking if `npm` exists before installing an npm package). The dependency resolver adds modules to the execution list but does not skip internal prerequisite checks.
 
-5. **Global install prefix**: All npm-based global tools (Codex, Pi, Gemini) MUST be installed with `--prefix` pointing to `NPM_GLOBAL_PREFIX` (`~/.local`) to ensure they survive fnm Node version switches. The resulting binaries land in `~/.local/bin/`. Claude Code and Copilot CLI use curl-based installers instead of npm (see Tool Provisioning spec for installer type details).
+5. **Global install prefix**: npm-based global tools (Codex and Pi) MUST be installed with `--prefix` pointing to `NPM_GLOBAL_PREFIX` (`~/.local`) to ensure they survive fnm Node version switches. The resulting binaries land in `~/.local/bin/`. Claude Code and Copilot CLI use curl-based installers instead of npm (see Tool Provisioning spec for installer type details).
 
 6. **Herdr default replacement**: Herdr, Herdr config, and Herdr integrations are included in every standard installation profile. Tmux remains in every standard profile during migration as a fallback, but SSH defaults are governed by the shell config's Herdr-first multiplexer rule.
 
@@ -498,9 +494,9 @@ Expected Output: Only the toggled modules appear in the resolved and confirmed l
 ### TS-INSTL-028: Agent Skills Directories Linked
 Category: Integration
 Priority: High
-Preconditions: Multiple agent modules selected (e.g., `claude`, `pi`, `codex`, `gemini`, `copilot`)
-Input: `--modules claude,pi,codex,gemini,copilot`
-Expected Output: Claude, Codex, Gemini, and Copilot skills directory symlinks point to `~/dotfiles/shared/skills/`. Pi's active skills directory resolves through `~/.pi/agent` to the active profile runtime's resolved `skills/` directory, which contains all shared skills.
+Preconditions: Multiple agent modules selected (e.g., `claude`, `pi`, `codex`, `copilot`)
+Input: `--modules claude,pi,codex,copilot`
+Expected Output: Claude, Codex, and Copilot skills directory symlinks point to `~/dotfiles/shared/skills/`. Pi's skills directory resolves through `~/.pi/agent/skills` to `~/dotfiles/pi/skills`.
 
 ### TS-INSTL-029: Herdr Present In Every Standard Profile
 Category: Integration
@@ -525,6 +521,6 @@ Expected Output: The runner syntax-checks shell test files, executes each top-le
 | 1.3.2 | 2026-07-06 | Added the shell test suite contract: `bash tests/run.sh` discovers top-level shell tests, syntax-checks them, and uses a shared harness for install-script unit tests. |
 | 1.3.1 | 2026-07-06 | Clarified idempotency wording for modules that run official updater paths such as Claude Code's `latest` installer. |
 | 1.3.0 | 2026-07-05 | Added Herdr modules, included Herdr in every standard installation profile, specified Herdr integration skip behavior, and documented the Herdr default replacement migration rule. |
-| 1.2.0 | 2026-06-02 | Added Pi profile-aware deployment requirements for the `pi` module: deploy all committed profile runtimes, maintain `~/.pi/agent` and `~/.pi/active-profile`, install Pi wrapper commands including `pim`, and fail fast when required profile output is missing. |
+| 1.2.0 | 2026-06-02 | Added Pi deployment requirements. |
 | 1.1.0 | 2026-05-19 | Updated skills deployment expectations for Pi's composed skills directory |
 | 1.0.0 | 2026-05-01 | Initial spec: orchestration flow, phase ordering, platform branching, dependency resolution, idempotency rules, error handling, interactive/CLI modes |

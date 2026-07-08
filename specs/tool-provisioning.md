@@ -103,7 +103,6 @@ Packages with different names across platforms MUST use the `install_package` fu
 | Herdr | curl \| sh installer | curl \| sh installer | Herdr stable channel; update via `herdr update` |
 | Codex CLI | npm global install (NPM_GLOBAL_PREFIX) | same as Ubuntu | npm resolves @latest |
 | Pi Coding Agent | npm global install (NPM_GLOBAL_PREFIX) | same as Ubuntu | npm resolves @latest |
-| Gemini CLI | npm global install (NPM_GLOBAL_PREFIX) | same as Ubuntu | npm resolves @latest |
 | Playwright CLI | npm global install (no prefix — inconsistent) | same as Ubuntu | npm resolves @latest |
 | Copilot CLI | curl \| bash installer | same as Ubuntu | Official installer script; binary lands in ~/.local/bin |
 | Claude Code | curl \| bash installer with `latest` target | same as Ubuntu | Official installer script resolves latest release; binary lands in ~/.local/bin |
@@ -138,7 +137,6 @@ Packages with different names across platforms MUST use the `install_package` fu
 | claude | curl | Installer needs curl |
 | pi | npm | npm global install for Pi binary |
 | codex | npm | npm global install for Codex binary |
-| gemini | npm | npm global install for Gemini binary |
 | copilot | curl | Installer needs curl |
 | playwright | npm | npm global install for Playwright CLI |
 | sandbox_base | docker | Shared Docker base image for agent sandboxes |
@@ -151,11 +149,8 @@ The Pi binary is installed once, but the provisioning system MUST ensure the fol
 
 | Command | Backing behavior |
 |---------|------------------|
-| `pi` | Launch Pi against the active profile runtime at `~/.pi/agent` |
-| `pi-<profile>` | Launch Pi against the named profile runtime |
-| `pis` | Launch sandboxed Pi against the active profile runtime |
-| `pis-<profile>` | Launch sandboxed Pi against the named profile runtime |
-| `pim` | Manage Pi profiles (`list`, `current`, `use`, `path`, `doctor`, `create`, `build`) |
+| `pi` | Launch Pi against `~/.pi/agent` |
+| `pis` | Launch sandboxed Pi against `~/.pi/agent` |
 
 ---
 
@@ -332,7 +327,7 @@ IF fnm is available
 END IF
 ```
 
-**Critical rule**: npm global installs for AI CLI tools (Codex, Pi, Gemini) MUST use `--prefix` pointing to `NPM_GLOBAL_PREFIX` (`~/.local`) so that binaries survive fnm Node version switches. The `~/.local/bin` directory MUST be on PATH.
+**Critical rule**: npm global installs for AI CLI tools (Codex and Pi) MUST use `--prefix` pointing to `NPM_GLOBAL_PREFIX` (`~/.local`) so that binaries survive fnm Node version switches. The `~/.local/bin` directory MUST be on PATH.
 
 ### Herdr Installation
 
@@ -465,7 +460,7 @@ END IF
 
 ### AI CLI Tool Installation
 
-All AI CLI tools (Codex, Pi, Gemini) follow the same npm-based pattern:
+All npm-based AI CLI tools (Codex and Pi) follow the same pattern:
 
 ```
 IF npm not found
@@ -495,7 +490,6 @@ DEPLOY config symlinks for settings, agents, skills
 |------|---------------|-----------------|----------------|
 | Codex CLI | npm global | `npm install -g --prefix ~/.local` | `~/.local/bin/` |
 | Pi Coding Agent | npm global | `npm install -g --prefix ~/.local` | `~/.local/bin/` |
-| Gemini CLI | npm global | `npm install -g --prefix ~/.local` | `~/.local/bin/` |
 | Playwright CLI | npm global (no prefix) | `npm install -g` | fnm Node directory |
 | Claude Code | curl installer | `curl -fsSL https://claude.ai/install.sh \| bash -s latest` | `~/.local/bin/` |
 | Copilot CLI | curl installer | `curl -fsSL https://gh.io/copilot-install \| bash` | `~/.local/bin/` |
@@ -614,7 +608,7 @@ Dependencies are resolved dynamically at runtime by checking whether prerequisit
 
 5. **Herdr direct installer exception**. Herdr intentionally bypasses Homebrew on macOS. This is a tool-specific exception so `herdr update` remains the consistent update path across Linux and macOS direct installs.
 
-5. **npm global prefix MUST be NPM_GLOBAL_PREFIX**. AI CLI tools (Codex, Pi, Gemini) all install with `npm install -g --prefix` pointing to `NPM_GLOBAL_PREFIX` (`~/.local`). This ensures binaries land in `~/.local/bin/` and survive fnm Node version switches. Never use the fnm-managed Node directory as the global prefix.
+5. **npm global prefix MUST be NPM_GLOBAL_PREFIX**. Codex and Pi install with `npm install -g --prefix` pointing to `NPM_GLOBAL_PREFIX` (`~/.local`). This ensures binaries land in `~/.local/bin/` and survive fnm Node version switches. Never use the fnm-managed Node directory as the global prefix.
 
 6. **Codex config.toml is a copy, not a symlink**. Unlike other agent configs, Codex writes machine-specific values into `~/.codex/config.toml`. The dotfiles template MUST be copied; subsequent runs preserve the local copy unless `--codex-config-template overwrite` is specified.
 
@@ -883,5 +877,5 @@ Expected Output: Installer is skipped and success is emitted without reinstallin
 |---------|------|---------|
 | 1.2.1 | 2026-07-06 | Required Claude Code to run the official installer with the `latest` target on every Claude module execution, with user-local binary verification. |
 | 1.2.0 | 2026-07-05 | Added Herdr direct-installer provisioning, Herdr modules, error handling, and tests. |
-| 1.1.0 | 2026-06-02 | Clarified that Pi installs a single shared binary across all Pi profiles and specified the expected command surface: `pi`, `pi-<profile>`, `pis`, `pis-<profile>`, and `pim`. |
+| 1.1.0 | 2026-06-02 | Clarified that Pi installs a single shared binary. |
 | 1.0.0 | 2026-05-01 | Initial spec extracted from install.sh. Covers OS detection, package installation, tool downloads, fnm/Node.js, TUI tools, Mason packages, AI CLI tools, dependency resolution, and error handling. |

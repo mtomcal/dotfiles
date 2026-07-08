@@ -56,7 +56,6 @@ After retrospective intake, inspect enough local context to avoid duplicate or l
    - Codex: current Codex runtime, `$CODEX_HOME`, `~/.codex/`, Codex session/history files.
    - Pi: `~/.pi/`, `pi/skills/`, Pi runtime markers, Pi session or extension-owned state.
    - Claude: `~/.claude/`, `.claude/`, Claude transcript/history conventions.
-   - Gemini: `~/.gemini/`, Gemini transcript/history conventions.
    - If detection is ambiguous, say so in the evidence ledger and inspect only clearly relevant sources.
 2. Inspect the current context window for:
    - human retrospective notes and stated boundaries

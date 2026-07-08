@@ -1,6 +1,6 @@
 ---
 name: audit-shared-skills
-description: Audit skills in shared/skills/ for cross-agent frontmatter compatibility, flagging missing fields and offering to fix them. Use when skills have been added via npx or manually and need to be checked for compatibility across Claude Code, Codex, Pi, Gemini CLI, and Copilot CLI.
+description: Audit skills in shared/skills/ for cross-agent frontmatter compatibility, flagging missing fields and offering to fix them. Use when skills have been added via npx or manually and need to be checked for compatibility across Claude Code, Codex, Pi, and Copilot CLI.
 metadata:
   short-description: Audit shared skills for cross-agent compatibility
 ---

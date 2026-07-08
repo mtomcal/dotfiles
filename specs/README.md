@@ -135,7 +135,7 @@ graph TD
 - [ ] Extract herdr-config spec from herdr/config.toml
 - [ ] Extract tmux-config spec from tmux/.tmux.conf
 - [ ] Extract neovim-config spec from nvim/custom/ plugin files
-- [ ] Extract ai-agent-config spec from codex/, claude/, pi/, gemini/, copilot/ directories
+- [ ] Extract ai-agent-config spec from codex/, claude/, pi/, copilot/ directories
 
 ### Phase 4: Leaf
 
