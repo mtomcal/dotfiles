@@ -79,7 +79,7 @@ Every orchestration decision has a recommended default. Present defaults, let th
 | Decision | Default |
 |----------|---------|
 | Provider preference | ollama-cloud for implementation, ollama-cloud for review |
-| Provider fallback | openrouter for slow providers, same model |
+| Provider fallback | switch between ollama-cloud and opencode-go where the same model exists |
 | Budget strategy | Prefer cheapest provider per model; fall back to alternatives if slow |
 | Guardrail defaults | Per risk tier (see table below) |
 

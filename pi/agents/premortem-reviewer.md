@@ -3,7 +3,7 @@ name: premortem-reviewer
 description: Forward-looking operational risk analysis — identifies failure modes, edge cases, and deployment risks before they occur
 tools: read, bash
 model: deepseek-v4-pro
-provider: crof
+provider: opencode-go
 thinking: high
 maxTurns: 10
 maxCost: 0.10

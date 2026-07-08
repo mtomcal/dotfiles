@@ -2,8 +2,8 @@
 name: sage
 description: Highest-authority escalation agent — consulted when implementations fail, confidence drops below 80%, or deep expertise is required
 tools: read, write, edit, bash, web_search, web_fetch
-model: gpt-5.5
-provider: openai-codex
+model: deepseek-v4-pro
+provider: opencode-go
 thinking: high
 maxTurns: 50
 maxCost: 1.50

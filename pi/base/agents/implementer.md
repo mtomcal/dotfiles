@@ -2,8 +2,8 @@
 name: implementer
 description: TDD implementation agent — reads a task text and executes RED, GREEN, REFACTOR cycle
 tools: read, write, bash, edit
-model: deepseek-v4-flash
-provider: crof
+model: gpt-oss:120b
+provider: ollama-cloud
 thinking: medium
 maxTurns: 100
 maxCost: 0.70

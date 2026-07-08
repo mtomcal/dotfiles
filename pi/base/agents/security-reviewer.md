@@ -3,7 +3,7 @@ name: security-reviewer
 description: Checks for new attack surfaces, input validation, auth boundaries, data exposure
 tools: read, bash
 model: deepseek-v4-pro
-provider: crof
+provider: opencode-go
 thinking: high
 maxTurns: 10
 maxCost: 0.10

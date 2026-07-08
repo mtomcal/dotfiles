@@ -3,7 +3,7 @@ name: quality-reviewer
 description: Checks code structure, naming, consistency, and adherence to spec constraints
 tools: read, bash
 model: deepseek-v4-pro
-provider: crof
+provider: opencode-go
 thinking: high
 maxTurns: 70
 maxCost: 0.70

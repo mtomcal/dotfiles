@@ -108,6 +108,28 @@ pim_replace_symlink() {
     ln -s "$source" "$target"
 }
 
+pim_prune_extension_symlinks() {
+    local resolved_extensions="$1"
+    local runtime_extensions="$2"
+    local entry name
+
+    [[ -d "$runtime_extensions" ]] || return 0
+
+    for entry in "$runtime_extensions"/*; do
+        [[ -e "$entry" || -L "$entry" ]] || continue
+        name="$(basename "$entry")"
+        if [[ -e "$resolved_extensions/$name" || -L "$resolved_extensions/$name" ]]; then
+            continue
+        fi
+        if [[ -L "$entry" ]]; then
+            rm "$entry"
+        else
+            printf 'pim: unmanaged runtime extension exists: %s\n' "$entry" >&2
+            return 1
+        fi
+    done
+}
+
 pim_prepare_shared_auth() {
     local home="$1"
 
@@ -153,6 +175,7 @@ pim_deploy_profile() {
     pim_replace_symlink "$resolved/skills" "$runtime/skills"
     pim_replace_symlink "$home/.pi/auth.json" "$runtime/auth.json"
 
+    pim_prune_extension_symlinks "$resolved/extensions" "$runtime/extensions" || return 1
     if [[ -d "$resolved/extensions" ]]; then
         for extension in "$resolved/extensions"/*; do
             [[ -e "$extension" || -L "$extension" ]] || continue

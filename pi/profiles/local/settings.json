@@ -1,7 +1,7 @@
 {
   "enableSkillCommands": true,
   "lastChangelogVersion": "0.78.0",
-  "defaultProvider": "ollama-local",
-  "defaultModel": "qwen3.6:27b-mlx",
+  "defaultProvider": "ollama-cloud",
+  "defaultModel": "deepseek-v4-pro",
   "defaultThinkingLevel": "medium"
 }

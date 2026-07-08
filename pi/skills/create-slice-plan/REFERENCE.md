@@ -172,7 +172,7 @@ Repeat until all slices are `done`:
 
 ## Escalation Protocol
 
-1. **Provider switch** — same model, different provider (e.g., ollama-cloud → openrouter)
+1. **Provider switch** — same model, different allowed provider (e.g., ollama-cloud → opencode-go, where available)
 2. **Course correction** — append guidance to slice's Course Corrections section, re-delegate same model+provider
 3. **Model bump** — escalate to stronger model or higher thinking
 4. **Orchestrator takeover** — you implement directly (last resort only)
@@ -345,7 +345,7 @@ When writing a slice plan, verify these before finalizing:
 
 Full 4-tier escalation ladder, tried in order:
 
-1. **Provider switch** — same model, different provider (e.g., ollama-cloud → openrouter)
+1. **Provider switch** — same model, different allowed provider (e.g., ollama-cloud → opencode-go, where available)
 2. **Course correction** — orchestrator appends guidance to the slice file's Course Corrections section, re-delegates to same model+provider
 3. **Model bump** — escalate to a stronger model (e.g., glm-5.1 → deepseek-v4-pro, or thinking: medium → high)
 4. **Orchestrator takeover** — the orchestrator agent itself implements the slice directly

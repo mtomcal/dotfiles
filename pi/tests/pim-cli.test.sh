@@ -64,6 +64,11 @@ assert_symlink_to() {
     [[ "$(readlink "$path")" == "$target" ]] || fail "expected $path -> $target, got $(readlink "$path")"
 }
 
+assert_absent() {
+    local path="$1"
+    [[ ! -e "$path" && ! -L "$path" ]] || fail "expected path to be absent: $path"
+}
+
 # ── Slice 1 tests (dashboard) ────────────────────────────────────────────────
 
 test_dashboards_lists_profiles_with_metadata() {
@@ -202,6 +207,22 @@ test_use_always_rebuilds_even_when_runtime_exists() {
 
     [[ -d "$root/pi/profiles/coding/resolved" ]] || fail "activate always rebuilds, but resolved dir is missing"
     assert_eq "$(cat "$home/.pi/active-profile")" "coding"
+}
+
+test_use_prunes_removed_runtime_extensions() {
+    local root home runtime
+    root="$(new_tmp)"
+    home="$(new_tmp)"
+    make_repo "$root"
+
+    run_pim "$root" "$home" use coding >/dev/null
+    runtime="$home/.pi/profiles/coding/agent"
+    [[ -L "$runtime/extensions/subagent" ]] || fail "expected initial subagent extension"
+
+    : > "$root/pi/profiles/coding/extensions.list"
+    run_pim "$root" "$home" use coding >/dev/null
+
+    assert_absent "$runtime/extensions/subagent"
 }
 
 # ── Slice 4 test (activation preserves state on failure) ────────────────────
@@ -377,6 +398,7 @@ test_dashboard_shows_deployed_no_for_runtime_missing
 test_bare_profile_name_triggers_activation
 test_activate_always_builds_then_deploys
 test_use_always_rebuilds_even_when_runtime_exists
+test_use_prunes_removed_runtime_extensions
 test_activate_preserves_active_state_on_build_failure
 test_create_is_scaffold_only
 test_build_creates_resolved_without_activating
