@@ -150,7 +150,7 @@ The sequence follows WF-007: durable decisions, authoring owner, correctness rep
 | `SK-006` | skill | `ralph` | simplify inline | SK-001 | verified |
 | `SK-007` | skill | `create-explainer` | simplify inline | SK-001 | verified |
 | `SK-008` | skill | `test-quality-verifier` | retain substance; clarify routing | SK-001 | verified |
-| `SK-009` | skill | `ubiquitous-language` | simplify inline | SK-001, MG-001 | integrating |
+| `SK-009` | skill | `ubiquitous-language` | simplify inline | SK-001, MG-001 | verified |
 | `SK-010` | skill | `update-specs` | retain substance; repair executable/ownership contract | SK-001, MG-001 | queued |
 | `SK-011` | skill | `prototype` | simplify inline | SK-001 | claimed |
 | `SK-012` | skill | `audit-shared-skills` | simplify inline; remove unused Info severity | SK-001 | queued |
@@ -199,4 +199,4 @@ The final catalog gate additionally checks all 33 original skills, the proposal-
 
 `MG-001` revision 2, `MG-002` revision 1, and SK-001 through SK-005 are verified. Parallel mode is active.
 
-`MG-001` revision 2, `MG-002` revision 1, and SK-001 through SK-008 are verified. SK-009 is integrating and SK-011 remains claimed. SK-010 remains queued until the SK-009 terminology owner is verified; SK-011 is disjoint. No later production file is authorized without its item-specific exact proposal in `proposal-ready` state.
+`MG-001` revision 2, `MG-002` revision 1, and SK-001 through SK-009 are verified. SK-011 remains claimed. SK-010 is now unblocked and may enter the next open worker lane because the SK-009 terminology owner is verified. No later production file is authorized without its item-specific exact proposal in `proposal-ready` state.

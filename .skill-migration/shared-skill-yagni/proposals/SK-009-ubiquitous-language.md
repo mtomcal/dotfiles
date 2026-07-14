@@ -1,7 +1,7 @@
 ---
 id: SK-009
 target: ubiquitous-language
-status: ready-to-integrate
+status: verified
 revision: 2
 blocked-by: [SK-001, MG-001]
 source-verdict: simplify inline
@@ -129,6 +129,13 @@ Focused verification completed: `2026-07-14T16:57:25+00:00`.
 - Repository checks: `bash tests/run.sh` PASS (2 shell files, 12 tests); `git diff --check` PASS; Pi symlink remains `../../shared/skills/ubiquitous-language`; local introduction at `14d5c80cc86c440d45e84cd636aeaef310c2683d` remains supported; the target has no notice entry and no notice diff.
 - Exact scope and forbidden scope: PASS. Baseline plus untracked comparison contains only this proposal and target; `MIGRATION.md`, `pi/settings.json`, specs/glossary, notices, deployment, visibility, support files, and unrelated skills/proposals have no diff.
 - Residual risk: a repository with several plausible glossary authorities or bounded contexts requires user clarification and therefore cannot complete unattended; this is the deliberate guard against a competing canonical artifact. A new repository still receives the historical root filename only when no authority or convention exists.
+
+## Integrated verification
+
+- Coordinator verification timestamp: `2026-07-14T17:00:15+00:00`.
+- Exact two-file scope, complete skill review, semantic canonical section order, all five confirmed definitions, authority-first create/update routing, root fallback, competing-authority stop, seed schema, and project-form-preserving updates passed independent checks.
+- Repository shell tests passed 12/12; `git diff --check`, Pi visibility, local provenance, and unchanged notices passed.
+- `pi/settings.json` retained its recorded content and diff hashes and remained unstaged. The documented multiple-authority clarification risk remains intentional.
 
 ## Explicit exclusions
 
