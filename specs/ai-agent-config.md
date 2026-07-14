@@ -197,6 +197,8 @@ Expected Output: Runtime, sessions, and auth paths all point under `~/.pi/agent`
 
 ### TS-AIAGT-005: Cross-Agent Workflow Skills
 
+Category: Integration
+Priority: High
 Preconditions: The repository checkout contains the shipped shared skill catalog.
 
 Input: Audit shared skill frontmatter and inspect Pi-visible entries for `codebase-design`, `diagnosing-bugs`, `code-review`, `resolving-merge-conflicts`, `handoff`, and `research`.
