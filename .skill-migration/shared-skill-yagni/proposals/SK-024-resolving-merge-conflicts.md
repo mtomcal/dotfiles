@@ -1,7 +1,7 @@
 ---
 id: SK-024
 target: resolving-merge-conflicts
-status: ready-to-integrate
+status: verified
 revision: 2
 blocked-by: [SK-001]
 source-verdict: retain substance
@@ -138,6 +138,8 @@ Worker verification completed at `2026-07-14T18:08:12+00:00`.
 - Residual risk: Git can represent add/delete conflicts without all three stage entries, and operation internals vary by backend and version. The workflow therefore requires mapping the **available** stage entries and live operation state rather than assuming all three exist or treating labels as intent. Broader checks also remain repository-dependent, but every skipped, failed, or limited check must be reported and cannot authorize unrelated cleanup.
 
 The worker result is `ready-to-integrate`; this record does not claim coordinator integration, central verification, VG-001, SK-023, NEW-001, or any other migration item.
+
+Coordinator integration verification completed at `2026-07-14T18:11:46+00:00` against integrated commit `f760be3`: the complete target and proposal revision 2 were reread; exact definitions, all operation triggers, live state/stage/history identity and rebase warning, unrelated-change protection, per-hunk dual intent/authority, uncertainty stop, compatible/incompatible resolution, semantic-neighbor checks, executable marker-before-staging ordering, focused/broad checks, merge-induced-only fixes, selective staging/no-unmerged gate, staged diff, final report, explicit action authorization, frontmatter identity, Pi visibility, Git 2.43.0 applicability, Matt Pocock/MIT provenance, and exact scope passed independent checks. The YAML-aware audit accounted for all 33 skills with zero errors and warnings, `git diff --check` passed, and `bash tests/run.sh` passed all 12 tests. The protected `pi/settings.json` content and diff hashes remained `7d3f4713d7239e8cda3f75597a55f1767fecdf7964324630e4e74dc686d12e05` and `8298a9063e3ebf2988000d176057a41c31cf20c10bbabe92fb57d47f9f2738d5`. Residual risks remain operation/version-specific stage availability and repository-dependent broad checks, both explicitly reported by the workflow.
 
 ## Explicit exclusions
 
