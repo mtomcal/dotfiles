@@ -37,7 +37,7 @@ Completion criterion: the tree is clean, both endpoint commits are pinned, and o
 
 ### 2. Detect discrepancies and present the plan
 
-Read `AGENTS.md`, `specs/README.md`, the applicable `SPEC-OF-SPECS`, the relevant specs, and the normalized `git diff --stat` and complete `git diff`. If the pinned comparison is non-empty, load [REFERENCE.md](REFERENCE.md) now and keep it available through classification, editing, review, and rollback for its evidence prompts, plan contract, and checklists.
+Read `AGENTS.md`, `specs/README.md`, the applicable `SPEC-OF-SPECS`, the relevant specs, and the normalized `git diff --stat` and complete `git diff`. If the pinned comparison is non-empty, load [REFERENCE.md](REFERENCE.md) now and keep it available through classification, editing, review, and rollback for its evidence prompts, output forms, and checklists.
 
 Classify every changed area using the authoritative definitions above. Build a discrepancy table with the spec path, type, implementation evidence, current spec evidence, and proposed action. Account explicitly for in-spec changes that require no edit. If terminology work is indicated, load [`ubiquitous-language`](../ubiquitous-language/SKILL.md) and complete its canonical-location routing before finalizing scope, but do not edit the glossary yet.
 
@@ -79,5 +79,5 @@ Completion criterion: failure leaves no partial artifact edit from this run, or 
 
 ## Reference
 
-- When the pinned comparison is non-empty after Git preflight, load [REFERENCE.md](REFERENCE.md) because it contains the executable boundary recipe, evidence prompts, output forms, and detailed checklists.
+- When the pinned comparison is non-empty after Git preflight, load [REFERENCE.md](REFERENCE.md) because it contains the evidence prompts, output forms, and detailed checklists.
 - When a discrepancy requires terminology work, load [`ubiquitous-language`](../ubiquitous-language/SKILL.md) before glossary edits because that skill owns canonical-location selection and terminology updates while this workflow retains plan, integration, review, and acceptance authority.

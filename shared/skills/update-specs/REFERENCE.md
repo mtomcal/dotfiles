@@ -2,43 +2,7 @@
 
 The authoritative discrepancy definitions are in [SKILL.md](SKILL.md#language-definitions). This file applies those terms without redefining them.
 
-## Git Boundary Recipe
-
-Accept exactly one non-empty caller value in either `<base>` or `<base>..<head>` form. A single base compares that commit to `HEAD`; a complete two-dot form compares its two supplied endpoints. Do not append another `..HEAD` to a complete comparison, and do not accept omitted endpoints, three-dot merge-base semantics, or multiple comparisons.
-
-A shell implementation may normalize and pin the comparison as follows:
-
-```bash
-boundary='<caller-supplied value>'
-
-case "$boundary" in
-  ""|..*|*..|*...*|*..*..*)
-    printf 'invalid Git boundary: %s\n' "$boundary" >&2
-    exit 2
-    ;;
-  *..*)
-    base_ref=${boundary%%..*}
-    head_ref=${boundary#*..}
-    ;;
-  *)
-    base_ref=$boundary
-    head_ref=HEAD
-    ;;
-esac
-
-base_oid=$(git rev-parse --verify "${base_ref}^{commit}") || exit $?
-head_oid=$(git rev-parse --verify "${head_ref}^{commit}") || exit $?
-comparison="${base_oid}..${head_oid}"
-
-git diff --quiet "$comparison" --
-case $? in
-  0) printf 'comparison is empty: %s\n' "$comparison"; exit 1 ;;
-  1) ;; # differences exist
-  *) printf 'Git comparison failed: %s\n' "$comparison" >&2; exit 2 ;;
-esac
-```
-
-Use the pinned `$comparison` for `git diff --stat "$comparison" --` and `git diff "$comparison" --`. Git describes this diff form as comparing two endpoints; do not infer three-dot merge-base behavior or allow a moving branch name to change the evidence after preflight.
+The pinned comparison is already established by the main skill body before this file loads. Do not re-normalize, re-pin, or restate the Git boundary here; this file only carries post-selection evidence prompts, plan-shape reminders, and review/rollback checklists.
 
 ## Classification Evidence
 
@@ -47,8 +11,8 @@ Read in this order:
 1. `AGENTS.md` for module boundaries and repository rules.
 2. `specs/README.md` for suite reading order, dependencies, versions, and checklists.
 3. The applicable `SPEC-OF-SPECS` and relevant specs in their declared reading order.
-4. `git diff --stat "$comparison" --` for changed paths and magnitude.
-5. `git diff "$comparison" --` for complete implementation evidence.
+4. `git diff --stat` on the pinned comparison for changed paths and magnitude.
+5. `git diff` on the pinned comparison for complete implementation evidence.
 
 For every changed area, capture:
 
