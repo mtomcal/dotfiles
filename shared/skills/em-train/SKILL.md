@@ -108,6 +108,8 @@ Render the template placeholders `TICKET_TITLE`, `TICKET_SUMMARY`, `LEVEL`, `LAN
 
 Continue the already-approved `create-explainer` workflow with `<temporary-guide>/explainer/` as its caller-owned destination. Pass the learner persona, training mission, no-spoiler constraint, and temporary explainer destination owned by this session. All teaching examples and factual claims must come from code that existed at the training fixed point—not the requested implementation or the learner's new code. Retain Create Explainer's source mapping, tier contract, self-check, mandatory source-grounded reviewer pass, correction gates, identity-checked serving, browser validation, and honest fallback disclosure. EM Train retains the destination, mission, no-spoiler boundary, learner gate, and eventual cleanup.
 
+Before handoff, test the rendered guide instructions with one allowed conceptual question and one prohibited “write it for me” request. The allowed route must teach from fixed-point evidence; the prohibited route must ask what the learner tried and refuse the ticket answer.
+
 Tell the learner:
 
 ```text

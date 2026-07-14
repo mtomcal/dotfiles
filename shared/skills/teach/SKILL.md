@@ -27,7 +27,7 @@ Treat teaching as a stateful, multi-session practice. Route first between contin
 
 ### 1. Confirm the dedicated teaching workspace
 
-Ask for a dedicated workspace path. If the proposed path is an existing code checkout, explain that teaching state is durable and ask the user to choose a separate location or explicitly approve that checkout. Inspect an existing teaching workspace read-only before proposing changes.
+Ask for a dedicated workspace path. Use one mission per workspace; unrelated topics require separate teaching workspaces. If the proposed path is an existing code checkout, explain that teaching state is durable and ask the user to choose a separate location or explicitly approve that checkout. Inspect an existing teaching workspace read-only before proposing changes.
 
 For a new workspace, present the intended initial scaffold and obtain approval for both the path and exact first-lesson files/directories before writing:
 
@@ -75,7 +75,7 @@ Estimate the learner’s zone of proximal development from existing learning rec
 
 ### 3. Build trustworthy resources
 
-Compose `research` to gather and reconcile primary sources, official documentation, upstream source, recognized experts, and high-quality communities. Teach retains the teaching-workspace location, approved source set, `RESOURCES.md`, lesson claims, citations, and acceptance. Never use parametric recall as evidence for a material claim. Keep resources curated and annotated with what each source supports, and expose gaps instead of filling them with weak links.
+Compose `research` to gather and reconcile primary sources, official documentation, upstream source, recognized experts, and high-quality communities. Teach retains the teaching-workspace location, approved source set, `RESOURCES.md`, lesson claims, citations, and acceptance. Never use parametric recall as evidence for a material claim. Keep resources curated and annotated with what each source supports; prune sources proven wrong, shallow, or off-mission instead of burying them; and expose gaps instead of filling them with weak links.
 
 Use this compact resource format:
 ```md
@@ -83,11 +83,15 @@ Use this compact resource format:
 
 ## Knowledge
 - source name
-  One line on what it covers and when to use it.
+  One line on concepts it supports and when to use it.
+
+## Skill (Practice)
+- practice source or activity
+  One line on the performance it develops, feedback path, and when to use it.
 
 ## Wisdom (Communities)
 - community name
-  One line on what it covers and when to use it.
+  One line on judgment, practitioner feedback, or real-world context it supports.
 
 ## Gaps
 - Missing area and why it matters.
@@ -118,7 +122,7 @@ Completion criterion: the lesson has one mission-linked outcome, one retrieval/p
 
 Place behavior another lesson could reuse in `assets/` rather than duplicating it inline. Create attractive, printable HTML references for durable compressed knowledge such as cheat sheets, algorithms, syntax, sequences, and diagrams. Link lessons and references with relative HTML anchors.
 
-Add or revise a `GLOSSARY.md` term only after the learner demonstrates understanding by using it correctly. Use this compact glossary format:
+Add or revise a `GLOSSARY.md` term only after the learner demonstrates understanding by using it correctly. Pick canonical terms, list avoided aliases or ambiguities, and revise stale definitions in place as understanding deepens. Use this compact glossary format:
 ```md
 # {Topic} Glossary
 
@@ -133,7 +137,7 @@ Completion criterion: existing assets are reused where applicable, every new reu
 
 ### 6. Observe, record, render, and choose the next step
 
-After practice, ask the learner to retrieve or apply the idea unaided, without copying the lesson. Write a sequential learning record only when evidence establishes demonstrated understanding, prior-knowledge depth, a corrected misconception, or an approved mission shift. Supersede contradicted records rather than deleting history. Put teaching preferences and temporary observations in `NOTES.md`; learning records are not session logs.
+After practice, ask the learner to retrieve or apply the idea unaided, without copying the lesson. Write the next sequential learning record only when evidence establishes demonstrated understanding, prior-knowledge depth, a corrected misconception, or an approved mission shift. Supersede contradicted records rather than deleting history. Put teaching preferences and temporary observations in `NOTES.md`; learning records are not session logs.
 
 Use this compact learning record format when evidence qualifies:
 ```md
