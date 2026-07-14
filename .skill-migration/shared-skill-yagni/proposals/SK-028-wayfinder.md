@@ -1,7 +1,7 @@
 ---
 id: SK-028
 target: wayfinder
-status: proposal-ready
+status: ready-to-integrate
 revision: 1
 blocked-by: [SK-001]
 source-verdict: retain substance
@@ -127,7 +127,20 @@ Acceptance requires exact two-file scope, canonical three-section body, exact si
 
 ## Implementation and verification record
 
-Pending production editing and worker verification.
+Worker verification completed at `2026-07-14T18:47:30+00:00`.
+
+- Proposal-before-edit control: revision 1 reached committed `proposal-ready` state at `96922683412624227e9ef55a75e3a290cd39dc25` with the exact proposal/target file set before production editing. Complete diff review found no material file-set, authority, ownership, behavior, provenance, or removal divergence, so revision 1 now records `ready-to-integrate`.
+- Actual production diff: `shared/skills/wayfinder/SKILL.md` has 24 insertions and 15 removals relative to claim baseline `c0efe57f9daccd8d8faf781ccd2823d3dd1e9da5`; its resulting SHA-256 is `9ae4e4e7405486120597e6a35f28b21a532d1cf209bed262077b8597040f336c`. This proposal is the only additional item-local file.
+- Complete-file and behavior-ledger review: PASS. The body retains existing-map and new-chart routes, breadth-first fog discovery, direct planning when one context is sufficient, state-creation approval, map/ticket-before-edge order, parent-only writing, frontier and blocker derivation, out-of-scope dependency handling, exactly one non-research decision plus safe independent research, all four ticket types, implementation stop, all six resolution update paths, one durable home, full completion test, empty-frontier warning, and onward terminology/spec/plan routes.
+- Canonical body and confirmed language: PASS. Level-two headings are exactly `Language Definitions`, `Workflow`, and `Reference`; one Workflow contains the five ordered lifecycle steps and no Activities. All six WF-008 definitions are textually exact and unique, including the newly explicit Wayfinder effort, and repository-glossary precedence remains explicit.
+- Format and composition ownership: PASS. `FORMATS.md` is byte-identical to baseline with SHA-256 `c6a1c8c7e586cee88803cb767081cd5e294906ccc57317601a05c0752b479ed0`; it is the sole Markdown support pointer and is mandatory whenever creating or changing map/ticket state. Wayfinder retains destination, state, user gates, and return criteria while Research, Prototype, Grill Me, and prerequisite Task retain their processes.
+- Delegation and isolation: PASS. Herdr remains conditional on `HERDR_ENV=1` and limited to useful independent read-only investigations; delegates return through pane output and cannot edit `.wayfinder/`. Read-only sharing, isolated editable worktrees/clones, full in-process fallback with source notes, live-ID refresh, and no durable pane IDs remain inline.
+- Frontmatter and union audit: PASS for the target and all required catalog fields. Target frontmatter is byte-identical to baseline. A PyYAML-aware complete-catalog run parsed/accounted for all 33 discovered skills with zero errors; every description is within 1024 characters and contains exact `Use when`. It reports one unrelated pre-existing warning: `visual-qa` retains unused ffmpeg/ffprobe/file-command grants in the excluded frontmatter lane. Wayfinder introduces no audit warning.
+- Provenance and visibility: PASS. Complete target history is the local introduction at `353218e620f7261e0eedde9c62b8f9814c141830`; `THIRD_PARTY_NOTICES.md` continues to identify the Matt Pocock source revision `66898f60e8c744e269f8ce06c2b2b99ce7660d5f` and reproduce its MIT license. The exact-revision upstream source was inspected, no notice change is needed, and `pi/skills/wayfinder` remains the resolving `../../shared/skills/wayfinder` symlink.
+- Repository and exact-scope verification: PASS. Focused structural/ledger assertions and scoped `git diff --check` passed. `bash tests/run.sh` passed both shell files and all 12 tests. Baseline-aware paths are exactly this proposal and target, with no untracked files and no diff in protected or unrelated paths. No live Herdr ID is persisted.
+- Residual risks: maps whose actionable frontier temporarily contains only research still depend on the caller scheduling those independent research tickets while preserving the exact-one-nonresearch session rule; the skill must not bypass blockers or let researchers mutate state. The catalog retains the unrelated deferred `visual-qa` grant warning. No executable Wayfinder command exists, so verification is structural, semantic, link-, provenance-, audit-, and repository-test-based.
+
+The worker result is `ready-to-integrate`; this record does not claim coordinator integration, coordinator verification, central `verified` state, or catalog-wide VG-001 completion.
 
 ## Explicit exclusions
 

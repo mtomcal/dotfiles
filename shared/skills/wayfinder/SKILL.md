@@ -10,17 +10,20 @@ allowed-tools: read,write,edit,bash
 
 Wayfinder finds the route to a **destination**; it does not implement the destination. Its durable state is plain Markdown under `.wayfinder/`, with no required issue tracker or database.
 
-## Core model
+## Language Definitions
 
-- **Destination**: the observable decision, spec-ready outcome, or planning-ready change this effort is finding a route toward. It fixes scope.
-- **Decision ticket**: one session-sized uncertainty whose resolution advances the route. It is not an implementation slice.
-- **Fog of war**: in-scope uncertainty that is visible but not yet precise enough to state as a ticket.
-- **Frontier**: open tickets whose blockers are resolved and which may be worked now.
-- **Out of scope**: work consciously beyond the destination. It never graduates from fog unless the destination is explicitly redrawn.
+- **Destination** — observable decision, spec-ready outcome, or planning-ready change fixing scope.
+- **Wayfinder effort** — bounded uncertainty-resolution undertaking represented by a map and tickets.
+- **Decision ticket** — session-sized uncertainty advancing the destination, not an implementation slice.
+- **Fog of war** — visible in-scope uncertainty not yet precise enough for a ticket.
+- **Frontier** — open tickets whose blockers are resolved.
+- **Out of scope** — work beyond the destination that cannot graduate from fog unless the destination is redrawn.
 
-Use canonical domain terms from `specs/UBIQUITOUS_LANGUAGE.md` or a root `UBIQUITOUS_LANGUAGE.md`. Cross-check the destination and known constraints against relevant specs and code before asking the user questions that evidence can answer.
+Repository glossary wording is authoritative where overlapping. Use canonical domain terms from `specs/UBIQUITOUS_LANGUAGE.md` or a root `UBIQUITOUS_LANGUAGE.md`. Cross-check the destination and known constraints against relevant specs and code before asking the user questions that evidence can answer.
 
-## 1. Open or chart an effort
+## Workflow
+
+### 1. Open or chart an effort
 
 Store one effort at:
 
@@ -38,19 +41,19 @@ If the effort exists, load `MAP.md` and only the frontier tickets needed for the
 2. Explore breadth-first across the decision space. Separate sharp questions from fog.
 3. If the route is already clear and fits one planning context, do not create a map; route directly to `create-plan`.
 4. Ask before creating `.wayfinder/<effort-slug>/`.
-5. Read [FORMATS.md](FORMATS.md), write the map and currently specifiable tickets, then add blocking edges in a second pass.
+5. Load the mandatory format reference below, write the map and currently specifiable tickets, then add blocking edges in a second pass.
 
 The parent agent is the sole writer of `MAP.md` and ticket state. Completion criterion: the destination is stable, every live ticket is a decision or uncertainty-unblocking task, and the derived frontier is non-contradictory.
 
-## 2. Choose one frontier ticket
+### 2. Choose one frontier ticket
 
 Derive the frontier: tickets with `status: open` whose `blocked-by` tickets are all `resolved`. Never treat `out-of-scope` as satisfying a blocker without first revising the dependent ticket or its edge.
 
-If the user named a valid frontier ticket, use it; otherwise take the first frontier ticket in numeric order. The parent changes its status to `in-progress` before work. Work one decision ticket per session unless independent research tickets can safely run in parallel.
+If the user named a valid non-research frontier ticket, use it; otherwise take the first non-research frontier ticket in numeric order. The parent changes its status to `in-progress` before work. Claim exactly one non-research decision ticket per session; independent research tickets may also run in parallel only when they are safe and their blockers are resolved.
 
 Completion criterion: exactly one non-research decision is claimed, and no unresolved blocker is bypassed.
 
-## 3. Resolve uncertainty, not implementation
+### 3. Resolve uncertainty, not implementation
 
 Use the ticket type to choose the workflow:
 
@@ -59,7 +62,9 @@ Use the ticket type to choose the workflow:
 - `grilling`: compose `grill-me`; the human supplies their side of human-in-the-loop decisions.
 - `task`: perform only the prerequisite work needed to expose facts for a later decision. Do not deliver the destination.
 
-### Herdr delegation
+Composition imports the selected skill's process, not its ownership: Wayfinder retains the destination, map and ticket state, user gates, and return criteria.
+
+#### Herdr delegation
 
 When `HERDR_ENV=1`, load the shared `herdr` skill and use sibling panes for independent read-only investigations where useful. Delegates return findings through their pane output; they MUST NOT edit `.wayfinder/` state. Re-read live pane ids whenever controlling panes and never persist pane ids in the map or tickets because ids compact.
 
@@ -69,7 +74,7 @@ If resolution starts turning into production implementation, stop: that pull mar
 
 Completion criterion: the ticket has evidence sufficient for one explicit answer, and no production behavior was opportunistically implemented.
 
-## 4. Record the resolution and clear new fog
+### 4. Record the resolution and clear new fog
 
 The parent writes the resolution in the ticket, then:
 
@@ -84,7 +89,7 @@ A decision lives in detail in one ticket; the map is only a low-resolution index
 
 Completion criterion: each fact has one durable home, map sections are mutually exclusive, and the frontier can be recomputed from ticket files alone.
 
-## 5. Complete the effort
+### 5. Complete the effort
 
 The effort is complete when the destination is clear, no open or in-progress tickets remain, and no in-scope fog remains. Then:
 
@@ -93,3 +98,7 @@ The effort is complete when the destination is clear, no open or in-progress tic
 - keep `.wayfinder/` as the decision trail unless the repository's documented artifact policy says otherwise
 
 Do not call the effort complete merely because the current frontier is empty; an empty frontier with unresolved tickets means blocked or inconsistent state.
+
+## Reference
+
+- Load [FORMATS.md](FORMATS.md) whenever creating or changing a Wayfinder map or ticket because it owns the exact map sections, ticket frontmatter, ticket types and statuses, blocker semantics, state transitions, and durable-state exclusions.
