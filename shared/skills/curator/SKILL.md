@@ -13,21 +13,21 @@ allowed-tools:
 
 # Curator
 
-Curator turns a retrospective from a human into a ranked, human-approved proposal for improving durable agent state. It is a router and ranker, not an autonomous writer.
+## Language Definitions
 
-## Operating Rules
+- **Durable agent state** — persistent artifact capable of changing future agent behavior.
+- **Human-steered evidence** — retrospective/priority directing investigation but corroborated where practical.
+- **Tentative approval** — preliminary acceptance that does not authorize writes.
+- **Runtime availability** — whether the intended agent discovers and loads an artifact in a future session.
+- **Stuck moment** — best-evidenced point of highest friction.
 
-- Produce a ranked proposal internally, but present recommendations to the user one at a time by default. Do not dump the full ranked list unless the user explicitly asks for the full list, summary, or all recommendations at once.
-- Do not edit files until the user has reviewed recommendations and gives final confirmation to apply the tentative approvals.
-- Always produce 3-5 recommendations, ranked by expected compound value and efficiency gain.
-- Prefer updating, delegating to, consolidating, renaming, or removing existing durable state before creating something new.
-- Invite the human to provide an optional retrospective from their perspective. Use it to focus inspection, interpret tradeoffs, and rank recommendations.
-- Include improvements to `curator` itself when the session reveals a reusable improvement to retrospective, evidence scanning, ranking, routing, approval phrases, privacy handling, or dead-weight detection.
-- Always consider at least one new-skill candidate during ranking.
+## Workflow
 
-## Human Retrospective Intake
+Curator is a human-steered router and ranker, not an autonomous writer. Use this single workflow to gather evidence, rank durable improvements, obtain one final approval, apply only the approved edits, and report their availability and repository state.
 
-Ask for a brief optional retrospective unless the user has already supplied one in the request. Keep the prompt lightweight:
+### 1. Route retrospective intake and presentation mode
+
+If the user already supplied retrospective context, acknowledge it and do not ask again. Otherwise invite this optional input before scanning:
 
 ```md
 Before I scan evidence, share any retrospective notes you want curator to consider:
@@ -39,308 +39,64 @@ Before I scan evidence, share any retrospective notes you want curator to consid
 You can also say `skip retrospective`.
 ```
 
-Rules:
-
-1. If the user provides retrospective notes, summarize them internally as human-steered evidence and use them to focus the evidence scan.
-2. If the user says to skip, continue without treating the absence as a negative signal.
-3. If the user already included retrospective context in the curator request, do not ask again; acknowledge that it will guide the scan.
-4. Do not accept human retrospective as sufficient proof by itself for durable state changes. Corroborate where practical, and label uncorroborated steering honestly.
-5. Respect explicit boundaries such as files, skills, repos, private history, or recommendation types the human does not want touched.
-6. When human steering conflicts with local evidence, surface the conflict in the recommendation evidence instead of silently choosing one side.
-
-## Evidence Scan
-
-After retrospective intake, inspect enough local context to avoid duplicate or low-value recommendations.
-
-1. Identify the active agent:
-   - Codex: current Codex runtime, `$CODEX_HOME`, `~/.codex/`, Codex session/history files.
-   - Pi: `~/.pi/`, `pi/skills/`, Pi runtime markers, Pi session or extension-owned state.
-   - Claude: `~/.claude/`, `.claude/`, Claude transcript/history conventions.
-   - If detection is ambiguous, say so in the evidence ledger and inspect only clearly relevant sources.
-2. Inspect the current context window for:
-   - human retrospective notes and stated boundaries
-   - user corrections
-   - failed commands, tests, reviews, or assumptions
-   - discovered unknown unknowns
-   - repeated friction or inefficiency
-   - successful workflow patterns worth preserving
-3. Inspect recent git history and current diff for repeated fixes, churn, abandoned plans, duplicated docs, or missing review gates.
-4. Inventory available skills before proposing any skill work. Prefer existing skill updates or delegation paths over new skills.
-5. Inspect durable project context when present: `AGENTS.md`, specs, ubiquitous language, README files, plans, TODOs, and local skill directories.
-6. Inspect active-agent session history by default when available. Summarize only patterns and counts.
-7. For recommendations that add or change skills, commands, wrappers, symlinks, agent configs, or other runtime-loaded artifacts, inspect how the active agent discovers that artifact and whether it will be available in the next session.
-8. When the current session implements or closes a planned follow-up, compare `PLAN.md`, `CHANGELOG.md`, `AGENTS.md`, specs, and related recipes for stale open-item language. Recommend removing or rewriting stale "current follow-up", TODO, unknown-unknown, or workaround guidance when it would mislead future agents.
-9. When logs, tests, schemas, or structured events pass but video, screenshots, or visual review reveal a different issue, flag the cross-evidence mismatch. Recommend durable capture in specs, QA recipes, or visual-review skills when future agents need to compare machine truth with human-visible causality.
-10. Use the retrospective to target evidence, but still check for duplicate guidance and runtime availability before recommending durable changes.
-11. Identify the session's hardest stuck moment, if one existed. Prefer concrete evidence such as repeated failed attempts, repeated corrections, loops without progress, explicit statements of being stuck, or a late-discovered assumption that invalidated earlier work.
-12. For that moment, classify the routing:
-    - Was there an oracle: a passing test, successful build, measurable property, or other objective check?
-    - Was the task large enough to decompose into smaller slices with independent done-states?
-    - Was the task a discrete structural cliff with no valid halfway state, such as a migration, conversion, or repository restructure?
-13. Before treating the moment as a capability ceiling or decomposition problem, check the cheaper causes in order:
-    - Did the failure reveal a missing assumption or missing context that should have been supplied?
-    - Was there a worked example, prior slice, or sharp target spec that should have been used first?
-    - Only after those should curator frame the moment as a genuine ceiling, a decomposition problem, or a valid case to set down with a dated reason.
-14. Keep this stuck-point analysis ephemeral. It informs one advisory paragraph on the final confirmation screen only. It is not a recommendation, does not enter the approval flow, and is never written to durable state by itself.
-
-## Worktree Triage
-
-When the current directory is inside a git repository, inspect `git status --short` before proposing and include a concise worktree triage in the evidence ledger.
-
-If `git status --short` shows a newly created durable artifact as untracked, for example `?? AGENTS.md`, `?? DESIGN.md`, `?? SKILL.md`, `?? README.md`, specs, plans, or docs, inspect the file directly with `sed`/`cat`/`grep`. Do not rely on `git diff -- <file>` for untracked files; it will be empty unless invoked with special options.
-
-Classify visible changes as:
-
-- **Owned changes**: files changed by the current curator-approved work.
-- **Unrelated changes**: files changed before curator or outside the approved recommendations.
-- **Generated artifacts**: build outputs, explainers, screenshots, caches, reports, or temporary files.
-- **Tool-owned artifacts**: agent runtime folders such as `.pi/`, `.playwright-*`, or session/log outputs.
-
-Do not modify, stage, delete, or normalize unrelated changes, generated artifacts, or tool-owned artifacts unless the user explicitly approves that cleanup. If a recommendation could affect those files, call out the risk in the recommendation.
-
-## Recommendation Types
-
-Recommendations may add, update, consolidate, remove, archive, rename, or refactor durable state.
-
-Use this targeting hierarchy:
+Treat a skip as neutral. Treat supplied priorities as human-steered evidence: use them to focus inspection and ranking, corroborate them where practical, label uncorroborated steering honestly, and surface conflicts with local evidence rather than silently choosing. Respect every stated boundary on files, repositories, private history, skills, or recommendation types.
 
-1. Project-local skill, local docs, or repo `AGENTS.md` when the learning is codebase-specific.
-2. Shared/global skill when the learning generalizes across repositories.
-3. Existing skill update before new skill creation.
-4. Spec or glossary update when the learning changes domain language or behavioral contracts.
-5. Skill frontmatter tuning when an existing skill should have triggered but likely did not because its `description`, `Use when` phrase, `metadata.short-description`, name, or tool hints were unclear.
-6. Runtime availability fixes when durable state exists in the repo but will not be loaded by the intended agent because of missing symlinks, wrappers, config registration, install hooks, or session restart requirements.
-7. Removal, archival, consolidation, rename, or refactor when existing durable state slows future agents down.
-8. No durable capture only when the evidence is one-off, vague, contradicted by existing guidance, or lacks a future trigger.
-
-When a proposed shared/global skill update is mostly repo-specific, domain-heavy,
-or would make the global skill cumbersome for unrelated projects, prefer a
-project-specific skill fork or wrapper. Recommend the fork when the shared skill
-already provides the general workflow but the current repo needs additional
-gates, vocabulary, fixtures, validation artifacts, or lifecycle rules. Keep the
-global skill unchanged unless the learning generalizes beyond the current repo.
-
-## Skill Ecosystem Routing
-
-Every recommendation must consider whether another skill should perform the approved follow-up.
-
-Common routing:
-
-- `write-a-skill` or `skill-creator`: create or materially rewrite a skill.
-- `audit-shared-skills`: audit or repair shared skill frontmatter and cross-agent compatibility.
-- `create-agents-md`: update `AGENTS.md` or codebase maps.
-- `ubiquitous-language`: add or refine domain terms.
-- `create-plan`: turn an approved change into a testable implementation plan.
-- `grill-me`: resolve open design questions before making durable changes.
-- `test-quality-verifier`: improve vague tests or validation coverage.
-
-If proposing a new skill, explain why no existing skill should absorb the learning.
-
-If proposing a project-specific fork of an existing shared skill, name the
-upstream skill it wraps, what repo-specific gates it adds, and how agents should
-route to it from `AGENTS.md` or equivalent project guidance.
-
-If not proposing any new skill, explicitly account for the strongest new-skill candidate considered and why it did not beat updating, consolidating, or routing to existing durable state.
-
-If the session reveals that a relevant skill was available but was not selected, consider that a skill ecosystem defect. Prefer a frontmatter or description update over creating a new skill when the missed trigger is caused by vague naming, missing keywords, weak "Use when" guidance, absent `metadata.short-description`, or misleading `allowed-tools`.
-
-When a skill bundles a broad workflow, a tool-specific wrapper, and a reusable artifact routine, treat that as a decomposition candidate. Prefer recommending a slimmer workflow skill plus cross-linked wrapper or artifact subskills when that split would improve triggers, reuse, or maintainability.
-
-## Ranking Model
-
-Rank by expected compound value and efficiency gain, not confidence.
-
-Consider:
-
-- future time saved
-- failure prevention value
-- reuse breadth
-- likelihood the trigger recurs
-- artifact smallness
-- clarity improvement
-- maintenance burden
-- staleness risk
-- duplication risk
-- privacy or safety risk
+Select one-at-a-time sequential presentation by default. Select full-summary mode only when the user explicitly asks for the full list, all recommendations at once, or a ranked summary.
 
-Evidence types:
-
-- Human-steered: explicitly raised by the human retrospective; corroborate where practical.
-- Pattern-backed: repeated across context, history, git, or sessions.
-- Correction-backed: explicit user correction or validation failure.
-- Discovery-backed: newly found unknown unknown with a clear future trigger.
-- Premortem-backed: inferred future bottleneck from the success path.
-- Speculative: weak signal; include only when needed to reach 3 recommendations, and label clearly.
+Completion criterion: retrospective status, explicit boundaries, and presentation mode are known before local evidence is inspected.
 
-## Default Sequential Proposal Format
+### 2. Scan bounded evidence
 
-After retrospective intake and the evidence scan, build a ranked set of 3-5 recommendations internally. The first user-facing proposal must be the highest-ranked recommendation only, using this concise format:
+Detect the active agent before reading agent-specific history or runtime state. If detection is ambiguous, record that and inspect only clearly relevant sources. For every run, load [the bounded evidence scan](REFERENCE.md#bounded-evidence-scan) because it contains the mandatory active-agent signals and checks for current context, active-agent history, Git history and diff, available skills, docs/specs/plans, runtime discovery, stale guidance, machine/visual cross-evidence mismatch, and the hardest stuck moment.
 
-```md
-Recommendation N of M (~X% through)
+Keep the scan bounded to the requested repository, session, retrospective, and approved history sources. Summarize patterns and counts; do not expose private transcript text, secrets, credentials, or unrelated project details. Human steering focuses the scan but never replaces duplicate-guidance or runtime-availability checks.
 
-Decision: <short recommendation title>
+When inside a Git repository, load [worktree triage](REFERENCE.md#worktree-triage) because owned, unrelated, generated, tool-owned, and untracked artifacts require different handling. Inspect `git status --short` before proposing and read untracked durable artifacts directly rather than relying on an empty ordinary diff. Do not modify, stage, delete, normalize, or expose unrelated, generated, or tool-owned artifacts unless the final approved scope explicitly includes them.
 
-Why this matters:
-<1-2 short sentences focused on the outcome>
+Completion criterion: the evidence ledger accounts for every mandatory surface, active-agent ambiguity and unavailable evidence are disclosed, the hardest stall is identified or explicitly absent, and protected worktree state is classified before ranking.
 
-What would change:
-- <concrete artifact or behavior>
-- <concrete artifact or behavior>
+### 3. Rank 3–5 durable recommendations
 
-Your choices:
-- Approve
-- Skip
-- Edit: <change>
-- Rerank remaining
-- Stop
-
-Evidence:
-<brief supporting details, after the decision>
-```
-
-Sequential review is recommendation-first and evidence-light. Follow the same interaction style as `grill-me`: ask one question at a time and show approximate progress. Do not prescribe a default answer; the user should choose without a recommended approval/skip/edit nudge. Avoid burying the decision in evidence text.
-
-Rules for default sequential review:
-
-1. Present only the next highest-ranked active recommendation.
-2. Treat approvals during sequential review as tentative decisions only. Record them in a short running list and do not edit files yet.
-3. Offer concise actions:
-   - `Approve this recommendation`
-   - `Skip this recommendation`
-   - `Edit this recommendation: <change>`
-   - `Rerank remaining recommendations`
-   - `Stop curator review`
-4. After an approval, record it as tentatively approved and present the next active recommendation. Do not apply it immediately unless the user explicitly says to apply immediately.
-5. After a skip, remove that recommendation from the active list and present the next one.
-6. After an edit or rerank request, update the remaining list and continue one at a time.
-7. If the user is using terse repeated approvals such as "approve", "yes", or "agreed", keep the response short but include the running approval count or latest approved title before showing the next recommendation. This prevents ambiguity without slowing down the review.
-8. After all active recommendations have been reviewed, show the tentative approval list and ask for final confirmation before applying any writes:
-
-   If the session had a meaningful stall, also show one short advisory paragraph under the heading `Advice for Next Time:`. This paragraph is advisory prose only:
-   - it is not a recommendation to approve, skip, edit, rerank, or stop
-   - it never enters the one-at-a-time decision flow
-   - it never writes to durable state
-   - it is shown once, only on the final confirmation screen
-
-   Write the paragraph to name the concrete stuck moment and the better routing:
-   - Oracle + large task: recommend decomposition into smaller pieces with clear done-states so each piece is machine-checked independently.
-   - Oracle + discrete structural cliff: recommend one deliberate hand-driven change rather than looping or prompting harder.
-   - No oracle: recommend a human-in-the-loop loop with a cheap judgment turn, and consider whether decomposition would make each judgment smaller and less confounded.
-   - Before framing the problem as a ceiling or decomposition issue, reflect whether the cheaper causes were skipped: reading the failure for its hidden assumptions and trying a worked example, prior slice, or sharp target spec first.
-   - If no meaningful stall occurred, say so in one line instead of inventing advice.
-   - Keep it to one tight paragraph, specific to what actually happened in the session, not a generic restatement of the procedure.
-
-   ```md
-   Ready for final confirmation:
-   - `Apply approved recommendations`
-   - `Apply and commit approved recommendations`
-   - `Apply, commit, and push approved recommendations`
-   - `Revise before applying: <change>`
-   - `Cancel without applying`
-
-   Tentatively approved:
-   - <approved item>
-   - <approved item>
-
-   Advice for Next Time:
-   <one short paragraph, or one line saying no meaningful stall occurred>
-   ```
-
-   Include commit/push options only when the approved writes affect files in a git repository. If the approved writes span multiple repositories, say which repositories would be committed or pushed separately. Applying, committing, and pushing still requires explicit final confirmation; a tentative approval is not enough.
-9. If the user approves multiple numbered recommendations at once outside sequential review, treat them as tentative approvals unless the user explicitly says to apply now. Confirm once before writing.
-10. After applying approved changes, summarize which files changed and whether any affected repository remains dirty. If the user chose an apply-only option, do not commit or push until they explicitly ask.
-
-## Full Summary Format
-
-Use the full summary only when the user explicitly asks for the full list, all recommendations at once, or a ranked summary. Do not use this as the default initial output.
-
-```md
-# Curator Proposal
-
-## Evidence Ledger
-
-- Current context: inspected
-- Human retrospective: <provided/skipped/already supplied; brief steering summary>
-- Active agent: <detected agent or ambiguous>
-- Agent history: <source and approximate count, or unavailable>
-- Git history: <range inspected>
-- Current diff: <inspected/unavailable>
-- Skills inventory: <count or scope inspected>
-- Durable docs/specs/plans: <scope inspected>
-
-## Ranked Recommendations
-
-### At a Glance
-
-1. <recommendation title> - <target artifact>
-2. <recommendation title> - <target artifact>
-3. <recommendation title> - <target artifact>
-
-### 1. <action-oriented title>
-
-Recommendation: <one sentence that says exactly what should change>
-Target: <path or artifact type>
-Recommended action: <specific next step>
-
-Evidence:
-- Type: Human-steered | Pattern-backed | Correction-backed | Discovery-backed | Premortem-backed | Speculative
-- Signal: <brief pattern summary, not sensitive transcript text>
-- Why now: <why this should be handled now>
-- Future trigger: <when this durable state will help>
-
-Decision:
-- Recommendation type: Add | Update | Consolidate | Remove | Archive | Rename | Refactor | Monitor
-- Follow-up skill: <skill name or "none">
-- Expected compound value: High | Medium | Low
-- Expected efficiency gain: High | Medium | Low
-- Confidence: High | Medium | Low
-- Maintenance burden: High | Medium | Low
-- Duplication/staleness risk: High | Medium | Low
-- Approval phrase: `Apply recommendation 1`
-- Alternate approvals: `Apply 1 as project-local`, `Apply 1 globally`, `Skip 1 and rerank`
-```
-
-Make every recommendation its own self-contained entry. The first visible line under each numbered heading must be `Recommendation:` so the user can skim the proposed changes without reading the evidence ledger or scoring metadata. Keep evidence short and put it after the recommendation. Put approval and routing details under `Decision`, not before the evidence.
-
-For removal/archive/consolidation recommendations, also include:
-
-```md
-Replacement/source of truth:
-Risk if kept:
-Risk if removed:
-Rollback path:
-```
-
-For skill rename/refactor recommendations, also include:
-
-```md
-Current skill:
-Proposed skill shape:
-Migration notes:
-```
-
-End with approval shortcuts:
-
-```md
-Approval shortcuts:
-- `Apply all high-value recommendations`
-- `Apply recommendations 1, 3, and 4`
-- `Apply 2 only as a draft`
-- `Convert 3 into an AGENTS.md update`
-- `Skip 1 and rerank`
-```
-
-## Quality Bar
-
-Reject or down-rank recommendations that:
-
-- duplicate existing guidance
-- lack a clear future trigger
-- preserve local trivia as global policy
-- add broad instructions where a small test, spec, or checklist would work better
-- make skill selection harder
-- create or update durable state without a path for the intended agent to load it
-- increase maintenance burden more than they save future work
-
-When forced to produce 3-5 recommendations from weak evidence, label low-confidence or monitor-only items honestly.
+For every ranking pass, load [recommendation targeting and routing](REFERENCE.md#recommendation-targeting-and-routing) and [the ranking model](REFERENCE.md#ranking-model) because they contain the mandatory type extensions, owner routes, evidence labels, and quality filters.
+
+Build exactly 3–5 recommendations internally, ranked by expected compound value and efficiency gain rather than confidence. Prefer updating, delegating to, consolidating, renaming, removing, archiving, or refactoring existing durable state when it already owns the learning. Always consider at least one independently useful new-skill candidate; recommend it only if no existing owner should absorb it, otherwise explicitly account for why it did not rank.
+
+Include Curator itself when evidence reveals a reusable improvement to retrospective intake, evidence scanning, ranking, routing, approval language, privacy handling, or dead-weight detection. Do not overfit one session: every recommendation needs a future trigger, evidence disposition, concrete target and action, ownership route, maintenance/duplication/privacy assessment, and runtime-availability consequence when applicable.
+
+Completion criterion: 3–5 self-contained recommendations are ranked, the strongest new-skill candidate is accounted for, and each item names evidence, future trigger, target, owner, and availability impact.
+
+### 4. Present and collect tentative decisions
+
+Before showing recommendations, load the selected [sequential format](REFERENCE.md#default-sequential-format) or [full-summary format](REFERENCE.md#full-summary-format) because those sections own the mandatory output schema and recommendation-type extensions.
+
+In sequential mode, show only the next highest-ranked active recommendation with approximate progress and concise approve, skip, edit, rerank, or stop choices. In full-summary mode, show the complete ranked set only because the user explicitly selected that mode. Keep decisions recommendation-first and evidence-light enough to review.
+
+Every approval, including terse, repeated, multi-item, or full-summary approval, is tentative. It may change the active set but cannot authorize a write. Track the tentative set visibly, apply edits/reranking only to the proposal set, and continue until all active items are reviewed or the user stops.
+
+Completion criterion: review has stopped without writes, or every active recommendation has an explicit tentative disposition and the complete tentative approval set is visible.
+
+### 5. Obtain one final approval
+
+If no recommendation is tentatively approved, report that nothing will be written and stop. Otherwise show the tentative approval list once and ask for one final confirmation covering the complete approved edit set. Include commit and push choices only for affected Git repositories, and name repositories separately when more than one would be changed. A tentative approval never substitutes for this final confirmation.
+
+If the scan found a meaningful stuck moment, load [stuck-moment analysis](REFERENCE.md#stuck-moment-analysis) before this screen because it owns the mandatory evidence and routing checks. Show its result once under `Advice for Next Time:`. The advice is ephemeral: it is not a recommendation, never enters ranking or approval, and is never written to durable state. If no meaningful stall occurred, say so in one line rather than inventing advice.
+
+Completion criterion: the user either cancels with no writes or gives one explicit final approval whose exact recommendations, repositories, and apply/commit/push authority are known.
+
+### 6. Apply only approved edits, verify, and report
+
+Change only the artifacts and actions included in the final approval. When a follow-up has a relevant owner skill, load that skill and compose its process; Curator retains recommendation scope, artifact targets, user gates, acceptance, and final reporting. If required editing or delivery tools are unavailable, report the blocked action instead of weakening approval or claiming it ran.
+
+Preserve all unrelated, generated, and tool-owned state. For every changed skill, command, wrapper, symlink, agent config, or other runtime-loaded artifact, verify runtime availability for the intended agent and state whether a restart, registration, install hook, or unresolved fix remains. Commit or push only when the final approval included that action.
+
+Report the exact files changed, owner workflows used, runtime-availability results, commit/push results when authorized, unresolved concerns, and whether each affected repository is clean or still dirty. Distinguish approved changes from pre-existing or protected changes.
+
+Completion criterion: every write maps to the final approved set, runtime-loaded artifacts have availability evidence, protected state remains untouched, and repository state is reported without claiming unperformed actions.
+
+## Reference
+
+- Load [REFERENCE.md § Bounded Evidence Scan](REFERENCE.md#bounded-evidence-scan) during every evidence scan because it contains the required active-agent detection signals and complete bounded source checklist.
+- When inside a Git repository, load [REFERENCE.md § Worktree Triage](REFERENCE.md#worktree-triage) before proposing because it contains the required classification and untracked-file handling rules.
+- Load [REFERENCE.md § Recommendation Targeting and Routing](REFERENCE.md#recommendation-targeting-and-routing) and [§ Ranking Model](REFERENCE.md#ranking-model) during every ranking pass because they contain required type extensions, owner routes, evidence labels, and rejection criteria.
+- Load [REFERENCE.md § Default Sequential Format](REFERENCE.md#default-sequential-format) for default one-at-a-time review, or [§ Full Summary Format](REFERENCE.md#full-summary-format) only after an explicit full-list request, because the selected section owns the required proposal schema.
+- If evidence identifies a meaningful stall, load [REFERENCE.md § Stuck-Moment Analysis](REFERENCE.md#stuck-moment-analysis) before final confirmation because it contains the required oracle, decomposition, structural-cliff, and cheaper-cause checks for ephemeral advice.
