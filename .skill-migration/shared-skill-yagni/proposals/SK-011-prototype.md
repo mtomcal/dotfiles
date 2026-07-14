@@ -1,7 +1,7 @@
 ---
 id: SK-011
 target: prototype
-status: ready-to-integrate
+status: verified
 blocked-by: [SK-001]
 source-verdict: simplify inline
 ---
@@ -119,6 +119,13 @@ SK-001 is verified at baseline `6133d8b61f937b490ede7905c4ebfdd5702c53f5`, so th
 - `git diff --check`: PASS. `bash tests/run.sh`: PASS (2 shell files, 12 tests).
 - Resulting SHA-256: `SKILL.md` `e16517abea73e19d7aedaee78db66acab268e1b0dcd565edc862523de83ee261`; `LOGIC.md` `1a629eb3ece68bd02e9ab49bac297c05ac9b64507d7e9bc7e25e2f710152b0ce`; `UI.md` `5782b9fbbe22a954a89169621718e89e616f82ecd3b8780d39726e989b440613`.
 - Residual risk: production verification is intentionally host-repository-specific. The skill enforces the gate without inventing a universal command or test suite; callers must apply the host's normal implementation and verification contract when absorbing code.
+
+## Integrated verification
+
+- Coordinator verification timestamp: `2026-07-14T17:04:00+00:00`.
+- Exact four-file scope, complete router and branch files, canonical shape, confirmed definitions, conditional links, throwaway/default cleanup, deliberate verified absorption, one-command contract, and preserved logic/UI branches passed independent review.
+- Repository shell tests passed 12/12; `git diff --check`, Pi visibility, and existing Matt Pocock/MIT provenance passed.
+- `pi/settings.json` retained its recorded content and diff hashes and remained unstaged. Host-specific production verification remains the documented residual risk.
 
 ## Standing authorization
 
