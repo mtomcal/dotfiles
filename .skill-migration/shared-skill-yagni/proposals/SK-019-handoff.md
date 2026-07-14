@@ -2,7 +2,7 @@
 id: SK-019
 target: handoff
 status: ready-to-integrate
-revision: 1
+revision: 2
 blocked-by: [SK-001]
 source-verdict: retain substance
 baseline: e8136ac629ff546d4364ea1d522ae9d5a5ce617d
@@ -20,13 +20,13 @@ SK-001 is verified and SK-019 is claimed at the stated baseline. WF-007 places t
 - WF-008 requires the exact Language Definitions content `No skill-specific terms.`
 - WF-007 preserves the compact producer and final absolute-path contract without adding branches or padding.
 - `specs/ai-agent-config.md` requires redacted timestamped Markdown under the OS temporary handoff directory, an absolute-path report, canonical body structure, and behavior preservation.
-- The current 33-line `shared/skills/handoff/SKILL.md` is self-contained, has no links or support files, and needs only canonical heading normalization and compaction.
+- The current `shared/skills/handoff/SKILL.md` is self-contained, has no links or support files, and needs only canonical heading normalization and semantic compaction.
 - `THIRD_PARTY_NOTICES.md` identifies `handoff` as a locally maintained adaptation of `mattpocock/skills` revision `66898f60e8c744e269f8ce06c2b2b99ce7660d5f` and reproduces Matt Pocock's MIT license.
 
 ## Exact files in scope
 
-- `.skill-migration/shared-skill-yagni/proposals/SK-019-handoff.md` — this item-local proposal and worker verification record.
-- `shared/skills/handoff/SKILL.md` — the sole production target.
+- `.skill-migration/shared-skill-yagni/proposals/SK-019-handoff.md` — this item-local proposal and worker verification record; it is the only file authorized to change in revision 2.
+- `shared/skills/handoff/SKILL.md` — the migration target governed by this proposal; revision 2 requires it to remain byte-identical to commit `9b6153b5c61ab4ae56712eed3eb606edc04b431e`.
 
 ## Proposed changes
 
@@ -39,7 +39,7 @@ SK-001 is verified and SK-019 is claimed at the stated baseline. WF-007 places t
 
 - Rename the noncanonical `Process` section to `Workflow` and keep exactly seven ordered steps.
 - Fold the opening outside-repository rule into the temporary-directory step.
-- Keep the eight artifact sections in the write step, compacted onto one line without changing their names or order.
+- Keep the eight artifact sections as a compact inline sequence in the write step without changing their names or order.
 - Keep the saved-file self-check, completion criterion, and absolute-path final-line contract inline.
 
 ### Remove
@@ -66,20 +66,19 @@ SK-001 is verified and SK-019 is claimed at the stated baseline. WF-007 places t
 - [x] Completion still requires a file in the temporary handoff directory, no known secrets, and a next concrete action discoverable without the original conversation.
 - [x] The absolute path remains the final response line.
 - [x] Existing Matt Pocock provenance and MIT license coverage remain unchanged and accurate.
-- [x] The resulting target is at most 30 lines; if it exceeds 30 lines, stop without committing.
+- [x] Semantic compactness comes from removing only redundant formatting and prose; no fixed line target governs acceptance.
 
 ## Dependencies, provenance, and risks
 
 - SK-001 is verified; no concurrent owner decision affects this self-contained artifact workflow.
 - No contradiction, support file, link, script, executable command correction, relocation, or ownership transfer exists.
 - MIT provenance is complete in `THIRD_PARTY_NOTICES.md`; that notice is not changed.
-- The only material risk is accidental loss through compaction. Exact step count, section names/order, redaction classes, self-check, completion criterion, final-line rule, and line count are explicit acceptance checks.
+- The only material risk is accidental loss through compaction. Exact step count, section names/order, redaction classes, self-check, completion criterion, and final-line rule are explicit semantic acceptance checks; line count is not.
 
 ## Verification
 
 - Reread the complete target and map every checked behavior above to resulting text.
 - `test "$(grep -cE '^[0-9]+\\.' shared/skills/handoff/SKILL.md)" -eq 7` — exactly seven Workflow steps.
-- `test "$(wc -l < shared/skills/handoff/SKILL.md)" -le 30` — compact target; stop before commit on failure.
 - Parse level-two headings — exactly `Language Definitions` then `Workflow`.
 - Compare frontmatter to baseline — byte-identical.
 - Check the exact no-terms sentence, all sensitive classes, all artifact section names in order, self-check, completion criterion, and absolute-path final-line rule.
@@ -88,19 +87,20 @@ SK-001 is verified and SK-019 is claimed at the stated baseline. WF-007 places t
 - Inspect target history and `THIRD_PARTY_NOTICES.md` — source revision and full MIT coverage remain present with no notice diff.
 - `git diff --check -- .skill-migration/shared-skill-yagni/proposals/SK-019-handoff.md shared/skills/handoff/SKILL.md` — no whitespace errors.
 - `bash tests/run.sh` — repository tests pass.
-- Baseline-aware status/diff inspection — exactly this proposal and target differ; no ledger, settings, specs, notices, symlinks, tests, support files, or unrelated skills change.
+- Baseline-aware status/diff inspection — the complete migration range changes exactly this proposal and target, while the revision 2 correction changes only this proposal; no ledger, settings, specs, notices, symlinks, tests, support files, or unrelated skills change.
+- Compare `shared/skills/handoff/SKILL.md` with commit `9b6153b5c61ab4ae56712eed3eb606edc04b431e` — byte-identical target after the proposal-only correction.
 
-Acceptance requires exact two-file scope, unchanged frontmatter, canonical two-section body, exact no-terms statement, exactly seven preserved steps, exact artifact sections and redaction contracts, saved-file self-check, absolute-path final line, at most 30 target lines, clean audit and tests, and preserved MIT provenance.
+Acceptance requires proposal-only revision 2 scope, an unchanged semantically compact target, unchanged frontmatter, canonical two-section body, exact no-terms statement, exactly seven preserved steps, exact artifact sections and redaction contracts, saved-file self-check, absolute-path final line, clean audit and tests, and preserved MIT provenance. No fixed line target applies.
 
 ## Implementation and verification record
 
-Worker verification completed at `2026-07-14T17:39:49+00:00`.
+Worker verification completed at `2026-07-14T17:39:49+00:00`; proposal-only revision 2 correction verified at `2026-07-14T17:46:02+00:00`.
 
-- Proposal revision 1 reached `proposal-ready` before the target edit; no scope or authority revision was needed.
-- The target is 27 lines with exactly `Language Definitions` then `Workflow`, the exact no-terms sentence, seven ordered steps, eight ordered artifact sections, the redaction contract, saved-file self-check, completion criterion, and absolute-path final line. Frontmatter is byte-identical to baseline.
-- The complete YAML-aware union audit parsed and accounted for all 33 skills with 0 errors and 0 warnings; the target's read/write/bash grants remain used.
-- `bash tests/run.sh` passed both shell files and all 12 tests. Pi visibility, Markdown/link/support checks, scoped `git diff --check`, and Matt Pocock revision/full MIT provenance checks passed.
-- Baseline-aware scope inspection found exactly this proposal and target. The target diff is 8 insertions and 14 deletions; SHA-256 is `c03177653e3ad6f9d6f66073aed253b220031f8336ef90e6657ad125f5ac8af9`.
+- Proposal revision 1 reached `proposal-ready` before the target edit. Coordinator review then found its fixed line-count acceptance gate contradicted the standing semantic-YAGNI contract. Revision 2 removes every fixed line target and gate without changing the target.
+- The target remains semantically compact with exactly `Language Definitions` then `Workflow`, the exact no-terms sentence, seven ordered steps, eight ordered artifact sections, the redaction contract, saved-file self-check, completion criterion, and absolute-path final line. Frontmatter is byte-identical to baseline.
+- The revision 2 YAML-aware union-audit rerun parsed and accounted for all 33 skills with 0 errors and 0 warnings; the unchanged target's read/write/bash grants remain used.
+- The revision 2 `bash tests/run.sh` rerun passed both shell files and all 12 tests. Target identity, proposal-only scope, protected ledger/settings paths, Pi visibility, Markdown/link/support checks, scoped `git diff --check`, and Matt Pocock revision/full MIT provenance checks passed.
+- Baseline-aware migration inspection found exactly this proposal and target. Revision 2 changes only the proposal; the target remains byte-identical to commit `9b6153b5c61ab4ae56712eed3eb606edc04b431e` with SHA-256 `c03177653e3ad6f9d6f66073aed253b220031f8336ef90e6657ad125f5ac8af9`.
 - Two initial ad hoc assertions were corrected: section ordering first searched the whole file and collided with `completed work` in the review step, and exact scope first assumed locale-independent sort order. Step-6-scoped and set-membership checks passed; both were verification-harness errors, not target failures.
 - Residual risk: none identified. The worker result is `ready-to-integrate` and does not claim coordinator integration or another item.
 
@@ -113,6 +113,6 @@ Worker verification completed at `2026-07-14T17:39:49+00:00`.
 ## Standing authorization
 
 - Human directive timestamp: `2026-07-14T15:55:39+00:00`
-- Proposal revision: `1`
-- Authorization effect: the standing no-approval directive authorizes only the exact proposal and target paths and changes enumerated above.
-- Scope check: `PASS — MAP, WF-007, WF-005, WF-008, specs, verified write-a-skill, complete target, provenance notice/history, exact file scope, behavior preservation, contradiction review, and verification were checked in authority order. Production editing may continue without a per-item approval wait.`
+- Proposal revision: `2`
+- Authorization effect: the standing no-approval directive authorizes this revision's proposal-only contradiction repair; the migration target remains governed by the proposal but is not authorized to change.
+- Scope check: `PASS — coordinator feedback, MAP, WF-007, WF-005, WF-008, specs, verified write-a-skill, complete unchanged target, provenance notice/history, exact proposal-only correction scope, behavior preservation, semantic YAGNI, contradiction repair, and verification were checked in authority order. Revision 2 contains no fixed line target or gate and may proceed without a per-item approval wait.`
