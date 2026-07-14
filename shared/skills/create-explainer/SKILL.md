@@ -50,7 +50,7 @@ Write durable source to the user/caller-selected destination, defaulting to `./e
 |------|-------------------|
 | Condensed | `index.html` only: summary, 2–4 source-grounded sections with diagrams/examples, and a file/ownership map. No lab. |
 | Guided | `index.html` + `main.js`: Condensed content plus exactly one concept-shaped lab with active recall, a source-grounded visual, learner action before reveal, and feedback. |
-| Full Lab | `index.html` + `main.js`: 10+ sections, multiple concept-shaped labs, architecture map, 5–10-question quiz, concept graph, quick reference, and the applicable practice components listed below. |
+| Full Lab | `index.html` + `main.js`: 10+ sections, multiple concept-shaped labs, architecture map, 5–10-question quiz, concept graph, quick reference, and applicable practice components selected by concept shape from `lab/README.md#lab-selection-matrix`. |
 
 Keep the output self-contained: no build step or external dependency. Use lab templates rather than rebuilding their mechanics, and choose by concept shape rather than visual novelty. For Guided and Full Lab, choose the template from `lab/README.md#lab-selection-matrix` by concept shape; keep the selected lab's mechanics beside this step instead of maintaining a second catalog. For code-heavy or cross-language explainers, use a 1400px content width, overflow-safe code blocks, side-by-side comparisons, and a mobile single-column layout.
 
