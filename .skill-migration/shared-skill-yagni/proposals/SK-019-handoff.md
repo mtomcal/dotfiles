@@ -1,7 +1,7 @@
 ---
 id: SK-019
 target: handoff
-status: ready-to-integrate
+status: verified
 revision: 2
 blocked-by: [SK-001]
 source-verdict: retain substance
@@ -103,6 +103,8 @@ Worker verification completed at `2026-07-14T17:39:49+00:00`; proposal-only revi
 - Baseline-aware migration inspection found exactly this proposal and target. Revision 2 changes only the proposal; the target remains byte-identical to commit `9b6153b5c61ab4ae56712eed3eb606edc04b431e` with SHA-256 `c03177653e3ad6f9d6f66073aed253b220031f8336ef90e6657ad125f5ac8af9`.
 - Two initial ad hoc assertions were corrected: section ordering first searched the whole file and collided with `completed work` in the review step, and exact scope first assumed locale-independent sort order. Step-6-scoped and set-membership checks passed; both were verification-harness errors, not target failures.
 - Residual risk: none identified. The worker result is `ready-to-integrate` and does not claim coordinator integration or another item.
+
+Coordinator integration verification completed at `2026-07-14T17:47:40+00:00` against integrated commits `18661bd` and `75e156f`: the complete target and proposal revision 2 were reread; the seven-step behavior ledger, exact no-terms definition, redaction and artifact contracts, final-line rule, frontmatter identity, Pi visibility, Matt Pocock/MIT provenance, and exact integration scope passed independent checks. The YAML-aware catalog audit accounted for all 33 skills with zero errors and warnings, `git diff --check` passed, and `bash tests/run.sh` passed all 12 tests. The protected `pi/settings.json` content and diff hashes remained `7d3f4713d7239e8cda3f75597a55f1767fecdf7964324630e4e74dc686d12e05` and `8298a9063e3ebf2988000d176057a41c31cf20c10bbabe92fb57d47f9f2738d5`. Residual risk: none identified.
 
 ## Explicit exclusions
 
