@@ -2,10 +2,11 @@
 id: SK-020
 target: image-comparison-judge
 status: ready-to-integrate
-revision: 1
+revision: 2
 blocked-by: [SK-001]
 source-verdict: simplify inline
 baseline: 620b748c1f6ce7e5088c035f7ad506e654a866a5
+revision-baseline: f60d0f911bf8619a3af32b0bbaf87204e86bc91b
 ---
 
 # Image Comparison Judge: route judging before scoped verdict production
@@ -27,30 +28,30 @@ SK-001 is verified, SK-020 is claimed at baseline `620b748c1f6ce7e5088c035f7ad50
 - The complete target and `shared/skills/image-diff-describer/SKILL.md` agree on the neutral-evidence/judgment boundary. The target has no support files, scripts, Markdown links, or fixed command syntax.
 - Git history shows the target was created in this repository at `f915a0f2cf70e6016b2178782a56ea886e5c72c5`, then received local nested-judge, neutral-diff, human-acceptance, and tool-grant refinements. It is absent from `THIRD_PARTY_NOTICES.md`; no imported source, external license, or attribution requirement is evidenced.
 
-No authority conflict, correctness contradiction, command correction, support-file need, or provenance gap exists.
+Coordinator review of revision 1 found one sequencing contradiction: target step 1 tried a wrapper and decided whether it could complete before step 2 gathered the wrapper/delegate brief, despite the proposal requiring selection first, gathering second, and execution third. Revision 2 repairs only that ordering. No authority conflict, command correction, support-file need, provenance gap, ownership change, or broader behavior change exists.
 
 ## Exact files in scope
 
 - `.skill-migration/shared-skill-yagni/proposals/SK-020-image-comparison-judge.md` — item-local proposal, authorization, behavior ledger, verification plan, and worker result.
 - `shared/skills/image-comparison-judge/SKILL.md` — add confirmed definitions and normalize the existing compact judge into one route-first Workflow.
 
-These two paths are the complete revision 1 allowed file set. No supporting file exists or is authorized.
+These two paths are the complete revision 2 allowed file set. No supporting file exists or is authorized.
 
 ## Proposed changes
 
 ### Add
 
 - Add `Language Definitions` with the exact WF-008 meanings of Visual acceptance, Comparison surface, and Blocking finding; do not redefine neutral diff artifact.
-- Begin the single `Workflow` with the complete route in this order: already running as the judge → repo-local wrapper → direct `image-comparison-judge` delegation → in-process fallback.
-- Add route failure handling: if a wrapper cannot complete the comparison, continue to direct delegation when available or to the disclosed in-process fallback.
+- Begin the single `Workflow` by selecting, without invoking, the preferred route available at selection time in this order: already running as the judge → repo-local wrapper → direct `image-comparison-judge` delegation → in-process fallback.
+- Put route execution and failure handling only after the complete brief is gathered: wrapper failure continues to direct delegation when available; wrapper or delegate failure continues to the disclosed in-process fallback.
 - State that an available neutral diff artifact is consumed as observable evidence from `image-diff-describer`, not produced, owned, or treated as a verdict by this skill.
 - Add an observable completion criterion requiring every named image to be checked, the comparison surface and constraints to govern the verdict, findings to be classified, the execution route or fallback to be disclosed, and all required output fields to be present.
 
 ### Change or move
 
 - Preserve frontmatter byte-for-byte, including all invocation triggers, description scope, short description, and read/bash grants.
-- Move already-judge, wrapper, direct-delegation, and unavailable-delegation branches from the current Workflow, Delegation Brief, and Fallback sections to the Workflow opening.
-- Keep already-judge execution direct and explicitly prohibit falsely reporting that the independent pass was unavailable in that branch.
+- Move already-judge, wrapper, direct-delegation, and unavailable-delegation selection from the current Workflow, Delegation Brief, and Fallback sections to the Workflow opening, but defer all invocation and completion decisions until the execution step after brief gathering.
+- Keep already-judge execution direct in step 3 and explicitly prohibit falsely reporting that the independent pass was unavailable in that branch.
 - Keep manual fallback behavior identical in authority to the judge contract while requiring disclosure that an independent judge pass could not run.
 - Colocate evidence gathering after route selection: reference path, all candidate paths, intended match, explicit comparison surface, blocking review dimensions, verdict-changing domain constraints, forbidden visible elements, and available neutral diff path.
 - Colocate the wrapper/delegate brief with execution and include every current brief field plus the available neutral diff artifact path.
@@ -76,8 +77,9 @@ These two paths are the complete revision 1 allowed file set. No supporting file
 - [x] Frontmatter continues to trigger criteria-based reference/candidate judgment after neutral diffing or capture, concept-fidelity review, visual regression triage, and independent artifact review.
 - [x] Visual acceptance, Comparison surface, and Blocking finding use the exact human-confirmed WF-008 meanings; no fourth skill-local term is invented.
 - [x] Neutral diff artifact remains owned by `image-diff-describer`; this skill only consumes it when available and never treats it as criteria, severity, recommendation, or verdict.
-- [x] Already-judge, wrapper, direct delegation, and no-delegation fallback routes all remain reachable and occur before evidence gathering.
-- [x] A running judge compares directly and never falsely claims its own independent judge pass was unavailable.
+- [x] Already-judge, wrapper, direct delegation, and no-delegation fallback routes all remain reachable; step 1 selects only the preferred available route before evidence gathering and does not invoke it or decide whether it completes.
+- [x] Step 2 gathers the complete evidence and brief before any selected wrapper or delegate executes.
+- [x] A running judge compares directly in step 3 and never falsely claims its own independent judge pass was unavailable.
 - [x] A repo-local wrapper remains preferred before direct subagent delegation.
 - [x] Wrapper failure can continue through direct delegation or the same in-process fallback instead of terminating the workflow without a verdict.
 - [x] Manual fallback performs the same criteria-based comparison and discloses that the independent judge pass could not run.
@@ -98,8 +100,8 @@ These two paths are the complete revision 1 allowed file set. No supporting file
 ## Dependencies, provenance, and risks
 
 - SK-001 is verified at the claimed baseline. `image-diff-describer` already owns the neutral diff artifact contract; this proposal neither edits nor depends on a pending rewrite of that skill.
-- Current source, WF-005, WF-008, WF-006, and current specs agree. The main structural risk is making route-first ordering appear to invoke a wrapper or delegate before the brief exists. The Workflow will select the route first, gather the brief second, then execute the selected route.
-- The wrapper is project-local and optional. If it fails or is unusable, direct delegation remains next when available; otherwise the manual fallback preserves output authority with explicit non-independent disclosure.
+- Current source revision 1 contradicts the intended select → gather → execute ordering by testing wrapper completion in step 1. Revision 2 makes route selection non-executing, gathers the complete brief in step 2, and moves invocation plus failure continuation to step 3.
+- The wrapper is project-local and optional. Availability may select it in step 1, but only step 3 may invoke it and observe failure. Wrapper failure continues to direct delegation when available; wrapper or delegate failure continues to manual fallback with explicit non-independent disclosure.
 - The target is repo-local by Git history and has no third-party notice. No provenance or license edit is authorized.
 - Compact normalization must not import general visual-review theory, capture mechanics, neutral-diff production, or final caller acceptance into this specialist owner.
 
@@ -109,7 +111,7 @@ These two paths are the complete revision 1 allowed file set. No supporting file
 2. Parse level-two headings; expect exactly `Language Definitions` then `Workflow`, with no `Activities`, `Reference`, or unapproved heading.
 3. Compare definitions to WF-008; expect exactly three semantically identical definitions and no definition of neutral diff artifact.
 4. Compare target frontmatter byte-for-byte with baseline; expect no change.
-5. Inspect the Workflow order; expect already-judge → wrapper → direct delegation → disclosed fallback selection before evidence gathering, followed by execution and strict output.
+5. Inspect the Workflow order; expect step 1 to select only the preferred available already-judge → wrapper → direct-delegation → fallback route, step 2 to gather the complete brief, and step 3 to invoke the selected route. Confirm wrapper failure continues to delegation when available and wrapper or delegate failure continues to disclosed in-process fallback.
 6. Confirm the brief retains reference/candidate paths, intended match, neutral diff path when available, blocking dimensions, forbidden visible elements, and full-scene/asset/HUD comparison surface.
 7. Confirm the strict output contains PASS/FAIL, blocking findings, secondary findings, evidence checked, and suggested next comparison focus; any Blocking finding prevents PASS.
 8. Confirm neutral diff is consumed without ownership and PASS remains scoped Visual acceptance that does not claim final human acceptance.
@@ -121,17 +123,17 @@ These two paths are the complete revision 1 allowed file set. No supporting file
 14. Run `bash tests/run.sh`; expect all repository shell tests to pass.
 15. Compare baseline-aware changed and untracked paths; expect exactly this proposal and target, with no diff in `MIGRATION.md`, `.wayfinder/`, specs/glossaries, notices, tests, deployment/discovery/visibility files, `pi/settings.json`, unrelated skills, or unrelated proposals.
 
-Acceptance requires exact two-file scope, canonical two-section body, exactly three confirmed definitions, unchanged frontmatter, route-first already-judge/wrapper/delegation/fallback behavior, complete evidence and brief inputs, neutral-diff consumption without ownership, strict scoped PASS/FAIL, blocking/secondary findings, fallback disclosure, final-human-acceptance boundary, clean union audit, resolving Pi visibility, clean diff checks, and passing repository tests.
+Acceptance requires exact two-file scope, canonical two-section body, exactly three confirmed definitions, unchanged frontmatter, non-executing route selection in step 1, complete evidence and brief gathering in step 2, route invocation and failure continuation only in step 3, neutral-diff consumption without ownership, strict scoped PASS/FAIL, blocking/secondary findings, fallback disclosure, final-human-acceptance boundary, clean union audit, resolving Pi visibility, clean diff checks, and passing repository tests.
 
 ## Implementation and verification record
 
-Worker verification completed at `2026-07-14T17:41:05+00:00`.
+Revision 1 worker verification completed at `2026-07-14T17:41:05+00:00`.
 
-- Proposal-before-edit control: revision 1 reached `proposal-ready` with the exact proposal and target paths before production editing. No material authority, file-set, ownership, provenance, or behavior change required a proposal revision; this same revision now records `ready-to-integrate`.
+- Proposal-before-edit control: revision 1 reached `ready-to-integrate` and was committed at `f60d0f911bf8619a3af32b0bbaf87204e86bc91b`, then coordinator review returned it to `drafting` for the sequencing contradiction recorded above. Revision 2 now reaches `proposal-ready` before its production edit, retains the exact two-file scope, and changes only route-selection/execution ordering.
 - Actual production diff: `shared/skills/image-comparison-judge/SKILL.md` has 16 insertions and 29 deletions relative to baseline `620b748c1f6ce7e5088c035f7ad506e654a866a5`. The result is 29 lines and 370 words versus the audited 42-line, 316-word baseline; the added words are the three confirmed definitions, explicit wrapper-failure route, neutral-evidence ownership boundary, and observable completion contract rather than new visual-review theory. Resulting target SHA-256: `0cc857e4894200b787865b4f05d166b27e54da894a1cf9f9636adfe086d971fa`.
 - Complete-file and behavior-ledger review: PASS. Every trigger, reference/candidate input, intended-match field, full-scene/asset/HUD surface, blocking dimension, domain constraint, truthful-HUD/forbidden-element example, available neutral diff path, route, fallback disclosure, required output field, scoped verdict, and final-human boundary remains inline.
 - Canonical shape and language: PASS. Level-two headings are exactly `Language Definitions` then `Workflow`; Activities and Reference are correctly omitted. Exactly Visual acceptance, Comparison surface, and Blocking finding are defined with WF-008 semantics; neutral diff artifact is not redefined.
-- Route-first execution: PASS. The Workflow chooses already-judge, repo-wrapper, direct-delegation, or disclosed in-process fallback before gathering the brief. The already-judge branch never reports itself unavailable; an absent or failed wrapper continues to direct delegation when available, then to the same manual judgment contract.
+- Revision 1 route sequencing: COORDINATOR REJECTED. Step 1 selected and tried the wrapper, including deciding that it could not complete, before step 2 gathered the brief. Revision 2 must verify non-executing selection in step 1, brief gathering in step 2, and invocation plus failure continuation in step 3.
 - Evidence and ownership: PASS. Every named image must be inspected. Wrapper/delegate briefs retain all baseline fields plus the already-supported neutral diff path. Available neutral diff evidence is explicitly consumed from `image-diff-describer` without production, ownership, or verdict transfer.
 - Verdict and acceptance authority: PASS. Output remains strict PASS/FAIL with blocking findings, secondary findings, evidence checked, and suggested next comparison focus. Any Blocking finding prevents PASS on the requested Comparison surface. PASS remains scoped Visual acceptance and cannot replace a separately required final human acceptance step.
 - Frontmatter and audit: PASS. Frontmatter is byte-identical to baseline. PyYAML 6.0.1 parsed and accounted for all 33 shared skills; the complete union-schema audit reported zero errors and zero warnings. Manual least-tool review retained `read` for image/evidence inspection and `bash` for project wrapper discovery/invocation.
@@ -139,7 +141,19 @@ Worker verification completed at `2026-07-14T17:41:05+00:00`.
 - Repository and exact-scope verification: PASS. `git diff --check` passed. `bash tests/run.sh` passed both shell files and all 12 tests. Baseline-aware tracked/untracked inspection contains exactly this proposal and target; the migration ledger, Wayfinder records, specs/glossary, notices, tests, installer/deployment, agent config, visibility link, every Pi file including `pi/settings.json`, adjacent visual skills, and unrelated migration items have no diff.
 - Residual risk: wrapper interfaces and delegation availability remain project/runtime-specific. The route requires capability discovery and preserves a disclosed in-process fallback, so no static wrapper contract or unavailable independent pass is invented.
 
-The worker result is `ready-to-integrate`; this record does not claim coordinator integration, central `verified` state, SK-019, VG-001, or another migration item.
+### Revision 2 correction
+
+Revision 2 worker verification completed at `2026-07-14T17:47:01+00:00`.
+
+- Proposal-before-edit control: PASS. Coordinator review returned revision 1 to `drafting`; revision 2 recorded the contradiction, exact unchanged file set, sequencing repair, verification, revision baseline `f60d0f911bf8619a3af32b0bbaf87204e86bc91b`, and passing scope check before the target changed.
+- Actual revision diff: PASS. Relative to revision 1, the target changes only Workflow steps 1 and 3 with two insertions and two deletions; the proposal is the only other changed file. The resulting target remains 29 lines, is 400 words, and has SHA-256 `ce49e41f14cce976480c5447877a9aa359a0cb6dd708bca04f87d40978ed4b5a`.
+- Select → gather → execute sequencing: PASS. Step 1 selects the preferred available already-judge, wrapper, direct-delegation, or fallback route without invoking it or testing completion. Step 2 gathers every evidence and brief input. Step 3 invokes only after gathering, sends all inputs, continues wrapper failure to direct delegation when available, and continues wrapper or delegate failure to disclosed in-process fallback.
+- Preserved contracts: PASS. All three confirmed definitions, neutral-diff consumption without ownership, every image/criteria/brief field, strict scoped PASS/FAIL, blocking and secondary findings, evidence and next-focus output, fallback disclosure, completion criterion, and final-human-acceptance boundary remain unchanged.
+- Canonical shape, frontmatter, and audit: PASS. Level-two headings remain exactly `Language Definitions` then `Workflow`; frontmatter remains byte-identical to the original baseline. PyYAML parsed and accounted for all 33 shared skills with zero union-schema errors and zero warnings; the target's read/bash grants remain used.
+- Repository checks: PASS. `bash tests/run.sh` passed both shell files and all 12 tests. Diff check, visibility, provenance, and protected-path checks passed. Relative to revision 1, exactly this proposal and target changed; the migration ledger, `.wayfinder`, specs, notices, tests, deployment, agent config, Pi visibility link, every Pi file including `pi/settings.json`, adjacent visual skills, and unrelated items have no diff.
+- Residual risk: project wrapper and delegate failures are runtime-specific. The corrected sequence gathers a complete brief before invocation and deterministically continues through the remaining available routes without inventing a static wrapper interface.
+
+The revision 2 worker result is `ready-to-integrate`; it does not claim coordinator integration, central `verified` state, SK-019, VG-001, or another migration item.
 
 ## Explicit exclusions
 
@@ -150,6 +164,6 @@ The worker result is `ready-to-integrate`; this record does not claim coordinato
 ## Standing authorization
 
 - Human directive timestamp: `2026-07-14T15:55:39+00:00`
-- Proposal revision: `1`
-- Authorization effect: the standing no-approval directive authorizes only the exact proposal and target paths and changes enumerated in revision 1.
-- Scope check: `PASS — MAP → WF-007 → complete WF-005 target record → WF-008 → WF-006 → current specs/glossary → verified write-a-skill and audit-shared-skills → complete target and neutral-diff owner → provenance notices/history → command-help applicability were reviewed in the mandated order. Exact files, complete behavior ledger, route/fallback ordering, neutral-evidence ownership, verdict and human-acceptance boundaries, contradiction review, provenance/license status, exclusions, and verification are fixed. Production editing may continue autonomously without a per-item approval wait.`
+- Proposal revision: `2`
+- Authorization effect: the standing no-approval directive and coordinator correction authorize only the exact proposal and target paths and changes enumerated in revision 2.
+- Scope check: `PASS — revision 1 commit and coordinator finding → MAP → WF-007 → complete WF-005 target record → WF-008 → WF-006 → current specs/glossary → verified write-a-skill and audit-shared-skills → complete target and neutral-diff owner → provenance notices/history → command-help applicability were reviewed in the mandated order. Exact files, complete behavior ledger, non-executing route selection, post-brief execution and failure continuation, neutral-evidence ownership, verdict and human-acceptance boundaries, contradiction repair, provenance/license status, exclusions, and verification are fixed. Production editing may continue autonomously without a per-item approval wait.`
