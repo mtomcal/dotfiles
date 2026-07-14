@@ -8,54 +8,34 @@ metadata:
 
 # Visual QA
 
-Use this skill when the job is to decide whether a human-visible result is acceptable. Keep the workflow tool-agnostic and pull in browser or capture skills only for the surface you need.
+## Language Definitions
 
-## Routing
-
-- Use `Playwright` when you need scripted browser automation, deterministic capture, or Playwright-managed recordings.
-- Use `browser:control-in-app-browser` for localhost or side-by-side in-app browser checks.
-- Use `chrome:control-chrome` when you need the user's Chrome profile, cookies, or logged-in tabs.
-- Use `video-to-contact-sheet` when the evidence is a recording or when a static screenshot is no longer enough.
+- **Human-visible result** — rendered appearance/behavior a person perceives.
+- **Evidence surface** — browser, app, screenshot, recording, or derived artifact selected for inspection.
+- **Runtime context** — scenario plus console, network, auth, viewport, and environment needed to interpret evidence.
+- **Capture setup failure** — invalid evidence caused by wrong environment/state/timing/tooling rather than a proven product defect.
+- **Artifact limitation** — information missing or distorted by the review medium.
+- **Machine/visual mismatch** — disagreement between structured signals and visible result that must be reported without silently favoring either.
 
 ## Workflow
 
-1. Pick the human question first.
-   - Examples: "Does the layout overflow on mobile?", "Does the animation read clearly?", "Does the recording prove the bug is fixed?"
-2. Choose the right evidence format.
-   - Single screenshot for layout and spacing.
-   - Full-page or multi-viewport evidence for responsive issues.
-   - Motion evidence for animation, occlusion, attachment, timing, or directional-read questions.
-3. Gather runtime context alongside visuals.
-   - Console warnings/errors.
-   - Network failures.
-   - Structured scenario artifacts, when present.
-4. Escalate when stills stop being trustworthy.
-   - If the complaint is about pose, shadow, weapon/tool anchoring, causality, timing, or something that only appears wrong in motion, switch to `video-to-contact-sheet`.
-   - If logs and screenshots say "fine" but the human-visible result still looks wrong, trust the visible complaint and keep narrowing the evidence.
-5. Report findings in human terms.
-   - Lead with the visible failure or pass condition.
-   - Include the evidence path, runtime context, and whether the issue is product behavior, capture setup, or artifact limitation.
+Use this workflow to decide whether a Human-visible result is acceptable. It owns general visual interpretation and its report; the caller or human retains final acceptance.
 
-## Checklist-Based QA (Orchestrated)
+1. **Route the mode, then state the human question.** Use orchestrated mode when the caller supplies a numbered checklist of actions and expected outcomes; otherwise use ad hoc mode. In either mode, state the visible question before selecting evidence or tooling. If the expected Human-visible result cannot be established, ask the caller rather than inventing acceptance criteria. This step is complete when the mode, question, and each orchestrated expected outcome are explicit.
 
-When invoked as the `visual-qa` subagent in an orchestrated context, the workflow uses a step-by-step checklist format. The orchestrator provides a numbered list of actions and expected outcomes, and the agent executes each sequentially, producing a per-step pass/fail report with evidence.
+2. **Select an available Evidence surface and owner.** Inventory supplied artifacts and the browser, app, or capture routes actually available in the runtime; do not assume a named integration exists. Prefer supplied evidence when it validly covers the question. For new browser evidence, select an available capture owner that satisfies the required auth/profile/session, environment, and determinism. Use `playwright` when it is available and deterministic browser automation, capture, or recording is needed; its skill owns browser commands and cleanup. Use `video-to-contact-sheet` when a recording needs trimming or frame-sampled evidence; its skill owns conversion recipes and hands off source and generated paths with each purpose and limitation.
 
-### Checklist format
+   Choose a single still for layout or spacing, full-page or multiple viewport captures for responsive behavior, and motion evidence for animation, occlusion, attachment, causality, timing, or directional readability. If no available route can produce valid required evidence, report a Capture setup failure and the missing capability without issuing a product verdict. This step is complete when the selected route and Evidence surface are recorded and either valid evidence exists or the review is explicitly blocked.
 
-```
-1. Navigate to [URL] — Expected: [what should appear]
-2. [Action: click, fill, type, select, check] [target] — Expected: [outcome]
-3. ...
-Final: Take full-page screenshot, check console, check network.
-```
+3. **Gather Runtime context beside the visible evidence.** Record the scenario and structured scenario artifacts when present, console warnings/errors, network failures, auth or application state, viewport, and environment. Mark unavailable context as unavailable rather than clean. Inspect the Human-visible result itself; artifact existence or a machine-reported pass is not proof of visible correctness. This step is complete when every evidence path is named and each Runtime context field has evidence or an explicit limitation.
 
-### Per-step verification
+4. **Interpret, escalate, and classify.** When stills are untrustworthy for pose, shadow, anchoring, occlusion, causality, timing, direction, or another transient behavior, use an available capture owner to obtain motion evidence and route the recording through `video-to-contact-sheet` when conversion is needed. If the visible complaint remains while logs, stills, or structured checks look fine, preserve the complaint and narrow or recapture the Evidence surface instead of dismissing it. For every Machine/visual mismatch, report both signals without silently favoring either.
 
-After each action, verify the outcome:
-- Take a snapshot or screenshot to confirm expected elements are present
-- Use the active browser skill to read text, attributes, or console/network state
-- Capture screenshots for failed steps as evidence
+   Classify each finding as product behavior, Capture setup failure, or Artifact limitation. Invalid environment, state, timing, or tooling cannot prove a product defect; an Artifact limitation must state what the medium omits or distorts. This step is complete when every finding is tied to visible evidence, relevant Runtime context, a classification, and any mismatch or limitation.
 
-### Report format
+5. **Execute and report the selected mode.**
 
-Report as a table with columns: Step | Action | Expected | Result | Evidence. Each step marked ✅ PASS or ❌ FAIL. Conclude with a summary verdict — ✅ PASS or ❌ NEEDS-FIX — plus console and network check results.
+   - **Ad hoc:** Lead with the visible pass or failure condition. Report the question, selected route, Evidence surface paths, Runtime context including console and network status, findings, Machine/visual mismatches, classifications, and Artifact limitations. Issue `PASS` or `NEEDS-FIX` only when valid evidence supports a verdict; otherwise report `BLOCKED` and the Capture setup failure without a product verdict.
+   - **Orchestrated:** Execute each numbered action sequentially and verify its expected outcome before continuing. Report a table with `Step | Action | Expected | Outcome | Result | Evidence`; mark each executed step `PASS` or `FAIL`. Capture a screenshot or equivalent visible artifact for every failed step when capture remains available. If a failure invalidates later actions, mark them `BLOCKED` with the reason and last valid evidence rather than fabricating outcomes. Conclude with `PASS` only when every applicable expected outcome passes, `NEEDS-FIX` when valid evidence proves a failure, or `BLOCKED` when Capture setup failure prevents a product verdict. Include final console and network results.
+
+   The capture owner retains interaction and raw-capture mechanics; `video-to-contact-sheet` retains derived-artifact production and limitations; this skill owns the general QA interpretation and report. Return the report and all cited paths to the caller for final human acceptance. Completion requires every requested question or orchestrated step to be accounted for, every failed step to have capture evidence or an explicit capture limitation, console and network status to be stated, and the verdict boundary to be clear.

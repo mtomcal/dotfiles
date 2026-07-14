@@ -1,7 +1,7 @@
 ---
 id: SK-027
 target: visual-qa
-status: proposal-ready
+status: ready-to-integrate
 revision: 1
 blocked-by: [SK-001, SK-005, SK-021, SK-026]
 source-verdict: simplify inline
@@ -78,26 +78,26 @@ These two paths are the complete revision 1 allowed file set.
 
 ## Behavior-preservation checklist
 
-- [ ] Frontmatter remains byte-identical and retains every browser/app/recording, layout, responsive, console/network, motion/readability, screenshot, and review-video trigger plus the existing union-schema fields/grants.
-- [ ] All six exact WF-008 definitions appear once and do not compete with project glossary or neighboring owners.
-- [ ] Workflow routes orchestrated checklist versus ad hoc mode before evidence/tool selection.
-- [ ] Both modes establish the human question or requested visible outcome before selecting tooling.
-- [ ] Supplied evidence is reused when sufficient; new capture checks actual runtime availability and auth/profile/session/determinism requirements.
-- [ ] Playwright remains the conditional deterministic browser/capture owner; active runtime capture integrations remain usable when available; no browser command manual is copied.
-- [ ] Recording conversion routes to `video-to-contact-sheet`, preserving its source/path/purpose/limitation contract and final-acceptance boundary without copying ffmpeg recipes.
-- [ ] Single still, full-page or multi-viewport, and motion evidence remain selected by layout/responsive/motion needs.
-- [ ] Console, network, scenario/structured artifacts, auth/state, viewport, and environment remain Runtime context gathered beside visuals.
-- [ ] Still evidence escalates to motion/capture conversion when pose, shadow, anchoring, occlusion, causality, timing, direction, or another transient behavior makes stills untrustworthy.
-- [ ] A visible complaint is not discarded because machine evidence looks fine; evidence is narrowed or recaptured.
-- [ ] Every Machine/visual mismatch reports both visible and structured signals without silently favoring either.
-- [ ] Findings distinguish product behavior, Capture setup failure, and Artifact limitation; invalid capture cannot prove product failure.
-- [ ] Orchestrated mode requires a numbered checklist with action and expected outcome, executes sequentially, and records Step, Action, Expected, observed Outcome, PASS/FAIL Result, and Evidence.
-- [ ] Every orchestrated step is verified; failed steps receive screenshot/capture evidence when available and invalid downstream steps are reported blocked rather than fabricated.
-- [ ] Orchestrated output ends with `PASS` or `NEEDS-FIX` plus console and network results.
-- [ ] Ad hoc output leads with the Human-visible result and includes evidence paths, Runtime context, mismatches, classification, and limitations.
-- [ ] The report identifies the selected route and all evidence paths; producer skills retain command/artifact mechanics, while `visual-qa` owns general interpretation and returns its report to the caller.
-- [ ] A visual-QA verdict remains scoped evidence for caller/human acceptance and never claims final human acceptance.
-- [ ] No capture, conversion, neutral-diff, criteria-judge, provenance, deployment, discovery, or visibility ownership moves into this skill.
+- [x] Frontmatter remains byte-identical and retains every browser/app/recording, layout, responsive, console/network, motion/readability, screenshot, and review-video trigger plus the existing union-schema fields/grants.
+- [x] All six exact WF-008 definitions appear once and do not compete with project glossary or neighboring owners.
+- [x] Workflow routes orchestrated checklist versus ad hoc mode before evidence/tool selection.
+- [x] Both modes establish the human question or requested visible outcome before selecting tooling.
+- [x] Supplied evidence is reused when sufficient; new capture checks actual runtime availability and auth/profile/session/determinism requirements.
+- [x] Playwright remains the conditional deterministic browser/capture owner; active runtime capture integrations remain usable when available; no browser command manual is copied.
+- [x] Recording conversion routes to `video-to-contact-sheet`, preserving its source/path/purpose/limitation contract and final-acceptance boundary without copying ffmpeg recipes.
+- [x] Single still, full-page or multi-viewport, and motion evidence remain selected by layout/responsive/motion needs.
+- [x] Console, network, scenario/structured artifacts, auth/state, viewport, and environment remain Runtime context gathered beside visuals.
+- [x] Still evidence escalates to motion/capture conversion when pose, shadow, anchoring, occlusion, causality, timing, direction, or another transient behavior makes stills untrustworthy.
+- [x] A visible complaint is not discarded because machine evidence looks fine; evidence is narrowed or recaptured.
+- [x] Every Machine/visual mismatch reports both visible and structured signals without silently favoring either.
+- [x] Findings distinguish product behavior, Capture setup failure, and Artifact limitation; invalid capture cannot prove product failure.
+- [x] Orchestrated mode requires a numbered checklist with action and expected outcome, executes sequentially, and records Step, Action, Expected, observed Outcome, PASS/FAIL Result, and Evidence.
+- [x] Every orchestrated step is verified; failed steps receive screenshot/capture evidence when available and invalid downstream steps are reported blocked rather than fabricated.
+- [x] Orchestrated output ends with `PASS` or `NEEDS-FIX` plus console and network results.
+- [x] Ad hoc output leads with the Human-visible result and includes evidence paths, Runtime context, mismatches, classification, and limitations.
+- [x] The report identifies the selected route and all evidence paths; producer skills retain command/artifact mechanics, while `visual-qa` owns general interpretation and returns its report to the caller.
+- [x] A visual-QA verdict remains scoped evidence for caller/human acceptance and never claims final human acceptance.
+- [x] No capture, conversion, neutral-diff, criteria-judge, provenance, deployment, discovery, or visibility ownership moves into this skill.
 
 ## Dependencies, provenance, and risks
 
@@ -127,6 +127,24 @@ These two paths are the complete revision 1 allowed file set.
 15. Compare baseline-aware tracked and untracked paths. Acceptance: exactly this proposal and target; no diff in `MIGRATION.md`, `pi/settings.json`, `.wayfinder`, specs/glossary, notices, AGENTS, tests, deployment, visibility links, adjacent skills, or unrelated proposals.
 
 Acceptance requires exact two-file scope, canonical two-section body, exact six definitions, byte-identical frontmatter, route-first modes, human-question-first execution, availability-aware capture/conversion, complete evidence selection and Runtime context, mismatch/escalation/classification behavior, complete per-step and final outputs, producer/caller/human ownership boundaries, clean required-field union audit, resolving Pi visibility, local provenance, clean diff checks, and passing repository tests.
+
+## Implementation and verification record
+
+Worker verification completed at `2026-07-14T18:37:08+00:00`.
+
+- Proposal-before-edit control: revision 1 reached committed `proposal-ready` state at `3cac9ac835884821737bde7250077894bc26098d` with the exact proposal/target file set before production editing. Complete diff review found no material file-set, authority, ownership, behavior, provenance, or removal divergence, so revision 1 now records `ready-to-integrate`.
+- Actual production diff: `shared/skills/visual-qa/SKILL.md` has 27 insertions and 47 removals relative to claim baseline `bcd2dd29fa67219d53a731bb38dfc9d00eac2981`; its resulting SHA-256 is `f553f4ebc02109363b626a661337743adc2ff9d233aff18399473aa9a95192f1`. This proposal is the only additional item-local file.
+- Complete-file and behavior-ledger review: PASS. The Workflow routes orchestrated versus ad hoc mode first, establishes the human question before evidence/tool selection, reuses valid supplied evidence, inventories actual runtime capture capability and auth/profile/session/determinism requirements, and preserves still, full-page/multi-viewport, and motion selection. Runtime context covers scenario/structured artifacts, console, network, auth/state, viewport, and environment. Still-untrustworthy escalation, visible-complaint preservation, two-sided Machine/visual mismatch, and product/Capture setup failure/Artifact limitation classification remain inline.
+- Orchestrated/ad hoc outputs and ownership: PASS. Orchestrated mode requires numbered actions and expected outcomes, sequential verification, `Step | Action | Expected | Outcome | Result | Evidence`, failed-step capture when available, and blocked downstream handling; final results distinguish `PASS`, `NEEDS-FIX`, and evidence-blocked `BLOCKED` and include console/network status. Ad hoc output leads with the visible condition and includes the selected route, all evidence paths, Runtime context, mismatches, classifications, and limitations. Capture, conversion, general interpretation, caller, and final-human boundaries remain explicit.
+- Canonical body and confirmed language: PASS. Level-two headings are exactly `Language Definitions` then `Workflow`; no `Activities`, `Reference`, old `Routing`, or old orchestrated-checklist heading remains. All six WF-008 definitions are textually exact and unique.
+- Frontmatter and owner composition: PASS. The opening YAML is byte-identical to baseline and retains the exact `Use when` description and grants. The target conditionally routes deterministic capture to `playwright`, recording conversion to `video-to-contact-sheet`, and returns source/generated paths, purposes, and limitations without copying browser, Playwright, ffmpeg, neutral-diff, or strict-judge mechanics. Static unavailable browser integration names are absent.
+- Focused runtime evidence: PASS. Installed `playwright-cli` reports version `0.1.14`; focused help confirms `open`, `snapshot`, `screenshot --full-page`, `console`, and `requests`. `playwright-cli list` reported no browser before or after the checks, and no command manual was copied into the target.
+- Union audit: PASS for required fields and descriptions. A PyYAML-aware complete-catalog run parsed all 33 discovered skills with zero errors; every description is at most 1024 characters and contains exact `Use when`. It reports one intentional warning: the target's unchanged ffmpeg/ffprobe/file-command grants are unused by the revised body and remain a nonportable least-privilege risk in the excluded frontmatter lane. No frontmatter fix is authorized in this item.
+- Provenance and visibility: PASS. Complete ancestry runs from repository-local creation at `dfd67d2`, through the shared move at `4fcd8db`, local expansions, and decomposition into `visual-qa` at `26119db`; no imported target source was found. `THIRD_PARTY_NOTICES.md` has no target entry and no diff. `pi/skills/visual-qa` remains the resolving `../../shared/skills/visual-qa` symlink.
+- Repository and exact-scope verification: PASS. `bash tests/run.sh` passed both shell files and all 12 tests; focused assertions and scoped `git diff --check` passed. Baseline-aware tracked paths are exactly this proposal and target, with no untracked file and no diff in protected or unrelated paths. No live Herdr ID is persisted.
+- Residual risks: capture capabilities and names vary across harnesses, so route choice remains runtime-dependent. Supplied stills may omit console/network or transient behavior; unavailable context must remain explicit and can force `BLOCKED` or an Artifact limitation. The unchanged target tool grants remain nonportable and unused by this revised body until the separate frontmatter lane addresses them.
+
+The worker result is `ready-to-integrate`; this record does not claim coordinator integration, coordinator verification, central `verified` state, or catalog-wide VG-001 completion.
 
 ## Explicit exclusions
 
