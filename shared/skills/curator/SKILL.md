@@ -114,7 +114,7 @@ Advice for Next Time:
 <one short ephemeral paragraph, or one line saying no meaningful stall occurred>
 ```
 
-A tentative approval never substitutes for this final confirmation. If evidence finds a meaningful stall, add one short advisory paragraph under `Advice for Next Time:`; otherwise say no meaningful stall occurred.
+A tentative approval never substitutes for this final confirmation. If the bounded scan found a meaningful stall, ground it in repeated failures, corrections, loops, explicit stuck statements, or a late invalidating assumption before writing `Advice for Next Time:`. Classify cheaper causes first: missing assumptions or context; skipped worked examples, prior slices, or sharp specs; stronger oracle availability such as tests, builds, or measurable checks; whether the work needed smaller independently checked done-states; and whether it was a structural cliff such as a migration or conversion with no valid halfway state. Only after those checks, frame the advice as a capability ceiling, decomposition problem, or dated set-down reason. Shape the one advisory paragraph to the evidence: oracle plus large task means smaller machine-checked pieces; oracle plus structural cliff means one deliberate hand-driven change; no oracle means a cheap human judgment loop; cheaper cause found means name the missing context or skipped example/spec. Keep the advice ephemeral: show it once, never rank it, ask approval for it, convert it into a recommendation, or write it to durable state. If no meaningful stall occurred, say so in one line.
 
 Completion criterion: the user either cancels with no writes or gives one explicit final approval whose exact recommendations, repositories, and apply/commit/push authority are known.
 
