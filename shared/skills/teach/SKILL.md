@@ -8,13 +8,28 @@ allowed-tools: read,write,edit,bash
 
 # Teach
 
-Treat teaching as a stateful, multi-session practice. Knowledge comes from trusted sources, skills from tight feedback loops, and wisdom from real-world practice and communities.
+## Language Definitions
 
-## 1. Confirm a dedicated teaching workspace
+- **Teaching workspace** — dedicated durable directory holding one learner’s mission, resources, lessons, references, assets, and evidence.
+- **Mission** — agreed real-world outcome, observable success, constraints, and scope.
+- **Zone of proximal development** — next challenge requiring effort without unknown prerequisites.
+- **Knowledge** — trustworthy concepts required for the mission.
+- **Skill** — durable flexible performance from practice and feedback.
+- **Wisdom** — judgment tested with practitioners, communities, and real situations.
+- **Storage strength** — durability of learning over time rather than immediate fluency.
+- **Retrieval practice** — unaided recall or application before rereading.
+- **Learning record** — evidence-backed insight changing future teaching, not a session log.
+- **Demonstrated understanding** — correct unaided retrieval or application.
 
-Ask the user for a dedicated workspace path. Do not silently scaffold the current code repository. If the proposed path is an existing code checkout, explain that teaching state is durable and ask them to confirm a separate location or explicitly approve that checkout.
+## Workflow
 
-Inspect an existing teaching workspace before proposing changes. For a new workspace, explain the initial structure and ask before creating it:
+Treat teaching as a stateful, multi-session practice. Route first between continuing an existing teaching workspace and creating a new one; do not treat a code checkout or generic workspace as teaching state without explicit approval.
+
+### 1. Confirm the dedicated teaching workspace
+
+Ask for a dedicated workspace path. If the proposed path is an existing code checkout, explain that teaching state is durable and ask the user to choose a separate location or explicitly approve that checkout. Inspect an existing teaching workspace read-only before proposing changes.
+
+For a new workspace, present the intended initial scaffold and obtain approval for both the path and exact first-lesson files/directories before writing:
 
 ```text
 <teaching-workspace>/
@@ -32,65 +47,59 @@ Inspect an existing teaching workspace before proposing changes. For a new works
     └── course.css
 ```
 
-Create directories lazily except for the files/directories approved for the first lesson. Read [MISSION-FORMAT.md](MISSION-FORMAT.md), [RESOURCES-FORMAT.md](RESOURCES-FORMAT.md), [LEARNING-RECORD-FORMAT.md](LEARNING-RECORD-FORMAT.md), and [GLOSSARY-FORMAT.md](GLOSSARY-FORMAT.md) only when creating or changing those artifacts.
+Create only the approved first-lesson state; create all other artifacts lazily. Completion criterion: the user has approved one dedicated path and its exact initial scaffold before any workspace write occurs.
 
-Completion criterion: the user approved one dedicated path and approved the initial scaffold before any workspace files are written.
+### 2. Ground the mission and learner evidence
 
-## 2. Ground the mission and current level
+Read existing mission, records, notes, glossary, and relevant lessons before selecting the next lesson. Interview for the real-world outcome, observable success, constraints, and out-of-scope topics. Write or revise `MISSION.md` only after agreement. A mission change requires user confirmation and a learning record explaining how the change affects future teaching.
 
-Interview for the concrete outcome, observable success, constraints, and out-of-scope topics. Write or revise `MISSION.md` only after agreement. A mission change requires user confirmation and a learning record explaining why the new mission changes future teaching.
+Estimate the learner’s zone of proximal development from:
 
-Estimate the user's **zone of proximal development** from:
+- existing learning records and demonstrated performance;
+- prior knowledge the learner reports, including its depth;
+- mission requirements and constraints; and
+- misconceptions or retrieval failures from earlier lessons.
 
-- existing learning records and demonstrated performance
-- prior knowledge the user reports, including depth
-- mission requirements and constraints
-- misconceptions or retrieval failures from earlier lessons
+Record demonstrated non-trivial understanding or stated prior-knowledge depth, not mere exposure. Completion criterion: the next lesson traces to the agreed mission, uses the available learner evidence, requires effort, and depends on no unknown prerequisite.
 
-Record prior knowledge or demonstrated non-trivial understanding, not mere exposure. Completion criterion: the next lesson traces to the mission and is challenging enough to require effort without depending on unknown prerequisites.
+### 3. Build trustworthy resources
 
-## 3. Build trustworthy resources
+Compose `research` to gather and reconcile primary sources, official documentation, upstream source, recognized experts, and high-quality communities. Research owns its evidence process; Teach retains the teaching-workspace location, approved source set, `RESOURCES.md`, lesson claims, citations, and acceptance. Never use parametric recall as evidence for a material claim. Keep resources curated and annotated with what each source supports, and expose gaps instead of filling them with weak links.
 
-Compose the `research` skill to gather primary sources, official documentation, upstream source, recognized experts, and high-quality communities. Never rely on parametric recall for material claims. Keep `RESOURCES.md` curated and annotated with what each source supports; expose gaps rather than filling them with weak links.
+Plan separately for:
 
-Distinguish:
+- **Knowledge** — trustworthy concepts required for the mission;
+- **Skill** — durable flexible performance from practice and feedback; and
+- **Wisdom** — judgment tested with practitioners, communities, and real situations.
 
-- **Knowledge**: trustworthy concepts needed for the mission
-- **Skill**: durable, flexible performance built through practice and feedback
-- **Wisdom**: judgement tested with practitioners, communities, and real situations
+Respect a learner’s choice not to join communities and record it in `RESOURCES.md` or `NOTES.md`. Completion criterion: every substantive factual lesson claim has an adjacent citation to an approved source or is clearly labelled as an exercise or hypothesis.
 
-Respect a user's choice not to join communities and record that preference in `RESOURCES.md` or `NOTES.md`.
+### 4. Design one small lesson
 
-Completion criterion: every substantive lesson claim has an adjacent citation to an approved source, or is clearly presented as an exercise/hypothesis rather than fact.
+Load the teaching-practice Reference for every lesson design. Before drafting, inspect `assets/` and `reference/` for reusable styles, widgets, simulators, diagrams, and established visual language.
 
-## 4. Design one small lesson
+Create one self-contained, attractive `lessons/NNNN-<slug>.html` lesson page with one tangible win tied to the mission. Teach only prerequisite knowledge needed for the target skill. Require unaided retrieval or application before reveal or rereading, a relevant practice attempt, corrective feedback, and a clear success signal. Make feedback prompt and preferably automatic when correctness can be judged reliably, while choosing timing for the task. Schedule important retrieval in later lessons, and interleave only related skills whose foundations are already known. Remove formatting, answer-length, and other answer clues. End with a primary-source recommendation and an invitation for follow-up questions.
 
-Each `lessons/NNNN-<slug>.html` is a self-contained, attractive HTML lesson that gives one tangible win tied to the mission. Keep working-memory load low. Teach only the knowledge required for the target skill, then tighten the feedback loop around practice.
+When an interactive codebase-accurate lesson fits, compose `create-explainer` without weakening its source mapping, mandatory factual review, serving, or browser-validation process. Teach retains the mission, numbered lesson destination, workspace state, approved citations, lesson size, reusable assets, learner evidence, and acceptance; integrate the reviewed result as a teaching lesson rather than an unrelated explainer.
 
-Build storage strength rather than mistaking current fluency for mastery:
+Completion criterion: the lesson has one mission-linked outcome, one retrieval/practice/feedback loop, trustworthy citations, reusable assets where applicable, no answer clues, and an observable success signal.
 
-- use retrieval practice before re-explanation
-- space important ideas across later lessons
-- interleave related skills once each has a basic foundation
-- use desirable difficulty for skill practice, not for initial knowledge acquisition
-- give immediate, ideally automatic, feedback
+### 5. Reuse assets and compress understood knowledge
 
-For multiple-choice quizzes, avoid formatting or answer-length clues. End with a primary-source recommendation and an invitation to ask follow-up questions.
+Place behavior another lesson could reuse in `assets/` rather than duplicating it inline. Create attractive, printable HTML references for durable compressed knowledge such as cheat sheets, algorithms, syntax, sequences, and diagrams. Link lessons and references with relative HTML anchors.
 
-When an interactive codebase-accurate lesson fits, compose `create-explainer`; its source-first and reviewer rules still apply, while this skill owns the mission, workspace paths, citations, lesson size, and reusable assets. Save the result as a teaching lesson, not as an unrelated repository explainer.
+Add or revise a `GLOSSARY.md` term only after the learner demonstrates understanding by using it correctly. Completion criterion: existing assets are reused where applicable, every new reusable behavior has one shared home, and glossary entries cross the understood-term threshold.
 
-Completion criterion: the lesson has one mission-linked outcome, one retrieval/practice loop, trustworthy citations, and a clear success signal.
+### 6. Observe, record, render, and choose the next step
 
-## 5. Reuse assets and compress knowledge
+After practice, ask the learner to retrieve or apply the idea unaided, without copying the lesson. Write a sequential learning record only when evidence establishes demonstrated understanding, prior-knowledge depth, a corrected misconception, or an approved mission shift. Supersede contradicted records rather than deleting history. Put teaching preferences and temporary observations in `NOTES.md`; learning records are not session logs. If understanding is not demonstrated, do not record it as learned—use the observed gap to choose support or the next lesson.
 
-Before authoring a lesson, inspect `assets/` and `reference/`. Reuse the shared stylesheet, quiz widgets, simulators, diagram helpers, and established visual language. Put a component in `assets/` when another lesson could reuse it; do not duplicate it inline.
+Render-check the lesson locally. If rendering cannot be checked, report that limitation and do not claim it passed. Report the lesson’s absolute path and give the learner one concrete unaided practice action. Completion criterion: the current artifact renders, the absolute path and practice action are reported, evidence is stored at the correct durability, and the next step is selected from the mission plus learning records.
 
-Create beautiful, printable HTML references for durable compressed knowledge: cheat sheets, algorithms, syntax, sequences, diagrams, and glossaries. Add a term to `GLOSSARY.md` only after the user can use it correctly. Link lessons and references with relative HTML anchors.
+## Reference
 
-Completion criterion: the lesson uses existing reusable assets where applicable, and any new reusable behavior has one shared home.
-
-## 6. Observe, record, and choose the next step
-
-After practice, ask the user to retrieve or apply the idea without copying the lesson. Write a sequential learning record only when evidence shows understanding, prior knowledge, corrected misconception, or a mission shift. Supersede contradicted records rather than deleting history. Put teaching preferences and temporary observations in `NOTES.md`; do not turn learning records into session logs.
-
-Preview the lesson locally when possible and report its absolute path. The session is complete when the artifact renders, the user has a concrete practice action, evidence has been recorded at the right durability, and the next lesson can be selected from mission plus learning records.
+- Load [MISSION.md format](MISSION-FORMAT.md) before creating or changing `MISSION.md` so the mandatory one-mission, concrete-outcome, observable-success, constraints, scope, and brevity rules govern the write.
+- Load [RESOURCES.md format](RESOURCES-FORMAT.md) before creating or changing `RESOURCES.md` so source annotations, Knowledge/Wisdom grouping, gaps, pruning, and community preferences use the owned schema.
+- Load [Learning record format](LEARNING-RECORD-FORMAT.md) before creating, updating, or superseding a learning record so qualification, numbering, evidence, implications, and retained history follow the durable schema.
+- Load [GLOSSARY.md format](GLOSSARY-FORMAT.md) before creating or changing `GLOSSARY.md` so only demonstrated understanding is promoted and canonical terms, avoided aliases, ambiguities, and revisions remain consistent.
+- Load [Teaching practice](TEACHING-PRACTICE.md) during step 4 for every lesson design; this mandatory Reference supplies the source-backed retrieval, spacing, interleaving, prerequisite guidance, feedback, no-clue, and lesson-acceptance rules that must not become optional after disclosure.
