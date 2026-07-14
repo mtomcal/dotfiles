@@ -92,4 +92,3 @@ Completion criterion: exact absence checks pass and all unrelated pre-existing s
 ## Reference
 
 - Load [REFERENCE.md](REFERENCE.md) when forming or troubleshooting exact tmux launch, steering, monitoring, or cleanup commands; it contains tmux-specific recipes and failure handling without generic delivery instructions.
-- Load and invoke [git-delivery](../git-delivery/SKILL.md) when the orchestration task includes PR publication/update, CI follow-through, stale-head refresh, or pushed-head proof; it owns that complete in-process workflow and its review/conflict composition.
