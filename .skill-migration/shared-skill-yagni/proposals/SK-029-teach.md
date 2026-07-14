@@ -1,7 +1,7 @@
 ---
 id: SK-029
 target: teach
-status: ready-to-integrate
+status: verified
 revision: 1
 blocked-by: [SK-001, SK-007, SK-012, SK-023]
 source-verdict: move detail to Reference
@@ -145,6 +145,8 @@ Worker verification completed at `2026-07-14T18:57:28+00:00`.
 - Residual risks: the cited primary studies remain domain-bounded, and useful spacing and feedback timing vary by task and retention horizon. The Reference makes those limits executable and still requires lesson-specific source research for substantive domain claims. Publisher landing pages may enforce access controls even though DOI registry/resolver metadata is valid; the stable DOI citations remain recoverable.
 
 The worker result is `ready-to-integrate`; this record does not claim coordinator integration, coordinator verification, central `verified` state, or catalog-wide completion.
+
+Coordinator integration verification completed at `2026-07-14T19:00:40+00:00` against integrated commit `b7a1a6f`: the complete target, proposal, new teaching-practice Reference, unchanged schemas, and composed owner boundaries were reread; exact definitions, workspace/scaffold/mission approvals, learner evidence, Research and Knowledge/Skill/Wisdom ownership, lesson contract, mandatory source-backed detail, Create Explainer composition, asset/glossary rules, unaided evidence/records/supersession/render/path/next-step outputs, mandatory Reference conditions, frontmatter identity, Pi visibility, Matt Pocock/MIT provenance, and exact three-file scope passed independent checks. Crossref metadata independently matched all five DOI citations and the official NBME guide resolved as a PDF. The YAML-aware audit parsed/accounted for all 34 skills with zero errors and the one deferred SK-027 grant warning, `git diff --check` passed, and `bash tests/run.sh` passed all 12 tests. The protected `pi/settings.json` content and diff hashes remained `7d3f4713d7239e8cda3f75597a55f1767fecdf7964324630e4e74dc686d12e05` and `8298a9063e3ebf2988000d176057a41c31cf20c10bbabe92fb57d47f9f2738d5`. Residual risks remain domain-bounded pedagogy evidence, task-dependent spacing/feedback timing, and publisher access variability, all stated in the Reference.
 
 ## Explicit exclusions
 
