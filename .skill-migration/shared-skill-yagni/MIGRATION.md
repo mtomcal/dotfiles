@@ -163,7 +163,7 @@ The sequence follows WF-007: durable decisions, authoring owner, correctness rep
 | `SK-019` | skill | `handoff` | retain substance | SK-001 | verified |
 | `SK-020` | skill | `image-comparison-judge` | simplify inline | SK-001 | verified |
 | `SK-021` | skill | `image-diff-describer` | retain substance | SK-001 | verified |
-| `SK-022` | skill | `improve-codebase-architecture` | simplify inline | SK-001, SK-013 | claimed |
+| `SK-022` | skill | `improve-codebase-architecture` | simplify inline | SK-001, SK-013 | integrating |
 | `SK-023` | skill | `research` | retain substance | SK-001 | claimed |
 | `SK-024` | skill | `resolving-merge-conflicts` | retain substance | SK-001 | queued |
 | `SK-025` | skill | `tdd` | simplify inline | SK-001, SK-013 | queued |
