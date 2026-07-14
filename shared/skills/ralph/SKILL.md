@@ -41,7 +41,7 @@ Resolve `RALPH_SKILL_DIR` to the absolute directory of this loaded skill, inspec
 install -m 0755 "$RALPH_SKILL_DIR/references/loop.sh" ./loop.sh
 ```
 
-The runner requires Codex, a readable prompt, and a Git repository with an existing `HEAD`. It accepts only a positive iteration bound, defaults to 25 and `PROMPT.md`, and validates `SANDBOX_MODE` before starting. It retains combined output, final worker responses, and commit evidence under `.loop-logs/`.
+The runner requires Codex, a readable prompt, and a Git repository with an existing `HEAD`. It accepts only a positive iteration bound, defaults to 25 and `PROMPT.md`, and validates `SANDBOX_MODE` before starting. It retains combined output, final worker responses, and commit evidence under `.loop-logs/`. Every invocation allocates persistent evidence sequence numbers above all existing logs, final messages, and durable claim markers; it never reuses an earlier invocation's paths.
 
 Completion criterion: `./loop.sh` is the reviewed executable template, `bash -n ./loop.sh` passes, required files and Git state exist, and no existing runner was overwritten without approval.
 
@@ -54,22 +54,22 @@ export SANDBOX_MODE=danger-full-access
 export RALPH_DANGER_FULL_ACCESS_APPROVED=1
 ```
 
-Launch the default bounded job with `./loop.sh`, or use `./loop.sh <max_iterations> <prompt_file>`. Each iteration starts a fresh `codex exec`, rereads the current prompt, and must advance `HEAD` by at least one descendant commit. The runner logs the commit count, hashes, and subjects before continuing.
+Launch the default bounded job with `./loop.sh`, or use `./loop.sh <max_iterations> <prompt_file>`. The bound applies only to workers launched by this invocation, independent of retained evidence sequence numbers. Each worker iteration starts a fresh `codex exec`, rereads the current prompt, and must advance `HEAD` by at least one descendant commit. The runner logs the commit count, hashes, and subjects before continuing.
 
-Completion criterion: the selected sandbox is approved, the bound is positive (25 when omitted), and the foreground runner starts a fresh logged worker iteration. This skill and runner do not read `ORCHESTRATOR.md` or launch an orchestrator process.
+Completion criterion: the selected sandbox is approved, the bound is positive (25 when omitted), and the foreground runner starts a fresh logged worker iteration at a new evidence sequence. This skill and runner do not read `ORCHESTRATOR.md` or launch an orchestrator process.
 
 ### 4. Monitor, correct, and recover
 
 Inspect `.loop-logs/iteration-N.log`, the matching `.last-message.md`, the Ralph job plan, and the recorded Git range. A separately launched orchestrator may perform the same observation and prepend course corrections; edits during an active iteration apply only when the next fresh worker rereads the prompt.
 
-The runner stops non-zero on invalid setup, Codex or logging failure, missing or rewritten commit history, or bound exhaustion without the exact sentinel. It never advances automatically after failure. Preserve the logs, diagnose the failed iteration, add a course correction when needed, and rerun explicitly. Do not mistake a changed `HEAD` for proof that the commit contains the intended single item; inspect its diff.
+The runner stops non-zero on invalid setup, Codex or logging failure, missing or rewritten commit history, evidence-path collision, or bound exhaustion without the exact sentinel. It never advances automatically after failure and never removes, truncates, appends to, or replaces evidence from an earlier invocation. Preserve the logs, diagnose the failed iteration, add a course correction when needed, and rerun explicitly; the rerun allocates a new evidence sequence while retaining prior log and final-message bytes. Do not mistake a changed `HEAD` for proof that the commit contains the intended single item; inspect its diff.
 
-Completion criterion: every stopped failure has retained evidence and is either corrected before an explicit rerun or reported as incomplete; no failed iteration is skipped.
+Completion criterion: every stopped failure has retained evidence and is either corrected before an explicit rerun or reported as incomplete; an explicit rerun uses fresh paths and no failed iteration is skipped.
 
 ### 5. Verify completion and clean up
 
 The runner succeeds only when a successful iteration both records descendant commit evidence and writes a final response exactly equal to `/done`. Before accepting the job, verify every checklist item and discovery in `IMPLEMENTATION_PLAN.md`, inspect each iteration's logs and commit range, rerun the required job-level tests, confirm test-quality evidence after test changes, and inspect final Git status and history.
 
-Stop any separately launched monitor when the runner exits. Retain `.loop-logs` through failure diagnosis and completion review; remove logs or the copied runner only as an explicit cleanup action after their evidence is no longer needed.
+Stop any separately launched monitor when the runner exits. Retain `.loop-logs`, including durable allocation markers, through failure diagnosis, explicit reruns, and completion review; remove logs or the copied runner only as an explicit cleanup action after their evidence is no longer needed.
 
 Completion criterion: the exact sentinel, bounded runner status, Ralph job plan, commits, tests, logs, and final Git state all agree that the job is complete, with no monitor process or unreviewed cleanup left behind.
