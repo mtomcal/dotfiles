@@ -1,7 +1,7 @@
 ---
 id: SK-026
 target: video-to-contact-sheet
-status: proposal-ready
+status: ready-to-integrate
 revision: 1
 blocked-by: [SK-001]
 source-verdict: simplify inline
@@ -69,24 +69,24 @@ These two paths are the complete revision 1 allowed file set. `shared/skills/vis
 
 ## Behavior-preservation checklist
 
-- [ ] Frontmatter remains byte-identical and retains direct video, artifact bundle, browser demo, gameplay, Playwright WebM, screen-recording, and local-app triggers plus existing tool grants.
-- [ ] Source evidence, Contact sheet, Overview contact sheet, and Focused evidence retain their exact confirmed definitions without competing meanings.
-- [ ] Routing accepts a direct video path, newest runner artifact directory, or browser-generated recording and resolves one readable source before conversion.
-- [ ] Raw recording plus nearby structured evidence remain unchanged; JSON, NDJSON, console logs, and other nearby evidence are inspected before trimming or selecting the interesting window.
-- [ ] Probe records duration, file size, stream inventory, video dimensions/codecs, and audio presence; probe failure blocks conversion rather than producing an unsupported report.
-- [ ] Missing audio is disclosed as an artifact limitation and is not called a product bug unless independent capture evidence establishes expected audio.
-- [ ] An overview contact sheet is produced first and samples the full probed timeline at high readable resolution.
-- [ ] Black, blank, setup-only, or startup-obscured overview evidence routes to a trimmed clip and rebuilt trimmed sheet; trim timing comes from observed frames.
-- [ ] Brief/transient behavior routes to a higher-frequency sheet with start/window/rate chosen from overview evidence.
-- [ ] Small, attachment, occlusion, directional-read, fighter-scale, motion, or readability behavior routes to a higher-resolution crop whose bounds come from probed dimensions and visible evidence.
-- [ ] Exactly four reusable recipe families remain: overview; trimmed clip/sheet; high-frequency sheet; cropped sheet.
-- [ ] Every Activity keeps the source path distinct from outputs, creates a separate output directory, uses installed-valid ffmpeg/ffprobe syntax, fails on command or empty output, and requires visual inspection.
-- [ ] Artifact existence never substitutes for meaningful behavior; blank or misleading outputs loop back to trim, frequency, or crop selection.
-- [ ] Raw video remains source evidence, while a trimmed clip may be identified as the more truthful review surface without replacing the raw path.
-- [ ] Structured machine evidence and sampled visuals are both retained when they disagree; neither silently overrides the other.
-- [ ] Handoff reports the raw source and every generated artifact path with purpose and limitations, including sampling/crop/trim and missing-audio limitations plus any machine/visual mismatch.
-- [ ] Artifacts return to `visual-qa` or the active caller for judgment; conversion does not claim specialist or final human acceptance.
-- [ ] No capture, neutral-diff, criteria judgment, browser automation, visual-qa workflow, provenance, deployment, or visibility ownership moves into this skill.
+- [x] Frontmatter remains byte-identical and retains direct video, artifact bundle, browser demo, gameplay, Playwright WebM, screen-recording, and local-app triggers plus existing tool grants.
+- [x] Source evidence, Contact sheet, Overview contact sheet, and Focused evidence retain their exact confirmed definitions without competing meanings.
+- [x] Routing accepts a direct video path, newest runner artifact directory, or browser-generated recording and resolves one readable source before conversion.
+- [x] Raw recording plus nearby structured evidence remain unchanged; JSON, NDJSON, console logs, and other nearby evidence are inspected before trimming or selecting the interesting window.
+- [x] Probe records duration, file size, stream inventory, video dimensions/codecs, and audio presence; probe failure blocks conversion rather than producing an unsupported report.
+- [x] Missing audio is disclosed as an artifact limitation and is not called a product bug unless independent capture evidence establishes expected audio.
+- [x] An overview contact sheet is produced first and samples the full probed timeline at high readable resolution.
+- [x] Black, blank, setup-only, or startup-obscured overview evidence routes to a trimmed clip and rebuilt trimmed sheet; trim timing comes from observed frames.
+- [x] Brief/transient behavior routes to a higher-frequency sheet with start/window/rate chosen from overview evidence.
+- [x] Small, attachment, occlusion, directional-read, fighter-scale, motion, or readability behavior routes to a higher-resolution crop whose bounds come from probed dimensions and visible evidence.
+- [x] Exactly four reusable recipe families remain: overview; trimmed clip/sheet; high-frequency sheet; cropped sheet.
+- [x] Every Activity keeps the source path distinct from outputs, creates a separate output directory, uses installed-valid ffmpeg/ffprobe syntax, fails on command or empty output, and requires visual inspection.
+- [x] Artifact existence never substitutes for meaningful behavior; blank or misleading outputs loop back to trim, frequency, or crop selection.
+- [x] Raw video remains source evidence, while a trimmed clip may be identified as the more truthful review surface without replacing the raw path.
+- [x] Structured machine evidence and sampled visuals are both retained when they disagree; neither silently overrides the other.
+- [x] Handoff reports the raw source and every generated artifact path with purpose and limitations, including sampling/crop/trim and missing-audio limitations plus any machine/visual mismatch.
+- [x] Artifacts return to `visual-qa` or the active caller for judgment; conversion does not claim specialist or final human acceptance.
+- [x] No capture, neutral-diff, criteria judgment, browser automation, visual-qa workflow, provenance, deployment, or visibility ownership moves into this skill.
 
 ## Dependencies, provenance, and risks
 
@@ -114,6 +114,24 @@ These two paths are the complete revision 1 allowed file set. `shared/skills/vis
 13. Compare baseline-aware tracked and untracked paths. Acceptance: exactly this proposal and target; no diff in `MIGRATION.md`, `pi/settings.json`, `.wayfinder`, specs/glossary, notices, `visual-qa`, deployment, visibility links, tests, unrelated skills, or unrelated proposals.
 
 Acceptance requires exact two-file scope, canonical three-section body, exact confirmed definitions, byte-identical frontmatter, complete discovery/probe/audio/source-preservation behavior, all four executable locally guarded recipes, overview/trim/frequency/crop selection, meaningful/readable evidence gates, mismatch preservation, per-path purpose/limitation handoff, clean union audit, resolving Pi visibility, local provenance, clean diff checks, and passing repository tests.
+
+## Implementation and verification record
+
+Worker verification completed at `2026-07-14T18:21:55+00:00`.
+
+- Proposal-before-edit control: revision 1 reached committed `proposal-ready` state at `fdb29a0` with the exact proposal/target file set before production editing. Synthetic preflight exposed leading-zero duration syntax and stream-copy keyframe limitations before the edit; both were already captured in the passing scope check, so no material scope, ownership, behavior, removal, provenance, or file-set revision was needed.
+- Actual production diff: `shared/skills/video-to-contact-sheet/SKILL.md` has 91 insertions and 42 removals relative to claim baseline `0fe451fc40e94420d9f2aa17c684043479866051`; its resulting SHA-256 is `6f91087947cb9e641b97c6a31a292290d3a2b52724920ea5ed4a3c867c88b897`. This proposal is the only additional item-local file.
+- Complete-file and behavior-ledger review: PASS. All triggers, three source forms, newest-bundle routing, nearby JSON/NDJSON/console evidence, intended moment/audio expectation, unchanged raw evidence, duration/file-size/stream/dimension/codec/audio probe, missing-audio limitation, overview-first selection, trim/frequency/crop branches, meaningful/readable behavior, fighter-scale escalation, machine/visual mismatch, and path/purpose/limitation handoff remain inline.
+- Canonical body and confirmed language: PASS. Level-two headings are exactly `Language Definitions`, `Workflow`, then `Activities`; no `Reference` is invented. All four WF-008 definitions are exact and unique. One Workflow contains four ordered stages, and Activities contains exactly four recipe families.
+- Recipes and local guards: PASS. Installed `ffmpeg`/`ffprobe` 6.1.1-3ubuntu5 help exposes every fixed option and the fps/scale/tile/crop filters. Synthetic audio and video-only WebM sources exercised all four recipe families (five generated outputs because trim also rebuilds a sheet). Outputs were non-empty at expected dimensions, the trim retained video and audio streams, video-only audio detection returned none, and both source hashes remained unchanged. Duration-aware overview sampling replaced the misleading fixed first-18-second coverage; focused defaults retain 12 FPS/6x4; crop bounds, 24-frame capacity, separate outputs, command failures, emptiness, inspection, and escalation are guarded locally.
+- Trim limitation: PASS as an explicit artifact limitation. The synthetic stream-copy trim sought to an earlier keyframe and retained an approximately six-second duration rather than an exact 4.5-second cut. The Activity therefore requires inspection of actual first frame/duration and an adjusted seek or explicitly compatible re-encode when exact cutting is required; it cannot report the trim as truthful merely because the file exists.
+- Frontmatter and grants: PASS. The opening YAML is byte-identical to baseline. PyYAML parsed the target, the description retains exact `Use when`, and each unchanged grant is concretely used by discovery, structured-evidence inspection, probing, generation, output setup, or size checks.
+- Baseline-aware union audit: PASS. PyYAML accounted for all 33 baseline and all 33 result skill frontmatters with zero errors and zero warnings for required fields, description length, and exact `Use when`; manual target tool review found no unused grant.
+- Consumer, provenance, and visibility: PASS. `visual-qa` remains byte-identical and already routes recordings here while owning runtime context, limitation reporting, and downstream interpretation. Complete history confirms local authoring at `2c5a46c`, extraction at `26119db`, and resolution update at `4d8767d`; `THIRD_PARTY_NOTICES.md` has no target entry and remains unchanged. Pi visibility still resolves through `../../shared/skills/video-to-contact-sheet`.
+- Repository and exact-scope verification: PASS. `bash tests/run.sh` passed both shell files and all 12 tests; scoped `git diff --check` passed. Baseline-aware inspection contains exactly this proposal and target. `MIGRATION.md`, `.wayfinder`, `pi/settings.json`, specs/glossary, notices, `visual-qa`, tests, deployment, visibility links, and unrelated items have no diff, and no live Herdr ID is persisted.
+- Residual risks: stream-copy seeks remain keyframe- and container-dependent, so exact trims may require an explicitly chosen re-encode and must report that limitation. A nine-frame overview samples the full timeline sparsely and can miss sub-interval behavior; the workflow therefore reports sampling limitations and escalates to the observed high-frequency window. Crop coordinates and resolution remain source-specific but are bounded by probe dimensions and mandatory visual inspection.
+
+The worker result is `ready-to-integrate`; this record does not claim coordinator integration, coordinator verification, or catalog-wide VG-001 completion.
 
 ## Explicit exclusions
 
