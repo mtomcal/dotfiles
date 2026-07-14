@@ -1,7 +1,7 @@
 ---
 id: SK-003
 target: gameplay-asset-imagegen
-status: ready-to-integrate
+status: verified
 blocked-by: [SK-001]
 source-verdict: simplify inline
 ---
@@ -116,6 +116,8 @@ Acceptance requires every checklist item to pass, exact scope equality, valid un
 ## Implementation record
 
 Focused verification completed: `2026-07-14T16:06:04+00:00`
+
+Integrated verification completed: `2026-07-14T16:09:06+00:00`
 
 - Actual production diff: `shared/skills/gameplay-asset-imagegen/SKILL.md` only, with 61 insertions and 38 removals; the proposal is the only additional item-local file.
 - Resulting skill SHA-256: `c61ffa3a02e6ed0becc537926e96156bacf983bdc08de5e3f07aff7afec4fa70`.

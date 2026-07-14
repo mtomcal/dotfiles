@@ -144,7 +144,7 @@ The sequence follows WF-007: durable decisions, authoring owner, correctness rep
 | `MG-002` | prerequisite | Provenance notices | Repair known Grill Me, Herdr, and Playwright notice gaps | MG-001 | verified |
 | `SK-001` | skill | `write-a-skill` | simplify inline; become body-authoring owner | MG-001, MG-002 | verified |
 | `SK-002` | skill | `bootstrap-specs` | simplify inline | SK-001 | claimed |
-| `SK-003` | skill | `gameplay-asset-imagegen` | simplify inline | SK-001 | claimed |
+| `SK-003` | skill | `gameplay-asset-imagegen` | simplify inline | SK-001 | verified |
 | `SK-004` | skill | `herdr` | simplify inline | SK-001, MG-002 | queued |
 | `SK-005` | skill | `playwright` | move detail to Reference | SK-001, MG-002 | queued |
 | `SK-006` | skill | `ralph` | simplify inline | SK-001 | queued |
