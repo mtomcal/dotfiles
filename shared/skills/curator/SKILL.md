@@ -88,7 +88,7 @@ Evidence:
 <brief supporting details, after the decision>
 ```
 
-Use full-summary mode only when the user explicitly asks for the complete ranked set. Keep decisions recommendation-first and evidence-light enough to review.
+Use full-summary mode only when the user explicitly asks for the complete ranked set. Keep decisions recommendation-first and evidence-light enough to review. In full-summary mode, every recommendation must still name the action, target, owner route, future trigger, evidence signal, value/efficiency/confidence, maintenance burden, duplication or staleness risk, and runtime consequence. For removal, consolidation, rename, or refactor proposals, also state the replacement or source of truth, risk if kept, risk if changed, rollback path, and migration notes. End the summary with practical tentative selection shortcuts such as approving all high-value items, approving specific numbers, converting one item to a different owner, skipping and reranking, or approving one as a draft; none of these shortcuts authorizes a write.
 
 Every approval, including terse, repeated, multi-item, or full-summary approval, is tentative. It may change the active set but cannot authorize a write. Track the tentative set visibly, apply edits or reranking only to the proposal set, and continue until all active items are reviewed or the user stops.
 

@@ -68,7 +68,7 @@ Completion: the user has approved one real, right-sized ticket and one explainer
 
 ### 3. Create the training branch and temporary guide
 
-Load the approved ticket and setup details to safely create `train/em-<date>-<ticket-slug>`, record its immutable start commit as the review fixed point, and record that the session owns the branch. Stop rather than overwrite an existing branch or hide an unsuitable working tree.
+Load the approved ticket and setup details to safely create `train/em-<date>-<ticket-slug>`, record its immutable start commit as the review fixed point, and record that the session owns the branch. Before computing or creating the branch, run `git status --short`. If unrelated tracked or untracked work could enter the training branch, ask the user to resolve it or explicitly classify it as outside session ownership; never stash, discard, or absorb it silently. Stop rather than overwrite an existing branch or hide an unsuitable working tree.
 
 Generate the branch slug with installed shell tools rather than assuming a `slugify` command:
 
