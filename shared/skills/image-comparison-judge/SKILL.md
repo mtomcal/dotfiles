@@ -8,35 +8,22 @@ allowed-tools: read,bash
 
 # Image Comparison Judge
 
-Use this skill when the implementation agent needs an independent visual judgment rather than another round of self-evaluation.
+## Language Definitions
+
+- **Visual acceptance** — criteria-based decision about the requested visible result.
+- **Comparison surface** — explicit visible scope covered by the verdict.
+- **Blocking finding** — visible acceptance-criterion violation preventing PASS.
 
 ## Workflow
 
-1. Gather the reference image path and candidate image paths.
-2. Gather the domain constraints that change the verdict, such as truthful-HUD rules or forbidden mechanics that must remain visually absent.
-3. Prefer consuming a neutral diff artifact from `image-diff-describer` or an equivalent first-stage comparison when one is available.
-4. If you are already running as the `image-comparison-judge` subagent, perform the comparison directly. Otherwise, if subagents are available, delegate the comparison to the `image-comparison-judge` subagent.
-5. Ask for a strict PASS/FAIL verdict with:
-   - blocking mismatches
-   - secondary gaps
-   - evidence checked
-   - suggested next comparison focus
-6. Treat PASS as visual acceptance only for the requested comparison surface. It does not replace a separate final human acceptance step when a workflow requires one.
+1. **Select the judging route first.** If already running as the `image-comparison-judge` subagent, judge directly and do not claim the independent pass was unavailable. Otherwise, try a repo-local wrapper when one exists. If no wrapper exists or it cannot complete the comparison, delegate directly to the `image-comparison-judge` subagent when available. If neither route can complete, perform the same comparison in process and disclose that the independent judge pass could not run.
+2. **Gather the evidence and criteria.** Obtain the reference image path, every candidate image path, what the candidate should match, the Comparison surface (full scene, asset, or HUD), blocking review dimensions, and verdict-changing domain constraints such as truthful-HUD rules or forbidden visible elements. Consume a neutral diff artifact from `image-diff-describer` when available, but do not produce or own it or treat it as a verdict.
+3. **Execute the selected route.** Inspect every named image. For a wrapper or delegate, provide all gathered inputs, including the neutral diff artifact path when available. Judge the visible result against the reference, intended match, review dimensions, and constraints. Issue a strict PASS or FAIL only for the Comparison surface: any Blocking finding prevents PASS; report lesser visible gaps as secondary findings.
+4. **Return the judgment** with:
+   1. verdict: PASS or FAIL
+   2. blocking findings
+   3. secondary findings
+   4. evidence checked
+   5. suggested next comparison focus
 
-## Delegation Brief
-
-Include:
-
-- reference image path
-- candidate image paths
-- neutral diff artifact path when available
-- what the candidate is supposed to match
-- blocking review dimensions
-- forbidden visible elements
-- whether the task is full-scene comparison, asset comparison, or HUD comparison
-
-If a repo-local wrapper exists for the current project, use it before calling the subagent directly.
-
-## Fallback
-
-If you are already running as the `image-comparison-judge` subagent, do not claim the independent judge pass was unavailable. If subagents are unavailable and you are not already that subagent, perform the same comparison manually and say that the independent judge pass could not be run.
+   PASS is Visual acceptance only for the Comparison surface and does not replace a separately required final human acceptance step. Complete the workflow only after every named image and criterion is accounted for, findings are classified, the execution route or fallback is clear, and all five output fields are present.
