@@ -1,7 +1,7 @@
 ---
 id: SK-014
 target: code-review
-status: ready-to-integrate
+status: verified
 revision: 1
 blocked-by: [SK-001]
 source-verdict: retain substance
@@ -135,6 +135,12 @@ Worker verification completed at `2026-07-14T17:19:14+00:00`.
 - Residual risk: worktree/WIP remains a supported trigger, but—as at baseline—the compact contract requires a stable captured diff and exhaustive changed-file coverage rather than prescribing one universal snapshot or untracked-file recipe. No existing behavior was silently replaced to resolve that repository-dependent choice.
 
 The worker result is `ready-to-integrate`; this record does not claim coordinator integration, central verification, VG-001, SK-013, or any other migration item.
+
+## Integrated verification
+
+- Coordinator verification timestamp: `2026-07-14T17:22:30+00:00`.
+- Exact scope, complete skill review, canonical shape, fixed-point and early-failure gates, independent axes/routes, every-file findings, separate outputs, and provenance passed.
+- Repository tests passed 12/12; diff check, Pi visibility, and preserved settings hashes passed. WIP stable-diff risk remains documented.
 
 ## Explicit exclusions
 
