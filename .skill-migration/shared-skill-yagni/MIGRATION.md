@@ -145,7 +145,7 @@ The sequence follows WF-007: durable decisions, authoring owner, correctness rep
 | `SK-001` | skill | `write-a-skill` | simplify inline; become body-authoring owner | MG-001, MG-002 | verified |
 | `SK-002` | skill | `bootstrap-specs` | simplify inline | SK-001 | claimed |
 | `SK-003` | skill | `gameplay-asset-imagegen` | simplify inline | SK-001 | verified |
-| `SK-004` | skill | `herdr` | simplify inline | SK-001, MG-002 | queued |
+| `SK-004` | skill | `herdr` | simplify inline | SK-001, MG-002 | claimed |
 | `SK-005` | skill | `playwright` | move detail to Reference | SK-001, MG-002 | queued |
 | `SK-006` | skill | `ralph` | simplify inline | SK-001 | queued |
 | `SK-007` | skill | `create-explainer` | simplify inline | SK-001 | queued |
@@ -199,4 +199,4 @@ The final catalog gate additionally checks all 33 original skills, the proposal-
 
 `MG-001` revision 2, `MG-002` revision 1, and `SK-001` revision 1 are verified. The sequential bootstrap is complete, so parallel mode is now available but no worker item is claimed yet.
 
-`SK-002` and `SK-003` are claimed as the first parallel pair. Their targets and likely support-file scopes do not overlap, and neither owns behavior required to decide the other. All other unblocked items remain queued until one claimed result is integrated and the frontier is recomputed. No later production file is authorized without its item-specific exact proposal in `proposal-ready` state.
+`SK-002` and `SK-004` are claimed as the active parallel pair. SK-003 is verified. The active targets and support-file scopes do not overlap, and neither owns behavior required to decide the other. All other unblocked items remain queued until one claimed result is integrated and the frontier is recomputed. No later production file is authorized without its item-specific exact proposal in `proposal-ready` state.
