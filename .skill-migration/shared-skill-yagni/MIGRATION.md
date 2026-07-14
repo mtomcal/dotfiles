@@ -171,7 +171,7 @@ The sequence follows WF-007: durable decisions, authoring owner, correctness rep
 | `SK-027` | skill | `visual-qa` | simplify inline | SK-001, SK-005, SK-021, SK-026 | verified |
 | `SK-028` | skill | `wayfinder` | retain substance | SK-001 | verified |
 | `SK-029` | skill | `teach` | move detail to Reference | SK-001, SK-007, SK-023 | verified |
-| `SK-030` | skill | `create-agents-md` | move detail to Reference | SK-001 | claimed |
+| `SK-030` | skill | `create-agents-md` | move detail to Reference | SK-001 | integrating |
 | `SK-031` | skill | `curator` | move detail to Reference | SK-001 | claimed |
 | `SK-032` | skill | `em-train` | consolidate/delegate | SK-001, SK-007, SK-014 | queued |
 | `NEW-001` | new skill | Generic Git delivery | independently invocable PR/CI/stale-branch owner | SK-001, SK-014, SK-024 | verified |
