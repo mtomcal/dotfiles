@@ -1,7 +1,7 @@
 ---
 id: SK-007
 target: create-explainer
-status: ready-to-integrate
+status: verified
 blocked-by: [SK-001]
 source-verdict: simplify inline
 ---
@@ -118,6 +118,14 @@ No other lab template or `lab/README.md` change is authorized. They are verifica
 - Use installed `playwright-cli` against the served network simulator at nonzero packet loss and against representative static/interactive fixtures — page opens, screenshots save under `/tmp`, packet-loss text includes the percentage rather than a boolean, responsive/expanded-state checks return no overflow, no unexpected console/page error is observed, and the browser closes.
 - Reread final `SKILL.md`, changed `REFERENCE.md`, and repaired template against WF-005/WF-008; confirm every checked ledger entry has a retained location or approved owner.
 - `git diff --check` and `git status --short` — no whitespace errors or undisclosed changes.
+
+## Integrated verification
+
+- Coordinator verification timestamp: `2026-07-14T16:48:34+00:00`.
+- Exact five-path worker scope, canonical section shape, WF-008 definitions, relative links/fragments, deleted-file inbound links, all 13 inline lab scripts, served identity for all 13 labs, and the packet-loss expression passed independent checks.
+- Browser verification at 1440px and 700px rendered `Packet loss: 5%`, reported zero horizontal overflow, saved screenshots under `/tmp`, and closed the task-owned browser. The only console error was the expected missing favicon.
+- The union-frontmatter audit passed for 33 skills; repository shell tests passed 12/12; `git diff --check`, Pi visibility, and the preserved `pi/settings.json` content/diff hashes passed.
+- Residual risk: the local reviewer fallback is source-rediscovery independent but not a separate agent; the workflow requires honest disclosure.
 
 ## Explicit exclusions
 
