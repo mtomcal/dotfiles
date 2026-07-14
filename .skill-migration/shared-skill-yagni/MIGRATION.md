@@ -148,7 +148,7 @@ The sequence follows WF-007: durable decisions, authoring owner, correctness rep
 | `SK-004` | skill | `herdr` | simplify inline | SK-001, MG-002 | verified |
 | `SK-005` | skill | `playwright` | move detail to Reference | SK-001, MG-002 | verified |
 | `SK-006` | skill | `ralph` | simplify inline | SK-001 | claimed |
-| `SK-007` | skill | `create-explainer` | simplify inline | SK-001 | claimed |
+| `SK-007` | skill | `create-explainer` | simplify inline | SK-001 | integrating |
 | `SK-008` | skill | `test-quality-verifier` | retain substance; clarify routing | SK-001 | queued |
 | `SK-009` | skill | `ubiquitous-language` | simplify inline | SK-001, MG-001 | queued |
 | `SK-010` | skill | `update-specs` | retain substance; repair executable/ownership contract | SK-001, MG-001 | queued |
@@ -199,4 +199,4 @@ The final catalog gate additionally checks all 33 original skills, the proposal-
 
 `MG-001` revision 2, `MG-002` revision 1, and SK-001 through SK-005 are verified. Parallel mode is active.
 
-`SK-006` and `SK-007` are claimed as the active pair. Their targets and support-file scopes do not overlap, and neither owns behavior required to decide the other. All other unblocked items remain queued until one claimed result is integrated and the frontier is recomputed. No later production file is authorized without its item-specific exact proposal in `proposal-ready` state.
+`SK-006` is claimed and `SK-007` is integrating as the active pair. Their targets and support-file scopes do not overlap, and neither owns behavior required to decide the other. All other unblocked items remain queued until one claimed result is integrated and the frontier is recomputed. No later production file is authorized without its item-specific exact proposal in `proposal-ready` state.
