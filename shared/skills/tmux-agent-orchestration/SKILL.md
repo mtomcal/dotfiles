@@ -91,4 +91,4 @@ Completion criterion: exact absence checks pass and all unrelated pre-existing s
 
 ## Reference
 
-- Load [REFERENCE.md](REFERENCE.md) when forming or troubleshooting exact tmux launch, steering, monitoring, or cleanup commands; it contains tmux-specific recipes and failure handling without generic delivery instructions.
+- Load [REFERENCE.md](REFERENCE.md) only after a tmux-specific failure branch is selected: session collision, same-checkout collision, wrong clone/branch/remote, prompt not submitted, blocked on authority or permission, worker window disappears, monitoring deadline reached, dirty or unretained clone at cleanup, or exact cleanup check failure. It contains recovery-only detail; ordinary launch, steering, monitoring, and cleanup commands stay in the Activities above.
