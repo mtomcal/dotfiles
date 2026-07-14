@@ -8,58 +8,71 @@ allowed-tools: read,edit,bash
 
 # Audit Shared Skills
 
-Review every skill in `shared/skills/` and verify it meets the union frontmatter schema required for compatibility across all CLI agents.
+## Language Definitions
 
-## Union Schema
+- **Union schema** — repository-required combination of fields across supported harnesses, distinct from one external standard.
+- **Error** — violation of a required shared-skill field.
+- **Warning** — portability, clarity, or least-privilege risk that remains loadable.
 
-Every skill in `shared/skills/` should have:
+## Workflow
 
-| Field | Required | Used by |
-|-------|----------|---------|
-| `name` | yes | all agents |
-| `description` | yes | all agents (max 1024 chars, include "Use when...") |
-| `metadata.short-description` | yes | Codex, Pi |
-| `allowed-tools` | yes | Claude Code; ignored where unsupported |
+1. **Discover and parse the complete catalog.** From the repository root, run:
 
-Agent-specific fields (`compatibility`, `disable-model-invocation`) are fine to keep — agents ignore fields they don't recognize.
+   ```bash
+   find shared/skills -mindepth 2 -maxdepth 2 -type f -name SKILL.md -print | sort
+   ```
 
-## Process
+   For every discovered file, parse the opening YAML block between standalone `---` delimiters with a YAML-aware parser. If no YAML-aware parser is available, report the audit as blocked and stop without editing or claiming a catalog result. Report missing, empty, unterminated, or unparseable frontmatter as an error; do not silently replace parsing with a regex. Record the discovered count and account for every path before continuing.
 
-1. **Discover all skills** — list every subdirectory of `shared/skills/` that contains a `SKILL.md`
-2. **Parse frontmatter** — for each skill, read the YAML block between `---` delimiters
-3. **Check each skill** against the union schema:
+2. **Apply only the union-frontmatter checks.** This skill validates existing frontmatter, not skill-body structure, semantics, or YAGNI quality. Treat an absent, null, or empty required value as missing.
+
+   | Field | Required | Used by |
+   |-------|----------|---------|
+   | `name` | yes | all agents |
+   | `description` | yes | all agents |
+   | `metadata.short-description` | yes | Codex, Pi |
+   | `allowed-tools` | yes | Claude Code; ignored where unsupported |
+
+   For every parseable skill, apply every condition:
+
    - Missing `name` → error
    - Missing `description` → error
-   - `description` over 1024 chars → warning
-   - `description` missing "Use when" → warning
+   - `description` over 1024 characters → warning
+   - `description` missing the exact phrase `Use when` → warning
    - Missing `metadata.short-description` → error
    - Missing `allowed-tools` → error
    - `allowed-tools` grants tools the workflow never uses → warning
-4. **Report** findings grouped by skill, with severity (error / warning / info)
-5. **Offer to fix** each warning/error interactively — ask the user before writing changes
 
-## Report Format
+   Agent-specific fields such as `compatibility` and `disable-model-invocation` are allowed. This step is complete only when every discovered skill has a result for all applicable checks.
 
-```
-skill: ralph
-  [ok] name
-  [ok] description
-  [ok] metadata.short-description
-  [warn] description missing "Use when" trigger phrase
+3. **Report every skill and finding.** Group results by skill, show `[ok]` for passing fields, and use only `[error]` and `[warn]` for findings:
 
-skill: some-new-skill
-  [ok] name
-  [error] missing description
-  [warn] missing metadata.short-description
-```
+   ```text
+   skill: ralph
+     [ok] name
+     [ok] description
+     [ok] metadata.short-description
+     [warn] description missing "Use when" trigger phrase
 
-## Fixing
+   skill: some-new-skill
+     [ok] name
+     [error] missing description
+     [error] missing metadata.short-description
+   ```
 
-For each issue found, propose a fix and ask for confirmation before writing:
-- Missing `metadata.short-description` → derive a short (≤6 word) version from `description`
-- Missing `allowed-tools` → derive the smallest set needed by the workflow
-- Missing `description` → ask user to provide one
-- Description too long → summarize and propose a trimmed version
-- Missing "Use when" → propose appending a trigger phrase based on the skill content
+   Include the discovered and parsed counts plus total errors and warnings. Do not omit clean skills or parser failures.
 
-After all fixes are applied, re-run the audit to confirm clean.
+4. **Propose fixes and obtain approval before editing.** Present the exact proposed change for each finding, or for an explicitly enumerated batch, then ask the user to approve it. Do not write unapproved changes.
+
+   - Missing or malformed frontmatter → propose valid YAML while preserving recognized fields.
+   - Missing `name` → propose the lowercase hyphenated directory name after checking the skill content.
+   - Missing `description` → ask the user for the intended behavior and triggers.
+   - Missing `metadata.short-description` → derive a version of at most six words from `description`.
+   - Missing `allowed-tools` → derive the smallest set used by the workflow.
+   - Description too long → propose a version of at most 1024 characters.
+   - Missing `Use when` → propose a trigger phrase based on the skill content.
+   - Unused tool grants → propose removing only the unnecessary grants.
+
+   Apply only approved fixes. Keep declined or unfixable findings in the report rather than weakening their severity.
+
+5. **Rerun the complete audit after edits.** Repeat discovery, parsing, every check, and the full report after all approved fixes. The audit is clean only when the rerun accounts for every discovered skill and reports zero errors and zero warnings; otherwise report the unresolved findings and do not claim clean completion.
