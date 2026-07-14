@@ -1,7 +1,7 @@
 # Ubiquitous Language
 
-> **Version**: 0.5.0
-> **Last Updated**: 2026-07-05
+> **Version**: 0.6.0
+> **Last Updated**: 2026-07-14
 > **Purpose**: Shared vocabulary for all specs. Every term used in multiple specs MUST be defined here. Read this before any other spec.
 
 > **Usage note**: Throughout all specs, the bare term "install" should be disambiguated using one of the three defined terms: **install** (the complete install.sh run), **install (dependency)** (a single package), or **install (Mason)** (a Neovim package). Use the specific term wherever context is ambiguous.
@@ -67,6 +67,18 @@
 | **agent config** | An agent-specific configuration directory managed from the dotfiles repo | — | Each supported agent has one repo-owned config surface. Pi's config deploys to `~/.pi/agent`. |
 | **unshipping** | Removing a feature, tool, config surface, or workflow entirely from the repo's tracked and deployed contract | "disable", "hide" | Includes implementation, tests, docs, specs, generated artifacts, and installer surfaces unless explicitly scoped otherwise. |
 
+## Agent Workflow Domain
+
+| Term | Definition | Aliases to avoid | Context notes |
+|------|-----------|-------------------|---------------|
+| **Wayfinder map** | The low-resolution Markdown index for one uncertainty-resolution effort, containing its destination, decision summaries, fog of war, and scope boundary | "roadmap", "issue epic" | Lives under `.wayfinder/<effort-slug>/MAP.md`; detailed answers remain in decision tickets. |
+| **decision ticket** | A session-sized question whose evidenced resolution advances a Wayfinder map toward its destination | "implementation ticket", "slice" | Resolves uncertainty rather than delivering production behavior. |
+| **frontier** | The derived set of currently actionable items whose dependency blockers have reached the required terminal state | "queue", "backlog" | Wayfinder blockers must be resolved; plan slice blockers must be integrated. |
+| **plan workspace** | The temporary, file-based control plane for one implementation effort, containing its orchestration index, slices, and verification artifacts | "PLAN.md", "plan file" | Stored under the OS temporary plan root and reached through the active-plan pointer. |
+| **slice** | A fresh-context implementation packet that delivers one vertical behavior through ordered red, green, and refactor cycles | "task", "ticket" | Editable slices receive isolated worktrees and branches. |
+| **verification artifact** | A durable Markdown record of one review axis, fixed point, criteria, attempts, evidence, and verdict | "review output", "review note" | Owned by the parent agent; failed attempts are appended rather than overwritten. |
+| **active-plan pointer** | The repository-local text file `.plan` whose single absolute path identifies the active plan workspace | "plan state", "plan link" | It is locally excluded from Git; a missing target is stale state and must not be guessed. |
+
 ## Tooling Domain
 
 | Term | Definition | Aliases to avoid | Context notes |
@@ -92,6 +104,9 @@
 - **Herdr config** is deployed by the **dotfiles** repo, while **Herdr runtime state** remains local-only and out of git
 - A **repo-owned Herdr integration** is generated or copied into **agent configs** before deployment, rather than installed directly into live runtime paths
 - The **Herdr skill** lives in the **shared skills directory** and is visible to supported agents through their skills deployment paths
+- A **Wayfinder map** indexes multiple **decision tickets** and derives its **frontier** from resolved ticket blockers
+- An **active-plan pointer** identifies one **plan workspace**, which contains multiple **slices** and their **verification artifacts**
+- A plan **frontier** contains ready **slices** only after every blocking slice is integrated
 
 ---
 
@@ -105,7 +120,7 @@
 - **"strong model"** or **"weak model"** are informal terms that should be avoided in specs. Prefer specific model/provider names and rationale.
 - **"profile"** refers to install profiles (Full, Minimal, Work, Custom). Pi profiles are no longer a supported concept in this repo.
 - **"integration"** is overloaded between Herdr integrations, shell integrations, and editor integrations. Use **Herdr integration** when referring to Herdr agent lifecycle/session hooks.
-- **"workspace"** is overloaded between generic project workspace, terminal workspace, and **Herdr workspace**. Use **Herdr workspace** when referring to Herdr's top-level unit.
+- **"workspace"** is overloaded between a project workspace, **plan workspace**, teaching workspace, and **Herdr workspace**. Use the qualified term for each durable or terminal context.
 - **"prefix key"** is ambiguous after Herdr adoption. Use **multiplexer prefix key** for shared behavior, **tmux prefix key** for tmux, and **Herdr prefix key** for Herdr.
 
 ---

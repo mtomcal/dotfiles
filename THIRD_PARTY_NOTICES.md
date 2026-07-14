@@ -6,6 +6,7 @@ The following locally maintained skills contain material adapted in July 2026 fr
 
 - `codebase-design`
 - `code-review`
+- `create-plan`
 - `diagnosing-bugs`
 - `handoff`
 - `improve-codebase-architecture`
@@ -13,6 +14,8 @@ The following locally maintained skills contain material adapted in July 2026 fr
 - `research`
 - `resolving-merge-conflicts`
 - `tdd`
+- `teach`
+- `wayfinder`
 - `write-a-skill`
 
 These are one-time local forks adapted for this repository's cross-agent, specs-first, and Herdr-aware workflows. They are not automatically synchronized with upstream.

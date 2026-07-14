@@ -1,6 +1,6 @@
 # AI Agent Configuration Specification
 
-> **Version**: 2.1.0
+> **Version**: 2.2.0
 > **Last Updated**: 2026-07-14
 > **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md), [Design Language](DESIGN_LANGUAGE.md), [Herdr Config](herdr-config.md)
 > **Depended By**: Install Orchestrator (INSTL)
@@ -145,10 +145,32 @@ The shipped workflow catalog includes these locally owned skills:
 | `handoff` | Writes redacted timestamped Markdown under the OS temporary handoff directory and reports the absolute path |
 | `research` | Produces durable primary-source-backed notes using the repository's existing convention or an approved location |
 | `improve-codebase-architecture` | Always produces a temporary visual HTML report with before/after diagrams and candidate comparison |
+| `wayfinder` | Resolves uncertainty in local Markdown maps and decision tickets, preserves fog/frontier/scope distinctions, and routes only clarified work onward |
+| `create-plan` | Stores recoverable orchestration state in a temporary plan workspace with fresh-context TDD slices and independent verification artifacts |
+| `teach` | Requires an approved dedicated teaching workspace and preserves mission, resources, learning records, HTML lessons, references, assets, and notes |
+| `grill-me` | Loads root and spec-suite ubiquitous language, tests relationships with concrete edge cases, checks claims against code/specs, and defers file edits until shared understanding |
 
 Imported skill material MUST be treated as a locally maintained fork: provenance and required license attribution MUST live in the repository-level `THIRD_PARTY_NOTICES.md`, while automatic upstream synchronization is outside the shipped contract.
 
-When a skill delegates work under `HERDR_ENV=1`, it SHOULD load the shared Herdr skill rather than duplicate Herdr commands. The same workflow MUST provide an in-process fallback outside Herdr. Read-only delegated agents MAY share a checkout; delegated agents that edit files MUST use isolated clones or worktrees.
+When a skill delegates work under `HERDR_ENV=1`, it SHOULD load the shared Herdr skill rather than duplicate Herdr commands. The same workflow MUST provide an in-process fallback outside Herdr. Read-only delegated agents MAY share a checkout; delegated agents that edit files MUST use isolated clones or worktrees. Compact Herdr pane identifiers MUST NOT be persisted as durable workflow identity.
+
+### Wayfinder State Contract
+
+A Wayfinder effort MUST store one `MAP.md` and numbered ticket files under `.wayfinder/<effort-slug>/`. Ticket frontmatter MUST contain an effort-local id, one of the supported ticket types, one supported lifecycle status, and a blocker list. The parent agent MUST be the sole writer of map and ticket state; delegated findings MUST return through agent output rather than direct state mutation.
+
+Wayfinder MUST resolve uncertainty rather than production implementation. Completion MUST route durable behavior and terminology to the spec-maintenance workflows and route implementation to `create-plan`.
+
+### Plan Workspace Contract
+
+An active implementation plan MUST be stored beneath `/tmp/agent-plans/<repo-id>/<plan-id>/` with `PLAN.md`, a `slices/` directory, and a `verifications/` directory. The repository-local `.plan` file MUST contain the active workspace's absolute path and MUST be registered in local Git exclude metadata. A missing pointer target MUST be reported as stale; agents MUST NOT infer or silently reconstruct its state.
+
+`PLAN.md` MUST record the immutable objective, context sources, baseline, integration branch, explicit execution defaults, dependency DAG, derived frontier, slice states, Git/Herdr session references, verification matrix, acceptance criteria, and recovery instructions. The parent agent MUST be the sole writer of control-plane state.
+
+Every editable slice MUST use an isolated worktree and branch and MUST fit one fresh agent context. Slice blockers gate on integration. Every slice MUST receive independent Standards and Spec reviews after the worker commit and before parent integration; additional Tests, Premortem, Security, and Visual passes MUST be enabled by risk. Failed attempts MUST remain in the same verification artifact and return fixes to the original slice branch. Final integration and acceptance reviews MUST run after all slices integrate.
+
+### Teaching Workspace Contract
+
+The teaching workflow MUST ask for and receive approval for a dedicated workspace before scaffolding. It MUST ground lessons in an agreed mission, use primary-source research, maintain durable resources and demonstrated-learning records, prefer reusable lesson assets, and distinguish knowledge acquisition, skill practice, and wisdom from real-world interaction. Interactive codebase lessons SHOULD compose `create-explainer` without weakening teaching-workspace ownership or citation requirements.
 
 ## Behavior Rules
 
@@ -201,9 +223,19 @@ Category: Integration
 Priority: High
 Preconditions: The repository checkout contains the shipped shared skill catalog.
 
-Input: Audit shared skill frontmatter and inspect Pi-visible entries for `codebase-design`, `diagnosing-bugs`, `code-review`, `resolving-merge-conflicts`, `handoff`, and `research`.
+Input: Audit shared skill frontmatter and inspect Pi-visible entries for `codebase-design`, `diagnosing-bugs`, `code-review`, `resolving-merge-conflicts`, `handoff`, `research`, `wayfinder`, and `teach`.
 
-Expected Output: Required frontmatter is valid, every named Pi entry resolves to its canonical shared skill, and provenance attribution is present in the repository-level `THIRD_PARTY_NOTICES.md`.
+Expected Output: Required frontmatter is valid, every named Pi entry resolves to its canonical shared skill, stale pre-decomposition Playwright visibility entries are absent, and provenance attribution is present in the repository-level `THIRD_PARTY_NOTICES.md`.
+
+### TS-AIAGT-006: Workflow State Ownership
+
+Category: Integration
+Priority: High
+Preconditions: The shipped Wayfinder and create-plan skill definitions are available.
+
+Input: Inspect their state schemas, delegation rules, and lifecycle gates.
+
+Expected Output: Wayfinder uses parent-owned local Markdown decision state and stops before implementation; create-plan uses an active-plan pointer, parent-owned temporary control plane, isolated editable slices, mandatory independent Standards and Spec reviews, risk-selected additional reviews, and integration-gated dependencies.
 
 ---
 
@@ -211,5 +243,6 @@ Expected Output: Required frontmatter is valid, every named Pi entry resolves to
 
 | Version | Date | Change |
 |---------|------|--------|
+| 2.2.0 | 2026-07-14 | Added Wayfinder and teaching workflows, a recoverable file-based plan control plane, domain-aware grilling, and repaired post-decomposition skill visibility. |
 | 2.1.0 | 2026-07-14 | Added locally maintained cross-agent workflow skills, delegation fallbacks, provenance requirements, and the visual architecture-report contract. |
 | 2.0.0 | 2026-07-08 | Unshipped retired agent/profile/delegation surfaces. Pi now deploys one repo-owned config under `~/.pi/agent`. |

@@ -3,6 +3,7 @@ name: image-comparison-judge
 description: Runs a criteria-based visual judgment workflow between a reference image and candidate screenshots, contact sheets, or generated assets. Use when a task needs PASS/FAIL image judgment after a neutral diff report, concept-fidelity review, visual regression triage, or independent artifact review after captures or renders.
 metadata:
   short-description: Judge images against a reference
+allowed-tools: read,bash
 ---
 
 # Image Comparison Judge

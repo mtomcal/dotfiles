@@ -183,15 +183,15 @@ dotfiles/
 ├── AGENTS.md              # Shared AI agent instructions (all agents read this)
 ├── tests/                 # Shell test runner, harness, and install-script tests
 ├── shared/
-│   └── skills/            # Canonical skills dir — symlinked into every agent
-│       ├── playwright-cli/
-│       ├── playwright-visual-qa/
-│       ├── test-quality-verifier/
-│       ├── ralph/
-│       ├── write-a-skill/
-│       ├── improve-codebase-architecture/
+│   └── skills/            # Canonical skill catalog — exposed to all agents
+│       ├── playwright/
+│       ├── visual-qa/
+│       ├── create-plan/
+│       ├── wayfinder/
+│       ├── teach/
+│       ├── research/
+│       ├── code-review/
 │       ├── herdr/
-│       ├── tmux-agent-orchestration/
 │       ├── ubiquitous-language/
 │       ├── audit-shared-skills/
 │       └── grill-me/
@@ -904,27 +904,31 @@ Also integrates with yazi (`z` key).
 
 ### AI Coding Tools
 
-Five AI coding assistants are configured:
+Four AI coding assistants are configured:
 
 #### Shared Skills
 
 Codex, Claude, Pi, and Copilot share a single skills directory at `shared/skills/`. Non-Pi agents symlink their skills path directly to it; Pi exposes shared skills through `pi/skills/`.
 
-**Available skills**:
+**Workflow highlights** (run `ls shared/skills/` for the complete catalog):
 
 | Skill | Description |
 |-------|-------------|
-| `playwright-cli` | Browser automation — navigate, click, fill, screenshot, and debug web pages via `playwright-cli` |
-| `playwright-visual-qa` | Quick visual QA loop: screenshot, a11y snapshot, console and network checks against a URL |
+| `playwright` | Browser automation, scripted capture, and Playwright test workflows |
+| `visual-qa` | Tool-agnostic visual QA across browser, app, image, and recorded artifacts |
+| `create-plan` | Operate a recoverable plan workspace of dependency-ordered TDD slices and verification artifacts |
+| `wayfinder` | Resolve large, foggy efforts through local decision tickets before implementation planning |
+| `teach` | Build a durable, researched teaching workspace with HTML lessons and learning records |
+| `code-review` | Review a fixed diff independently against repository standards and originating requirements |
+| `research` | Produce durable primary-source-backed investigation artifacts |
 | `test-quality-verifier` | Audit tests for vague assertions, improve coverage, produce a structured report |
 | `ralph` | Set up and launch a `loop.sh` iterative agentic job (PROMPT.md + IMPLEMENTATION_PLAN.md + ORCHESTRATOR.md) |
-| `improve-codebase-architecture` | Find and fix architectural friction — shallow modules, poor seams, testability gaps _(based on [mattpocock/skills](https://github.com/mattpocock/skills))_ |
+| `improve-codebase-architecture` | Find architecture deepening opportunities and present a visual HTML review _(adapted from [mattpocock/skills](https://github.com/mattpocock/skills))_ |
 | `herdr` | Control Herdr workspaces, tabs, panes, agent status, and output from inside a Herdr pane |
-| `tmux-agent-orchestration` | Launch, steer, and monitor parallel CLI agents in tmux with per-worker clones |
-| `ubiquitous-language` | Extract a DDD-style glossary from a conversation and save it to `UBIQUITOUS_LANGUAGE.md` _(based on [mattpocock/skills](https://github.com/mattpocock/skills))_ |
+| `ubiquitous-language` | Extract a DDD-style glossary from project evidence _(adapted from [mattpocock/skills](https://github.com/mattpocock/skills))_ |
 | `audit-shared-skills` | Audit `shared/skills/` for cross-agent frontmatter compatibility, flag and fix issues |
-| `grill-me` | Interview the user relentlessly about a plan or design, resolving each branch of the decision tree _(based on [mattpocock/skills](https://github.com/mattpocock/skills))_ |
-| `write-a-skill` | Interactively create a new agent skill with proper structure and frontmatter _(based on [mattpocock/skills](https://github.com/mattpocock/skills))_ |
+| `grill-me` | Resolve design branches through evidence-grounded, term-aware interviewing |
+| `write-a-skill` | Create or revise cross-agent skills with progressive disclosure and completion criteria |
 
 **Adding a new skill**:
 

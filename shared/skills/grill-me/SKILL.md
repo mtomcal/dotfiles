@@ -1,51 +1,79 @@
 ---
 name: grill-me
-description: Interview the user relentlessly about a plan or design until reaching shared understanding, resolving each branch of the decision tree. Loads the ubiquitous language glossary (UBIQUITOUS_LANGUAGE.md) when available to ask questions using the project's bounded-context domain terms. Use when user wants to stress-test a plan, get grilled on their design, or mentions "grill me".
+description: Interview the user relentlessly about a plan or design until shared understanding resolves every consequential branch, using project terminology and evidence. Use when stress-testing a plan, probing a domain model, resolving design decisions, or when the user says "grill me."
 metadata:
-  short-description: Stress-test plans with questions
+  short-description: Stress-test decisions with evidence
+allowed-tools: read,bash
 ---
 
-Interview me relentlessly about every aspect of this plan until we reach a shared understanding. Walk down each branch of the design tree, resolving dependencies between decisions one-by-one. For each question, provide your recommended answer.
+# Grill Me
 
-Ask the questions one at a time.
+Interview the user one question at a time. For each question, provide a recommended answer and an approximate progress percentage based on resolved versus remaining decision branches. Revise the estimate when answers expose new branches.
 
-With each question, include the approximate grilling progress as a percentage (e.g. "~30% through"). Estimate based on how many branches of the decision tree remain versus how many have been resolved. Adjust the estimate as new branches emerge from the user's answers.
+Do not edit project files during the interview. First reach shared understanding; afterward route accepted changes to the skills that own durable artifacts.
 
-If a question can be answered by exploring the codebase, explore the codebase instead.
+## 1. Ground the language and evidence
 
-## Pre-Grilling: Load the Ubiquitous Language
+Before the first question:
 
-Before asking the first question:
+1. Find the repository root when one exists.
+2. Read both `specs/UBIQUITOUS_LANGUAGE.md` and root `UBIQUITOUS_LANGUAGE.md` when present. A spec-suite glossary governs its bounded context; a root glossary governs uncovered contexts. Flag conflicting definitions rather than silently choosing one.
+3. Read relevant specs, plans, research, and code for the proposal.
+4. If no glossary exists, mention that `ubiquitous-language` can establish one, then continue with precise provisional language.
 
-1. Check for `UBIQUITOUS_LANGUAGE.md` in the working directory.
-2. If it exists: read it and internalize the glossary — canonical terms, aliases to avoid, relationships, and flagged ambiguities.
-3. If it does NOT exist: note that running `/ubiquitous-language` first would ground the grilling in the project's domain terms, then proceed with generic language.
+If a question can be answered by code, tests, or relevant specs, investigate it instead of asking the user to recall it. Cross-check factual user claims against those sources and surface mismatches neutrally: distinguish implemented behavior, specified behavior, and desired behavior.
 
-## Term-Aware Questioning
+Completion criterion: the first question uses the best available canonical terms and does not ask for an already discoverable fact.
 
-When the glossary is loaded:
+## 2. Build and walk the decision tree
 
-- **Use canonical terms** in every question. Bold them to match the glossary's visual convention.
-- **Surface boundary tensions** between related concepts. Ask questions that probe the edges where one term meets another — cardinality, lifecycle coupling, preconditions.
-- **Correct synonyms gently.** When the user uses an alias from the "Aliases to avoid" column, respond with:
-  > "You said 'alias' — I think you mean **CanonicalTerm** (as defined in the ubiquitous language). Let me re-ask using that: [question restated with the canonical term]"
+Start with destination, actors, invariants, and scope. Walk dependencies one at a time: resolve prerequisite choices before asking downstream questions. Ask concrete questions, not broad requests for thoughts.
 
-## Flagging New Terms
+For every important relationship, probe with edge cases:
 
-If a domain term emerges in the conversation that does NOT appear in the glossary:
+- cardinality: zero, one, many, duplicates
+- lifecycle: creation, transition, cancellation, retry, deletion, recovery
+- ownership: who may mutate it, who observes it, who is authoritative
+- boundaries: stale state, partial failure, concurrency, invalid input, permissions
+- scope: what looks adjacent but must remain out
 
-> ⚠️ Term candidate: "**NewTerm**" — this isn't in the ubiquitous language. Should it be? I'm tracking it for a later `/ubiquitous-language` update.
+Challenge overloaded or conflicting terms directly. When the user uses a known alias, restate the question with the canonical term. When two sources use one term differently, ask which bounded-context meaning applies and what observable distinction separates them.
 
-If a canonical definition appears to shift during the discussion, flag that too:
+Track:
 
-> ⚠️ Definition drift: "**CanonicalTerm**" is currently defined as "[definition]". Your usage suggests it also includes "[new behavior]". Should the glossary definition be expanded?
+- resolved decisions and rationale
+- tensions between code, specs, and desired behavior
+- new term candidates and definition drift
+- unresolved branches and what blocks them
 
-## Post-Grilling Summary
+Completion criterion: each answer either resolves a branch, produces a sharper dependent question, or identifies concrete evidence needed; no branch is waved away with vague agreement.
 
-After the decision tree is exhausted, offer a summary of:
+## 3. Handle new and drifting terms
 
-- **Resolved tensions** — which boundary questions were settled and how
-- **New term candidates** — domain terms that emerged and should be added to the glossary
-- **Definition updates** — canonical terms whose meaning shifted during the discussion
+For a new domain term, say:
 
-Present these as inputs ready for `/ubiquitous-language` to consume and update `UBIQUITOUS_LANGUAGE.md`.
+> ⚠️ Term candidate: **New term** is not in the applicable ubiquitous language. I am tracking it for a later `ubiquitous-language` update.
+
+For changed meaning, quote the existing definition and the proposed difference. Probe with at least one concrete edge case to establish whether this is a true definition change, a separate concept, or context-specific language.
+
+Do not opportunistically update the glossary mid-interview. Completion criterion: every accepted term has one proposed definition and boundary from neighboring terms.
+
+## 4. Close only at shared understanding
+
+When no consequential branches remain, summarize:
+
+- resolved decisions with rationale and evidence
+- resolved relationship edge cases
+- code/spec/desired-behavior discrepancies
+- new term candidates and definition updates
+- explicit out-of-scope decisions
+- remaining uncertainty, or `none`
+
+Ask the user to confirm or correct the summary. Only after confirmation:
+
+- route accepted terminology to `ubiquitous-language`
+- route durable behavioral or design decisions to `update-specs`
+- route implementation-ready work to `create-plan`
+- route unresolved, multi-session uncertainty to `wayfinder`
+
+Completion criterion: the user confirms the shared-understanding summary before any durable files are changed.

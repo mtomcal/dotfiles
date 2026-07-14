@@ -1,6 +1,6 @@
 # Coding Principles Catalog
 
-Reference for the grill-me subagent — probing questions for each principle category.
+Reference for the grill-me deep pass — probing questions for each principle category.
 
 ---
 

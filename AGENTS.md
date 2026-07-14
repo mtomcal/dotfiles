@@ -4,7 +4,7 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 
 ## Map
 
-<!-- TREE-HASH: 0ec0cad4aa821f1ce9eba91d2ccf938b3d3fd5c9b50e1025856bb4f62165b185 -->
+<!-- TREE-HASH: 3405562331df11660d904d5ae5c01ac986742852aa54468a2b4d526912725ddd -->
 
 <!-- TREE-START -->
 ```
@@ -51,19 +51,19 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 |   |   |-- image-diff-describer -> ../../shared/skills/image-diff-describer
 |   |   |-- improve-codebase-architecture -> ../../shared/skills/improve-codebase-architecture
 |   |   |-- playwright -> ../../shared/skills/playwright
-|   |   |-- playwright-cli -> ../../shared/skills/playwright-cli
-|   |   |-- playwright-visual-qa -> ../../shared/skills/playwright-visual-qa
 |   |   |-- prototype -> ../../shared/skills/prototype
 |   |   |-- ralph -> ../../shared/skills/ralph
 |   |   |-- research -> ../../shared/skills/research
 |   |   |-- resolving-merge-conflicts -> ../../shared/skills/resolving-merge-conflicts
 |   |   |-- tdd -> ../../shared/skills/tdd
+|   |   |-- teach -> ../../shared/skills/teach
 |   |   |-- test-quality-verifier -> ../../shared/skills/test-quality-verifier
 |   |   |-- tmux-agent-orchestration -> ../../shared/skills/tmux-agent-orchestration
 |   |   |-- ubiquitous-language -> ../../shared/skills/ubiquitous-language
 |   |   |-- update-specs -> ../../shared/skills/update-specs
 |   |   |-- video-to-contact-sheet -> ../../shared/skills/video-to-contact-sheet
 |   |   |-- visual-qa -> ../../shared/skills/visual-qa
+|   |   |-- wayfinder -> ../../shared/skills/wayfinder
 |   |   `-- write-a-skill -> ../../shared/skills/write-a-skill
 |   `-- tests
 |-- shared
@@ -90,21 +90,21 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 |       |-- image-diff-describer
 |       |-- improve-codebase-architecture
 |       |-- playwright
-|       |-- playwright-cli
 |       |   `-- references
-|       |-- playwright-visual-qa
 |       |-- prototype
 |       |-- ralph
 |       |   `-- references
 |       |-- research
 |       |-- resolving-merge-conflicts
 |       |-- tdd
+|       |-- teach
 |       |-- test-quality-verifier
 |       |-- tmux-agent-orchestration
 |       |-- ubiquitous-language
 |       |-- update-specs
 |       |-- video-to-contact-sheet
 |       |-- visual-qa
+|       |-- wayfinder
 |       `-- write-a-skill
 |-- specs
 |-- tests

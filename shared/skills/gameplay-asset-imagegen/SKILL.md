@@ -3,6 +3,7 @@ name: gameplay-asset-imagegen
 description: Generate and integrate game-ready raster assets using imagegen, including sprites, tiles, props, pickups, effects, and decal sheets. Use when a game prototype needs new or replacement bitmap runtime assets, chroma-key sprite extraction, generated source traceability, manifest/test updates, or asset readability checks at gameplay scale.
 metadata:
   short-description: Generate game-ready raster assets
+allowed-tools: read,write,edit,bash
 ---
 
 # Gameplay Asset Imagegen

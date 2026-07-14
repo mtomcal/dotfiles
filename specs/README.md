@@ -1,6 +1,6 @@
 # Personal Dotfiles Manager Specification Suite
 
-> **Version**: 0.4.0
+> **Version**: 0.5.0
 > **Last Updated**: 2026-07-14
 > **Purpose**: Complete specification for the personal dotfiles manager — automates setup of a Herdr/tmux + neovim + zsh dev environment across Linux and macOS. Primarily for personal use, serves as reference/inspiration for others.
 
@@ -106,13 +106,13 @@ graph TD
 | Spec | Description | Version |
 |------|-------------|---------|
 | [parameters.md](parameters.md) | All tuning values with rationale | 1.5.0 |
-| [symlink-manager.md](symlink-manager.md) | Symlink creation, backup, and verification | 1.3.0 |
+| [symlink-manager.md](symlink-manager.md) | Symlink creation, backup, and verification | 1.3.2 |
 | [tool-provisioning.md](tool-provisioning.md) | Dependency and tool installation | 1.2.0 |
 | [shell-config.md](shell-config.md) | Zsh + Oh My Zsh configuration | 1.1.0 |
 | [herdr-config.md](herdr-config.md) | Herdr default multiplexer and migration contract | 0.1.0 |
 | [tmux-config.md](tmux-config.md) | Tmux keybindings and nested sessions | 1.1.0 |
 | [neovim-config.md](neovim-config.md) | Kickstart + custom plugin layer | 0.1.0 |
-| [ai-agent-config.md](ai-agent-config.md) | AI agent configs and shared skills | 2.1.0 |
+| [ai-agent-config.md](ai-agent-config.md) | AI agent configs and shared skills | 2.2.0 |
 | [install-orchestrator.md](install-orchestrator.md) | Top-level idempotent setup orchestrator | 1.3.0 |
 
 ---

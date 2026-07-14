@@ -1,7 +1,7 @@
 # Symlink Manager
 
-> **Version**: 1.3.1
-> **Last Updated**: 2026-07-06
+> **Version**: 1.3.2
+> **Last Updated**: 2026-07-14
 > **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md)
 > **Depended By**: [AI Agent Config](ai-agent-config.md), [Herdr Config](herdr-config.md), [Install Orchestrator](install-orchestrator.md), [Neovim Config](neovim-config.md), [Shell Config](shell-config.md), [Tmux Config](tmux-config.md)
 
@@ -218,14 +218,14 @@ The Codex sandbox runner script (`cods`) is symlinked from the dotfiles reposito
 
 ### Shared Skills Architecture
 
-Multiple agent configs share a single canonical skills directory through symlinks:
+Four supported agent configs expose one canonical shared skill catalog through two deployment shapes:
 
 - `~/.claude/skills` → shared/skills
-- `~/.pi/agent/skills` → shared/skills
-- `~/.codex/../agents/skills` (via `~/.agents/skills`) → shared/skills
+- `~/.agents/skills` (Codex) → shared/skills
 - `~/.config/copilot/skills` → shared/skills
+- `~/.pi/agent/skills` → pi/skills, whose per-skill entries point to shared/skills
 
-All skill directory symlinks point to the same source directory in the dotfiles repository. This means installing a skill into any one agent's skills directory immediately makes it available to all agents. This is an intentional architectural choice — the system MUST NOT break this shared reference pattern.
+Claude, Codex, and Copilot use directory-level symlinks to the canonical source. Pi uses a directory-level symlink to its tracked visibility layer, then per-skill symlinks to canonical shared skill directories. Adding a shared skill makes it immediately visible to the three direct consumers; Pi visibility additionally requires a matching tracked entry under `pi/skills/`. The system MUST preserve this four-agent architecture and MUST NOT create dangling Pi-visible entries.
 
 ---
 
@@ -358,7 +358,7 @@ Category: Integration
 Priority: Critical
 Preconditions: Dotfiles repo is populated with shared/skills directory
 Input: Run all agent modules (Claude, Pi, Codex, Copilot)
-Expected Output: All five skill directory symlinks resolve to the same canonical directory in the dotfiles repository; adding a skill file to any one of them makes it immediately visible in all others
+Expected Output: All four supported agents expose the canonical shared skill catalog: Claude, Codex, and Copilot resolve directly to `shared/skills`, while Pi resolves through `pi/skills` and every Pi-visible entry resolves to a canonical shared skill directory
 
 ### TS-SYMLK-011: Lazygit config uses correct platform path
 Category: Unit
@@ -429,6 +429,7 @@ Expected Output: First run: all symlinks created, backups made for any conflicti
 
 | Version | Date | Summary |
 |---------|------|---------|
+| 1.3.2 | 2026-07-14 | Corrected the four-agent shared-skill topology and Pi visibility-layer contract. |
 | 1.3.1 | 2026-07-06 | Clarified full-install idempotency expectations for modules that complete official updater paths rather than reporting only existing state. |
 | 1.3.0 | 2026-07-05 | Added Herdr config symlink deployment and clarified that Herdr runtime state is not deployed from the dotfiles repo. |
 | 1.2.0 | 2026-06-02 | Documented Pi config symlink mappings. |

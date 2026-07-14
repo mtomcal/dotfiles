@@ -3,6 +3,7 @@ name: image-diff-describer
 description: Produces a neutral, detailed description of visible differences between a reference image and candidate images without making acceptance judgments. Use when a workflow needs an unbiased image diff artifact before a separate judge, reviewer, or downstream criteria pass.
 metadata:
   short-description: Describe image differences without a verdict
+allowed-tools: read,bash
 ---
 
 # Image Diff Describer

@@ -102,20 +102,11 @@ When all modules are confirmed, go to Step 5 (grill-me deep pass).
 
 ### Step 5: Grill-Me Deep Pass
 
-Once inline confirmation is complete, delegate adversarial interviewing to the grill-me skill.
+Once inline confirmation is complete, use the `grill-me` skill for adversarial interviewing. Load [PRINCIPLES_CATALOG.md](PRINCIPLES_CATALOG.md) for the question inventory and prepare the structured briefing below.
 
-Load [PRINCIPLES_CATALOG.md](PRINCIPLES_CATALOG.md) for the question inventory.
+When `HERDR_ENV=1`, load the shared `herdr` skill. A read-only sibling Pi pane may conduct the grilling only when the user can interact with that pane; otherwise use the pane to critique the briefing and conduct the human interview in the parent pane. The sibling returns findings through pane output and never edits `AGENTS.md`. Do not persist compact Herdr pane ids.
 
-Fork a grill-me subagent:
-
-```
-subagent_fork({
-  name: "grill-agents-md",
-  task: [compose the structured briefing — see below],
-  systemPrompt: "You are conducting an adversarial interview to fill gaps in an AGENTS.md draft. Load the grill-me skill. Ask probing questions one at a time. Do not write files.",
-  tools: "read"
-})
-```
+Outside Herdr, or when a sibling cannot interact with the user, load `grill-me` and conduct the same one-question-at-a-time interview directly in-process. This fallback is the complete workflow, not a reduced review.
 
 **Structured briefing format:**
 
@@ -182,7 +173,7 @@ Return your findings as:
 [List any areas the user was uncertain about]
 ```
 
-When the grill-me subagent completes, retrieve its results and merge them into the draft AGENTS.md. Replace all remaining `[LOW-CONFIDENCE: pending interview]` markers with the confirmed content.
+After the grill-me pass completes, collect its results and merge them into the draft `AGENTS.md`. Replace all remaining `[LOW-CONFIDENCE: pending interview]` markers with confirmed content. If a sibling pane was used, independently check its findings against the user's answers before writing.
 
 ### Step 6: Finalize
 

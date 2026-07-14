@@ -3,6 +3,7 @@ name: bootstrap-specs
 description: Bootstrap a specs/ folder with a language-agnostic specification suite for defining business rules, logic, and requirements. Conducts a grill-style interview to discover systems, bounded contexts, and terminology, then generates SPEC-OF-SPECS, README, ubiquitous language, design language, skeleton specs, and a progress tracker. Use when starting a new project, onboarding AI agents, creating a specification suite from scratch, or initializing specs/ for any project. Supports greenfield (generate directly) and brownfield (generate PLAN.md for agent-driven spec extraction from code).
 metadata:
   short-description: Bootstrap language-agnostic spec suites
+allowed-tools: read,write,edit,bash
 ---
 
 # Bootstrap Specs

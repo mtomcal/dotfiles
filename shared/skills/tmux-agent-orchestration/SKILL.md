@@ -3,6 +3,7 @@ name: tmux-agent-orchestration
 description: Launches, steers, and monitors multiple CLI agents in tmux with separate clones, explicit prompt submission, and progress checks. Use when running parallel Codex, Claude, or mixed CLI workers in tmux, coordinating one worker per plan/task, relaunching agents into isolated clones, or monitoring whether TUI prompts were actually submitted.
 metadata:
   short-description: Orchestrate parallel CLI agents in tmux
+allowed-tools: read,write,bash
 ---
 
 # Tmux Agent Orchestration

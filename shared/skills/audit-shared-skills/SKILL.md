@@ -3,6 +3,7 @@ name: audit-shared-skills
 description: Audit skills in shared/skills/ for cross-agent frontmatter compatibility, flagging missing fields and offering to fix them. Use when skills have been added via npx or manually and need to be checked for compatibility across Claude Code, Codex, Pi, and Copilot CLI.
 metadata:
   short-description: Audit shared skills for cross-agent compatibility
+allowed-tools: read,edit,bash
 ---
 
 # Audit Shared Skills
@@ -17,8 +18,8 @@ Every skill in `shared/skills/` should have:
 |-------|----------|---------|
 | `name` | yes | all agents |
 | `description` | yes | all agents (max 1024 chars, include "Use when...") |
-| `metadata.short-description` | recommended | Codex, Pi |
-| `allowed-tools` | if needed | Claude Code only |
+| `metadata.short-description` | yes | Codex, Pi |
+| `allowed-tools` | yes | Claude Code; ignored where unsupported |
 
 Agent-specific fields (`compatibility`, `disable-model-invocation`) are fine to keep — agents ignore fields they don't recognize.
 
@@ -31,8 +32,9 @@ Agent-specific fields (`compatibility`, `disable-model-invocation`) are fine to 
    - Missing `description` → error
    - `description` over 1024 chars → warning
    - `description` missing "Use when" → warning
-   - Missing `metadata.short-description` → warning
-   - `allowed-tools` present but skill doesn't invoke Bash → info (may be unnecessary)
+   - Missing `metadata.short-description` → error
+   - Missing `allowed-tools` → error
+   - `allowed-tools` grants tools the workflow never uses → warning
 4. **Report** findings grouped by skill, with severity (error / warning / info)
 5. **Offer to fix** each warning/error interactively — ask the user before writing changes
 
@@ -55,6 +57,7 @@ skill: some-new-skill
 
 For each issue found, propose a fix and ask for confirmation before writing:
 - Missing `metadata.short-description` → derive a short (≤6 word) version from `description`
+- Missing `allowed-tools` → derive the smallest set needed by the workflow
 - Missing `description` → ask user to provide one
 - Description too long → summarize and propose a trimmed version
 - Missing "Use when" → propose appending a trigger phrase based on the skill content
