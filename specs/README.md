@@ -112,7 +112,7 @@ graph TD
 | [herdr-config.md](herdr-config.md) | Herdr default multiplexer and migration contract | 0.1.0 |
 | [tmux-config.md](tmux-config.md) | Tmux keybindings and nested sessions | 1.1.0 |
 | [neovim-config.md](neovim-config.md) | Kickstart + custom plugin layer | 0.1.0 |
-| [ai-agent-config.md](ai-agent-config.md) | AI agent configs and shared skills | 2.2.0 |
+| [ai-agent-config.md](ai-agent-config.md) | AI agent configs and shared skills | 2.3.0 |
 | [install-orchestrator.md](install-orchestrator.md) | Top-level idempotent setup orchestrator | 1.3.0 |
 
 ---

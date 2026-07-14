@@ -1,6 +1,6 @@
 # Ubiquitous Language
 
-> **Version**: 0.6.0
+> **Version**: 0.7.0
 > **Last Updated**: 2026-07-14
 > **Purpose**: Shared vocabulary for all specs. Every term used in multiple specs MUST be defined here. Read this before any other spec.
 
@@ -52,6 +52,10 @@
 | **Herdr workspace** | Herdr's top-level workspace unit for a repo, task, or investigation | "tmux session" | Replaces tmux session/window mental models for new work; contains tabs and panes |
 | **Herdr tab** | A tab inside a Herdr workspace, analogous to a daily-use tmux window | "Herdr window" | Use "tab" because that is Herdr's term |
 | **Herdr pane** | A terminal pane inside a Herdr tab | "terminal", "split" | Panes may run shells, editors, or agents |
+| **caller pane** | The Herdr pane whose process invoked an operation | "current pane", "focused pane" | Identified through environment or current-pane discovery, never inferred from UI focus |
+| **focused pane** | The Herdr pane currently selected in the interface | "caller pane", "current pane" | May differ from the caller pane |
+| **public Herdr ID** | An opaque refreshable runtime identifier for a Herdr entity | "stable ID", "durable ID" | Refresh after topology changes and never persist as durable identity |
+| **legacy display selector** | An unstable numeric position selector for a Herdr entity | "Herdr ID", "stable selector" | May resolve differently after topology changes and must not be guessed or persisted |
 | **Herdr runtime state** | Local-only Herdr session files, pane history, sockets, and generated state outside the dotfiles repo | "Herdr config" | Must remain out of git even when pane history is enabled |
 | **Herdr integration** | A hook, plugin, or agent-side file that reports agent lifecycle/session state to Herdr | "Herdr plugin" | Use "integration" unless the upstream artifact is specifically a Pi extension/plugin |
 | **repo-owned Herdr integration** | A Herdr integration whose files are tracked or generated inside the dotfiles repo and deployed by the dotfiles flow instead of written directly by Herdr's installer to live config paths | "default Herdr install path" | Required for this repo so agent config ownership stays centralized |
@@ -63,6 +67,7 @@
 |------|-----------|-------------------|---------------|
 | **agent** | An AI coding assistant (Codex CLI, Claude Code, Pi, or Copilot CLI) | "AI", "assistant" | Used generically when referring to any or all of the supported agents |
 | **skill** | A reusable instruction set for one or more AI agents | "instruction" | Cross-agent skills live in `shared/skills/`; Pi exposes them through `pi/skills/`. |
+| **skill body** | The invoked Markdown instructions that follow a skill's frontmatter | "skill prompt", "instructions" | Uses the canonical shared-skill body sections when the skill is new or materially modified |
 | **shared skills directory** | The canonical cross-agent skills directory at `~/dotfiles/shared/skills/` | — | Non-Pi agent skill paths point here directly. Pi-visible skill entries point here through `pi/skills/` symlinks. |
 | **agent config** | An agent-specific configuration directory managed from the dotfiles repo | — | Each supported agent has one repo-owned config surface. Pi's config deploys to `~/.pi/agent`. |
 | **unshipping** | Removing a feature, tool, config surface, or workflow entirely from the repo's tracked and deployed contract | "disable", "hide" | Includes implementation, tests, docs, specs, generated artifacts, and installer surfaces unless explicitly scoped otherwise. |
@@ -71,6 +76,16 @@
 
 | Term | Definition | Aliases to avoid | Context notes |
 |------|-----------|-------------------|---------------|
+| **Language Definitions section** | The mandatory skill-body section containing execution-relevant skill-local vocabulary or the statement “No skill-specific terms” | "glossary", "terminology section" | Project-domain terms remain in the applicable project glossary |
+| **Workflow section** | The optional skill-body section containing at most one primary end-to-end process with routing or mode selection first | "process section", "multiple workflows" | Branches remain inside the single primary Workflow |
+| **Activity** | An independently reusable command, action, or recipe selected outside a required end-to-end sequence | "Workflow step", "procedure" | Activities do not restate ordinary Workflow steps |
+| **Reference section** | The optional skill-body section containing pointers that state when and why supporting Markdown must be loaded | "resources", "appendix" | Required main-path behavior cannot be hidden behind optional loading |
+| **progressive disclosure** | The staged loading of a catalog description, an invoked skill body, and conditionally selected support | "documentation split", "shortening" | A split is earned only when the remaining main path stays executable |
+| **behavior-preservation ledger** | An audit record mapping each required behavior to its retained location or replacement owner | "change summary", "checklist" | Covers triggers, branches, gates, failures, guardrails, outputs, ownership, and completion conditions |
+| **spec-extraction plan** | The brownfield Bootstrap Specs artifact that directs extraction of specifications from implementation evidence | "plan workspace", "slice graph" | It is not a plan workspace or implementation slice graph |
+| **Ralph job plan** | The mutable `IMPLEMENTATION_PLAN.md` state used by a Ralph job | "plan workspace", "orchestration index" | It is not the repository plan workspace |
+| **teaching workspace** | The dedicated durable directory containing one learner's mission, resources, lessons, references, assets, and evidence | "plan workspace", "Herdr workspace" | Teaching state has its own owner and lifecycle |
+| **neutral diff artifact** | Structured observable image differences without criteria, severity, recommendations, or verdict | "visual review", "acceptance verdict" | Owned by `image-diff-describer`; it does not imply visual acceptance |
 | **Wayfinder map** | The low-resolution Markdown index for one uncertainty-resolution effort, containing its destination, decision summaries, fog of war, and scope boundary | "roadmap", "issue epic" | Lives under `.wayfinder/<effort-slug>/MAP.md`; detailed answers remain in decision tickets. |
 | **decision ticket** | A session-sized question whose evidenced resolution advances a Wayfinder map toward its destination | "implementation ticket", "slice" | Resolves uncertainty rather than delivering production behavior. |
 | **frontier** | The derived set of currently actionable items whose dependency blockers have reached the required terminal state | "queue", "backlog" | Wayfinder blockers must be resolved; plan slice blockers must be integrated. |
@@ -101,12 +116,18 @@
 - **Tool provisioning** depends on **symlink management** for config deployment of TUI tools
 - The **SSH multiplexer** defaults to Herdr and MAY fall back to tmux through an environment override
 - A **Herdr workspace** contains one or more **Herdr tabs**, and a **Herdr tab** contains one or more **Herdr panes**
+- The **caller pane** invokes an operation, while the **focused pane** reflects UI selection; they MAY differ
+- A **public Herdr ID** MUST be refreshed after topology changes, while a **legacy display selector** MUST NOT be treated as durable identity
 - **Herdr config** is deployed by the **dotfiles** repo, while **Herdr runtime state** remains local-only and out of git
 - A **repo-owned Herdr integration** is generated or copied into **agent configs** before deployment, rather than installed directly into live runtime paths
 - The **Herdr skill** lives in the **shared skills directory** and is visible to supported agents through their skills deployment paths
 - A **Wayfinder map** indexes multiple **decision tickets** and derives its **frontier** from resolved ticket blockers
 - An **active-plan pointer** identifies one **plan workspace**, which contains multiple **slices** and their **verification artifacts**
 - A plan **frontier** contains ready **slices** only after every blocking slice is integrated
+- A **skill body** uses the **Language Definitions section** and only the optional sections earned by its behavior
+- A **behavior-preservation ledger** is required before a material skill-body restructure
+- A **plan workspace**, **spec-extraction plan**, **Ralph job plan**, **teaching workspace**, and **Herdr workspace** have distinct owners and lifecycles
+- A **neutral diff artifact** may inform visual review but does not supply acceptance
 
 ---
 
@@ -120,10 +141,20 @@
 - **"strong model"** or **"weak model"** are informal terms that should be avoided in specs. Prefer specific model/provider names and rationale.
 - **"profile"** refers to install profiles (Full, Minimal, Work, Custom). Pi profiles are no longer a supported concept in this repo.
 - **"integration"** is overloaded between Herdr integrations, shell integrations, and editor integrations. Use **Herdr integration** when referring to Herdr agent lifecycle/session hooks.
-- **"workspace"** is overloaded between a project workspace, **plan workspace**, teaching workspace, and **Herdr workspace**. Use the qualified term for each durable or terminal context.
+- **"workspace"** is overloaded between a project workspace, **plan workspace**, **teaching workspace**, and **Herdr workspace**. Use the qualified term for each durable or terminal context.
+- **"plan"** is overloaded between a **plan workspace**, **spec-extraction plan**, and **Ralph job plan**. These artifacts are non-interchangeable and MUST use their qualified names.
+- **"current pane"** can mean the **caller pane** or **focused pane**. Discover the caller from runtime context rather than inferring it from focus.
+- **"visual comparison"** can mean neutral description or acceptance judgment. Use **neutral diff artifact** only for no-verdict evidence.
+- Skill-local definitions belong in the owning **skill body**; terms shared by specs or multiple workflows belong in this project glossary.
 - **"prefix key"** is ambiguous after Herdr adoption. Use **multiplexer prefix key** for shared behavior, **tmux prefix key** for tmux, and **Herdr prefix key** for Herdr.
 
 ---
+
+## Change Log
+
+| Version | Date | Change |
+|---------|------|--------|
+| 0.7.0 | 2026-07-14 | Added the shared-skill body vocabulary, qualified workflow artifacts, Herdr caller and runtime identity distinctions, and neutral visual evidence ownership. |
 
 ## Example Dialogue
 

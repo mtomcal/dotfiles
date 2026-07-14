@@ -1,6 +1,6 @@
 # AI Agent Configuration Specification
 
-> **Version**: 2.2.0
+> **Version**: 2.3.0
 > **Last Updated**: 2026-07-14
 > **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md), [Design Language](DESIGN_LANGUAGE.md), [Herdr Config](herdr-config.md)
 > **Depended By**: Install Orchestrator (INSTL)
@@ -134,6 +134,23 @@ The `pis` script provides a Docker sandbox wrapper for Pi.
 
 Every newly added or modified shared skill MUST provide the cross-agent frontmatter fields `name`, `description`, `metadata.short-description`, and `allowed-tools`. Descriptions MUST state concrete `Use when` triggers and remain within the supported 1024-character limit.
 
+### Shared Skill Body Contract
+
+The **skill body** of every newly added or materially modified shared skill MUST use these semantic sections in this order:
+
+1. `Language Definitions` is mandatory. It MUST contain only execution-relevant skill-local terms, or the exact statement “No skill-specific terms.”
+2. `Workflow` is optional. When present, it MUST contain at most one primary end-to-end process and MUST put routing or mode selection at its beginning.
+3. `Activities` is optional. When present, it MUST contain independently reusable commands, actions, or recipes and MUST NOT restate ordinary Workflow steps.
+4. `Reference` is optional. When present, each Markdown pointer MUST state when and why its support file must be loaded.
+
+A skill MAY omit any optional section that its behavior does not require. Required main-path behavior MUST NOT be hidden behind optional wording or conditional Reference loading.
+
+Skill-body content MUST be retained when it changes invocation or routing, workflow correctness, reusable Activity execution, guardrails or failure handling, output or artifact contracts, or required cross-agent or repository behavior. Fixed line limits MUST NOT be used as the YAGNI standard; size changes are evidence only.
+
+Guardrails, failure handling, approvals, output contracts, and completion criteria MUST remain beside the Workflow step or Activity they govern. Literal or detail-heavy schemas and templates MAY move to Reference when the main skill body retains a compact executable contract and an explicit load condition.
+
+Before materially restructuring a skill body, the author MUST create a **behavior-preservation ledger**. Every trigger, branch, gate, failure, guardrail, output, ownership rule, and completion condition MUST either remain in the resulting skill or name its replacement owner.
+
 The shipped workflow catalog includes these locally owned skills:
 
 | Skill | Required behavior |
@@ -150,9 +167,28 @@ The shipped workflow catalog includes these locally owned skills:
 | `teach` | Requires an approved dedicated teaching workspace and preserves mission, resources, learning records, HTML lessons, references, assets, and notes |
 | `grill-me` | Loads root and spec-suite ubiquitous language, tests relationships with concrete edge cases, checks claims against code/specs, and defers file edits until shared understanding |
 
-Imported skill material MUST be treated as a locally maintained fork: provenance and required license attribution MUST live in the repository-level `THIRD_PARTY_NOTICES.md`, while automatic upstream synchronization is outside the shipped contract.
+### Catalog Ownership and Composition
 
-When a skill delegates work under `HERDR_ENV=1`, it SHOULD load the shared Herdr skill rather than duplicate Herdr commands. The same workflow MUST provide an in-process fallback outside Herdr. Read-only delegated agents MAY share a checkout; delegated agents that edit files MUST use isolated clones or worktrees. Compact Herdr pane identifiers MUST NOT be persisted as durable workflow identity.
+The shared-skill catalog MUST preserve these ownership boundaries:
+
+1. `write-a-skill` owns skill-body authoring, progressive disclosure, independently invocable split tests, and semantic YAGNI pruning.
+2. `audit-shared-skills` owns executable validation of the repository's existing union-frontmatter schema. It MUST NOT be represented as the owner of semantic or YAGNI review.
+3. Terminal transport skills own terminal command mechanics. Their callers retain the task brief, workflow state, acceptance decision, returned-evidence contract, and in-process fallback.
+4. Checkout isolation MUST be selected before terminal transport. Read-only delegates MAY share a checkout; any delegate authorized to edit files MUST use an isolated clone or worktree.
+5. Composing another skill imports its process, not its ownership. The caller retains its artifact location, user gates, state, and return criteria.
+6. `code-review` owns generic fixed-point Standards and Spec review semantics. Specialist reviewers retain authority over their narrow contracts and MUST NOT silently waive or rerank another review axis.
+7. Visual work MUST preserve the applicable stages: capture, optional recording conversion, optional neutral diff production, general QA or scoped judgment, and caller or human acceptance. A specialist verdict MUST NOT claim final human acceptance.
+8. Templates, output contracts, ranking models, and checklists MUST remain owned by their domain producer rather than being normalized into a universal schema.
+
+### Workflow Artifact and State Ownership
+
+Wayfinder decision tickets, plan-workspace slices, **spec-extraction plans**, **Ralph job plans**, teaching state, and generated artifacts are non-interchangeable. Each workflow MUST use the qualified artifact name, preserve its own writer and lifecycle, and MUST NOT infer another workflow's state transitions from a generic “plan” or “workspace” label.
+
+Reciprocal routing MAY compose workflows, but it MUST NOT transfer state or artifact ownership. A caller MUST retain its destination, durable writer, approval gates, and return criteria unless another approved contract explicitly names a replacement owner.
+
+Imported skill material MUST be treated as a locally maintained fork. Before imported material is moved or rewritten, its source, revision, and license MUST be identified, and provenance plus required license attribution MUST live in the repository-level `THIRD_PARTY_NOTICES.md`. Automatic upstream synchronization is outside the shipped contract.
+
+When a skill delegates through Herdr under `HERDR_ENV=1`, it SHOULD load the shared Herdr skill rather than duplicate Herdr commands. The same workflow MUST provide an in-process fallback outside Herdr. A separate pane MUST NOT be treated as checkout isolation. Public Herdr IDs MUST be refreshed after topology changes, and neither public IDs nor legacy display selectors may be persisted as durable workflow identity.
 
 ### Wayfinder State Contract
 
@@ -237,12 +273,43 @@ Input: Inspect their state schemas, delegation rules, and lifecycle gates.
 
 Expected Output: Wayfinder uses parent-owned local Markdown decision state and stops before implementation; create-plan uses an active-plan pointer, parent-owned temporary control plane, isolated editable slices, mandatory independent Standards and Spec reviews, risk-selected additional reviews, and integration-gated dependencies.
 
+### TS-AIAGT-007: Canonical Shared-Skill Body
+
+Category: Integration
+Priority: High
+Preconditions: A new or materially modified shared skill and any supporting Markdown are available.
+
+Input: Inspect the skill body's section order, section semantics, and Reference pointers.
+
+Expected Output: `Language Definitions` is present; any `Workflow`, `Activities`, and `Reference` sections occur in canonical order and satisfy their distinct contracts; every Reference pointer states when and why to load its target; required main-path behavior remains inline.
+
+### TS-AIAGT-008: Behavior Preservation and Ownership
+
+Category: Integration
+Priority: Critical
+Preconditions: A shared skill is proposed for material restructuring and its pre-change behavior is known.
+
+Input: Compare its behavior-preservation ledger, proposed body, composition pointers, and owner contracts.
+
+Expected Output: Every trigger, branch, gate, failure, guardrail, output, ownership rule, and completion condition remains or names an approved replacement owner; composed workflows do not transfer caller state, gates, or acceptance authority.
+
+### TS-AIAGT-009: Qualified Artifacts and Editable Delegation
+
+Category: Integration
+Priority: Critical
+Preconditions: A workflow routes among plan-like artifacts and delegates work through terminal transport.
+
+Input: Inspect artifact names, state ownership, checkout topology, and transport selection.
+
+Expected Output: Decision tickets, plan-workspace slices, spec-extraction plans, Ralph job plans, teaching state, and generated artifacts remain qualified and non-interchangeable; checkout isolation is selected before transport; editable delegates use isolated checkouts; separate panes alone do not satisfy isolation.
+
 ---
 
 ## Change Log
 
 | Version | Date | Change |
 |---------|------|--------|
+| 2.3.0 | 2026-07-14 | Added the canonical shared-skill body and semantic YAGNI contracts, behavior-preservation gates, catalog ownership and composition boundaries, qualified workflow artifacts, provenance gates, and verification scenarios. |
 | 2.2.0 | 2026-07-14 | Added Wayfinder and teaching workflows, a recoverable file-based plan control plane, domain-aware grilling, and repaired post-decomposition skill visibility. |
 | 2.1.0 | 2026-07-14 | Added locally maintained cross-agent workflow skills, delegation fallbacks, provenance requirements, and the visual architecture-report contract. |
 | 2.0.0 | 2026-07-08 | Unshipped retired agent/profile/delegation surfaces. Pi now deploys one repo-owned config under `~/.pi/agent`. |
