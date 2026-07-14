@@ -1,7 +1,7 @@
 # Spec-of-Specs: Personal Dotfiles Manager Documentation Blueprint
 
-> **Version**: 1.1.0
-> **Last Updated**: 2026-07-05
+> **Version**: 1.2.0
+> **Last Updated**: 2026-07-14
 > **Purpose**: Define the structure, content requirements, and templates for all specification files in `specs/`.
 > **Target Audience**: AI agents extracting specifications from an existing codebase with zero prior context.
 
@@ -82,6 +82,7 @@ The `PREFIX` should be a 2-6 character abbreviation of the spec name:
 | Herdr Config | HERDR |
 | Neovim Config | NVIM |
 | AI Agent Config | AIAGT |
+| Skill Library | SKILL |
 | Install Orchestrator | INSTL |
 
 ### Cross-Reference Conventions
@@ -123,3 +124,11 @@ The `README.md` reading order follows dependency depth:
 4. **Leaf** — specs that depend on many others but nothing depends on them
 
 An extracting agent MUST read specs in reading order to avoid forward references to undefined terms.
+
+---
+
+## Change Log
+
+| Version | Date | Change |
+|---------|------|--------|
+| 1.2.0 | 2026-07-14 | Registered the Skill Library system and `SKILL` test prefix. |

@@ -1,7 +1,7 @@
 # Parameters
 
-> **Spec Version**: 1.6.0
-> **Last Updated**: 2026-07-05
+> **Spec Version**: 1.7.0
+> **Last Updated**: 2026-07-14
 > **Depends On**: None (foundational spec)
 > **Depended By**: All other specs
 
@@ -152,6 +152,18 @@ Parameters serve three purposes:
 | `RALPH_DEFAULT_ITERATIONS` | 25 | count | Default max loop iterations for Ralph agentic loop |
 | `RALPH_DONE_PATTERN` | /done | string | Pattern that signals loop completion in Ralph worker output |
 
+## Skill Library
+
+| Parameter | Value | Unit | Rationale |
+|-----------|-------|------|-----------|
+| `SKILL_CATALOG_ROOT` | ~/dotfiles/shared/skills | path | One canonical repository-owned source for cross-agent skill definitions |
+| `SKILL_ENTRY_FILE` | SKILL.md | filename | Portable discovery metadata and invoked skill body use one conventional entry point |
+| `SKILL_DIRECTORY_PATTERN` | lowercase-hyphenated | naming rule | Stable names resolve consistently across supported agents |
+| `SKILL_DESCRIPTION_MAX_CHARS` | 1024 | characters | Maximum portable discovery-description length supported by the catalog contract |
+| `SKILL_DESCRIPTION_TRIGGER_PHRASE` | Use when | literal phrase | Makes portable invocation triggers explicit |
+| `SKILL_REFERENCE_MAX_DEPTH` | 1 | file traversal | Prevents nested context chains and avoidable hill climbing |
+| `SKILL_BODY_SECTION_ORDER` | Language Definitions, Workflow, Activities, Reference | ordered list | Gives each optional or mandatory section one canonical semantic position |
+
 ---
 
 *This document is the single source of truth for all parameters. Individual specs reference these values; any parameter defined here supersedes locally-defined duplicates in subsystem specs.*
@@ -162,6 +174,7 @@ Parameters serve three purposes:
 
 | Version | Date | Summary |
 |---------|------|---------|
+| 1.7.0 | 2026-07-14 | Added canonical Skill Library paths, naming, discovery, Reference-depth, and section-order parameters. |
 | 1.6.0 | 2026-07-05 | Added Herdr install, config, alias, SSH multiplexer, pane history, and shared skill parameters for the Herdr replacement path. |
 | 1.4.0 | 2026-05-19 | Added AGENT_SKILLS_DIR_PI for Pi's composed skills directory |
 | 1.3.0 | 2026-05-13 | Updated REQUIRED_NVIM_VERSION from 0.10 to 0.12; added crof provider parameters for Pi models.json |

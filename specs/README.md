@@ -1,6 +1,6 @@
 # Personal Dotfiles Manager Specification Suite
 
-> **Version**: 0.5.0
+> **Version**: 0.6.0
 > **Last Updated**: 2026-07-14
 > **Purpose**: Complete specification for the personal dotfiles manager — automates setup of a Herdr/tmux + neovim + zsh dev environment across Linux and macOS. Primarily for personal use, serves as reference/inspiration for others.
 
@@ -53,10 +53,12 @@ For an extracting or implementing agent, read specs in this order:
 7. **[herdr-config.md](herdr-config.md)** — Herdr default multiplexer, config, SSH behavior, integrations
 8. **[tmux-config.md](tmux-config.md)** — Tmux keybindings, nested sessions, legacy fallback integration
 9. **[neovim-config.md](neovim-config.md)** — Kickstart base + custom plugin layer
-10. **[ai-agent-config.md](ai-agent-config.md)** — AI agent configs, shared skills, symlink wiring
+10. **[skill-library.md](skill-library.md)** — Shared-skill catalog, authoring semantics, progressive disclosure, and composition
+11. **[ai-agent-config.md](ai-agent-config.md)** — AI agent installation, runtime configuration, catalog exposure, and symlink wiring
+
 ### Phase 4: Leaf
 
-11. **[install-orchestrator.md](install-orchestrator.md)** — Top-level orchestrator that calls everything
+12. **[install-orchestrator.md](install-orchestrator.md)** — Top-level orchestrator that calls everything
 
 ---
 
@@ -74,6 +76,8 @@ graph TD
     tool --> herdr
     tool --> nvim
     tool --> ai
+    herdr --> skill[Skill Library]
+    skill --> ai
     herdr --> ai
     shell --> install[Install Orchestrator]
     herdr --> install
@@ -93,10 +97,11 @@ graph TD
 | symlink-manager.md | — | tool-provisioning, shell-config, herdr-config, tmux-config, neovim-config, ai-agent-config, install-orchestrator |
 | tool-provisioning.md | symlink-manager | shell-config, herdr-config, neovim-config, ai-agent-config, install-orchestrator |
 | shell-config.md | symlink-manager, tool-provisioning | install-orchestrator |
-| herdr-config.md | symlink-manager, tool-provisioning | shell-config, ai-agent-config, install-orchestrator |
+| herdr-config.md | symlink-manager, tool-provisioning | shell-config, skill-library, ai-agent-config, install-orchestrator |
 | tmux-config.md | symlink-manager | install-orchestrator |
 | neovim-config.md | symlink-manager, tool-provisioning | install-orchestrator |
-| ai-agent-config.md | symlink-manager, tool-provisioning | install-orchestrator |
+| skill-library.md | parameters, ubiquitous language, herdr-config | ai-agent-config |
+| ai-agent-config.md | symlink-manager, tool-provisioning, herdr-config, skill-library | install-orchestrator |
 | install-orchestrator.md | all other specs | — |
 
 ---
@@ -105,15 +110,16 @@ graph TD
 
 | Spec | Description | Version |
 |------|-------------|---------|
-| [parameters.md](parameters.md) | All tuning values with rationale | 1.5.0 |
+| [parameters.md](parameters.md) | All tuning values with rationale | 1.7.0 |
 | [symlink-manager.md](symlink-manager.md) | Symlink creation, backup, and verification | 1.3.2 |
-| [tool-provisioning.md](tool-provisioning.md) | Dependency and tool installation | 1.2.0 |
+| [tool-provisioning.md](tool-provisioning.md) | Dependency and tool installation | 1.2.1 |
 | [shell-config.md](shell-config.md) | Zsh + Oh My Zsh configuration | 1.1.0 |
-| [herdr-config.md](herdr-config.md) | Herdr default multiplexer and migration contract | 0.1.0 |
+| [herdr-config.md](herdr-config.md) | Herdr default multiplexer and migration contract | 0.1.1 |
 | [tmux-config.md](tmux-config.md) | Tmux keybindings and nested sessions | 1.1.0 |
-| [neovim-config.md](neovim-config.md) | Kickstart + custom plugin layer | 0.1.0 |
-| [ai-agent-config.md](ai-agent-config.md) | AI agent configs and shared skills | 2.3.0 |
-| [install-orchestrator.md](install-orchestrator.md) | Top-level idempotent setup orchestrator | 1.3.0 |
+| [neovim-config.md](neovim-config.md) | Kickstart + custom plugin layer | 1.0.0 |
+| [skill-library.md](skill-library.md) | Shared-skill catalog and authoring contracts | 1.0.0 |
+| [ai-agent-config.md](ai-agent-config.md) | AI agent runtime configs and catalog exposure | 2.4.0 |
+| [install-orchestrator.md](install-orchestrator.md) | Top-level idempotent setup orchestrator | 1.3.2 |
 
 ---
 
@@ -135,6 +141,7 @@ graph TD
 - [ ] Extract herdr-config spec from herdr/config.toml
 - [ ] Extract tmux-config spec from tmux/.tmux.conf
 - [ ] Extract neovim-config spec from nvim/custom/ plugin files
+- [ ] Validate skill-library spec against `shared/skills/` and its authoring workflows
 - [ ] Extract ai-agent-config spec from codex/, claude/, pi/, copilot/ directories
 
 ### Phase 4: Leaf

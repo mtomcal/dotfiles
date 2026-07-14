@@ -1,9 +1,9 @@
 # Herdr Configuration Specification
 
-> **Version**: 0.1.0
-> **Last Updated**: 2026-07-05
+> **Version**: 0.1.1
+> **Last Updated**: 2026-07-14
 > **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md), [Design Language](DESIGN_LANGUAGE.md), [Symlink Manager](symlink-manager.md), [Tool Provisioning](tool-provisioning.md)
-> **Depended By**: Shell Config, AI Agent Config, Install Orchestrator
+> **Depended By**: Shell Config, Skill Library, AI Agent Config, Install Orchestrator
 > **Prefix**: HERDR
 
 ---
@@ -230,4 +230,5 @@ Expected Output: Non-Pi agents resolve herdr through shared/skills; Pi includes 
 
 | Version | Date | Summary |
 |---------|------|---------|
+| 0.1.1 | 2026-07-14 | Registered the Skill Library as a consumer of Herdr delegation and runtime-identity contracts. |
 | 0.1.0 | 2026-07-05 | Initial Herdr migration spec: Herdr default replacement path, Ctrl-a parity, SSH default, runtime-state hygiene, repo-owned integrations, and shared Herdr skill distribution. |

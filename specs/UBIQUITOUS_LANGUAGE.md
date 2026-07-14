@@ -1,6 +1,6 @@
 # Ubiquitous Language
 
-> **Version**: 0.7.0
+> **Version**: 0.8.0
 > **Last Updated**: 2026-07-14
 > **Purpose**: Shared vocabulary for all specs. Every term used in multiple specs MUST be defined here. Read this before any other spec.
 
@@ -67,7 +67,9 @@
 |------|-----------|-------------------|---------------|
 | **agent** | An AI coding assistant (Codex CLI, Claude Code, Pi, or Copilot CLI) | "AI", "assistant" | Used generically when referring to any or all of the supported agents |
 | **skill** | A reusable instruction set for one or more AI agents | "instruction" | Cross-agent skills live in `shared/skills/`; Pi exposes them through `pi/skills/`. |
+| **Skill Library** | The bounded context that owns the canonical shared-skill catalog, authoring semantics, progressive disclosure, composition boundaries, provenance, and semantic quality | "agent config", "skills folder" | Agent configuration exposes the library but does not own its content contracts |
 | **skill body** | The invoked Markdown instructions that follow a skill's frontmatter | "skill prompt", "instructions" | Uses the canonical shared-skill body sections when the skill is new or materially modified |
+| **core instruction** | A compact, universally required behavior kept directly in the skill body | "mandatory reference", "support rule" | Core instructions remain local rather than being displaced into universally loaded companion files |
 | **shared skills directory** | The canonical cross-agent skills directory at `~/dotfiles/shared/skills/` | — | Non-Pi agent skill paths point here directly. Pi-visible skill entries point here through `pi/skills/` symlinks. |
 | **agent config** | An agent-specific configuration directory managed from the dotfiles repo | — | Each supported agent has one repo-owned config surface. Pi's config deploys to `~/.pi/agent`. |
 | **unshipping** | Removing a feature, tool, config surface, or workflow entirely from the repo's tracked and deployed contract | "disable", "hide" | Includes implementation, tests, docs, specs, generated artifacts, and installer surfaces unless explicitly scoped otherwise. |
@@ -79,8 +81,13 @@
 | **Language Definitions section** | The mandatory skill-body section containing execution-relevant skill-local vocabulary or the statement “No skill-specific terms” | "glossary", "terminology section" | Project-domain terms remain in the applicable project glossary |
 | **Workflow section** | The optional skill-body section containing at most one primary end-to-end process with routing or mode selection first | "process section", "multiple workflows" | Branches remain inside the single primary Workflow |
 | **Activity** | An independently reusable command, action, or recipe selected outside a required end-to-end sequence | "Workflow step", "procedure" | Activities do not restate ordinary Workflow steps |
-| **Reference section** | The optional skill-body section containing pointers that state when and why supporting Markdown must be loaded | "resources", "appendix" | Required main-path behavior cannot be hidden behind optional loading |
-| **progressive disclosure** | The staged loading of a catalog description, an invoked skill body, and conditionally selected support | "documentation split", "shortening" | A split is earned only when the remaining main path stays executable |
+| **branch outcome** | A selected route or concrete runtime condition that makes branch-specific context necessary | "workflow stage", "eventual step" | At least one successful supported route must not produce the outcome |
+| **Reference section** | The optional skill-body index containing only branch-conditioned Reference pointers | "resources", "appendix", "links" | It is a progressive-disclosure mechanism, not a miscellaneous support section |
+| **Reference pointer** | A conditional link stating the branch outcome that requires added context and why its target must then be loaded | "link", "resource pointer" | Loading becomes mandatory when the condition is true |
+| **Reference file** | Supporting Markdown containing necessary detail for a selected branch and loaded only after its Reference pointer condition becomes true | "required companion", "overflow file" | At least one successful supported route must complete without loading it |
+| **progressive disclosure** | The staged loading of a catalog description, an invoked skill body, and Reference files selected by branch outcomes | "documentation split", "delayed loading", "shortening" | Deferring content reached by every successful route is sequencing, not progressive disclosure |
+| **semantic YAGNI** | Retaining skill content only when it changes execution behavior, safety, ownership, outputs, or completion evidence | "line limit", "make it shorter" | Unnecessary content is removed rather than relocated to a Reference file |
+| **hill climbing** | Avoidable repository navigation required to reconstruct an executable contract that should be locally available | "code exploration" | Universally loaded companion files create hill climbing without progressive-disclosure benefit |
 | **behavior-preservation ledger** | An audit record mapping each required behavior to its retained location or replacement owner | "change summary", "checklist" | Covers triggers, branches, gates, failures, guardrails, outputs, ownership, and completion conditions |
 | **spec-extraction plan** | The brownfield Bootstrap Specs artifact that directs extraction of specifications from implementation evidence | "plan workspace", "slice graph" | It is not a plan workspace or implementation slice graph |
 | **Ralph job plan** | The mutable `IMPLEMENTATION_PLAN.md` state used by a Ralph job | "plan workspace", "orchestration index" | It is not the repository plan workspace |
@@ -124,7 +131,10 @@
 - A **Wayfinder map** indexes multiple **decision tickets** and derives its **frontier** from resolved ticket blockers
 - An **active-plan pointer** identifies one **plan workspace**, which contains multiple **slices** and their **verification artifacts**
 - A plan **frontier** contains ready **slices** only after every blocking slice is integrated
+- The **Skill Library** owns each canonical **skill** in the **shared skills directory**, while **agent configs** expose that catalog to supported runtimes
 - A **skill body** uses the **Language Definitions section** and only the optional sections earned by its behavior
+- A **core instruction** remains in the **skill body**, while a **Reference pointer** loads a **Reference file** only after its **branch outcome** occurs
+- **Semantic YAGNI** removes unnecessary content instead of moving it into a Reference file, reducing avoidable **hill climbing**
 - A **behavior-preservation ledger** is required before a material skill-body restructure
 - A **plan workspace**, **spec-extraction plan**, **Ralph job plan**, **teaching workspace**, and **Herdr workspace** have distinct owners and lifecycles
 - A **neutral diff artifact** may inform visual review but does not supply acceptance
@@ -146,6 +156,8 @@
 - **"current pane"** can mean the **caller pane** or **focused pane**. Discover the caller from runtime context rather than inferring it from focus.
 - **"visual comparison"** can mean neutral description or acceptance judgment. Use **neutral diff artifact** only for no-verdict evidence.
 - Skill-local definitions belong in the owning **skill body**; terms shared by specs or multiple workflows belong in this project glossary.
+- Bare **"Reference"** can mean the section, pointer, or target file. Use **Reference section**, **Reference pointer**, or **Reference file**; a universally required companion file is not a Reference file.
+- **"progressive disclosure"** is sometimes used for any delayed file load. In the Skill Library it requires a branch outcome and a successful supported route that does not load the selected file.
 - **"prefix key"** is ambiguous after Herdr adoption. Use **multiplexer prefix key** for shared behavior, **tmux prefix key** for tmux, and **Herdr prefix key** for Herdr.
 
 ---
@@ -154,15 +166,18 @@
 
 | Version | Date | Change |
 |---------|------|--------|
+| 0.8.0 | 2026-07-14 | Established the Skill Library bounded context and distinguished core instructions, branch outcomes, Reference sections, Reference pointers, Reference files, semantic YAGNI, progressive disclosure, and hill climbing. |
 | 0.7.0 | 2026-07-14 | Added the shared-skill body vocabulary, qualified workflow artifacts, Herdr caller and runtime identity distinctions, and neutral visual evidence ownership. |
 
 ## Example Dialogue
 
-> **Dev**: "If I edit `pi/settings.json`, what makes it live in Pi?"
-> **Domain Expert**: "Run the Pi install module. It deploys the repo file to the single Pi **agent config** under `~/.pi/agent`."
-> **Dev**: "Can I add a second Pi runtime variant?"
-> **Domain Expert**: "No. Pi profiles were unshipped. This repo now supports one Pi **agent config**."
-> **Dev**: "Should SSH still auto-attach tmux?"
-> **Domain Expert**: "No. The **SSH multiplexer** defaults to Herdr now, but tmux remains available through the fallback environment override."
-> **Dev**: "Where do Herdr's saved panes go?"
-> **Domain Expert**: "They are **Herdr runtime state**. They can exist locally, including pane history, but they must never be committed as **Herdr config**."
+> **Dev**: "Does AI Agent Configuration own how a shared skill is written?"
+> **Domain Expert**: "No. The **Skill Library** owns skill semantics; the **agent config** only exposes canonical skills to a runtime."
+> **Dev**: "Can every successful route load the same **Reference file** if the pointer appears near a later step?"
+> **Domain Expert**: "No. That is sequencing. A valid **Reference pointer** requires a **branch outcome** and at least one successful no-load route."
+> **Dev**: "What happens after the branch outcome occurs?"
+> **Domain Expert**: "Loading the selected **Reference file** becomes mandatory, while unrelated branch context remains undisclosed."
+> **Dev**: "Where does universally required behavior go?"
+> **Domain Expert**: "Keep it as a compact **core instruction** in the skill body; **semantic YAGNI** removes unnecessary detail instead of creating **hill climbing**."
+> **Dev**: "Who deploys the catalog to Pi?"
+> **Domain Expert**: "AI Agent Configuration deploys Pi's visibility layer, while the **Skill Library** remains the content owner."
