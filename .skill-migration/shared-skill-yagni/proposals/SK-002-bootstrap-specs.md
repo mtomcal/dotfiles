@@ -1,7 +1,7 @@
 ---
 id: SK-002
 target: bootstrap-specs
-status: ready-to-integrate
+status: verified
 revision: 1
 blocked-by: [SK-001]
 source-verdict: simplify inline
@@ -159,6 +159,8 @@ Observable acceptance criteria:
 ## Implementation record
 
 Focused verification completed: `2026-07-14T16:10:18+00:00`
+
+Integrated verification completed: `2026-07-14T16:12:41+00:00`
 
 - Actual production/support diff: exactly the three revision 1 files, with 82 insertions and 60 removals. The proposal is the only additional control artifact.
 - Resulting SHA-256:
