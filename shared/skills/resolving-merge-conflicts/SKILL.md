@@ -8,40 +8,61 @@ allowed-tools: read,write,edit,bash
 
 # Resolving Merge Conflicts
 
+## Language Definitions
+
+- **Source intent** — behavior and rationale introduced by one side of a conflict.
+- **Authoritative source** — direction or evidence determining precedence when intents conflict.
+- **Combined result** — resolution preserving compatible intents and explicitly choosing among incompatible ones.
+- **Remaining operation** — Git continuation, commit, or abort still requiring authorization.
+
+`ours` and `theirs` are operation-dependent labels, not stable intent terms.
+
+## Workflow
+
 Resolve intent, not punctuation.
 
-## 1. Establish Git state
+### 1. Establish Git state
 
-Inspect status, the active Git operation, unmerged paths, stage entries, and relevant history. Preserve unrelated working-tree changes. Identify the exact operation and commits represented by ours/base/theirs; remember that labels can reverse meaning during a rebase.
+Inspect status, the exact active merge, rebase, cherry-pick, or revert and its current step, every unmerged path, available index stage entries, and relevant history. Record unrelated working-tree and index changes before editing so they remain protected.
 
-Completion criterion: every conflicted path is listed and both sides' commits are identified.
+Map the available base (stage 1), ours (stage 2), and theirs (stage 3) entries to the commits and source sides they represent in this operation. Do not infer intent from the labels: during rebase, ours is the branch being rebased onto and theirs is the work being replayed, so their everyday meaning appears reversed.
 
-## 2. Trace both intents
+Completion criterion: every conflicted path, the operation and current step, available base and both side identities, and all unrelated changes are accounted for.
 
-For each conflict, inspect the introducing commits, commit messages, blame/history, linked issues or plans, and relevant specs. State what each side was trying to preserve before editing.
+### 2. Trace both intents
 
-If intent is irreconcilable or its authority is unclear, never abort silently. Stop, explain the competing intents and consequences, and ask the user whether to choose a side, redesign, or abort the Git operation.
+For every hunk, inspect the introducing commits, commit messages, blame/history, linked issues or plans, and relevant specs. Before editing, record both source-intent statements, the evidence or authority behind each, and either the authoritative source deciding precedence or explicit uncertainty.
 
-Completion criterion: each hunk has two intent statements and an authoritative source or explicit uncertainty.
+If the intents are irreconcilable, their compatibility is unclear, or authority is insufficient, stop without editing or changing the operation. Explain the competing intents and consequences, then ask the user whether to choose a side, redesign, or abort. Never abort silently.
 
-## 3. Resolve hunks
+Completion criterion: every hunk has two evidenced intent statements and a precedence authority or explicit uncertainty; every uncertainty has stopped for a user decision.
 
-Preserve both intents where compatible. Where they conflict, follow the operation's stated goal and the authoritative spec or user decision. Do not invent unrelated behavior. Remove all conflict markers and inspect the combined result, including nearby code affected semantically but not textually.
+### 3. Resolve each hunk
 
-Completion criterion: no unmerged entries or conflict markers remain, and each resolution can be explained against source intent.
+Preserve both intents where compatible. Where they are incompatible, follow the operation's stated goal and the authoritative spec or explicit user decision. Do not invent unrelated behavior or absorb cleanup.
 
-## 4. Verify and stage
+Remove conflict markers, inspect the complete combined result, and check semantic neighbors affected beyond the textual hunk, such as callers, tests, configuration, or documentation. Each resolution must be explainable against its two source intents before staging.
 
-Run the repository's focused checks first, then broader required checks as practical. Fix merge-introduced failures without absorbing unrelated cleanup. Stage only verified resolutions and inspect the staged diff.
+Completion criterion: conflict markers are gone, every combined result and semantic neighbor has been inspected, and each choice traces to intent and authority.
 
-Completion criterion: resolutions are staged, relevant checks pass, and unrelated changes remain untouched.
+### 4. Verify and stage selectively
 
-## 5. Report the remaining operation
+Run the repository's focused checks first, then broader required checks as practical. Fix only failures induced by the merge or active operation; report unrelated failures or cleanup without modifying or staging them.
 
-Do not commit, continue, or abort automatically unless the user explicitly requested that action. Report:
+Stage only verified conflict resolutions while preserving the unrelated-change inventory. Confirm no unmerged index entries remain and inspect the staged diff for the intended resolutions and no unrelated changes.
 
-- intents preserved and trade-offs made
-- files staged
-- checks and results
-- the active Git operation
-- the exact remaining user-approved action, such as merge commit, `git rebase --continue`, `git cherry-pick --continue`, or abort
+Completion criterion: focused and applicable broader results are recorded, verified resolutions alone are staged, no unmerged entries remain, and the staged diff leaves unrelated changes untouched.
+
+### 5. Report the remaining operation
+
+Report:
+
+- intents preserved and trade-offs made;
+- files staged;
+- checks and results, including failures or limitations;
+- the active Git operation; and
+- the exact remaining action and whether the user authorized it, such as a merge commit, `git rebase --continue`, `git cherry-pick --continue`, `git revert --continue`, or the operation-specific abort.
+
+Do not commit, continue, or abort unless the user explicitly requested that exact action. Without authorization, stop with the verified resolutions staged and the operation active.
+
+Completion criterion: the report contains every field and either leaves the exact action awaiting authorization or records the result of the exact action already authorized by the user.
