@@ -1,7 +1,7 @@
 ---
 id: SK-006
 target: ralph
-status: ready-to-integrate
+status: verified
 revision: 2
 blocked-by: [SK-001]
 source-verdict: simplify inline
@@ -185,6 +185,14 @@ Focused verification completed: `2026-07-14T16:43:36+00:00`
 - Residual risk: `--full-auto` is still an installed parser-compatible alias omitted from current help and may disappear in a later Codex release; catalog verification should recheck it.
 - Residual risk: descendant `HEAD` still proves commits occurred, not actor identity, one-item scope, or quality; final plan/log/diff/test review remains mandatory.
 - Residual risk: the dangerous-mode environment variable records but cannot enforce human approval. Durable claim directories and their staging final-message file intentionally consume disk until explicit evidence cleanup; concurrent launches choose safety by stopping one claimant rather than retrying automatically.
+
+## Integrated verification
+
+- Coordinator verification timestamp: `2026-07-14T16:49:58+00:00`.
+- The complete two-commit worker range changed exactly the proposal, `SKILL.md`, and executable runner; proposal revision 2 and mode `100755` are preserved.
+- Independent fake-Codex verification passed 20/20 cases, including byte-preserving explicit reruns, monotonic mixed-form sequence selection, per-invocation bounds, fresh public-path/claim collisions, exact `/done`, immediate failure stop, descendant commit evidence, and dangerous-mode approval.
+- `bash -n`, installed Codex 0.144.1 option/parser checks, canonical body/link/frontmatter checks, union-frontmatter audit, `git diff --check`, Pi visibility, and repository shell tests (12/12) passed.
+- `pi/settings.json` retained its recorded content and diff hashes and remained unstaged. Residual `--full-auto`, commit-quality, approval-variable, and retained-evidence disk risks remain as documented above.
 
 ## Explicit exclusions
 
