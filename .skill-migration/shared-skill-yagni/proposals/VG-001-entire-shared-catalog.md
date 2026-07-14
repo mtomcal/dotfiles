@@ -1,7 +1,7 @@
 ---
 id: VG-001
 target: entire-shared-catalog
-status: proposal-ready
+status: integrating
 revision: 1
 blocked-by: [MG-002, SK-001-SK-033, NEW-001]
 source-verdict: final catalog verification and reconciliation
