@@ -1,7 +1,7 @@
 ---
 id: SK-010
 target: update-specs
-status: ready-to-integrate
+status: verified
 revision: 1
 blocked-by: [SK-001, MG-001]
 source-verdict: retain substance; repair executable and ownership contract
@@ -153,6 +153,13 @@ Focused verification completed: `2026-07-14T17:10:22+00:00`.
 - Residual risks: three-dot merge-base scope is deliberately rejected and must be converted to explicit endpoints; repositories with ambiguous glossary authority may require the clarification gate inherited from `ubiquitous-language`; existing tool grants are unchanged because frontmatter redesign is out of scope.
 
 The worker result is `ready-to-integrate`; this record does not claim coordinator integration, central verification, VG-001, or any other migration item.
+
+## Integrated verification
+
+- Coordinator verification timestamp: `2026-07-14T17:12:38+00:00`.
+- Exact three-file scope, complete skill/reference review, canonical shape, sole discrepancy definitions, real Git boundary/exit behavior, terminology composition, editor isolation/authority, three reviews, versioning, scoped rollback, and links passed independent checks.
+- Repository shell tests passed 12/12; `git diff --check`, Pi visibility, and local provenance passed.
+- `pi/settings.json` retained its recorded content and diff hashes and remained unstaged. Explicit-endpoint and ambiguous-glossary limitations remain as documented.
 
 ## Explicit exclusions
 
