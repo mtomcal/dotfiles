@@ -1,7 +1,7 @@
 ---
 id: SK-026
 target: video-to-contact-sheet
-status: ready-to-integrate
+status: verified
 revision: 1
 blocked-by: [SK-001]
 source-verdict: simplify inline
@@ -132,6 +132,8 @@ Worker verification completed at `2026-07-14T18:21:55+00:00`.
 - Residual risks: stream-copy seeks remain keyframe- and container-dependent, so exact trims may require an explicitly chosen re-encode and must report that limitation. A nine-frame overview samples the full timeline sparsely and can miss sub-interval behavior; the workflow therefore reports sampling limitations and escalates to the observed high-frequency window. Crop coordinates and resolution remain source-specific but are bounded by probe dimensions and mandatory visual inspection.
 
 The worker result is `ready-to-integrate`; this record does not claim coordinator integration, coordinator verification, or catalog-wide VG-001 completion.
+
+Coordinator integration verification completed at `2026-07-14T18:25:42+00:00` against integrated commits `20a13c9` and `6664572`: the complete target and proposal were reread; exact definitions, input/evidence routing, probe/audio gates, overview-first selection, all escalation branches, four Activities and local guards, source preservation, meaningful-evidence checks, mismatch handling, path/purpose/limitation handoff, caller acceptance, frontmatter identity, Pi visibility, repo-local provenance, and exact scope passed independent checks. An independent synthetic three-second audio WebM exercised overview, trim/rebuilt sheet, high-frequency, and crop recipes; all outputs were nonempty, the source hash was unchanged, and trim retained audio. The YAML-aware audit accounted for all 33 skills with zero errors and warnings, `git diff --check` passed, and `bash tests/run.sh` passed all 12 tests. The protected `pi/settings.json` content and diff hashes remained `7d3f4713d7239e8cda3f75597a55f1767fecdf7964324630e4e74dc686d12e05` and `8298a9063e3ebf2988000d176057a41c31cf20c10bbabe92fb57d47f9f2738d5`. Residual risks remain keyframe/container-dependent stream-copy trims, sparse overview sampling, and source-specific crop/readability choices, all explicitly surfaced as limitations.
 
 ## Explicit exclusions
 

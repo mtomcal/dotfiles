@@ -167,7 +167,7 @@ The sequence follows WF-007: durable decisions, authoring owner, correctness rep
 | `SK-023` | skill | `research` | retain substance | SK-001 | verified |
 | `SK-024` | skill | `resolving-merge-conflicts` | retain substance | SK-001 | verified |
 | `SK-025` | skill | `tdd` | simplify inline | SK-001, SK-013 | verified |
-| `SK-026` | skill | `video-to-contact-sheet` | simplify inline | SK-001 | integrating |
+| `SK-026` | skill | `video-to-contact-sheet` | simplify inline | SK-001 | verified |
 | `SK-027` | skill | `visual-qa` | simplify inline | SK-001, SK-005, SK-021, SK-026 | queued |
 | `SK-028` | skill | `wayfinder` | retain substance | SK-001 | queued |
 | `SK-029` | skill | `teach` | move detail to Reference | SK-001, SK-007, SK-023 | queued |
@@ -199,4 +199,4 @@ The final catalog gate additionally checks all 33 original skills, the proposal-
 
 `MG-001` revision 2, `MG-002` revision 1, and SK-001 through SK-005 are verified. Parallel mode is active.
 
-`MG-001` revision 2, `MG-002` revision 1, and SK-001 through SK-025 are verified. SK-026 and NEW-001 are claimed with disjoint scopes. The remaining verified-blocker frontier contains SK-027, SK-028, SK-029, SK-030, SK-031, and SK-032. No queued production file is authorized until claimed with an item-specific exact proposal in `proposal-ready` state.
+`MG-001` revision 2, `MG-002` revision 1, and SK-001 through SK-026 are verified. NEW-001 remains claimed. SK-027 is now fully unblocked; the remaining verified-blocker frontier also contains SK-028, SK-029, SK-030, SK-031, and SK-032. No queued production file is authorized until claimed with an item-specific exact proposal in `proposal-ready` state.
