@@ -1,7 +1,7 @@
 ---
 id: SK-013
 target: codebase-design
-status: ready-to-integrate
+status: verified
 blocked-by: [SK-001]
 source-verdict: retain
 ---
@@ -126,6 +126,12 @@ SK-001 is verified and owns the canonical skill-body contract, so SK-013 is unbl
 - Repository checks: PASS. `git diff --check` is clean and `bash tests/run.sh` passes 2 shell files and all 12 tests.
 - Resulting target SHA-256: `121962348d6feef5d696473a06703cd91a04a835f047ac4662ba33d90b956c3b`.
 - Residual risk: none beyond the deliberate progressive-disclosure dependency on the two unchanged local support files; link and complete-contract checks passed.
+
+## Integrated verification
+
+- Coordinator verification timestamp: `2026-07-14T17:20:08+00:00`.
+- Exact scope, complete target and support review, canonical shape, eight definitions, route precedence, design tests, support links, and provenance passed independent review.
+- Repository shell tests passed 12/12; `git diff --check` and Pi visibility passed; `pi/settings.json` retained its recorded hashes and remained unstaged.
 
 ## Explicit exclusions
 
