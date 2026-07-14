@@ -15,168 +15,93 @@ allowed-tools:
 
 # Create AGENTS.md
 
-Generates and maintains an AGENTS.md — a living codebase map that prevents hill climbing (locally optimal, globally wrong decisions) by giving AI agents a topographic view of module boundaries, architectural rules, anti-patterns, and coding principles.
+## Language Definitions
+
+- **Codebase map** — agent-facing overview of structure, ownership, dependencies, entry points, rules, and anti-patterns.
+- **Hill climbing** — repeatedly loading additional files into context while discovering a task, increasing context cost and diluting relevant information when the map could have directed the agent to a smaller authoritative set; necessary reading for genuinely cross-cutting work is excluded.
+- **Tree hash** — SHA-256 directory-tree fingerprint for structural-change detection, not content accuracy.
+- **Confidence marker** — inferred, convention-backed, or human-confirmed status, not probability.
+- **Codebase area** — directory or subsystem represented by one AGENTS.md ownership section, avoiding collision with `codebase-design`’s module.
 
 ## Workflow
 
-### Step 0: Detect Mode
+### 1. Route creation versus update
 
-Check if `AGENTS.md` exists in the project root:
+Find the project root and check for root `AGENTS.md` before doing anything else:
 
-- **No AGENTS.md** → full generation (go to Step 1)
-- **AGENTS.md exists** → incremental update (go to Step 4)
+- If it does not exist, select **full generation**.
+- If it exists, select **incremental update**.
 
----
+The parent running this workflow owns the draft, user gates, acceptance, and every `AGENTS.md` write. Completion: exactly one mode is selected from root-file evidence.
 
-## Full Generation (No Existing AGENTS.md)
+### 2. Detect current structure
 
-### Step 1: Auto-Detect Structure
+Resolve and execute `scripts/detect-structure.sh` from this skill directory with `--json` and the project root. If `tree` is unavailable, stop and help the user install it with `brew install tree` on macOS or `sudo apt install tree` on Ubuntu/Debian, then retry; do not fabricate detector output.
 
-Run the detection script:
+Parse and retain:
 
-```bash
-bash /path/to/shared/skills/create-agents-md/scripts/detect-structure.sh --json
-```
+- `tree` and `tree_hash` for the delimited map and structural comparison;
+- `ecosystems` and their detected entry-point evidence;
+- `modules`, where every record includes name, path, convention match, confidence, dominant language, README presence/description, detected dependencies, and entry points; and
+- `warnings`, which must be surfaced and resolved or recorded as limitations.
 
-If `tree` is not installed, help the user install it:
+The detector calls candidates `modules`; represent each accepted ownership section as a Codebase area. The Tree hash says only whether the emitted directory tree changed, not whether file content or the existing map is accurate.
 
-- **macOS**: `brew install tree`
-- **Ubuntu/Debian**: `sudo apt install tree`
+Completion: detection succeeds, all required fields are accounted for, and warnings are not silently discarded.
 
-Parse the JSON output. You now have:
-- `tree` — directory map (dirs only, `--dirsfirst`)
-- `tree_hash` — sha256 of tree output (for future diff)
-- `ecosystems` — detected language ecosystems and their entry points
-- `modules` — per-directory: name, path, convention match, confidence, dominant language, has_readme, readme_description, depends_on (from manifests), entry_points
-- `warnings` — anything unusual (multiple package managers, missing README, etc.)
+### 3. Execute the selected mode
 
-### Step 2: Generate Draft
+#### Full generation
 
-Produce a draft `AGENTS.md` from [TEMPLATE.md](TEMPLATE.md). Apply these rules:
+Draft from `TEMPLATE.md` without writing the final root file yet:
 
-1. **Map section**: Embed the tree output inside `<!-- TREE-START -->` / `<!-- TREE-END -->` HTML comments. Include `<!-- TREE-HASH: <sha256> -->` for future diffing.
+1. Embed the exact detected tree between `<!-- TREE-START -->` and `<!-- TREE-END -->`, with `<!-- TREE-HASH: <sha256> -->`.
+2. Create one Modules subsection for each accepted detected Codebase area:
+   - **Purpose**: README evidence when available; otherwise `[LOW-CONFIDENCE: auto-detected — <convention>]`.
+   - **Owns**: detected subdirectories.
+   - **Depends on**: detected manifest relationships or `[LOW-CONFIDENCE: none detected]`.
+   - **Rules**: `[LOW-CONFIDENCE: pending interview]`.
+   - **Entry points**: detected build/manifest evidence or `[LOW-CONFIDENCE: none detected]`.
+3. Pre-populate convention-backed dependency rules with a matching Confidence marker, such as `[MEDIUM-CONFIDENCE: internal/ packages are unexported outside this module per Go convention]`; mark unsupported rules pending interview.
+4. Mark Anti-patterns and Coding Principles `[LOW-CONFIDENCE: pending interview]`.
 
-2. **Modules section**: One subsection per auto-detected module. Populate:
-   - **Purpose**: From README if available, otherwise `[LOW-CONFIDENCE: auto-detected — <convention>]`
-   - **Owns**: Subdirectories within the module
-   - **Depends on**: From manifest parsing, or `[LOW-CONFIDENCE: none detected]`
-   - **Rules**: `[LOW-CONFIDENCE: pending interview]`
-   - **Entry points**: From build manifests, or `[LOW-CONFIDENCE: none detected]`
+Present the parent-owned draft section by section. For every Codebase area, ask whether its purpose and ownership are accurate, whether dependencies contain omissions or false positives, and whether entry points are missing. Correct the draft and replace a Confidence marker with `[CONFIRMED]` or confirmed text only when the user or authoritative evidence supports it.
 
-3. **Dependency Rules section**: Pre-populate with auto-detected rules (e.g., `internal/` in Go → `[MEDIUM-CONFIDENCE: internal/ packages are unexported outside this module per Go convention]`). Flag remaining as `[LOW-CONFIDENCE: pending interview]`.
+Completion: every drafted area has been shown and its purpose/ownership, dependencies, and entry points have been confirmed or remain explicitly unresolved; no inference is presented as human-confirmed.
 
-4. **Anti-patterns section**: Leave as `[LOW-CONFIDENCE: pending interview]`.
+#### Incremental update
 
-5. **Coding Principles section**: Leave as `[LOW-CONFIDENCE: pending interview]`.
+Extract the stored Tree hash and old tree from the existing marker blocks, then compare them with current detection:
 
-### Step 3: Inline Confirmation (Modules)
+1. If hashes are identical, report that the structural map is up to date and make no edit. State that this is a structural no-op, not a content-accuracy audit, then stop.
+2. If hashes differ, compare old and new trees. Add genuinely new areas with `[LOW-CONFIDENCE: new directory]`, update moved or renamed paths, and ask the user before removing any area or human-authored content associated with a removed directory.
+3. Rescan manifests and update detected `Depends on` evidence for affected areas. Never overwrite human-authored Rules, Anti-patterns, or Coding Principles with detector output.
+4. For every genuinely new area, run the same purpose/ownership, dependency, and entry-point confirmation used in full generation.
 
-Present the draft to the user section by section. For each module, ask:
+Completion: structural additions, removals, and moves are accounted for; every removal is approved; dependency evidence is rescanned; new areas are confirmed; and preserved human-authored content remains intact.
 
-- "Is the purpose accurate? What does this module actually own?"
-- "Any missing dependencies or false positives?"
-- "Any entry points I missed?"
+### 4. Conduct the mandatory `grill-me` deep pass
 
-Update the draft as you go. Replace `[LOW-CONFIDENCE]` / `[MEDIUM-CONFIDENCE]` markers with `[CONFIRMED]` or corrected values.
+When full-generation confirmation or a structural update is complete, load `PRINCIPLES_CATALOG.md` and `GRILL_BRIEFING.md`, then use `grill-me` to conduct the detailed one-question-at-a-time interview. Cover every area for full generation and only affected areas plus impacted cross-area rules for an update. An identical-hash update already stopped and does not run this pass.
 
-When all modules are confirmed, go to Step 5 (grill-me deep pass).
+When `HERDR_ENV=1`, load the shared `herdr` skill before considering terminal transport. A read-only sibling pane may conduct the interview only when the user can interact with that pane. Otherwise, it may only critique the briefing while the parent conducts the human interview. The sibling returns findings through pane output, never edits `AGENTS.md`, and supplies no durable pane ID or selector. The parent independently checks returned findings against the user's answers before writing.
 
----
+Outside Herdr, or whenever a sibling cannot interact with the user, load `grill-me` and conduct the complete interview directly in-process. This is the full fallback, not a reduced review.
 
-## Incremental Update (Existing AGENTS.md)
+Merge confirmed area rules, dependency boundaries, anti-patterns, and coding principles into the parent-owned draft. Replace pending-interview markers only with supported content; retain and report an explicit Confidence marker for unresolved uncertainty rather than inventing certainty.
 
-### Step 4: Diff and Update
+Completion: the mandatory in-scope deep pass is complete, findings have been checked against user answers, unresolved items are explicit, and only the parent has modified the draft.
 
-1. Re-run `detect-structure.sh --json` to get the current tree.
-2. Extract the stored `<!-- TREE-HASH: ... -->` from the existing AGENTS.md.
-3. Compare hashes. If identical → "AGENTS.md is up to date. No changes needed." Exit.
-4. If different → compare the old tree (from `<!-- TREE-START/END -->`) with the new tree:
-   - **New directories**: Add as new modules with `[LOW-CONFIDENCE: new directory]`
-   - **Removed directories**: Flag modules for removal, ask user to confirm
-   - **Renamed/moved directories**: Update module paths
-5. Re-scan build manifests for updated dependencies. Update `Depends on` fields for changed modules.
-6. **Preserve all human-authored content** — Rules, Anti-patterns, and Coding Principles sections are never overwritten by auto-detection.
-7. For genuinely new modules, ask the inline confirmation questions (Step 3). Optionally offer a grill-me pass on the new module alone.
+### 5. Finalize and report
 
----
+Refresh the detected tree immediately before writing if structure changed during the interview. Write the final parent-owned `AGENTS.md` with the current Tree hash and tree block. Count Codebase area/Modules subsections, dependency rules, anti-patterns, and coding-principle entries.
 
-### Step 5: Grill-Me Deep Pass
+Report: `AGENTS.md created/updated at tree hash <sha256> with X modules, Y dependency rules, Z anti-patterns, and W coding principles.` For an incremental no-op, report that no edit was made, then include the current Tree hash and the same four counts from the existing artifact.
 
-Once inline confirmation is complete, use the `grill-me` skill for adversarial interviewing. Load [PRINCIPLES_CATALOG.md](PRINCIPLES_CATALOG.md) for the question inventory and prepare the structured briefing below.
+Completion: the stored hash matches the written tree, or the no-op hash matches the existing tree; the four counts are derived from the final artifact; and no unconfirmed content is described as confirmed.
 
-When `HERDR_ENV=1`, load the shared `herdr` skill. A read-only sibling Pi pane may conduct the grilling only when the user can interact with that pane; otherwise use the pane to critique the briefing and conduct the human interview in the parent pane. The sibling returns findings through pane output and never edits `AGENTS.md`. Do not persist compact Herdr pane ids.
+## Reference
 
-Outside Herdr, or when a sibling cannot interact with the user, load `grill-me` and conduct the same one-question-at-a-time interview directly in-process. This fallback is the complete workflow, not a reduced review.
-
-**Structured briefing format:**
-
-```
-## AGENTS.md Draft Review
-
-Below is an auto-generated AGENTS.md draft for <project-name>. Sections marked [LOW-CONFIDENCE] need human confirmation. For each, interview the user relentlessly until the section is complete.
-
-### Section 1: Module Rules
-
-For each module listed below, ask:
-- "What rules govern work in <module>?"
-- "What has broken when these rules were violated?"
-- "What should every developer know before touching this module?"
-
-<list module names from the draft>
-
-### Section 2: Dependency Rules
-
-Ask:
-- "What architectural boundaries exist in this codebase?"
-- "What imports or cross-module calls are forbidden?"
-- "Are there layering rules (e.g., handlers never call DB directly)?"
-
-### Section 3: Anti-patterns
-
-Ask:
-- "What mistakes have been made more than once in this codebase?"
-- "What patterns keep causing bugs or rework?"
-- "What should a new developer be warned about?"
-
-For each anti-pattern, capture: the pattern, why it was wrong, and the right approach.
-
-### Section 4: Coding Principles
-
-Walk through the categories in PRINCIPLES_CATALOG.md. For each category:
-- Confirm whether the team follows it
-- If yes: capture the specific practices
-- If no: note "not practiced" (don't argue)
-
-The catalog categories are: [paste PRINCIPLES_CATALOG.md summary]
-
-### Output Format
-
-Return your findings as:
-
-## Interview Results
-
-### Module Rules
-- **<module>**: <rules from interview>
-
-### Dependency Rules
-- <rule>: <rationale>
-
-### Anti-patterns
-- **Pattern**: <description>
-  **Why wrong**: <explanation>
-  **Right way**: <guidance>
-
-### Coding Principles
-- **<category>**: <confirmed practices or "not practiced">
-
-## Unresolved
-[List any areas the user was uncertain about]
-```
-
-After the grill-me pass completes, collect its results and merge them into the draft `AGENTS.md`. Replace all remaining `[LOW-CONFIDENCE: pending interview]` markers with confirmed content. If a sibling pane was used, independently check its findings against the user's answers before writing.
-
-### Step 6: Finalize
-
-1. Update `<!-- TREE-HASH -->` with the current hash.
-2. Write the final `AGENTS.md` to the project root.
-3. Report: "AGENTS.md created/updated with X modules, Y dependency rules, Z anti-patterns, and W coding principles."
+- When scanning structure for either mode, run [the deterministic detector](scripts/detect-structure.sh) because it owns the tree, Tree hash, ecosystem, module-candidate, dependency, entry-point, and warning output consumed by this workflow.
+- When drafting a new map or adding ownership sections during a structural update, load [the AGENTS.md template](TEMPLATE.md) because it owns the artifact skeleton, marker placement, and field layout.
+- When the mandatory deep pass is reached, load [the coding-principles catalog](PRINCIPLES_CATALOG.md) because it owns the seven-category question inventory, and load [the deep-pass briefing](GRILL_BRIEFING.md) because it owns the structured interview brief and returned-findings schema.
