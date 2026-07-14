@@ -1,7 +1,7 @@
 ---
 id: SK-004
 target: herdr
-status: ready-to-integrate
+status: verified
 revision: 1
 blocked-by: [SK-001, MG-002]
 source-verdict: simplify inline
@@ -148,6 +148,8 @@ Acceptance requires every checklist item to pass, exact two-file scope, unchange
 ## Implementation record
 
 Focused verification completed: `2026-07-14T16:20:03+00:00`
+
+Integrated verification completed: `2026-07-14T16:22:05+00:00`
 
 - Actual production diff: `shared/skills/herdr/SKILL.md` only, with 95 insertions and 219 removals; this proposal is the only additional item-local file.
 - Resulting skill SHA-256: `6cb65cb77195973c78062591cb8f5c01d536f170d4e2198d3df060f5d256b7bd`.
