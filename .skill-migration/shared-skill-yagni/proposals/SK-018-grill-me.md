@@ -1,7 +1,7 @@
 ---
 id: SK-018
 target: grill-me
-status: ready-to-integrate
+status: verified
 revision: 1
 blocked-by: [SK-001, MG-002]
 source-verdict: retain substance
@@ -148,6 +148,10 @@ Worker verification completed at `2026-07-14T17:34:20+00:00`.
 - Residual risk: the progress percentage is necessarily approximate and can change as answers expose branches; the retained instruction requires revision rather than false precision. Durable changes still depend on successful routing after human confirmation.
 
 The worker result is `ready-to-integrate`; this record does not claim coordinator integration, central verification, VG-001, SK-017, or any other migration item.
+
+## Integrated verification
+
+- Coordinator verification `2026-07-14T17:36:27+00:00`: exact scope, complete skill, definitions, four-stage evidence-first interview, routes, provenance, tests 12/12, diff, visibility, settings passed.
 
 ## Explicit exclusions
 
