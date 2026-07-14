@@ -15,11 +15,9 @@ allowed-tools: read,bash
 - **Verdict** — acceptance judgment outside this skill’s authority.
 - **Visual ambiguity** — evidence too unclear for confident description and reported with uncertainty.
 
-This skill owns the neutral diff artifact, not downstream judgment or acceptance.
-
 ## Workflow
 
-Use this workflow when the implementation agent needs a bias-resistant image diff rather than a verdict.
+Use this workflow when the implementation agent needs a bias-resistant image diff rather than a verdict. This skill owns the neutral diff artifact; downstream judgment and acceptance stay elsewhere.
 
 1. **Gather the evidence and scope.** Record the reference image path, candidate image paths, and whether the comparison is full-scene, asset-only, or HUD-only. This step is complete when every image path and the comparison scope are explicit.
 
