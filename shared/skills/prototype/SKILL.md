@@ -3,6 +3,7 @@ name: prototype
 description: Build a throwaway prototype to flesh out a design before committing to it. Routes between two branches — a runnable terminal app for state/business-logic questions, or several radically different UI variations toggleable from one route. Use when the user wants to prototype, sanity-check a data model or state machine, mock up a UI, explore design options, or says "prototype this", "let me play with it", "try a few designs".
 metadata:
   short-description: Build throwaway prototypes
+allowed-tools: read,write,edit,bash
 ---
 
 # Prototype
@@ -25,8 +26,8 @@ The two branches produce very different artifacts — getting this wrong wastes 
 3. **No persistence by default.** State lives in memory. Persistence is the thing the prototype is _checking_, not something it should depend on. If the question explicitly involves a database, hit a scratch DB or a local file with a clear "PROTOTYPE — wipe me" name.
 4. **Skip the polish.** No tests, no error handling beyond what makes the prototype _runnable_, no abstractions. The point is to learn something fast and then delete it.
 5. **Surface the state.** After every action (logic) or on every variant switch (UI), print or render the full relevant state so the user can see what changed.
-6. **Delete or absorb when done.** When the prototype has answered its question, either delete it or fold the validated decision into the real code — don't leave it rotting in the repo.
+6. **Delete or absorb when done.** First capture the validated conclusion in a durable artifact the repository already uses (spec, plan, issue, decision note, or implementation). Then delete the prototype or absorb the useful code into production — don't leave throwaway code rotting in the repo.
 
 ## When done
 
-The _answer_ is the only thing worth keeping from a prototype. Capture it somewhere durable (commit message, ADR, issue, or a `NOTES.md` next to the prototype) along with the question it was answering. If the user is around, that capture is a quick conversation; if not, leave the placeholder so they (or you, on the next pass) can fill in the verdict before deleting the prototype.
+The answer is the default artifact: record the question, verdict, evidence, and implications, then remove or absorb the prototype. Preserve prototype code on a clearly named throwaway branch only when it contains primary evidence that prose, screenshots, or the resulting implementation cannot adequately capture. If a branch is justified, keep it out of the main line and place a durable pointer to it in the owning artifact.

@@ -1,79 +1,47 @@
 ---
 name: improve-codebase-architecture
-description: Find deepening opportunities in a codebase, informed by project specs in specs/. Use when the user wants to improve architecture, find refactoring opportunities, consolidate tightly-coupled modules, or make a codebase more testable and AI-navigable.
+description: Find deepening opportunities in a codebase and always present a visual HTML review with before/after diagrams and candidate comparison. Use when improving architecture, consolidating shallow modules, reducing coupling, or making a codebase more testable and AI-navigable.
 metadata:
-  short-description: Find and fix architectural friction
+  short-description: Visual architecture deepening review
+allowed-tools: read,write,edit,bash
 ---
 
 # Improve Codebase Architecture
 
-Surface architectural friction and propose **deepening opportunities** — refactors that turn shallow modules into deep ones. The aim is testability and AI-navigability.
+Find architectural friction, then present evidence before designing an interface. Load `codebase-design` as the source of truth for module, interface, implementation, depth, seam, adapter, leverage, and locality.
 
-## Glossary
+## 1. Scope from intent and change
 
-Use these terms exactly in every suggestion. Consistent language is the point — don't drift into "component," "service," "API," or "boundary." Full definitions in [LANGUAGE.md](LANGUAGE.md).
+If the user names an area or pain point, prioritize it. Otherwise inspect a meaningful stretch of Git history and rank repeatedly changing files or subsystems before widening the scan. State the chosen scope and why it is likely to repay deepening work.
 
-- **Module** — anything with an interface and an implementation (function, class, package, slice).
-- **Interface** — everything a caller must know to use the module: types, invariants, error modes, ordering, config. Not just the type signature.
-- **Implementation** — the code inside.
-- **Depth** — leverage at the interface: a lot of behaviour behind a small interface. **Deep** = high leverage. **Shallow** = interface nearly as complex as the implementation.
-- **Seam** — where an interface lives; a place behaviour can be altered without editing in place. (Use this, not "boundary.")
-- **Adapter** — a concrete thing satisfying an interface at a seam.
-- **Leverage** — what callers get from depth.
-- **Locality** — what maintainers get from depth: change, bugs, knowledge concentrated in one place.
+Read `specs/README.md`, `specs/SPEC-OF-SPECS.md`, `specs/UBIQUITOUS_LANGUAGE.md`, and relevant specs when present. Use their domain terms and preserve their invariants. Read any repository-native design records linked from those specs; do not require a separate context or ADR convention.
 
-Key principles (see [LANGUAGE.md](LANGUAGE.md) for the full list):
+Completion criterion: scope is tied to user intent or evidenced Git hotspots, and relevant constraints are cited.
 
-- **Deletion test**: imagine deleting the module. If complexity vanishes, it was a pass-through. If complexity reappears across N callers, it was earning its keep.
-- **The interface is the test surface.**
-- **One adapter = hypothetical seam. Two adapters = real seam.**
+## 2. Explore friction
 
-This skill is _informed_ by the project's specs. The `specs/` folder is the first place to look for domain language, architectural intent, product constraints, test expectations, and known trade-offs. Let those specs supply the names for good seams and the constraints a deepened module must preserve.
+Look for understanding spread across many shallow modules, leaking seams, duplicated orchestration, pass-through modules, tests coupled to internals, and concepts that require scattered edits. Apply the `codebase-design` deletion test. Check whether a proposed seam has justified adapters and whether tests can use the same interface as callers.
 
-## Process
+When `HERDR_ENV=1`, load the `herdr` skill and prefer parallel read-only explorers for independent areas or hypotheses. They may share the checkout. Outside Herdr, perform the exploration directly in-process. Any delegated agent that edits files must use an isolated clone or worktree.
 
-### 1. Explore
+Completion criterion: every candidate is grounded in files, observed friction, spec constraints, and a plausible gain in depth, leverage, locality, or test surface.
 
-Read existing documentation first:
+## 3. Always create the HTML report
 
-- `specs/README.md`, `specs/SPEC-OF-SPECS.md`, or any equivalent spec index if present
-- Specs that match the area under review, such as domain specs, architecture specs, deployment specs, and test indexes
-- Any nearby design notes the repo already uses, when linked from the specs
+Read [HTML-REPORT.md](HTML-REPORT.md), then write a fresh report to `${TMPDIR:-/tmp}/architecture-review-<timestamp>.html`. The report must include:
 
-If these files don't exist, proceed silently — don't flag their absence or suggest creating them upfront. If `specs/` exists but lacks an obvious index, skim filenames and read only the specs relevant to the architectural area being reviewed.
+- the reviewed scope and hotspot evidence
+- a comparison summary across all candidates
+- one card per candidate with files, problem, deepening direction, benefits, recommendation strength, and spec tension
+- side-by-side **before and after diagrams** for every candidate
+- a top recommendation with rationale
 
-Then use the Agent tool with `subagent_type=Explore` to walk the codebase. Don't follow rigid heuristics — explore organically and note where you experience friction:
+Use Mermaid where relationships are graph-shaped and hand-built HTML/SVG where module depth is the point. Attempt to open the report with the platform opener when available; always report its absolute path even if opening fails. Nothing from the report belongs in the repository.
 
-- Where does understanding one concept require bouncing between many small modules?
-- Where are modules **shallow** — interface nearly as complex as the implementation?
-- Where have pure functions been extracted just for testability, but the real bugs hide in how they're called (no **locality**)?
-- Where do tightly-coupled modules leak across their seams?
-- Which parts of the codebase are untested, or hard to test through their current interface?
+Completion criterion: the HTML exists outside the repo, every candidate has a readable before/after visual, candidates are compared, and the absolute path is reported.
 
-Apply the **deletion test** to anything you suspect is shallow: would deleting it concentrate complexity, or just move it? A "yes, concentrates" is the signal you want.
+## 4. Explore the selected candidate
 
-### 2. Present candidates
+Ask which candidate the user wants to explore. For the selected candidate, clarify constraints, dependencies, preserved invariants, migration, and tests. If alternative interfaces are useful, load `codebase-design` and follow its Design It Twice branch. Record durable domain or design decisions in the relevant spec; offer to record a rejection only when its rationale would prevent future rediscovery.
 
-Present a numbered list of deepening opportunities. For each candidate:
-
-- **Files** — which files/modules are involved
-- **Problem** — why the current architecture is causing friction
-- **Solution** — plain English description of what would change
-- **Benefits** — explained in terms of locality and leverage, and also in how tests would improve
-
-**Use specs vocabulary for the domain, and [LANGUAGE.md](LANGUAGE.md) vocabulary for the architecture.** If a spec defines "Match," talk about "the Match flow module" — not "the FooBarHandler," and not "the Match service."
-
-**Spec tension**: if a candidate appears to contradict a spec, only surface it when the friction is real enough to warrant changing either the code or the spec. Mark it clearly (e.g. _"tension with `specs/match.md` — worth revisiting because..."_). Don't list every theoretical refactor a spec might constrain.
-
-Do NOT propose interfaces yet. Ask the user: "Which of these would you like to explore?"
-
-### 3. Grilling loop
-
-Once the user picks a candidate, drop into a grilling conversation. Walk the design tree with them — constraints, dependencies, the shape of the deepened module, what sits behind the seam, what tests survive.
-
-Side effects happen inline as decisions crystallize:
-
-- **Naming a deepened module after a concept not covered by the specs?** Update the most relevant spec, or create a small focused spec under `specs/` if no existing spec owns that concept.
-- **Sharpening a fuzzy term during the conversation?** Update the relevant spec right there so future architecture work uses the same name and invariant.
-- **User rejects the candidate with a load-bearing reason?** Offer to record that reason in the relevant spec so future architecture reviews don't re-suggest it. Only offer when the reason would actually be needed by a future explorer — skip ephemeral reasons ("not worth it right now") and self-evident ones.
-- **Want to explore alternative interfaces for the deepened module?** See [INTERFACE-DESIGN.md](INTERFACE-DESIGN.md).
+Do not implement a refactor until the user chooses a candidate and approves an interface or implementation plan.

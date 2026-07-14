@@ -1,7 +1,7 @@
 # AI Agent Configuration Specification
 
-> **Version**: 2.0.0
-> **Last Updated**: 2026-07-08
+> **Version**: 2.1.0
+> **Last Updated**: 2026-07-14
 > **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md), [Design Language](DESIGN_LANGUAGE.md), [Herdr Config](herdr-config.md)
 > **Depended By**: Install Orchestrator (INSTL)
 > **Prefix**: AIAGT
@@ -130,6 +130,26 @@ The `pis` script provides a Docker sandbox wrapper for Pi.
 
 ---
 
+## Shared Skill Contract
+
+Every newly added or modified shared skill MUST provide the cross-agent frontmatter fields `name`, `description`, `metadata.short-description`, and `allowed-tools`. Descriptions MUST state concrete `Use when` triggers and remain within the supported 1024-character limit.
+
+The shipped workflow catalog includes these locally owned skills:
+
+| Skill | Required behavior |
+|-------|-------------------|
+| `codebase-design` | Owns deep-module vocabulary and progressively disclosed deepening and alternative-interface guidance |
+| `diagnosing-bugs` | Establishes a tight red-capable command, minimizes the reproduction, tests ranked hypotheses, and routes fixes through TDD |
+| `code-review` | Keeps Standards and Spec reviews independent, with Herdr delegation or an in-process fallback |
+| `resolving-merge-conflicts` | Traces both intents, stages verified resolutions, and leaves commit/continue operations to explicit user approval |
+| `handoff` | Writes redacted timestamped Markdown under the OS temporary handoff directory and reports the absolute path |
+| `research` | Produces durable primary-source-backed notes using the repository's existing convention or an approved location |
+| `improve-codebase-architecture` | Always produces a temporary visual HTML report with before/after diagrams and candidate comparison |
+
+Imported skill material MUST be treated as a locally maintained fork: provenance and required license attribution MUST live in the repository-level `THIRD_PARTY_NOTICES.md`, while automatic upstream synchronization is outside the shipped contract.
+
+When a skill delegates work under `HERDR_ENV=1`, it SHOULD load the shared Herdr skill rather than duplicate Herdr commands. The same workflow MUST provide an in-process fallback outside Herdr. Read-only delegated agents MAY share a checkout; delegated agents that edit files MUST use isolated clones or worktrees.
+
 ## Behavior Rules
 
 1. Shared skills MUST live under `shared/skills/`.
@@ -175,10 +195,21 @@ Input: Run `PIS_DRY_RUN=1 pis`.
 
 Expected Output: Runtime, sessions, and auth paths all point under `~/.pi/agent`.
 
+### TS-AIAGT-005: Cross-Agent Workflow Skills
+
+Category: Integration
+Priority: High
+Preconditions: The repository checkout contains the shipped shared skill catalog.
+
+Input: Audit shared skill frontmatter and inspect Pi-visible entries for `codebase-design`, `diagnosing-bugs`, `code-review`, `resolving-merge-conflicts`, `handoff`, and `research`.
+
+Expected Output: Required frontmatter is valid, every named Pi entry resolves to its canonical shared skill, and provenance attribution is present in the repository-level `THIRD_PARTY_NOTICES.md`.
+
 ---
 
 ## Change Log
 
 | Version | Date | Change |
 |---------|------|--------|
+| 2.1.0 | 2026-07-14 | Added locally maintained cross-agent workflow skills, delegation fallbacks, provenance requirements, and the visual architecture-report contract. |
 | 2.0.0 | 2026-07-08 | Unshipped retired agent/profile/delegation surfaces. Pi now deploys one repo-owned config under `~/.pi/agent`. |
