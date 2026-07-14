@@ -153,7 +153,7 @@ The sequence follows WF-007: durable decisions, authoring owner, correctness rep
 | `SK-009` | skill | `ubiquitous-language` | simplify inline | SK-001, MG-001 | verified |
 | `SK-010` | skill | `update-specs` | retain substance; repair executable/ownership contract | SK-001, MG-001 | claimed |
 | `SK-011` | skill | `prototype` | simplify inline | SK-001 | verified |
-| `SK-012` | skill | `audit-shared-skills` | simplify inline; remove unused Info severity | SK-001 | queued |
+| `SK-012` | skill | `audit-shared-skills` | simplify inline; remove unused Info severity | SK-001 | claimed |
 | `SK-013` | skill | `codebase-design` | retain substance | SK-001 | queued |
 | `SK-014` | skill | `code-review` | retain substance | SK-001 | queued |
 | `SK-015` | skill | `create-plan` | simplify inline | SK-001 | queued |
@@ -199,4 +199,4 @@ The final catalog gate additionally checks all 33 original skills, the proposal-
 
 `MG-001` revision 2, `MG-002` revision 1, and SK-001 through SK-005 are verified. Parallel mode is active.
 
-`MG-001` revision 2, `MG-002` revision 1, SK-001 through SK-009, and SK-011 are verified. SK-010 remains claimed. The next open lane may select an unblocked item disjoint from SK-010. No later production file is authorized without its item-specific exact proposal in `proposal-ready` state.
+`MG-001` revision 2, `MG-002` revision 1, SK-001 through SK-009, and SK-011 are verified. SK-010 and SK-012 are claimed as the active pair; both are unblocked and their target/support scopes and ownership decisions are disjoint. No later production file is authorized without its item-specific exact proposal in `proposal-ready` state.
