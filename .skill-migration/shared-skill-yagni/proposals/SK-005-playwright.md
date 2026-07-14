@@ -1,7 +1,7 @@
 ---
 id: SK-005
 target: playwright
-status: ready-to-integrate
+status: verified
 revision: 1
 blocked-by: [SK-001, MG-002]
 source-verdict: move detail to Reference
@@ -135,6 +135,8 @@ Acceptance requires every preservation item to pass, exact six-file scope equali
 ## Implementation record
 
 Focused verification completed: `2026-07-14T16:25:31+00:00`
+
+Integrated verification completed: `2026-07-14T16:28:32+00:00`
 
 - Actual production diff: five authorized Playwright files with 74 insertions and 338 removals; this proposal is the only additional item-local file. No authorized support file was added, renamed, or retired.
 - Complete final-file reread and revision 1 diff comparison: PASS for the main skill and all four changed References.
