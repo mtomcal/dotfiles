@@ -1,58 +1,115 @@
 #!/bin/bash
 # Usage: ./loop.sh [max_iterations] [prompt_file]
-# Examples:
-#   ./loop.sh              # Unlimited iterations, PROMPT.md
-#   ./loop.sh 25           # Max 25 iterations
-#   ./loop.sh 25 TASK.md   # Custom prompt file
+# Defaults: 25 iterations, PROMPT.md
 #
 # Environment:
 #   SANDBOX_MODE=workspace-write|read-only|danger-full-access (default: workspace-write)
+#   RALPH_DANGER_FULL_ACCESS_APPROVED=1 (required after explicit human approval)
 
 set -euo pipefail
 
-MAX_ITERATIONS="${1:-0}"
+if [ "$#" -gt 2 ]; then
+  echo "ERROR: usage: ./loop.sh [max_iterations] [prompt_file]" >&2
+  exit 2
+fi
+
+MAX_ITERATIONS="${1:-25}"
 PROMPT_FILE="${2:-PROMPT.md}"
 SANDBOX_MODE="${SANDBOX_MODE:-workspace-write}"
-
-ITERATION=0
 LOG_DIR=".loop-logs"
-DONE_PATTERN="/done"
+DONE_SENTINEL="/done"
 
-mkdir -p "$LOG_DIR"
+if ! [[ "$MAX_ITERATIONS" =~ ^[1-9][0-9]*$ ]]; then
+  echo "ERROR: max_iterations must be a positive integer: $MAX_ITERATIONS" >&2
+  exit 2
+fi
+
+case "$SANDBOX_MODE" in
+  workspace-write|read-only) ;;
+  danger-full-access)
+    if [ "${RALPH_DANGER_FULL_ACCESS_APPROVED:-}" != "1" ]; then
+      echo "ERROR: danger-full-access requires explicit human approval and RALPH_DANGER_FULL_ACCESS_APPROVED=1" >&2
+      exit 2
+    fi
+    ;;
+  *)
+    echo "ERROR: invalid SANDBOX_MODE: $SANDBOX_MODE" >&2
+    exit 2
+    ;;
+esac
 
 if ! command -v codex >/dev/null 2>&1; then
   echo "ERROR: codex not found. Install with: npm install -g @openai/codex" >&2
   exit 1
 fi
 
-if [ ! -f "$PROMPT_FILE" ]; then
-  echo "ERROR: prompt file not found: $PROMPT_FILE" >&2
+if [ ! -r "$PROMPT_FILE" ]; then
+  echo "ERROR: prompt file not readable: $PROMPT_FILE" >&2
   exit 1
 fi
 
-while true; do
-  ITERATION=$((ITERATION + 1))
-  if [ "$MAX_ITERATIONS" -ne 0 ] && [ "$ITERATION" -gt "$MAX_ITERATIONS" ]; then
-    echo "Reached max iterations ($MAX_ITERATIONS). Exiting."
-    exit 0
-  fi
+if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1 || ! git rev-parse --verify HEAD >/dev/null 2>&1; then
+  echo "ERROR: Ralph requires a Git repository with an existing HEAD" >&2
+  exit 1
+fi
 
+mkdir -p "$LOG_DIR"
+echo "Ralph loop: max_iterations=$MAX_ITERATIONS prompt=$PROMPT_FILE sandbox=$SANDBOX_MODE"
+
+for ((ITERATION = 1; ITERATION <= MAX_ITERATIONS; ITERATION++)); do
   LOG_FILE="$LOG_DIR/iteration-$ITERATION.log"
-  echo "=== Iteration $ITERATION ===" | tee "$LOG_FILE"
+  LAST_MESSAGE_FILE="$LOG_DIR/iteration-$ITERATION.last-message.md"
+  BEFORE_HEAD="$(git rev-parse HEAD)"
+  rm -f "$LAST_MESSAGE_FILE"
 
-  # Read instructions from PROMPT_FILE each iteration via stdin.
+  echo "=== Iteration $ITERATION/$MAX_ITERATIONS ===" | tee "$LOG_FILE"
+
+  # A new codex exec process rereads PROMPT_FILE through stdin every iteration.
   set +e
-  codex exec --full-auto --sandbox "$SANDBOX_MODE" -C "$(pwd)" - < "$PROMPT_FILE" 2>&1 | tee -a "$LOG_FILE"
-  CODEX_EXIT="${PIPESTATUS[0]}"
+  codex exec --full-auto --sandbox "$SANDBOX_MODE" -C "$(pwd)" \
+    --output-last-message "$LAST_MESSAGE_FILE" - < "$PROMPT_FILE" 2>&1 | tee -a "$LOG_FILE"
+  PIPE_STATUS=("${PIPESTATUS[@]}")
   set -e
+  CODEX_EXIT="${PIPE_STATUS[0]}"
+  TEE_EXIT="${PIPE_STATUS[1]}"
 
-  if grep -q "$DONE_PATTERN" "$LOG_FILE"; then
-    echo "Done pattern found ($DONE_PATTERN). Exiting."
-    exit 0
+  if [ "$TEE_EXIT" -ne 0 ]; then
+    echo "ERROR: logging failed ($TEE_EXIT). Stop and inspect $LOG_FILE before rerunning." >&2
+    exit "$TEE_EXIT"
   fi
 
   if [ "$CODEX_EXIT" -ne 0 ]; then
-    echo "codex exited non-zero ($CODEX_EXIT). Check $LOG_FILE and fix before continuing." >&2
+    echo "ERROR: codex exited non-zero ($CODEX_EXIT). Stop and inspect $LOG_FILE before rerunning." | tee -a "$LOG_FILE" >&2
+    exit "$CODEX_EXIT"
+  fi
+
+  if [ ! -f "$LAST_MESSAGE_FILE" ]; then
+    echo "ERROR: codex produced no final-message evidence: $LAST_MESSAGE_FILE" | tee -a "$LOG_FILE" >&2
+    exit 1
+  fi
+
+  AFTER_HEAD="$(git rev-parse HEAD)"
+  if [ "$AFTER_HEAD" = "$BEFORE_HEAD" ]; then
+    echo "ERROR: iteration $ITERATION produced no commit. Stop and inspect $LOG_FILE before rerunning." | tee -a "$LOG_FILE" >&2
+    exit 1
+  fi
+
+  if ! git merge-base --is-ancestor "$BEFORE_HEAD" "$AFTER_HEAD"; then
+    echo "ERROR: iteration $ITERATION rewrote or replaced history instead of adding descendant commits." | tee -a "$LOG_FILE" >&2
+    exit 1
+  fi
+
+  COMMIT_COUNT="$(git rev-list --count "$BEFORE_HEAD..$AFTER_HEAD")"
+  echo "Commit evidence: $BEFORE_HEAD..$AFTER_HEAD ($COMMIT_COUNT commit(s))" | tee -a "$LOG_FILE"
+  git log --format='  %H %s' "$BEFORE_HEAD..$AFTER_HEAD" | tee -a "$LOG_FILE"
+
+  # Command substitution removes trailing newlines; all other text prevents equality.
+  if [ "$(cat "$LAST_MESSAGE_FILE")" = "$DONE_SENTINEL" ]; then
+    echo "Exact done sentinel received after iteration $ITERATION: $DONE_SENTINEL" | tee -a "$LOG_FILE"
+    exit 0
   fi
 done
+
+echo "ERROR: reached max iterations ($MAX_ITERATIONS) without exact done sentinel ($DONE_SENTINEL)." >&2
+exit 2
 
