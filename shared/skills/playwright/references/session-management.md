@@ -118,21 +118,30 @@ playwright-cli close  # Stops default browser
 
 ## Browser Session Configuration
 
-Configure a browser session with specific settings when opening:
+Configure a browser session when opening, or attach it to a browser extension:
 
 ```bash
 # Open with config file
 playwright-cli open https://example.com --config=.playwright/my-cli.json
 
-# Open with specific browser
+# Select an installed browser or channel
+playwright-cli open https://example.com --browser=chrome
 playwright-cli open https://example.com --browser=firefox
+playwright-cli open https://example.com --browser=webkit
+playwright-cli open https://example.com --browser=msedge
 
 # Open in headed mode
 playwright-cli open https://example.com --headed
 
-# Open with persistent profile
+# Use a persistent profile, optionally at an explicit path
 playwright-cli open https://example.com --persistent
+playwright-cli open https://example.com --profile=/path/to/profile
+
+# Connect through the Playwright browser extension
+playwright-cli attach --extension
 ```
+
+Check installed `playwright-cli --help open` or `playwright-cli --help attach` before adding options. An attached or named browser session still needs scoped cleanup when the task finishes.
 
 ## Best Practices
 

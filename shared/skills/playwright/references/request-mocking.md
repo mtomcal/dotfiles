@@ -1,6 +1,18 @@
-# Request Mocking
+# Request Inspection and Mocking
 
-Intercept, mock, modify, and block network requests.
+Inspect, mock, modify, and block network requests. Check `playwright-cli --help <command>` against the installed executable before using an option not shown here.
+
+## Request Inspection
+
+```bash
+# List requests captured since the page loaded. Each result has a 1-based index.
+playwright-cli requests
+
+# Inspect one request and its response by index.
+playwright-cli request 1
+```
+
+Take a fresh request list after the scenario step under investigation so the index refers to the intended request.
 
 ## CLI Route Commands
 

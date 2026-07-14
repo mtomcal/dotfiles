@@ -8,362 +8,72 @@ metadata:
 
 # Playwright
 
-## Quick start
+## Language Definitions
+
+- **Browser session** — CLI-managed browser instance and state addressed by a session name until closed.
+- **Snapshot** — structured page representation used for inspection and element discovery.
+- **Element ref** — ephemeral, session-specific target derived from a snapshot.
+- **Persistent profile** — on-disk browser state that survives restarts, unlike the default in-memory state.
+- **Storage state** — serialized authentication and application state that may contain credentials and is sensitive.
+
+## Activities
+
+Route before acting:
+
+- Use `visual-qa` when the task is pass/fail visual review. Playwright owns browser interaction and capture; the caller retains the scenario and acceptance decision.
+- Use `video-to-contact-sheet` after capture when a Playwright recording needs trimming or frame-sampled evidence.
+- For an existing Playwright test setup, load the test Reference below before running or debugging tests.
+- For a specialized command family, load only its matching Reference below. Check `playwright-cli --help <command>` against the installed executable before relying on static syntax.
+
+### Automate one browser scenario
+
+First confirm the CLI. Prefer the global executable; if it is unavailable, try the project-local package. Stop after the first successful version check and use that invocation consistently:
 
 ```bash
-# open new browser
-playwright-cli open
-# navigate to a page
-playwright-cli goto https://playwright.dev
-# interact with the page using refs from the snapshot
-playwright-cli click e15
-playwright-cli type "page.click"
-playwright-cli press Enter
-# take a screenshot (rarely used, as snapshot is more common)
-playwright-cli screenshot
-# close the browser
-playwright-cli close
-```
-
-Use `visual-qa` when the task is pass/fail visual review, and use `video-to-contact-sheet` when a Playwright recording needs trimmed clips or frame-sampled evidence.
-
-## Browser Binary Fallback
-
-If Playwright is installed but the bundled browser fails to launch because native shared libraries are missing, check for an installed system browser before trying privileged dependency installation:
-
-```bash
-which google-chrome || which chromium || which chromium-browser || true
-```
-
-For raw Node Playwright scripts, use an explicit executable path and conservative container flags:
-
-```javascript
-const { chromium } = require('@playwright/test');
-const browser = await chromium.launch({
-  headless: true,
-  executablePath: '/opt/google/chrome/chrome',
-  args: ['--no-sandbox', '--disable-dev-shm-usage'],
-});
-```
-
-Use `npx playwright install-deps` only when a system browser is unavailable or also fails; it may require sudo.
-
-## Commands
-
-### Core
-
-```bash
-playwright-cli open
-# open and navigate right away
-playwright-cli open https://example.com/
-playwright-cli goto https://playwright.dev
-playwright-cli type "search query"
-playwright-cli click e3
-playwright-cli dblclick e7
-# --submit presses Enter after filling the element
-playwright-cli fill e5 "user@example.com"  --submit
-playwright-cli drag e2 e8
-playwright-cli hover e4
-playwright-cli select e9 "option-value"
-playwright-cli upload ./document.pdf
-playwright-cli check e12
-playwright-cli uncheck e12
-playwright-cli snapshot
-playwright-cli eval "document.title"
-playwright-cli eval "el => el.textContent" e5
-# get element id, class, or any attribute not visible in the snapshot
-playwright-cli eval "el => el.id" e5
-playwright-cli eval "el => el.getAttribute('data-testid')" e5
-playwright-cli dialog-accept
-playwright-cli dialog-accept "confirmation text"
-playwright-cli dialog-dismiss
-playwright-cli resize 1920 1080
-playwright-cli close
-```
-
-### Navigation
-
-```bash
-playwright-cli go-back
-playwright-cli go-forward
-playwright-cli reload
-```
-
-### Keyboard
-
-```bash
-playwright-cli press Enter
-playwright-cli press ArrowDown
-playwright-cli keydown Shift
-playwright-cli keyup Shift
-```
-
-### Mouse
-
-```bash
-playwright-cli mousemove 150 300
-playwright-cli mousedown
-playwright-cli mousedown right
-playwright-cli mouseup
-playwright-cli mouseup right
-playwright-cli mousewheel 0 100
-```
-
-### Save as
-
-```bash
-playwright-cli screenshot
-playwright-cli screenshot e5
-playwright-cli screenshot --filename=page.png
-playwright-cli pdf --filename=page.pdf
-```
-
-### Tabs
-
-```bash
-playwright-cli tab-list
-playwright-cli tab-new
-playwright-cli tab-new https://example.com/page
-playwright-cli tab-close
-playwright-cli tab-close 2
-playwright-cli tab-select 0
-```
-
-### Storage
-
-```bash
-playwright-cli state-save
-playwright-cli state-save auth.json
-playwright-cli state-load auth.json
-
-# Cookies
-playwright-cli cookie-list
-playwright-cli cookie-list --domain=example.com
-playwright-cli cookie-get session_id
-playwright-cli cookie-set session_id abc123
-playwright-cli cookie-set session_id abc123 --domain=example.com --httpOnly --secure
-playwright-cli cookie-delete session_id
-playwright-cli cookie-clear
-
-# LocalStorage
-playwright-cli localstorage-list
-playwright-cli localstorage-get theme
-playwright-cli localstorage-set theme dark
-playwright-cli localstorage-delete theme
-playwright-cli localstorage-clear
-
-# SessionStorage
-playwright-cli sessionstorage-list
-playwright-cli sessionstorage-get step
-playwright-cli sessionstorage-set step 3
-playwright-cli sessionstorage-delete step
-playwright-cli sessionstorage-clear
-```
-
-### Network
-
-```bash
-playwright-cli route "**/*.jpg" --status=404
-playwright-cli route "https://api.example.com/**" --body='{"mock": true}'
-playwright-cli route-list
-playwright-cli unroute "**/*.jpg"
-playwright-cli unroute
-```
-
-### DevTools
-
-```bash
-playwright-cli console
-playwright-cli console warning
-playwright-cli network
-playwright-cli run-code "async page => await page.context().grantPermissions(['geolocation'])"
-playwright-cli run-code --filename=script.js
-playwright-cli tracing-start
-playwright-cli tracing-stop
-playwright-cli video-start video.webm
-playwright-cli video-chapter "Chapter Title" --description="Details" --duration=2000
-playwright-cli video-stop
-```
-
-## Raw output
-
-The global `--raw` option strips page status, generated code, and snapshot sections from the output, returning only the result value. Use it to pipe command output into other tools. Commands that don't produce output return nothing.
-
-```bash
-playwright-cli --raw eval "JSON.stringify(performance.timing)" | jq '.loadEventEnd - .navigationStart'
-playwright-cli --raw eval "JSON.stringify([...document.querySelectorAll('a')].map(a => a.href))" > links.json
-playwright-cli --raw snapshot > before.yml
-playwright-cli click e5
-playwright-cli --raw snapshot > after.yml
-diff before.yml after.yml
-TOKEN=$(playwright-cli --raw cookie-get session_id)
-playwright-cli --raw localstorage-get theme
-```
-
-## Open parameters
-```bash
-# Use specific browser when creating session
-playwright-cli open --browser=chrome
-playwright-cli open --browser=firefox
-playwright-cli open --browser=webkit
-playwright-cli open --browser=msedge
-
-# Use persistent profile (by default profile is in-memory)
-playwright-cli open --persistent
-# Use persistent profile with custom directory
-playwright-cli open --profile=/path/to/profile
-
-# Connect to browser via extension
-playwright-cli attach --extension
-
-# Start with config file
-playwright-cli open --config=my-config.json
-
-# Close the browser
-playwright-cli close
-# Delete user data for the default session
-playwright-cli delete-data
-```
-
-## Snapshots
-
-After each command, playwright-cli provides a snapshot of the current browser state.
-
-```bash
-> playwright-cli goto https://example.com
-### Page
-- Page URL: https://example.com/
-- Page Title: Example Domain
-### Snapshot
-[Snapshot](.playwright-cli/page-2026-02-14T19-22-42-679Z.yml)
-```
-
-You can also take a snapshot on demand using `playwright-cli snapshot` command. All the options below can be combined as needed.
-
-```bash
-# default - save to a file with timestamp-based name
-playwright-cli snapshot
-
-# save to file, use when snapshot is a part of the workflow result
-playwright-cli snapshot --filename=after-click.yaml
-
-# snapshot an element instead of the whole page
-playwright-cli snapshot "#main"
-
-# limit snapshot depth for efficiency, take a partial snapshot afterwards
-playwright-cli snapshot --depth=4
-playwright-cli snapshot e34
-```
-
-## Targeting elements
-
-By default, use refs from the snapshot to interact with page elements.
-
-```bash
-# get snapshot with refs
-playwright-cli snapshot
-
-# interact using a ref
-playwright-cli click e15
-```
-
-You can also use css selectors or Playwright locators.
-
-```bash
-# css selector
-playwright-cli click "#main > button.submit"
-
-# role locator
-playwright-cli click "getByRole('button', { name: 'Submit' })"
-
-# test id
-playwright-cli click "getByTestId('submit-button')"
-```
-
-## Browser Sessions
-
-```bash
-# create new browser session named "mysession" with persistent profile
-playwright-cli -s=mysession open example.com --persistent
-# same with manually specified profile directory (use when requested explicitly)
-playwright-cli -s=mysession open example.com --profile=/path/to/profile
-playwright-cli -s=mysession click e6
-playwright-cli -s=mysession close  # stop a named browser
-playwright-cli -s=mysession delete-data  # delete user data for persistent session
-
-playwright-cli list
-# Close all browsers
-playwright-cli close-all
-# Forcefully kill all browser processes
-playwright-cli kill-all
-```
-
-## Installation
-
-If global `playwright-cli` command is not available, try a local version via `npx playwright-cli`:
-
-```bash
+playwright-cli --version
 npx --no-install playwright-cli --version
 ```
 
-When local version is available, use `npx playwright-cli` in all commands. Otherwise, install `playwright-cli` as a global command:
+If neither exists and installation is within scope, recover with:
 
 ```bash
 npm install -g @playwright/cli@latest
 ```
 
-## Example: Form submission
+Examples below use `playwright-cli`; substitute `npx --no-install playwright-cli` when that was the successful check.
 
-```bash
-playwright-cli open https://example.com/form
-playwright-cli snapshot
-
-playwright-cli fill e1 "user@example.com"
-playwright-cli fill e2 "password123"
-playwright-cli click e3
-playwright-cli snapshot
-playwright-cli close
-```
-
-## Example: Multi-tab workflow
+Run one minimal open → snapshot → interact → verify/capture → close sequence:
 
 ```bash
 playwright-cli open https://example.com
-playwright-cli tab-new https://example.com/other
-playwright-cli tab-list
-playwright-cli tab-select 0
 playwright-cli snapshot
+# Choose an interactive element ref from this session's current snapshot.
+playwright-cli click e6
+# Refresh the snapshot after navigation or a material page-state change.
+playwright-cli snapshot --filename=after-click.md
+# Capture pixels only when the task needs them.
+playwright-cli screenshot --filename=evidence.png
 playwright-cli close
 ```
 
-## Example: Debugging with DevTools
+Snapshots are the normal inspection surface. Use a ref only with the browser session and page state that produced it; take a fresh snapshot before targeting after navigation or material state changes. For another interaction, navigation, tab, PDF, console, or capture form, inspect installed per-command help rather than guessing. Put the global `--raw` option before a command only when piping its result without page status, generated code, or snapshot sections; commands with no result still return nothing.
 
-```bash
-playwright-cli open https://example.com
-playwright-cli click e4
-playwright-cli fill e7 "test"
-playwright-cli console
-playwright-cli network
-playwright-cli close
-```
+If browser launch fails because native shared libraries are missing, try an installed system-browser channel before installing dependencies, for example `playwright-cli open https://example.com --browser=chrome`. For a raw Node Playwright script, use the installed browser's explicit `executablePath`; in a container, add conservative `--no-sandbox` and `--disable-dev-shm-usage` launch flags only when the environment requires them. Use `npx playwright install-deps` only if no system browser works, and obtain user approval before running it because it may request sudo privileges.
 
-```bash
-playwright-cli open https://example.com
-playwright-cli tracing-start
-playwright-cli click e4
-playwright-cli fill e7 "test"
-playwright-cli tracing-stop
-playwright-cli close
-```
+Always close every browser session started by the task, including on failure. Stop background test runs after debugging. Use `close-all` only when every affected session is task-owned, and reserve `kill-all` for stale or zombie task-owned processes. Delete task-created persistent profile data when it is no longer needed. Keep requested snapshots, screenshots, PDFs, traces, WebM recordings, generated TypeScript, raw values, storage JSON, and test results; report their paths and remove incidental captures.
 
-## Specific tasks
+Treat persistent profiles and storage-state files as sensitive. Never commit storage state or other authentication artifacts, delete them after use unless the user requested retention, and pass secrets through environment variables rather than embedding them in commands or generated code.
 
-* **Running and Debugging Playwright tests** [references/playwright-tests.md](references/playwright-tests.md)
-* **Request mocking** [references/request-mocking.md](references/request-mocking.md)
-* **Running Playwright code** [references/running-code.md](references/running-code.md)
-* **Browser session management** [references/session-management.md](references/session-management.md)
-* **Storage state (cookies, localStorage)** [references/storage-state.md](references/storage-state.md)
-* **Test generation** [references/test-generation.md](references/test-generation.md)
-* **Tracing** [references/tracing.md](references/tracing.md)
-* **Video recording** [references/video-recording.md](references/video-recording.md)
-* **Inspecting element attributes** [references/element-attributes.md](references/element-attributes.md)
+Completion criterion: the requested browser behavior is verified from a fresh snapshot, test result, or requested capture; output paths are reported; all task-owned browser/debug processes are stopped; and no unapproved privileged install or sensitive state remains.
+
+## Reference
+
+- Load [Running Playwright Tests](references/playwright-tests.md) when running or debugging an existing Playwright suite; it defines noninteractive reporting, background debug attachment, generated-code use, rerun, and cleanup.
+- Load [Request Inspection and Mocking](references/request-mocking.md) when inspecting, mocking, modifying, delaying, or blocking requests; it owns the tested `requests`/`request` and route command families.
+- Load [Running Custom Playwright Code](references/running-code.md) when CLI commands cannot express the scenario or code must run from a file; it defines `run-code`, permissions, waits, frames, downloads, and error handling.
+- Load [Browser Session Management](references/session-management.md) when using named, parallel, configured, attached, headed, or persistent browser sessions; it defines isolation, profile selection, and scoped cleanup.
+- Load [Storage Management](references/storage-state.md) when saving/loading authentication state or manipulating cookies, localStorage, sessionStorage, or IndexedDB; it defines the detailed commands and sensitive-file handling.
+- Load [Test Generation](references/test-generation.md) when transferring CLI-generated TypeScript into a test; it explains locator choice and the required manual assertions.
+- Load [Tracing](references/tracing.md) when a trace is required for debugging or evidence; it defines capture contents, overhead, limitations, and cleanup.
+- Load [Video Recording](references/video-recording.md) when producing a Playwright WebM or annotated hero script; it defines recording, chapters, overlays, file execution, overhead, and cleanup.
+- Load [Inspecting Element Attributes](references/element-attributes.md) when a snapshot omits an element property needed for targeting or verification; it defines scoped `eval` inspection.

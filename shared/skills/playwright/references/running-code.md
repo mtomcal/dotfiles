@@ -9,7 +9,12 @@ playwright-cli run-code "async page => {
   // Your Playwright code here
   // Access page.context() for browser context operations
 }"
+
+# Load the page function from a file for longer scripts.
+playwright-cli run-code --filename=script.js
 ```
+
+Installed command help is authoritative for file loading; use `--filename`, not the stale `--file` spelling.
 
 ## Geolocation
 
