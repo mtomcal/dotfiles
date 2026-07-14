@@ -1,7 +1,7 @@
 ---
 id: SK-028
 target: wayfinder
-status: ready-to-integrate
+status: verified
 revision: 1
 blocked-by: [SK-001]
 source-verdict: retain substance
@@ -141,6 +141,8 @@ Worker verification completed at `2026-07-14T18:47:30+00:00`.
 - Residual risks: maps whose actionable frontier temporarily contains only research still depend on the caller scheduling those independent research tickets while preserving the exact-one-nonresearch session rule; the skill must not bypass blockers or let researchers mutate state. The catalog retains the unrelated deferred `visual-qa` grant warning. No executable Wayfinder command exists, so verification is structural, semantic, link-, provenance-, audit-, and repository-test-based.
 
 The worker result is `ready-to-integrate`; this record does not claim coordinator integration, coordinator verification, central `verified` state, or catalog-wide VG-001 completion.
+
+Coordinator integration verification completed at `2026-07-14T18:53:57+00:00` against integrated commits `798f694` and `7303b9d`: the complete target, proposal, unchanged format support, and composed owner boundaries were reread; exact definitions/glossary precedence, open/chart/direct-plan routes, approval/formats/sole writer, frontier/blocker/out-of-scope semantics, one-nonresearch/safe-research rule, all type routes, process-only composition, Herdr/direct/isolation/no-ID rules, implementation stop, six resolution updates, one-home/map rules, completion/empty-frontier guard, onward routes, frontmatter identity, Pi visibility, Matt Pocock/MIT provenance, and exact scope passed independent checks. The YAML-aware audit parsed/accounted for all 34 skills with zero errors and the one deferred SK-027 grant warning, `git diff --check` passed, and `bash tests/run.sh` passed all 12 tests. The protected `pi/settings.json` content and diff hashes remained `7d3f4713d7239e8cda3f75597a55f1767fecdf7964324630e4e74dc686d12e05` and `8298a9063e3ebf2988000d176057a41c31cf20c10bbabe92fb57d47f9f2738d5`. Residual risk remains scheduling a research-only frontier without weakening exact-one-nonresearch or parent-only state rules.
 
 ## Explicit exclusions
 
