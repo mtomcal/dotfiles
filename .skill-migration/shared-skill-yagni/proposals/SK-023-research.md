@@ -1,7 +1,7 @@
 ---
 id: SK-023
 target: research
-status: ready-to-integrate
+status: verified
 blocked-by: [SK-001]
 source-verdict: retain substance
 ---
@@ -210,6 +210,8 @@ Focused verification completed: `2026-07-14T18:04:12+00:00`.
 - `git diff --check`: PASS. `bash tests/run.sh`: PASS (2 shell files, 12 tests).
 - Resulting target SHA-256: `1ec0da0d8b8629338d136545ed6cf36c8549f671af35a4c1ded0182b6afa6c5f`.
 - Residual risk: “proportionate normal lookup” intentionally leaves routine-answer depth context-sensitive. It prevents unrequested durable artifacts without weakening the durable branch's primary-source gates. No executable support or live Herdr command exists in this scope to validate.
+
+Coordinator integration verification completed at `2026-07-14T18:08:53+00:00` against integrated commit `f0f5abf`: the complete target and proposal were reread; six definitions, durable/routine routing, framing/falsifier/freshness, approved location, authority order, source classes/metadata, adjacent citations, fact/inference distinction, read-only Herdr path, complete in-process fallback, citation checking, conflict handling, artifact fields, absolute-path output, frontmatter identity, Pi visibility, Matt Pocock/MIT provenance, and exact scope passed independent checks. One initial focused assertion expected the phrase “source title” while the target correctly says “its title”; the corrected semantic assertion passed and no production change was needed. The YAML-aware audit accounted for all 33 skills with zero errors and warnings, `git diff --check` passed, and `bash tests/run.sh` passed all 12 tests. The protected `pi/settings.json` content and diff hashes remained `7d3f4713d7239e8cda3f75597a55f1767fecdf7964324630e4e74dc686d12e05` and `8298a9063e3ebf2988000d176057a41c31cf20c10bbabe92fb57d47f9f2738d5`. Residual risk remains the intentionally context-sensitive depth of routine lookup.
 
 ## Explicit exclusions
 
