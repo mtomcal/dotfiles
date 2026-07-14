@@ -1,7 +1,7 @@
 ---
 id: SK-008
 target: test-quality-verifier
-status: ready-to-integrate
+status: verified
 blocked-by: [SK-001]
 source-verdict: retain
 ---
@@ -107,6 +107,13 @@ Worker verification at `2026-07-14T16:55:29+00:00`:
 - Pi visibility resolves exactly through `../../shared/skills/test-quality-verifier`; provenance remains repository-local and `THIRD_PARTY_NOTICES.md` is unchanged.
 - Exact worktree scope is the proposal plus target skill; `pi/settings.json` and notices have no baseline diff. `git diff --check` passed.
 - `bash tests/run.sh` passed both shell test files and all 12 test cases.
+
+## Integrated verification
+
+- Coordinator verification timestamp: `2026-07-14T16:57:09+00:00`.
+- Exact two-file scope, the complete resulting skill, canonical section order, confirmed definition, audit/improve routing, capability-based delegation, language-specific checks, output verdict, and Pi visibility passed independent review.
+- The retained `rg` expression discovered JavaScript, Python, and Go fixtures; repository shell tests passed 12/12; `git diff --check` passed.
+- `pi/settings.json` retained its recorded content and diff hashes and remained unstaged. Pre-existing catalog grant findings remain outside this body migration.
 
 ## Explicit exclusions
 
