@@ -26,7 +26,8 @@ Use narrower terms such as HTTP API or type signature only when that narrower me
 ## Workflow
 
 1. Select the route before designing:
-   - For a consequential interface or requested alternatives, use Design It Twice. If consolidation or dependency classification also applies, use Deepening with it.
+   - For a consequential interface or requested alternatives, use Design It Twice.
+   - If consolidation or dependency classification also applies, load DEEPENING.md directly from this skill's Reference section and use it with the selected route.
    - Otherwise, use Deepening for module consolidation or dependency classification.
    - Use direct design when neither specialized route applies.
 
