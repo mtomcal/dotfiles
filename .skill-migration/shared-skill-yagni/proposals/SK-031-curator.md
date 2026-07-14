@@ -1,7 +1,7 @@
 ---
 id: SK-031
 target: curator
-status: ready-to-integrate
+status: verified
 revision: 1
 blocked-by: [SK-001]
 source-verdict: move detail to Reference
@@ -134,6 +134,8 @@ Worker verification completed at `2026-07-14T19:15:12+00:00` against claim basel
 - Residual risks: Curator's byte-preserved frontmatter does not pre-authorize write/edit in every harness. The Workflow therefore composes an available owner process or reports a blocked action instead of weakening final approval or claiming an unavailable write. The deployed runtime tree remains on its integrated checkout until coordinator integration; the resolving directory topology and tracked Pi link provide next-session discovery once this commit is integrated.
 
 The worker result is `ready-to-integrate`; this record does not claim coordinator integration, coordinator verification, central `verified` state, or catalog-wide completion.
+
+Coordinator integration verification completed at `2026-07-14T19:20:51+00:00` against integrated commit `f3f5511`: the complete target, proposal, new Reference, Pi runtime-discovery boundary, and owner routes were reread; exact definitions, retrospective/mode routing, bounded scan/privacy/worktree protections, 3–5/new-skill/compound-value ranking, sequential/full schemas, tentative-only decisions, one final approval, ephemeral stuck advice, approved-only owner composition, runtime verification, repository-state report, mandatory load conditions, frontmatter identity, Pi visibility, repo-local provenance, fragments, and exact three-file scope passed independent checks. The YAML-aware audit parsed/accounted for all 34 skills with zero errors and the one deferred SK-027 grant warning, `git diff --check` passed, and `bash tests/run.sh` passed all 12 tests. The protected `pi/settings.json` content and diff hashes remained `7d3f4713d7239e8cda3f75597a55f1767fecdf7964324630e4e74dc686d12e05` and `8298a9063e3ebf2988000d176057a41c31cf20c10bbabe92fb57d47f9f2738d5`. Residual risk remains byte-preserved frontmatter lacking direct write/edit authorization in some harnesses, explicitly handled by composing an available owner or reporting blocked application.
 
 ## Explicit exclusions
 
