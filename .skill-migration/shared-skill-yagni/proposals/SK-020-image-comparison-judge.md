@@ -1,7 +1,7 @@
 ---
 id: SK-020
 target: image-comparison-judge
-status: ready-to-integrate
+status: verified
 revision: 2
 blocked-by: [SK-001]
 source-verdict: simplify inline
@@ -154,6 +154,8 @@ Revision 2 worker verification completed at `2026-07-14T17:47:01+00:00`.
 - Residual risk: project wrapper and delegate failures are runtime-specific. The corrected sequence gathers a complete brief before invocation and deterministically continues through the remaining available routes without inventing a static wrapper interface.
 
 The revision 2 worker result is `ready-to-integrate`; it does not claim coordinator integration, central `verified` state, SK-019, VG-001, or another migration item.
+
+Coordinator integration verification completed at `2026-07-14T17:49:53+00:00` against integrated commits `399eea4` and `3a075df`: the complete target and proposal revision 2 were reread; the exact definitions, non-executing route selection, post-brief execution/failure continuation, neutral-diff ownership boundary, strict scoped verdict, secondary findings, fallback disclosure, final-human-acceptance boundary, frontmatter identity, Pi visibility, repo-local provenance, and exact scope passed independent checks. The YAML-aware audit accounted for all 33 skills with zero errors and warnings, `git diff --check` passed, and `bash tests/run.sh` passed all 12 tests. The protected `pi/settings.json` content and diff hashes remained `7d3f4713d7239e8cda3f75597a55f1767fecdf7964324630e4e74dc686d12e05` and `8298a9063e3ebf2988000d176057a41c31cf20c10bbabe92fb57d47f9f2738d5`. Residual risk: wrapper and delegation interfaces remain runtime-specific, with the required disclosed in-process fallback preserved.
 
 ## Explicit exclusions
 
