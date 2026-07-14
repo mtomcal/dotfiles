@@ -1,7 +1,7 @@
 ---
 id: SK-017
 target: design-md
-status: ready-to-integrate
+status: verified
 blocked-by: [SK-001]
 source-verdict: simplify inline
 ---
@@ -122,6 +122,10 @@ There are no target support files. No migration ledger, spec, notice, test, depl
 - Repository checks: PASS. `git diff --check` is clean and `bash tests/run.sh` passes both shell test files and all 12 tests.
 - Resulting target SHA-256: `b13d060132e3d63993e68c7810d1007f67401c84dd10004476730c102bd32ccb`.
 - Residual risk: the upstream package's broken `spec` command prevents an additional live spec dump, but installed lint/diff help, baseline literal comparison, and the no-invention rule preserve the authorized contract without expanding scope.
+
+## Integrated verification
+
+- Coordinator verification `2026-07-14T17:37:18+00:00`: exact scope, complete skill, routes, definitions, artifact/token/section gates, lint/diff help, tests 12/12, diff, visibility/settings passed. Upstream spec-command defect remains disclosed.
 
 ## Explicit exclusions
 
