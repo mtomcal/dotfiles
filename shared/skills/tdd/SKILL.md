@@ -8,49 +8,48 @@ allowed-tools: read,write,bash,edit
 
 # Test-Driven Development
 
-Tests specify observable behavior through public interfaces. They should survive internal refactors. Read repository guidance, relevant specs, and the project glossary before naming behavior.
+## Language Definitions
 
-See [tests.md](tests.md) for examples, [mocking.md](mocking.md) for external seams, and [refactoring.md](refactoring.md) after green. Load `codebase-design` when choosing or changing a module interface, seam, or depth.
+- **Tracer bullet** — smallest honest end-to-end behavior through an agreed public interface.
+- **Red** — focused behavior test observed failing for the intended reason.
+- **Green** — minimum implementation passes it without focused regressions.
+- **Refactor** — behavior-preserving structural improvement performed while green.
+- **Independent oracle** — expectation source independent of implementation logic.
+- **Vertical slice** — one behavior test plus minimum cross-layer implementation before the next behavior.
+- **Discovered-bug fast path** — abbreviated intake when diagnosis, intended behavior, and existing seam are unambiguous.
 
-## Guardrails
+`Seam` remains defined and owned by `codebase-design`. Load that skill whenever choosing or changing a module interface, seam, or depth.
 
-- **Pre-agree seams.** Before writing tests, name the public interfaces where behavior will be observed and confirm them with the user. In an unambiguous discovered-bug path, state the existing seam and regression target, then proceed unless risk or ambiguity requires confirmation.
-- **Behavior over implementation.** Test outcomes callers care about; avoid private methods, internal call assertions, and side-channel verification.
-- **Independent expectations.** A tautological test recomputes the expected result using the implementation's own logic and cannot catch disagreement. Derive expected values from specs, worked examples, known literals, or another independent oracle.
-- **Vertical slices.** One test, one minimal implementation, then repeat. Writing all tests before all code is horizontal slicing and commits to imagined behavior.
-- **Green before refactor.** Refactoring remains part of this repo's red-green-refactor contract, but never refactor while red.
+## Workflow
 
-## Discovered bug fast path
+### 1. Route the mode and establish the test contract
 
-When diagnosis reveals a bug the user already wants fixed, briefly state:
+Select the mode before planning:
 
-1. the observed bug
-2. the intended behavior and its source
-3. the existing seam and smallest regression target
+- **Discovered-bug mode:** select only when diagnosis, intended behavior and its source, and the existing seam are unambiguous.
+- **Normal mode:** select for every other request.
 
-Then enter the loop without a full planning interview unless behavior, seam, or risk is ambiguous.
+After selecting the mode, read repository guidance, relevant specs, and the project glossary. In discovered-bug mode, state the observed bug, intended behavior and source, existing seam, smallest regression target, independent oracle, and tight command. Proceed without a full pre-agreement interview unless behavior, seam, or risk is ambiguous; if any is ambiguous, confirm it with the user first. In normal mode, confirm with the user the public interface, agreed seams, prioritized behavior order, independent oracle, and test commands before writing a test.
 
-## 1. Plan the first tracer bullet
+In either mode, test caller-observable outcomes through the public interface. Do not test private methods, internal calls, or side channels, and do not expose an internal seam merely for testing. Derive expected values from specs, worked examples, known literals, trusted external oracles, or invariants capable of disagreeing with the implementation—not by recomputing its logic.
 
-Confirm the interface change, agreed test seams, and prioritized behaviors. Choose one end-to-end behavior through the smallest honest public interface. Do not plan implementation-shaped tests.
+Completion criterion: the mode, first behavior, public interface, seam, independent expected result, and tight command are explicit, with every required agreement obtained.
 
-Completion criterion: the first behavior, seam, expected result, and command are explicit.
+### 2. Prove one tracer bullet with Red
 
-## 2. Red
+Choose one honest end-to-end behavior through the smallest agreed public interface. Write one focused behavior test, run the tightest command, and observe it fail for the missing or broken behavior—not because of a fixture, syntax, or environment failure. Do not write implementation-shaped tests or all tests before implementation.
 
-Write one focused behavior test. Run the tightest command and observe the expected failure for the missing or broken behavior—not a fixture, syntax, or environment failure.
+Completion criterion: one vertical tracer bullet is Red for the intended reason and would pass only when the behavior exists.
 
-Completion criterion: the new test is red for the intended reason and would pass only when the behavior exists.
+### 3. Reach minimal Green
 
-## 3. Green
+Implement only enough behavior to pass the current test; do not add speculative branches for later tests. Run the focused command, then nearby required checks.
 
-Implement only enough behavior to pass the current test. Avoid speculative branches for later tests. Run the focused command, then any nearby required checks.
+Completion criterion: the current vertical slice is Green and no previously green focused test regressed.
 
-Completion criterion: the tracer bullet is green and no previously green focused test regressed.
+### 4. Repeat one behavior at a time
 
-## 4. Repeat vertically
-
-Use what the previous slice taught you to choose the next highest-value behavior. Repeat Red then Green one test at a time until the agreed behaviors are covered.
+Use what the previous slice taught you to select the next highest-value agreed behavior. Repeat Red then Green with one test and its minimum implementation before starting another. All-tests-first horizontal slicing is not this workflow.
 
 Per cycle:
 
@@ -60,8 +59,23 @@ Per cycle:
 - [ ] code is minimal for this slice
 - [ ] focused tests are green
 
-## 5. Refactor while green
+Completion criterion: every agreed behavior has completed its own Red and Green cycle and every checklist item holds.
 
-Improve names, remove duplication, and deepen modules where the completed behavior reveals a better shape. Run tests after each refactor step. Keep the agreed interface stable unless the user approves a seam change.
+### 5. Refactor only while green
 
-Completion criterion: all agreed behavior is green, refactoring preserved behavior, and broader required checks pass.
+With tests green, improve names; remove duplication; shorten long methods without coupling tests to private helpers; move feature-envying logic toward the data it uses; introduce value objects when primitive obsession obscures behavior; and address nearby existing code only when completed behavior exposes evidence. Use `codebase-design` to combine or deepen shallow modules. Run tests after each refactor step.
+
+Keep the agreed public interface and seam stable. Before changing either, obtain user approval and load `codebase-design`.
+
+Completion criterion: each refactor preserves behavior, its rerun stays green, and any interface or seam change has explicit approval.
+
+### 6. Complete the work
+
+Run the focused tests, nearby required checks, and broader required checks. Do not claim completion while any agreed behavior or required check is failing.
+
+Completion criterion: all agreed behavior is green, refactoring preserved behavior, and focused, nearby, and broader required checks pass.
+
+## Reference
+
+- When examples are needed to distinguish caller-visible behavior tests, implementation coupling, or tautological expectations, load [tests.md](tests.md) for good/bad tests and independent-oracle examples.
+- When behavior crosses an external dependency and a test adapter may be needed, load [mocking.md](mocking.md) to choose an external seam and narrow adapter without exposing internals.

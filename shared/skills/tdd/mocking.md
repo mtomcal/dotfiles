@@ -1,59 +1,51 @@
-# When to Mock
+# Mocking External Seams
 
-Mock at **system boundaries** only:
+Use a test adapter only when caller-visible behavior crosses a justified external seam:
 
-- External APIs (payment, email, etc.)
-- Databases (sometimes - prefer test DB)
-- Time/randomness
-- File system (sometimes)
+- external APIs such as payment or email;
+- databases when a faithful test database is impractical (prefer the test database);
+- time or randomness; and
+- the filesystem when a real temporary filesystem is impractical.
 
-Don't mock:
+Do not mock your own modules or internal collaborators; exercise them through the public interface. Do not expose an internal seam merely because a test needs it. `codebase-design` owns seam placement and adapter justification.
 
-- Your own classes/modules
-- Internal collaborators
-- Anything you control
+## Designing a Test Adapter
 
-## Designing for Mockability
-
-At system boundaries, design interfaces that are easy to mock:
+Add an adapter only for real external variation. A production adapter plus a justified test adapter provides two concrete implementations of the seam.
 
 **1. Use dependency injection**
 
-Pass external dependencies in rather than creating them internally:
+Pass the external dependency in rather than creating it internally:
 
 ```typescript
-// Easy to mock
+// Easy to replace with a test adapter
 function processPayment(order, paymentClient) {
   return paymentClient.charge(order.total);
 }
 
-// Hard to mock
+// Hard to replace without reaching into implementation
 function processPayment(order) {
   const client = new StripeClient(process.env.STRIPE_KEY);
   return client.charge(order.total);
 }
 ```
 
-**2. Prefer SDK-style interfaces over generic fetchers**
+**2. Prefer operation-specific interfaces over generic fetchers**
 
-Create specific functions for each external operation instead of one generic function with conditional logic:
+Create a specific operation for each external capability instead of one generic function that forces conditional logic into the test adapter:
 
 ```typescript
-// GOOD: Each function is independently mockable
+// GOOD: Each operation has one result shape
 const api = {
   getUser: (id) => fetch(`/users/${id}`),
   getOrders: (userId) => fetch(`/users/${userId}/orders`),
   createOrder: (data) => fetch('/orders', { method: 'POST', body: data }),
 };
 
-// BAD: Mocking requires conditional logic inside the mock
+// BAD: The test adapter must branch on endpoint and options
 const api = {
   fetch: (endpoint, options) => fetch(endpoint, options),
 };
 ```
 
-The SDK approach means:
-- Each mock returns one specific shape
-- No conditional logic in test setup
-- Easier to see which endpoints a test exercises
-- Type safety per endpoint
+Operation-specific interfaces give each test adapter one result shape, avoid conditional setup, reveal which external capabilities a test exercises, and preserve per-operation type safety.
