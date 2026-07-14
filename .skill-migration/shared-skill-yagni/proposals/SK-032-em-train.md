@@ -1,7 +1,7 @@
 ---
 id: SK-032
 target: em-train
-status: ready-to-integrate
+status: verified
 revision: 2
 blocked-by: [SK-001, SK-007, SK-014]
 source-verdict: consolidate/delegate while retaining the complete training lifecycle and training-only reference material
@@ -155,6 +155,8 @@ Worker verification recorded at `2026-07-14T19:21:18+00:00` against fixed baseli
 - Residual risks: active-harness project skill discovery locations vary, so the runtime workflow verifies discovery or explicit loading rather than hardcoding Pi state. A post-Round-2 revision receives CI and targeted verification only; by design, it cannot silently open a third educational feedback cycle.
 
 The worker result is `ready-to-integrate`; this record does not claim coordinator integration, coordinator verification, central `verified` state, or catalog-wide completion.
+
+Coordinator integration verification completed at `2026-07-14T19:28:29+00:00` against integrated commit `843b5cf`: the complete target, training-only Reference/template, proposal, source ledger, confirmed definitions, and composed owner interfaces were reread. Exact four-file scope; byte-preserved target frontmatter; canonical section order; exact intake, real-ticket evidence and joint checkpoint; safe branch/fixed point/temporary-guide setup; complete mandatory Create Explainer composition; user implementation and no-spoiler ownership; honest real CI; narrow fixed-point Code Review composition; two-or-three educational findings; no-rubber-stamp rule; two-round cap plus final verification; durable report, cleanup, and merge-or-leave choice; rendered template links; Pi visibility; local provenance; and exclusions passed independent checks. The YAML-aware audit parsed/accounted for all 34 skills with zero errors and the one deferred SK-027 grant warning, `git diff --check` passed, and `bash tests/run.sh` passed all 12 tests. The protected `pi/settings.json` content and diff hashes remained `7d3f4713d7239e8cda3f75597a55f1767fecdf7964324630e4e74dc686d12e05` and `8298a9063e3ebf2988000d176057a41c31cf20c10bbabe92fb57d47f9f2738d5`. Residual risks remain harness-specific temporary skill discovery and the intentional CI-plus-targeted-check boundary after a Round-2 revision.
 
 ## Explicit exclusions
 

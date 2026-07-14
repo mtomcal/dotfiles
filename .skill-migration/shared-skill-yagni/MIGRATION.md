@@ -173,7 +173,7 @@ The sequence follows WF-007: durable decisions, authoring owner, correctness rep
 | `SK-029` | skill | `teach` | move detail to Reference | SK-001, SK-007, SK-023 | verified |
 | `SK-030` | skill | `create-agents-md` | move detail to Reference | SK-001 | verified |
 | `SK-031` | skill | `curator` | move detail to Reference | SK-001 | verified |
-| `SK-032` | skill | `em-train` | consolidate/delegate | SK-001, SK-007, SK-014 | integrating |
+| `SK-032` | skill | `em-train` | consolidate/delegate | SK-001, SK-007, SK-014 | verified |
 | `NEW-001` | new skill | Generic Git delivery | independently invocable PR/CI/stale-branch owner | SK-001, SK-014, SK-024 | verified |
 | `SK-033` | skill | `tmux-agent-orchestration` | consolidate/delegate | SK-001, NEW-001 | claimed |
 | `VG-001` | verification | Entire shared catalog | links, commands, support, provenance, behavior ledgers, frontmatter, visibility | MG-002, SK-001–SK-033, NEW-001 | queued |
@@ -199,4 +199,4 @@ The final catalog gate additionally checks all 33 original skills, the proposal-
 
 `MG-001` revision 2, `MG-002` revision 1, and SK-001 through SK-005 are verified. Parallel mode is active.
 
-`MG-001` revision 2, `MG-002` revision 1, SK-001 through SK-031, and NEW-001 are verified. SK-032 and SK-033 are claimed with disjoint scopes. SK-027 carries one deferred frontmatter-lane warning for unchanged unused command grants, and NEW-001's intentionally absent Pi visibility awaits final reconciliation. No additional production skill is queued; VG-001 remains blocked until both active skills verify.
+`MG-001` revision 2, `MG-002` revision 1, SK-001 through SK-032, and NEW-001 are verified. SK-033 remains claimed. SK-027 carries one deferred frontmatter-lane warning for unchanged unused command grants, and NEW-001's intentionally absent Pi visibility awaits final reconciliation. No additional production skill is queued; VG-001 remains blocked until SK-033 verifies.
