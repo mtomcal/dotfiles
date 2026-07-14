@@ -1,121 +1,67 @@
 ---
 name: tdd
-description: Test-driven development with red-green-refactor loop. Use when user wants to build features or fix bugs using TDD, mentions "red-green-refactor", wants integration tests, asks for test-first development, or when making source changes for a bug fix, regression fix, behavior change, or implementation task, especially after discovering a bug during debugging.
+description: Test-driven development through vertical red-green-refactor tracer bullets at agreed seams. Use when implementing behavior or regression fixes test-first, when the user requests TDD or integration tests, or after diagnosis identifies a bug to lock down.
 metadata:
-  short-description: TDD with red-green-refactor loop
+  short-description: TDD with red-green-refactor tracer bullets
 allowed-tools: read,write,bash,edit
 ---
 
 # Test-Driven Development
 
-## Philosophy
+Tests specify observable behavior through public interfaces. They should survive internal refactors. Read repository guidance, relevant specs, and the project glossary before naming behavior.
 
-**Core principle**: Tests should verify behavior through public interfaces, not implementation details. Code can change entirely; tests shouldn't.
+See [tests.md](tests.md) for examples, [mocking.md](mocking.md) for external seams, and [refactoring.md](refactoring.md) after green. Load `codebase-design` when choosing or changing a module interface, seam, or depth.
 
-**Good tests** are integration-style: they exercise real code paths through public APIs. They describe _what_ the system does, not _how_ it does it. A good test reads like a specification - "user can checkout with valid cart" tells you exactly what capability exists. These tests survive refactors because they don't care about internal structure.
+## Guardrails
 
-**Bad tests** are coupled to implementation. They mock internal collaborators, test private methods, or verify through external means (like querying a database directly instead of using the interface). The warning sign: your test breaks when you refactor, but behavior hasn't changed. If you rename an internal function and tests fail, those tests were testing implementation, not behavior.
+- **Pre-agree seams.** Before writing tests, name the public interfaces where behavior will be observed and confirm them with the user. In an unambiguous discovered-bug path, state the existing seam and regression target, then proceed unless risk or ambiguity requires confirmation.
+- **Behavior over implementation.** Test outcomes callers care about; avoid private methods, internal call assertions, and side-channel verification.
+- **Independent expectations.** A tautological test recomputes the expected result using the implementation's own logic and cannot catch disagreement. Derive expected values from specs, worked examples, known literals, or another independent oracle.
+- **Vertical slices.** One test, one minimal implementation, then repeat. Writing all tests before all code is horizontal slicing and commits to imagined behavior.
+- **Green before refactor.** Refactoring remains part of this repo's red-green-refactor contract, but never refactor while red.
 
-See [tests.md](tests.md) for examples and [mocking.md](mocking.md) for mocking guidelines.
+## Discovered bug fast path
 
-## Anti-Pattern: Horizontal Slices
+When diagnosis reveals a bug the user already wants fixed, briefly state:
 
-**DO NOT write all tests first, then all implementation.** This is "horizontal slicing" - treating RED as "write all tests" and GREEN as "write all code."
+1. the observed bug
+2. the intended behavior and its source
+3. the existing seam and smallest regression target
 
-This produces **crap tests**:
+Then enter the loop without a full planning interview unless behavior, seam, or risk is ambiguous.
 
-- Tests written in bulk test _imagined_ behavior, not _actual_ behavior
-- You end up testing the _shape_ of things (data structures, function signatures) rather than user-facing behavior
-- Tests become insensitive to real changes - they pass when behavior breaks, fail when behavior is fine
-- You outrun your headlights, committing to test structure before understanding the implementation
+## 1. Plan the first tracer bullet
 
-**Correct approach**: Vertical slices via tracer bullets. One test → one implementation → repeat. Each test responds to what you learned from the previous cycle. Because you just wrote the code, you know exactly what behavior matters and how to verify it.
+Confirm the interface change, agreed test seams, and prioritized behaviors. Choose one end-to-end behavior through the smallest honest public interface. Do not plan implementation-shaped tests.
 
-```
-WRONG (horizontal):
-  RED:   test1, test2, test3, test4, test5
-  GREEN: impl1, impl2, impl3, impl4, impl5
+Completion criterion: the first behavior, seam, expected result, and command are explicit.
 
-RIGHT (vertical):
-  RED→GREEN: test1→impl1
-  RED→GREEN: test2→impl2
-  RED→GREEN: test3→impl3
-  ...
-```
+## 2. Red
 
-## Workflow
+Write one focused behavior test. Run the tightest command and observe the expected failure for the missing or broken behavior—not a fixture, syntax, or environment failure.
 
-### Discovered Bug Path
+Completion criterion: the new test is red for the intended reason and would pass only when the behavior exists.
 
-When investigation reveals a bug during a task where the user already wants the
-behavior fixed, do not stop for a full planning interview unless the intended
-behavior is ambiguous or risky. Briefly state the observed bug, the intended
-behavior, and the smallest regression target, then enter the red/green loop:
-write or update one behavior test, run it and observe the failure, implement the
-minimal fix, and rerun the test to green.
+## 3. Green
 
-### 1. Planning
+Implement only enough behavior to pass the current test. Avoid speculative branches for later tests. Run the focused command, then any nearby required checks.
 
-When exploring the codebase, use the project's domain glossary so that test names and interface vocabulary match the project's language, and respect ADRs in the area you're touching.
+Completion criterion: the tracer bullet is green and no previously green focused test regressed.
 
-Before writing any code:
+## 4. Repeat vertically
 
-- [ ] Confirm with user what interface changes are needed
-- [ ] Confirm with user which behaviors to test (prioritize)
-- [ ] Identify opportunities for [deep modules](deep-modules.md) (small interface, deep implementation)
-- [ ] Design interfaces for [testability](interface-design.md)
-- [ ] List the behaviors to test (not implementation steps)
-- [ ] Get user approval on the plan
+Use what the previous slice taught you to choose the next highest-value behavior. Repeat Red then Green one test at a time until the agreed behaviors are covered.
 
-Ask: "What should the public interface look like? Which behaviors are most important to test?"
+Per cycle:
 
-**You can't test everything.** Confirm with the user exactly which behaviors matter most. Focus testing effort on critical paths and complex logic, not every possible edge case.
+- [ ] test describes observable behavior at an agreed seam
+- [ ] expectation has an independent source of truth
+- [ ] test failed for the intended reason before implementation
+- [ ] code is minimal for this slice
+- [ ] focused tests are green
 
-### 2. Tracer Bullet
+## 5. Refactor while green
 
-Write ONE test that confirms ONE thing about the system:
+Improve names, remove duplication, and deepen modules where the completed behavior reveals a better shape. Run tests after each refactor step. Keep the agreed interface stable unless the user approves a seam change.
 
-```
-RED:   Write test for first behavior → test fails
-GREEN: Write minimal code to pass → test passes
-```
-
-This is your tracer bullet - proves the path works end-to-end.
-
-### 3. Incremental Loop
-
-For each remaining behavior:
-
-```
-RED:   Write next test → fails
-GREEN: Minimal code to pass → passes
-```
-
-Rules:
-
-- One test at a time
-- Only enough code to pass current test
-- Don't anticipate future tests
-- Keep tests focused on observable behavior
-
-### 4. Refactor
-
-After all tests pass, look for [refactor candidates](refactoring.md):
-
-- [ ] Extract duplication
-- [ ] Deepen modules (move complexity behind simple interfaces)
-- [ ] Apply SOLID principles where natural
-- [ ] Consider what new code reveals about existing code
-- [ ] Run tests after each refactor step
-
-**Never refactor while RED.** Get to GREEN first.
-
-## Checklist Per Cycle
-
-```
-[ ] Test describes behavior, not implementation
-[ ] Test uses public interface only
-[ ] Test would survive internal refactor
-[ ] Code is minimal for this test
-[ ] No speculative features added
-```
+Completion criterion: all agreed behavior is green, refactoring preserved behavior, and broader required checks pass.

@@ -1,135 +1,71 @@
 ---
 name: write-a-skill
-description: Create new agent skills with proper structure, progressive disclosure, and bundled resources. Use when user wants to create, write, or build a new skill.
+description: Design, create, or revise cross-agent skills for predictable invocation and execution with progressive disclosure and checkable completion criteria. Use when writing a new skill, editing an existing skill, splitting skill workflows, or auditing skill clarity and sprawl.
 metadata:
-  short-description: Create new agent skills
+  short-description: Write predictable cross-agent skills
+allowed-tools: read,write,edit,bash
 ---
 
 # Writing Skills
 
-## Process
+A skill should make the agent follow a predictable process, not force identical output.
 
-1. **Gather requirements** - ask user about:
-   - What task/domain does the skill cover?
-   - What specific use cases should it handle?
-   - Does it need executable scripts or just instructions?
-   - Any reference materials to include?
+## 1. Define invocation and branches
 
-2. **Draft the skill** - create:
-   - SKILL.md with concise instructions
-   - Additional reference files if content exceeds 500 lines
-   - Utility scripts if deterministic operations needed
+Identify the task, distinct branches, expected artifacts, required tools, and failure states. Choose a strong **leading word** already associated with the desired behavior, such as tracer bullet or tight loop.
 
-3. **Review with user** - present draft and ask:
-   - Does this cover your use cases?
-   - Anything missing or unclear?
-   - Should any section be more/less detailed?
+Balance two costs:
 
-## Decomposition Pattern
+- **Context load** — model-discoverable descriptions occupy every agent turn.
+- **Human cognitive load** — explicitly requested skills must be remembered and invoked by a person.
 
-Before writing one large skill, check whether the workflow really contains multiple layers:
+Cross-agent reality varies: some harnesses support `disable-model-invocation`, some ignore it, and all shared skills still require a valid description. Write a precise “Use when…” description for portable discovery. Use explicit-only metadata only when the target agents support it and the human deliberately accepts reduced discovery; never rely on it as the sole cross-agent control.
 
-- **Workflow skill**: the tool-agnostic task logic or decision process
-- **Wrapper skill**: instructions for a specific tool or engine such as Playwright
-- **Artifact subskill**: a narrow reusable routine such as turning videos into contact sheets
+Completion criterion: each genuine branch has a trigger, and duplicate synonyms do not inflate the description.
 
-Prefer separate skills when the artifact routine is reusable outside the main domain, or when a tool-specific wrapper would otherwise make the broader workflow feel opinionated. Cross-link the skills instead of duplicating long instructions in each one.
+## 2. Design the information hierarchy
 
-## Skill Structure
+Put ordered actions in `SKILL.md`. Keep always-needed rules beside the step they govern. Move branch-only or detailed reference behind a clearly worded context pointer in a sibling Markdown file. Add scripts only for deterministic, repeated operations where generated commands would be less reliable.
 
-```
-skill-name/
-├── SKILL.md           # Main instructions (required)
-├── REFERENCE.md       # Detailed docs (if needed)
-├── EXAMPLES.md        # Usage examples (if needed)
-└── scripts/           # Utility scripts (if needed)
-    └── helper.js
-```
+Split into another skill only when it has an independently useful invocation or reusable workflow. Split by sequence only when visible later steps cause premature completion. Otherwise keep one source of truth.
 
-## SKILL.md Template
+Completion criterion: every linked reference says when to load it, relative paths resolve from the skill directory, and required instructions are not hidden behind optional wording.
 
-```md
+## 3. Write checkable steps
+
+Each step should specify:
+
+1. the action and evidence to gather
+2. relevant branches or failure handling
+3. a **completion criterion** the agent can actually verify
+
+Demand enough legwork to prevent premature completion: “every modified file accounted for” is stronger than “review the changes.” Prefer positive target behavior; reserve prohibitions for hard guardrails and pair them with what to do instead.
+
+## 4. Apply cross-agent structure
+
+Use a lowercase hyphenated directory with `SKILL.md`. Shared skills use the union frontmatter:
+
+```yaml
 ---
 name: skill-name
-description: Brief description of capability. Use when [specific triggers].
+description: What it does. Use when specific trigger conditions occur.
+metadata:
+  short-description: Short human label
+allowed-tools: read,write,bash
 ---
-
-# Skill Name
-
-## Quick start
-
-[Minimal working example]
-
-## Workflows
-
-[Step-by-step processes with checklists for complex tasks]
-
-## Advanced features
-
-[Link to separate files: See [REFERENCE.md](REFERENCE.md)]
 ```
 
-## Description Requirements
+Keep descriptions under 1024 characters. Add references or scripts only when they earn their context pointer. Preserve license and provenance when adapting external material.
 
-The description is **the only thing your agent sees** when deciding which skill to load. It's surfaced in the system prompt alongside all other installed skills. Your agent reads these descriptions and picks the relevant skill based on the user's request.
+## 5. Prune and verify
 
-**Goal**: Give your agent just enough info to know:
+Prune sentence by sentence:
 
-1. What capability this skill provides
-2. When/why to trigger it (specific keywords, contexts, file types)
+- **duplication** — one meaning has multiple homes
+- **sediment** — stale instructions remain after behavior changed
+- **sprawl** — live detail overwhelms the main path
+- **no-op** — a line does not change default agent behavior
 
-**Format**:
+Prefer a strong leading word over repeated explanation. Check name/description validity, frontmatter, links, script executability, examples, completion criteria, and repository-specific audit commands. For this repo, run `audit-shared-skills` and follow repository guidance for visibility links.
 
-- Max 1024 chars
-- Write in third person
-- First sentence: what it does
-- Second sentence: "Use when [specific triggers]"
-
-**Good example**:
-
-```
-Extract text and tables from PDF files, fill forms, merge documents. Use when working with PDF files or when user mentions PDFs, forms, or document extraction.
-```
-
-**Bad example**:
-
-```
-Helps with documents.
-```
-
-The bad example gives your agent no way to distinguish this from other document skills.
-
-## When to Add Scripts
-
-Add utility scripts when:
-
-- Operation is deterministic (validation, formatting)
-- Same code would be generated repeatedly
-- Errors need explicit handling
-
-Scripts save tokens and improve reliability vs generated code.
-
-## When to Split Files
-
-Split into separate files when:
-
-- SKILL.md exceeds 100 lines
-- Content has distinct domains (finance vs sales schemas)
-- Advanced features are rarely needed
-
-Split into separate skills when:
-
-- One skill is mixing a reusable workflow with one particular tool
-- A repeated artifact pattern could help many unrelated domains
-- The "Use when..." trigger would be clearer if each skill had one primary job
-
-## Review Checklist
-
-After drafting, verify:
-
-- [ ] Description includes triggers ("Use when...")
-- [ ] SKILL.md under 100 lines
-- [ ] No time-sensitive info
-- [ ] Consistent terminology
-- [ ] Concrete examples included
-- [ ] References one level deep
+Completion criterion: all branches are reachable, every step has a checkable finish, references resolve one level deep, duplicated guidance is removed, and required audits pass.

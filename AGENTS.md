@@ -4,7 +4,7 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 
 ## Map
 
-<!-- TREE-HASH: a94c941abb8fb4e4aa7c9835dbb301d287468bbb530b72176030c651215c7050 -->
+<!-- TREE-HASH: 0ec0cad4aa821f1ce9eba91d2ccf938b3d3fd5c9b50e1025856bb4f62165b185 -->
 
 <!-- TREE-START -->
 ```
@@ -34,14 +34,18 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 |   |-- skills
 |   |   |-- audit-shared-skills -> ../../shared/skills/audit-shared-skills
 |   |   |-- bootstrap-specs -> ../../shared/skills/bootstrap-specs
+|   |   |-- codebase-design -> ../../shared/skills/codebase-design
+|   |   |-- code-review -> ../../shared/skills/code-review
 |   |   |-- create-agents-md -> ../../shared/skills/create-agents-md
 |   |   |-- create-explainer -> ../../shared/skills/create-explainer
 |   |   |-- create-plan -> ../../shared/skills/create-plan
 |   |   |-- curator -> ../../shared/skills/curator
 |   |   |-- design-md -> ../../shared/skills/design-md
+|   |   |-- diagnosing-bugs -> ../../shared/skills/diagnosing-bugs
 |   |   |-- em-train -> ../../shared/skills/em-train
 |   |   |-- gameplay-asset-imagegen -> ../../shared/skills/gameplay-asset-imagegen
 |   |   |-- grill-me -> ../../shared/skills/grill-me
+|   |   |-- handoff -> ../../shared/skills/handoff
 |   |   |-- herdr -> ../../shared/skills/herdr
 |   |   |-- image-comparison-judge -> ../../shared/skills/image-comparison-judge
 |   |   |-- image-diff-describer -> ../../shared/skills/image-diff-describer
@@ -51,6 +55,8 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 |   |   |-- playwright-visual-qa -> ../../shared/skills/playwright-visual-qa
 |   |   |-- prototype -> ../../shared/skills/prototype
 |   |   |-- ralph -> ../../shared/skills/ralph
+|   |   |-- research -> ../../shared/skills/research
+|   |   |-- resolving-merge-conflicts -> ../../shared/skills/resolving-merge-conflicts
 |   |   |-- tdd -> ../../shared/skills/tdd
 |   |   |-- test-quality-verifier -> ../../shared/skills/test-quality-verifier
 |   |   |-- tmux-agent-orchestration -> ../../shared/skills/tmux-agent-orchestration
@@ -64,6 +70,8 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 |   `-- skills
 |       |-- audit-shared-skills
 |       |-- bootstrap-specs
+|       |-- codebase-design
+|       |-- code-review
 |       |-- create-agents-md
 |       |   `-- scripts
 |       |-- create-explainer
@@ -71,10 +79,12 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 |       |-- create-plan
 |       |-- curator
 |       |-- design-md
+|       |-- diagnosing-bugs
 |       |-- em-train
 |       |   `-- scripts
 |       |-- gameplay-asset-imagegen
 |       |-- grill-me
+|       |-- handoff
 |       |-- herdr
 |       |-- image-comparison-judge
 |       |-- image-diff-describer
@@ -86,6 +96,8 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 |       |-- prototype
 |       |-- ralph
 |       |   `-- references
+|       |-- research
+|       |-- resolving-merge-conflicts
 |       |-- tdd
 |       |-- test-quality-verifier
 |       |-- tmux-agent-orchestration
