@@ -149,8 +149,8 @@ The sequence follows WF-007: durable decisions, authoring owner, correctness rep
 | `SK-005` | skill | `playwright` | move detail to Reference | SK-001, MG-002 | verified |
 | `SK-006` | skill | `ralph` | simplify inline | SK-001 | verified |
 | `SK-007` | skill | `create-explainer` | simplify inline | SK-001 | verified |
-| `SK-008` | skill | `test-quality-verifier` | retain substance; clarify routing | SK-001 | queued |
-| `SK-009` | skill | `ubiquitous-language` | simplify inline | SK-001, MG-001 | queued |
+| `SK-008` | skill | `test-quality-verifier` | retain substance; clarify routing | SK-001 | claimed |
+| `SK-009` | skill | `ubiquitous-language` | simplify inline | SK-001, MG-001 | claimed |
 | `SK-010` | skill | `update-specs` | retain substance; repair executable/ownership contract | SK-001, MG-001 | queued |
 | `SK-011` | skill | `prototype` | simplify inline | SK-001 | queued |
 | `SK-012` | skill | `audit-shared-skills` | simplify inline; remove unused Info severity | SK-001 | queued |
@@ -199,4 +199,4 @@ The final catalog gate additionally checks all 33 original skills, the proposal-
 
 `MG-001` revision 2, `MG-002` revision 1, and SK-001 through SK-005 are verified. Parallel mode is active.
 
-`MG-001` revision 2, `MG-002` revision 1, and SK-001 through SK-007 are verified. The next verified-blocker frontier begins with SK-008 and SK-009; both are unblocked and their target scopes are disjoint. No later production file is authorized without its item-specific exact proposal in `proposal-ready` state.
+`MG-001` revision 2, `MG-002` revision 1, and SK-001 through SK-007 are verified. SK-008 and SK-009 are claimed as the active pair; both are unblocked, their target/support scopes are disjoint, and neither owns behavior needed to decide the other. No later production file is authorized without its item-specific exact proposal in `proposal-ready` state.
