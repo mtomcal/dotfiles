@@ -25,7 +25,7 @@ Match the project's existing conventions for tooling — don't add a new package
 
 ### 3. Isolate the logic in a portable module
 
-Put the actual logic — the bit that's answering the question — behind a small, pure interface that could be lifted out and dropped into the real codebase later. The TUI around it is throwaway; the logic module shouldn't be.
+Put the actual logic—the bit answering the question—behind a small, pure interface, with the throwaway TUI around it. This separation makes the idea and useful code easy to evaluate for deliberate absorption later, but the logic module remains prototype code until it passes normal production implementation and verification.
 
 The right shape depends on the question:
 
@@ -36,7 +36,7 @@ The right shape depends on the question:
 
 Pick whichever shape best fits the question being asked, *not* whichever is easiest to wire to a TUI. Keep it pure: no I/O, no terminal code, no `console.log` for control flow. The TUI imports it and calls into it; nothing flows the other direction.
 
-This is what makes the prototype useful past its own lifetime. When the question's been answered, the validated reducer / machine / function set can be lifted into the real module — the TUI shell gets deleted.
+This separation makes the prototype's evidence useful past its own lifetime. When the question is answered, delete the TUI shell. Delete the logic by default too; deliberately absorb any useful portion only through the host repository's normal production implementation and verification.
 
 ### 4. Build the smallest TUI that exposes the state
 
@@ -58,9 +58,9 @@ The whole frame should fit on one screen.
 
 ### 5. Make it runnable in one command
 
-Add a script to the project's existing task runner (`package.json` scripts, `Makefile`, `justfile`, `pyproject.toml`). The user should run `pnpm run ` or equivalent — never need to remember a path.
+Add a script to the project's existing task runner (`package.json` scripts, `Makefile`, `justfile`, `pyproject.toml`) and give the user its exact one-command invocation so they never need to remember a source path.
 
-If the host project has no task runner, just put the command at the top of the prototype's README.
+If the host project has no task runner, put one exact direct command at the top of the prototype's README. Do not add a runtime or task runner only for the prototype.
 
 ### 6. Hand it over
 
@@ -68,7 +68,7 @@ Give the user the run command. They'll drive it themselves; the interesting mome
 
 ### 7. Capture the answer
 
-When the prototype has done its job, the answer to the question is the only thing worth keeping. If the user is around, ask what it taught them. If not, leave a `NOTES.md` next to the prototype so the answer can be filled in (or filled in by you, if you've watched the session) before the prototype gets deleted.
+When the prototype has done its job, capture the answer before cleanup. If the user is around, ask what it taught them. If not, leave a `NOTES.md` next to the prototype so the question, verdict, evidence, and implications can be filled in (or fill them in if you observed the session). Then follow the router's delete-by-default or deliberate-absorption contract.
 
 ## Anti-patterns
 
@@ -76,4 +76,4 @@ When the prototype has done its job, the answer to the question is the only thin
 - **Don't wire it to the real database.** Use an in-memory store unless the question is specifically about persistence.
 - **Don't generalise.** No "what if we wanted to support X later." The prototype answers one question.
 - **Don't blur the logic and the TUI together.** If the reducer / state machine references `console.log`, prompts, or terminal escape codes, it's no longer portable. Keep the TUI as a thin shell over a pure module.
-- **Don't ship the TUI shell into production.** The shell is optimised for being driven by hand from a terminal. The logic module behind it is the bit worth keeping.
+- **Don't ship prototype code as production code.** Delete the hand-driven TUI shell. Pure logic may be worth deliberately absorbing, but only through normal production implementation and verification.

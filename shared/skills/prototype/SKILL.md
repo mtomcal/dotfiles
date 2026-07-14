@@ -8,26 +8,46 @@ allowed-tools: read,write,edit,bash
 
 # Prototype
 
-A prototype is **throwaway code that answers a question**. The question decides the shape.
+## Language Definitions
 
-## Pick a branch
+- **Prototype** — throwaway reaction surface answering one design question.
+- **Logic prototype** — small terminal artifact testing state or business rules.
+- **UI variant** — one intentionally distinct visual approach presented alongside alternatives.
+- **Durable answer** — retained question, verdict, evidence, and implications.
+- **Absorb** — deliberately promote useful code through normal production implementation and verification; prototype code remains throwaway by default.
 
-Identify which question is being answered — from the user's prompt, the surrounding code, or by asking if the user is around:
+## Workflow
 
-- **"Does this logic / state model feel right?"** → [LOGIC.md](LOGIC.md). Build a tiny interactive terminal app that pushes the state machine through cases that are hard to reason about on paper.
-- **"What should this look like?"** → [UI.md](UI.md). Generate several radically different UI variations on a single route, switchable via a URL search param and a floating bottom bar.
+### 1. Route by the question
 
-The two branches produce very different artifacts — getting this wrong wastes the whole prototype. If the question is genuinely ambiguous and the user isn't reachable, default to whichever branch better matches the surrounding code (a backend module → logic; a page or component → UI) and state the assumption at the top of the prototype.
+Identify the question from the prompt or surrounding code, asking the user when available:
 
-## Rules that apply to both
+- For “Does this logic or state model feel right?”, choose the logic branch for an interactive terminal app that exercises business rules, state transitions, or data shape.
+- For “What should this look like?”, choose the UI branch for several radically different visual approaches on one route.
 
-1. **Throwaway from day one, and clearly marked as such.** Locate the prototype code close to where it will actually be used (next to the module or page it's prototyping for) so context is obvious — but name it so a casual reader can see it's a prototype, not production. For throwaway UI routes, obey whatever routing convention the project already uses; don't invent a new top-level structure.
-2. **One command to run.** Whatever the project's existing task runner supports — `pnpm `, `python `, `bun `, etc. The user must be able to start it without thinking.
-3. **No persistence by default.** State lives in memory. Persistence is the thing the prototype is _checking_, not something it should depend on. If the question explicitly involves a database, hit a scratch DB or a local file with a clear "PROTOTYPE — wipe me" name.
-4. **Skip the polish.** No tests, no error handling beyond what makes the prototype _runnable_, no abstractions. The point is to learn something fast and then delete it.
-5. **Surface the state.** After every action (logic) or on every variant switch (UI), print or render the full relevant state so the user can see what changed.
-6. **Delete or absorb when done.** First capture the validated conclusion in a durable artifact the repository already uses (spec, plan, issue, decision note, or implementation). Then delete the prototype or absorb the useful code into production — don't leave throwaway code rotting in the repo.
+Load only the selected branch document from Reference before building. If the question remains genuinely ambiguous and the user is unavailable, infer from surrounding code—backend module means logic; page or component means UI—and state that assumption at the top of the prototype. The branch is selected only when its question and any inferred assumption are explicit.
 
-## When done
+### 2. Build a runnable reaction surface
 
-The answer is the default artifact: record the question, verdict, evidence, and implications, then remove or absorb the prototype. Preserve prototype code on a clearly named throwaway branch only when it contains primary evidence that prose, screenshots, or the resulting implementation cannot adequately capture. If a branch is justified, keep it out of the main line and place a durable pointer to it in the owning artifact.
+Apply these rules while executing the selected branch:
+
+1. Mark the code as a prototype and locate it near the module or page it explores. Follow existing routing conventions rather than inventing a top-level structure.
+2. Add or document and report one exact run command supported by the host project's existing task runner or runtime. Do not introduce a package manager or runtime only for the prototype.
+3. Keep state in memory by default. If persistence is the question, use a scratch database or a disposable local file clearly named `PROTOTYPE — wipe me`, never the production database.
+4. Optimize for learning: one question, no tests, no speculative generalization, no production polish, and no error handling or abstraction beyond what makes the prototype runnable.
+5. Surface the full relevant state after every logic action or UI variant switch.
+
+This step is complete when the reported command runs the selected branch and the user can observe the relevant state while testing the stated question.
+
+### 3. Capture the answer and clean up
+
+Before cleanup, record the durable answer in an artifact the repository already uses, such as a spec, plan, issue, decision note, or resulting implementation. It must identify the question, verdict, evidence, and implications.
+
+Delete the prototype by default. Absorb useful code only as a deliberate production implementation that receives the repository's normal verification; neither a selected UI variant nor portable pure logic is production-ready merely because the prototype validated its idea.
+
+Preserve source code on a clearly named throwaway branch only when it contains primary evidence that prose, screenshots, or the resulting implementation cannot adequately retain. Keep that branch outside the main line and place a durable pointer to it in the owning artifact. Completion requires a durable answer and no unowned prototype code left on the main line.
+
+## Reference
+
+- For state, business-rule, data-shape, or API-feel questions, load [LOGIC.md](LOGIC.md) to build and hand over the one-command terminal reaction surface.
+- For appearance, layout, or visual-design questions, load [UI.md](UI.md) to build, compare, and retire the routed UI variants.
