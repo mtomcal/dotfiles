@@ -1,7 +1,7 @@
 ---
 id: SK-012
 target: audit-shared-skills
-status: ready-to-integrate
+status: verified
 blocked-by: [SK-001]
 source-verdict: simplify inline
 ---
@@ -119,6 +119,13 @@ No support file, script, spec, notice, test, deployment file, or visibility link
 - `git diff --check`: PASS. `bash tests/run.sh`: PASS (2 shell files, 12 tests).
 - Resulting target SHA-256: `87559d8879345a2e152f800a463c48b6fed44ea33b4cba7f98749b2b7ab2c52f`.
 - Residual risk: a host without a YAML-aware parser cannot complete the audit. The skill now reports that condition as blocked rather than using an unsafe regex or claiming a result; it does not impose a new cross-agent parser dependency.
+
+## Integrated verification
+
+- Coordinator verification timestamp: `2026-07-14T17:13:42+00:00`.
+- Exact two-file scope, complete skill review, canonical shape, confirmed severities, rejected Info removal, exhaustive YAML-aware discovery/parser gates, schema checks, approval-before-fix, clean-rerun contract, and narrow frontmatter-only ownership passed independent review.
+- The current 33-skill catalog parsed with zero schema/description findings; repository shell tests passed 12/12; `git diff --check` and Pi visibility passed.
+- `pi/settings.json` retained its recorded content and diff hashes and remained unstaged. YAML-parser availability remains the documented blocked-host risk.
 
 ## Explicit exclusions
 
