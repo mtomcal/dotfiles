@@ -1,420 +1,218 @@
 # EM Train Reference
 
-## Intake interview
+This file contains only training-owned schemas, setup, guidance, educational review, reporting, and cleanup. The main Workflow owns when each section must load. `create-explainer` owns explainer production, factual review, serving, and browser validation; `code-review` owns generic fixed-point Standards/Spec review.
 
-Run this at the start of every session. Borrowed from `create-explainer` — do not re-invent.
+## Ticket and setup
 
-### Q1: Goal
-**"What do you want to get out of this session?"**
-- Examples: interview prep, building fluency in Python/TypeScript, understanding agent patterns, learning FastAPI, just exploring
-- This sets the EM's framing for the entire session
+### Ticket schema
 
-### Q2: Experience level
-**"What's your experience level with this codebase's tech stack?"**
-- `beginner` — unfamiliar with the primary language or framework
-- `intermediate` — comfortable reading code, can make simple changes
-- `advanced` — could modify most features independently
-
-### Q3: Specialty / role
-**"What's your primary role or specialty?"**
-- Examples: backend, frontend, full-stack, SRE, product, student
-- Used to choose analogies and which systems to emphasize in the explainer
-
-### Q4: Time budget
-**"How much time do you have for this session?"**
-- `< 30 min` — micro ticket (single function, one test)
-- `30–90 min` — medium ticket (new tool with tests)
-- `> 90 min` or "as long as it takes" — full feature slice
-
-### Q5: Prior knowledge
-**"Any domain concepts you already understand that I should skip?"**
-- Useful for avoiding redundant explainer sections
-
-### Cross-language mapping
-
-If the user knows language A but the codebase is in B, note this. The `create-explainer` brief will include split-code blocks and syntax reference cards. See the [create-explainer persona mapping](<skill:create-explainer>) for details.
-
----
-
-## Ticket generation
-
-### Step 1: Explore the codebase
-
-Find planning artifacts. Do not hardcode paths — explore:
-
-```bash
-# Find roadmap, specs, plans
-fd -t f -g '*roadmap*' -g '*plan*' -g '*spec*' -g '*prd*' -g '*ARCHITECTURE*' -g '*AGENTS*'
-
-# Check recent work
-git log --oneline -15
-
-# Check for issues, TODOs
-rg -l 'TODO|FIXME|HACK|XXX' --type-add 'code:*.{py,ts,tsx}' -t code | head -20
-
-# Understand project structure
-ls docs/ 2>/dev/null
-ls specs/ 2>/dev/null
-```
-
-### Step 2: Read relevant artifacts
-
-Read the artifacts found above. Build a mental model of:
-- What the project is building overall
-- What phase/phase of development it's in
-- What's recently been done (git log)
-- What's explicitly planned next (roadmap, spec gaps)
-
-### Step 3: Have the conversation
-
-Present your findings to the user:
-
-> "Here's what I see the project needs next. There's [big feature] planned, but that's pretty involved. There's also [medium slice] and [small slice]. Given you're at [level] in [language], I'd suggest [small slice]. Here's why it matters for the project..."
-
-Negotiate scope until the user agrees on a ticket they're excited about and can realistically finish.
-
-### Step 4: Generate the ticket
-
-The ticket includes:
+Write `ticket.md` with this contract:
 
 ```markdown
+# [Ticket title]
+
 ## Story
-[A narrative framing — why this matters in the game world / product]
+[Why this real repository change matters to its users or maintainers.]
 
 ## What you need to do
-[Clear description of the implementation task]
+[Clear implementation task without an implementation recipe.]
 
 ## Acceptance criteria
-- [ ] Criterion 1 (testable, specific)
-- [ ] Criterion 2
-- [ ] Criterion 3
+- [ ] [Specific, observable behavior]
+- [ ] [Specific test or failure behavior]
+- [ ] [Relevant compatibility or documentation behavior]
 
 ## Files you'll likely touch
-- `path/to/file.py` — what it does
-- `path/to/test_file.py` — what to test
+- `path/to/source` — responsibility, not the answer
+- `path/to/test` — behavior surface to verify
 
 ## Tips
-- [Key conventions to follow]
-- [Gotchas to watch for]
-
-⚠️ **No spoilers in Tips.** Do not give away exact method names, async patterns, or specific API calls the user needs to discover. Point to patterns in existing code instead.
+- [Convention and an existing fixed-point file where the learner can study it]
+- [Gotcha phrased as a question or investigation route]
 ```
 
-### Step 5: Generate the explainer brief
+Tips and file notes must satisfy the no-spoiler rule. They may point to analogous code that existed at the fixed point, but must not reveal the ticket's exact method call, input schema names/types, return keys/shape, async strategy, registry entry, or copy-ready implementation. Acceptance criteria state behavior rather than prescribing internals unless the repository contract requires them.
 
-Build a self-contained HTML explainer following the `create-explainer` skill's workflow. This goes into the temp skill directory alongside the guidance skill.
+### Joint scope checkpoint
 
-#### 5a. Discover source files
+After negotiating the ticket and routing the explainer persona/tier, present one checkpoint that satisfies both EM Train and Create Explainer:
 
-Read the actual source files the user will need. Build a factual model:
-- Entry points: the tools, models, and patterns they'll need
-- Trace the flow: how existing tools work end-to-end
-- Read specs: pull from `specs/` for authoritative behavior
-- Record the path: note every file, key function, and what truth it owns
+```text
+Training mission: [goal and role]
+Learner: [level, specialty, prior knowledge]
+Ticket: [real project task and why it matters]
+Acceptance: [testable criteria summary]
+Likely files: [paths/responsibilities]
+Out of scope: [boundaries and forbidden solution detail]
+Time fit: [learner budget and rationale]
+Explainer: [tier, concept, planned sections, reading time]
+No-spoiler boundary: examples come only from fixed-point code and do not solve the ticket.
 
-#### 5b. Propose scope (human checkpoint)
-
-Present a concise summary to the user:
-
-```
-I'll build a [Condensed | Guided | Full Lab] explainer for "[concept]" targeting a [level] [specialty].
-
-Planned sections:
-1. [section name]
-2. [section name]
-...
-
-Time estimate: [X] minutes of your reading time.
-Proceed? (yes / adjust / cancel)
+Proceed, adjust, or cancel?
 ```
 
-Wait for user confirmation.
+Treat `proceed` as approval for this exact ticket and explainer scope. Revise this same checkpoint after `adjust`; stop on `cancel`. Do not create branch/runtime artifacts or begin Create Explainer source mapping before approval, and do not ask for a second scope approval afterward.
 
-#### 5c. Build the HTML explainer
+### Branch setup
 
-Use the lab templates from `create-explainer/lab/` for interactive components:
+Require a suitable starting tree. If unrelated tracked or untracked work could enter the training branch, ask the user to resolve it or explicitly identify what remains outside session ownership; never stash, discard, or absorb it silently.
 
-| Context | Template to use |
-|---------|----------------|
-| Cross-language (user knows language A, codebase is B) | [`syntax-reference-cards.html`](../create-explainer/lab/syntax-reference-cards.html) — 8-12 collapsible side-by-side cards |
-| User needs to understand codebase patterns | [`architecture-map.html`](../create-explainer/lab/architecture-map.html) |
-| Need to verify understanding | [`quiz.html`](../create-explainer/lab/quiz.html) — 5-10 questions |
-| Need to explain a flow | [`toggleable-state-machine.html`](../create-explainer/lab/toggleable-state-machine.html) |
-| Interactive decision training | [`decision-game.html`](../create-explainer/lab/decision-game.html) |
-
-Key patterns from create-explainer:
-- **Self-contained**: Single `index.html` (Condensed) or `index.html` + `main.js` (Guided/Full Lab)
-- **Theme**: Dark theme with `--bg: #0b1020`, `--panel: #111a33`, `--accent: #6ee7ff`
-- **Split-code blocks**: Side-by-side Python ↔ JS with `.split-code` CSS grid, collapses at 700px
-- **No external deps**: All CSS inline, all JS in `main.js`, no CDN
-- **Syntax coloring**: Use `.token-kw`, `.token-fn`, `.token-str`, `.token-cmt`, etc. classes
-- **Cross-language mapping**: Heavy side-by-side code blocks. Python ↔ JS syntax reference cards. Annotate each Python concept with JS analogy.
-
-**No-spoiler rule**: The explainer teaches patterns from EXISTING code — never from the user's ticket. Every code example must come from a file that already exists in the codebase, not from the tool/feature the user is tasked to build. The "Your Ticket" section may show class skeletons (field declarations, method signatures up to `pass`) but must avoid:
-  - Exact return dict structures with key names
-  - Exact parameter names and types for input schemas
-  - The specific method call that solves the core problem
-  - Copy-paste-ready code blocks for the registry
-
-Refer to the `create-explainer` lab README for guidance on specific patterns: `../create-explainer/lab/README.md`
-
-#### 5d. Write the files
-
-Write the explainer to `.pi/skills/em-train-guide/explainer.html` (and optionally `explainer.js` for interactivity).
-
-For the `index.html` (Condensed/Guided) or as `explainer.html`:
-- Hero: one-sentence summary + three-pillar overview
-- TOC with links to sections
-- Section cards with numbered headings
-- Split-code blocks for cross-language patterns
-- Code blocks from actual source files (verified paths exist)
-- Callouts for key differences
-
-For `explainer.js` (Guided/Full Lab):
-- Syntax card toggle logic
-- Quiz logic
-- Interactive components from lab templates
-
-#### 5e. Self-fix
-
-Read through the full explainer. Check:
-- File paths in code blocks actually exist
-- Syntax coloring is applied correctly
-- Interactive element IDs match between HTML and JS
-- Split-code collapses at 700px
-- No placeholder text or TODO markers
-
-**Spoiler checklist** — flag any of these:
-  - The "Your Ticket" section contains code the user could copy-paste directly into their implementation
-  - A code block shows the exact return shape or parameter names the user's ticket needs
-  - The explainer shows the specific method call on `event_bus`, `game_state`, or other injected dependency that solves the core logic
-  - The ticket's Tips section (in `ticket.md`) gives away exact method names, async patterns, or implementation strategies
-  - If you find spoilers, replace them with `pass` + a comment like `# ← implement this` or a hint that points to the ticket AC
-
-#### 5f. Serve (optional — for Full Lab only)
+Generate the branch slug with installed shell tools rather than assuming a `slugify` command:
 
 ```bash
-cd .pi/skills/em-train-guide && python3 -m http.server 3456 --bind 0.0.0.0
+TRAINING_FIXED_POINT="$(git rev-parse --verify HEAD^{commit})"
+TICKET_SLUG="$(printf '%s' "$TICKET_TITLE" \
+  | tr '[:upper:]' '[:lower:]' \
+  | tr -cs '[:alnum:]' '-' \
+  | sed 's/^-//; s/-$//')"
+BRANCH_NAME="train/em-$(date +%Y%m%d)-${TICKET_SLUG}"
+
+test -n "$TICKET_SLUG"
+if git show-ref --verify --quiet "refs/heads/$BRANCH_NAME"; then
+  printf 'Training branch already exists: %s\n' "$BRANCH_NAME" >&2
+  exit 1
+fi
+git switch -c "$BRANCH_NAME"
 ```
 
-#### 5g. Reviewer pass (optional — for Guided/Full Lab with interactivity)
+Verify the checked-out branch and record the fixed point, branch name, creation result, and session ownership in temporary session state. The fixed point remains the review baseline even as the user commits.
 
-Delegate a reviewer sub-agent to verify factual claims in the explainer match the source code. Fix all CRITICAL findings.
+### Temporary-guide assembly
 
----
+Choose a project-local skill directory supported by the active harness. Verify that the harness discovers its `SKILL.md`; if it has no project discovery location, explicitly load the temporary skill by path. Record the selected path for this session rather than hardcoding another agent's config. The directory is temporary and must not be committed.
 
-## Setup phase
+Assemble:
 
-### Branch creation
-
-```bash
-# Create and switch to training branch
-BRANCH_NAME="train/em-$(date +%Y%m%d)-$(echo '$TICKET_TITLE' | slugify)"
-git checkout -b "$BRANCH_NAME"
+```text
+<temporary-guide>/
+├── SKILL.md            # rendered from scripts/em-guide-template.md
+├── ticket.md           # approved ticket
+├── struggles.md        # temporary learning observations
+└── explainer/
+    ├── index.html      # create-explainer-owned output
+    └── main.js         # only when required by its selected tier
 ```
 
-### Assemble the temp skill directory
+Render the template placeholders `TICKET_TITLE`, `TICKET_SUMMARY`, `LEVEL`, `LANGUAGE`, `PROJECT`, `TRAINING_FIXED_POINT`, `SOURCE_FILES`, and `TEST_FILES`. Source/test paths must exist at the fixed point. Add the exact temporary path to local Git exclusion when needed, with an identifiable session marker, and verify it is absent from `git status` and the review diff. Remove that local exclusion during cleanup.
 
-Create `.pi/skills/em-train-guide/` (or `.em-train-guide/` for non-Pi projects) with:
+Continue the already-approved `create-explainer` workflow with `<temporary-guide>/explainer/` as its caller-owned destination. Do not copy its intake, source mapping, tier, reviewer, server, or browser procedures here. Record its returned artifact/evidence paths, URL, server ownership, and limitations in temporary session state for later cleanup and report evidence.
 
-1. **`SKILL.md`** — the guidance skill (see [template below](#temp-guidance-skill-template))
-2. **`ticket.md`** — the ticket (story, acceptance criteria, files, tips from Step 4)
-3. **`explainer.html`** (and optionally `explainer.js`) — the self-contained HTML explainer from Step 5
+Tell the learner:
 
-The content for SKILL.md comes from the [template below](#temp-guidance-skill-template), with `$TICKET`, `$LANGUAGE`, `$LEVEL`, and `$PROJECT` filled in.
-
-### Guidance for invoking
-
-Tell the user:
-
-> "You're now on branch `$BRANCH_NAME`. I've left a guidance skill and an interactive explainer in `.pi/skills/em-train-guide/`. Open `explainer.html` in your browser for a cross-language reference. Use the guidance skill for API/language questions — it will NOT write the code for you. If you get truly stuck, ask it for an explainer on the blocking concept. When you're done, come back to me and say 'ready for review.'"
-
----
-
-## Review phase
-
-### Step 1: Run CI
-
-```bash
-# Run the appropriate test suite
-make test 2>&1 || true
-# Or for specific component
-cd backend && uv run pytest tests/test_tools/ -v 2>&1 | tail -30
+```text
+You are on [branch]. The ticket is [ticket path]. The reviewed explainer is
+[URL and durable temporary path]. Invoke [guidance skill/path] for language,
+API, convention, or debugging questions. It will not write the solution.
+When your implementation is ready, return with “ready for review.”
 ```
 
-Report results honestly. If tests fail, list them.
+## Guidance behavior
 
-### Step 2: Delegate to review subagents
+`scripts/em-guide-template.md` is the sole guidance-body template. Do not paste a second copy into this Reference. Its rendered skill must:
 
-Send the diff and ticket to review subagents. Use the project's available reviewers:
+- identify the learner level, language/ecosystem, project, ticket, and fixed point;
+- answer conceptual language/API questions, explain project conventions, interpret errors, and show analogous code that existed at the fixed point;
+- refuse implementation bodies, ticket-specific answer shapes, exact core calls, registry entries, and copy-ready solutions;
+- ask what the learner tried and which concept blocks them before offering another explanation;
+- route deeper conceptual blockage through `create-explainer` under the same persona, no-spoiler, temporary-destination, factual-review, serve, and browser-validation contract;
+- never edit production implementation files for the learner; and
+- record concise struggle patterns in temporary `struggles.md` for the EM's final report.
 
-- `test-reviewer` — verifies test assertions pass and coverage meets thresholds
-- `quality-reviewer` — checks code structure, conventions, naming
-- `security-reviewer` — checks for new attack surfaces
+Before handing over, test one allowed question and one prohibited “write it for me” question against the rendered instructions. The allowed route must teach from fixed-point evidence; the prohibited route must ask for the learner's attempt and refuse the answer.
 
-Provide each with:
-- The ticket (story + AC)
-- The diff / files changed
-- The user's experience level (so they calibrate feedback depth)
+## Educational review
 
-### Step 3: Curate feedback
+### Evidence collection
 
-Read all review output. Select **2-3 items** that:
-1. Would teach the user the most about the language/codebase
-2. Are actionable and concrete
-3. Won't overwhelm someone at their level
+At each `ready for review`, rediscover the repository's actual CI commands from `AGENTS.md`, contributor guidance, CI workflow configuration, package scripts, or equivalent authority. Run those entry points without masking status. Record command, exit code, failed check/test names, and material output. If credentials, network, runner, or infrastructure prevent a check, label it unavailable or infrastructure-failed; do not convert it to a pass.
 
-Present to the user:
+Run `code-review` over the immutable training fixed point and current branch/worktree. Supply the approved ticket as the Spec authority. Retain its separate Standards and Spec results, but do not interpret either as educational approval and do not ask generic reviewers to calibrate pedagogy.
 
-> "Nice work! Tests [pass/fail]. Here are the 2-3 things I'd focus on improving:
->
-> 1. ****[specific issue]** — here's why it matters and how to think about it
-> 2. ****[specific issue]**
-> 3. ****[specific issue]**
->
-> Fix these and come back for Round 2."
+The EM then reviews the acceptance criteria, tests, diff, CI evidence, generic findings, and learner decisions. Select two or three findings using this schema:
 
-**The EM never says "looks good" on Round 1.** Always find at least one improvement.
+```markdown
+### [Finding title] — [blocking | non-blocking]
+- Evidence: [command result, path/symbol, diff hunk, criterion, or observed choice]
+- Why it matters: [language/ecosystem or codebase lesson calibrated to the learner]
+- Investigation: [question, existing fixed-point example, test to write/read, or concept to examine]
+- Done when: [observable revision evidence]
+```
 
-### Step 4: Round 2
+Prefer the findings with the highest learning value that the learner can act on now. Do not overwhelm them with every review note. Do not provide the implementation in `Investigation`.
 
-User comes back. Re-run CI + re-review. If fixes are good:
+### Round rules
 
-> "Approved! Here's what I'd keep an eye on going forward: [1-2 parting observations]."
+- A review round is the learner's submission, real CI, generic review, EM educational findings, and learner revision.
+- Run at most two rounds total.
+- Round 1 always includes two or three findings and at least one concrete improvement. If there is no correctness defect, choose an evidence-backed test-quality, clarity, convention, or design-tradeoff improvement; never fabricate a failure.
+- Round 2 again reports two or three educational findings or takeaways with blocking status. Approval requires all acceptance criteria and required real CI to pass and no unresolved blocking finding.
+- When Round 2 requests a final revision, run real CI and targeted checks for those findings afterward. This is final verification, not a third feedback round. Report pass or unresolved failure and stop.
 
-If fixes introduced issues, give one more targeted round. Max 3 rounds total.
+A learner can finish with valuable learning and an unsuccessful implementation. Keep those outcomes distinct and honest.
 
----
+## Report and cleanup
 
-## Cleanup phase
+### Session report
 
-### Generate the summary report
-
-Write a markdown report to the project root:
+Write the report to a user-approved durable repository location or the repository's existing report convention. Do not silently invent a tracked root artifact when the repository has another convention. Use:
 
 ```markdown
 # EM Train — Session Report
 
-## Date
-[date]
-
-## Ticket
-[Ticket title and AC summary]
+## Session
+- Date: [date]
+- Goal / role / level: [intake summary]
+- Ticket: [title and acceptance summary]
+- Branch: `[branch]`
+- Fixed point: `[full commit]`
 
 ## What you built
-[Brief description of what was implemented]
+[Implemented behavior and final acceptance status.]
+
+## CI and review evidence
+### Round 1
+- CI: [commands, status, material failures]
+- Generic review: [separate Standards and Spec summary]
+- Educational findings: [2–3 titles and disposition]
+
+### Round 2
+[Same fields, or “not needed” with reason.]
+
+### Final verification
+[Commands/status after a Round-2 revision, or not applicable.]
 
 ## What you learned
-- [Key takeaway 1]
-- [Key takeaway 2]
-- [Key takeaway 3]
+- [Key lesson 1]
+- [Key lesson 2]
+- [Key lesson 3, when material]
 
 ## Things to remember
-- [Gotcha or pattern to recall next time]
-- [Language quirk you encountered]
-- [Convention you learned]
+- [Language/ecosystem pattern]
+- [Codebase convention]
+- [Struggle pattern and retrieval cue]
 
-## Next steps
-Given what you worked on and where you struggled, here's a good next ticket:
+## Unresolved failures or limitations
+- [Failed/unavailable checks, blocking findings, or “None”]
 
-> [Suggested next ticket, mapped to what's hardest right now]
+## Suggested next ticket
+[One real next slice tied to the learner's current hardest useful edge.]
 
-## Branch
-`[branch name]` — still on your machine. Merge to main if you want to make it real.
+## Cleanup and branch choice
+- Temporary guide/explainer runtime: [removed/stopped status]
+- Branch choice: [merge | leave as learning artifact | awaiting user]
 ```
 
-### Clean up the temp skill
+Use the temporary `struggles.md` only as evidence for generalized learning patterns; do not copy sensitive prompts or session history into the report.
 
-Remove the temporary guidance skill file:
+### Cleanup checklist
 
-```bash
-rm -rf .pi/skills/em-train-guide .em-train-guide.md
-```
+1. Confirm the report contains all evidence needed before deleting temporary files.
+2. Close the task-owned browser and stop the exact Create Explainer server using temporary session state. Do not persist its PID or port in the report or another committed file.
+3. Remove the temporary guide directory, explainer, ticket copy, struggles file, screenshots, snapshots, and incidental validation artifacts owned by this session.
+4. Remove the exact temporary `.git/info/exclude` marker/entry if one was added; preserve unrelated local exclusions.
+5. Verify no temporary guide path appears in `git status`, the branch diff, active harness discovery, or a live task-owned process.
+6. Ask the user to choose:
+   - **merge** — integrate through the repository's normal verified delivery path; or
+   - **leave** — keep the training branch as a learning artifact.
 
-### Offer merge
-
-> "Your training branch is still there if you want to keep the work. Want me to merge it to main, or leave it as a learning artifact?"
-
----
-
-## Temp guidance skill template
-
-This is the content written to `.pi/skills/em-train-guide/SKILL.md` (or `.em-train-guide.md` for non-Pi projects).
-
-Fill in placeholders:
-- `$TICKET_TITLE`, `$TICKET_SUMMARY`, `$LEVEL`, `$LANGUAGE`, `$PROJECT` — from the intake interview and ticket
-- `$SOURCE_FILES` — actual file paths from the codebase the user needs to read (e.g. `backend/src/agentic_rpg/tools/character.py`)
-- `$TEST_FILES` — actual test file paths (e.g. `backend/tests/test_tools/test_character.py`)
-
-```markdown
----
-name: em-train-guide
-description: Temporary guidance skill for [TICKET_TITLE]. Answers API/language questions only. Does NOT provide implementation solutions. Use when working on this training ticket and you need to understand a library, API, language syntax, or codebase convention.
----
-
-# EM Train Guide — [TICKET_TITLE]
-
-You are a senior engineer guiding a [LEVEL] [LANGUAGE] developer through a training ticket.
-
-## The ticket
-[TICKET_TITLE]
-[1-2 line summary of what they're building]
-
-## Your rules
-
-1. **Never write the implementation code for the ticket.** Not a single line. The user must write it themselves.
-2. **Do answer:**
-   - "What methods does this class have?"
-   - "How does async/await work in Python?"
-   - "What's the signature of this function?"
-   - "What's the convention for naming tools in this project?"
-   - "Can you show me an example of a similar tool that already exists?" (show existing code from elsewhere in the codebase, NOT their ticket)
-   - "What's the idiomatic way to do X in this language?"
-3. **Do NOT answer:**
-   - "How do I implement the ticket?"
-   - "What should my function body look like?"
-   - "Can you write this for me?"
-4. **When the user asks for something you shouldn't answer:**
-   - First ask: "What part are you stuck on? What have you tried?"
-   - Second ask: "Open the interactive explainer at `explainer.html` — it covers all the patterns."
-   - Third ask: "Let me generate an explainer for the concept blocking you."
-5. **Keep a list of language patterns the user struggles with.** At the end, report to the EM for the summary report.
-
-## Reference files (in this directory)
-
-- [ticket.md](ticket.md) — the ticket with story, AC, files, tips
-- [explainer.html](explainer.html) — interactive cross-language reference with syntax cards and quiz
-
-## Reference files (codebase)
-
-- `$SOURCE_FILES` — key implementation patterns
-- `$TEST_FILES` — test patterns to follow
-```
-
----
-
-## Session lifecycle
-
-```
-┌─────────────────────────────────────────────────────┐
-│ 1. INTAKE ──── Interview (level, goal, budget)      │
-│ 2. EXPLORE ─── Read codebase, roadmap, specs         │
-│ 3. SCOPE ───── Conversation → ticket negotiation     │
-│ 4. TICKET ──── Story + AC + files + tips             │
-│ 5. EXPLAINER ── HTML explainer (create-explainer)   │
-│    ├─ 5a. Discover source files                      │
-│    ├─ 5b. Propose scope (human checkpoint)           │
-│    ├─ 5c. Build HTML with lab templates              │
-│    ├─ 5d. Write explainer.html + explainer.js        │
-│    ├─ 5e. Self-fix                                   │
-│    ├─ 5f. Serve (Full Lab only)                      │
-│    └─ 5g. Reviewer pass (Guided/Full Lab)            │
-│ 6. SETUP ──── Branch + skill dir (SKILL.md,          │
-│               ticket.md, explainer.html)             │
-│ 7. DOING ──── User works (guidance skill active)     │
-│ 8. REVIEW ─── CI + subagents → curated feedback      │
-│ 9. ITERATE ── Fix (max 2 rounds)                    │
-│ 10. REPORT ── Summary + next steps                   │
-│ 11. CLEANUP ─ Remove skill dir, offer merge          │
-└─────────────────────────────────────────────────────┘
-```
+The session does not merge on the learner's behalf without that explicit choice. If the branch was not created by this session, report that ownership mismatch and do not claim disposition authority.
