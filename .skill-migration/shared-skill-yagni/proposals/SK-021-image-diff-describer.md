@@ -1,7 +1,7 @@
 ---
 id: SK-021
 target: image-diff-describer
-status: ready-to-integrate
+status: verified
 blocked-by: [SK-001]
 source-verdict: Retain substance while adding confirmed language and colocating the no-verdict output contract with production
 ---
@@ -111,6 +111,8 @@ Worker verification completed at `2026-07-14T17:53:05+00:00`.
 - Residual risk: a future project-local wrapper may have its own transport interface that must be discovered at invocation time; this repository has no wrapper whose help can be checked now. The retained rule requires that wrapper to preserve the same no-criteria brief. `Highest-salience` may be misread as severity, but the adjacent prohibition and artifact definition explicitly disallow severity classification.
 
 The worker result is `ready-to-integrate`; this record does not claim coordinator integration, coordinator verification, or catalog-wide VG-001 completion.
+
+Coordinator integration verification completed at `2026-07-14T17:58:36+00:00` against integrated commits `694b344` and `bdfabaf`: the complete target and proposal were reread; all four definitions, neutral ownership, wrapper/delegate/in-process routes, withheld criteria, observable-only comparison, ambiguity handling, five output fields, no-verdict/severity/recommendation rules, frontmatter identity, Pi visibility, repo-local provenance, and exact scope passed independent checks. The YAML-aware audit accounted for all 33 skills with zero errors and warnings, `git diff --check` passed, and `bash tests/run.sh` passed all 12 tests. The protected `pi/settings.json` content and diff hashes remained `7d3f4713d7239e8cda3f75597a55f1767fecdf7964324630e4e74dc686d12e05` and `8298a9063e3ebf2988000d176057a41c31cf20c10bbabe92fb57d47f9f2738d5`. Residual risks remain the runtime-specific interface of any future wrapper and possible misreading of highest-salience as severity, explicitly bounded by the no-severity contract.
 
 ## Explicit exclusions
 

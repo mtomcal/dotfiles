@@ -162,7 +162,7 @@ The sequence follows WF-007: durable decisions, authoring owner, correctness rep
 | `SK-018` | skill | `grill-me` | retain substance | SK-001, MG-002 | verified |
 | `SK-019` | skill | `handoff` | retain substance | SK-001 | verified |
 | `SK-020` | skill | `image-comparison-judge` | simplify inline | SK-001 | verified |
-| `SK-021` | skill | `image-diff-describer` | retain substance | SK-001 | integrating |
+| `SK-021` | skill | `image-diff-describer` | retain substance | SK-001 | verified |
 | `SK-022` | skill | `improve-codebase-architecture` | simplify inline | SK-001, SK-013 | claimed |
 | `SK-023` | skill | `research` | retain substance | SK-001 | queued |
 | `SK-024` | skill | `resolving-merge-conflicts` | retain substance | SK-001 | queued |
@@ -199,4 +199,4 @@ The final catalog gate additionally checks all 33 original skills, the proposal-
 
 `MG-001` revision 2, `MG-002` revision 1, and SK-001 through SK-005 are verified. Parallel mode is active.
 
-`MG-001` revision 2, `MG-002` revision 1, and SK-001 through SK-020 are verified. SK-021 and SK-022 are claimed with disjoint scopes. The remaining verified-blocker frontier contains SK-023, SK-024, SK-025, SK-026, SK-028, SK-030, SK-031, and SK-032; no queued production file is authorized until claimed with an item-specific exact proposal in `proposal-ready` state.
+`MG-001` revision 2, `MG-002` revision 1, and SK-001 through SK-021 are verified. SK-022 remains claimed. The verified-blocker frontier now also includes SK-027, alongside SK-023, SK-024, SK-025, SK-026, SK-028, SK-030, SK-031, and SK-032; no queued production file is authorized until claimed with an item-specific exact proposal in `proposal-ready` state.
