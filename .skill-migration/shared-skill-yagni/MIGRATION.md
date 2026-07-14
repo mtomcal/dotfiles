@@ -175,7 +175,7 @@ The sequence follows WF-007: durable decisions, authoring owner, correctness rep
 | `SK-031` | skill | `curator` | move detail to Reference | SK-001 | verified |
 | `SK-032` | skill | `em-train` | consolidate/delegate | SK-001, SK-007, SK-014 | verified |
 | `NEW-001` | new skill | Generic Git delivery | independently invocable PR/CI/stale-branch owner | SK-001, SK-014, SK-024 | verified |
-| `SK-033` | skill | `tmux-agent-orchestration` | consolidate/delegate | SK-001, NEW-001 | claimed |
+| `SK-033` | skill | `tmux-agent-orchestration` | consolidate/delegate | SK-001, NEW-001 | integrating |
 | `VG-001` | verification | Entire shared catalog | links, commands, support, provenance, behavior ledgers, frontmatter, visibility | MG-002, SK-001–SK-033, NEW-001 | queued |
 
 A cancelled or invalidated item does not satisfy blockers automatically. The coordinator must derive and record a valid replacement route from the authority order or ask the human when the destination itself must change.
