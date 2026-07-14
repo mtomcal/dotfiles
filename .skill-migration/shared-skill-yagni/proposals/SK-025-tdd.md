@@ -1,7 +1,7 @@
 ---
 id: SK-025
 target: tdd
-status: ready-to-integrate
+status: verified
 blocked-by: [SK-001, SK-013]
 source-verdict: simplify inline
 ---
@@ -132,6 +132,8 @@ Worker verification completed at `2026-07-14T18:16:07+00:00` against claim basel
 - Repository checks: PASS. `git diff --check` is clean. `bash tests/run.sh` passes 2 shell files and all 12 tests.
 - Result hashes: `SKILL.md` `e3de3f9aaf3fc12fe877dfd1cce16a53ac6d2a0172e84189da453358da8171be`; `mocking.md` `648982e831728bb93042af89f99588e9a5298a423f27ba2ac133428bb365cf93`; unchanged `tests.md` `e4da76ed263857e2f53f88cf937a74610bcbf901aafbdf4314eae30d624559c5`.
 - Residual risk: external-seam judgment remains context-dependent by design. The owner pointer, faithful-local-substitute preference, no-internal-seam rule, and concrete categories bound that discretion. No executable helper or command syntax exists in scope to validate.
+
+Coordinator integration verification completed at `2026-07-14T18:21:51+00:00` against integrated commit `a270b36`: the complete target, retained supports, deleted refactoring support, proposal, and design owner were reread; exact definitions, seam ownership, first routing, both intake modes, public behavior, independent oracle, honest Red, minimal Green, one-test cycles/checklist, command tiers, green-only heuristic mapping, seam-change approval, final completion, conditional references, external-adapter boundaries, deletion/link repair, frontmatter identity, Pi visibility, Matt Pocock/MIT provenance, modes, and exact scope passed independent checks. The YAML-aware audit accounted for all 33 skills with zero errors and warnings, all live relative links resolved, `git diff --check` passed, and `bash tests/run.sh` passed all 12 tests. The protected `pi/settings.json` content and diff hashes remained `7d3f4713d7239e8cda3f75597a55f1767fecdf7964324630e4e74dc686d12e05` and `8298a9063e3ebf2988000d176057a41c31cf20c10bbabe92fb57d47f9f2738d5`. Residual risk remains context-dependent external-seam selection bounded by the owner contract.
 
 ## Explicit exclusions
 
