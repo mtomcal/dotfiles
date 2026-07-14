@@ -1,7 +1,7 @@
 ---
 id: SK-027
 target: visual-qa
-status: ready-to-integrate
+status: verified
 revision: 1
 blocked-by: [SK-001, SK-005, SK-021, SK-026]
 source-verdict: simplify inline
@@ -145,6 +145,8 @@ Worker verification completed at `2026-07-14T18:37:08+00:00`.
 - Residual risks: capture capabilities and names vary across harnesses, so route choice remains runtime-dependent. Supplied stills may omit console/network or transient behavior; unavailable context must remain explicit and can force `BLOCKED` or an Artifact limitation. The unchanged target tool grants remain nonportable and unused by this revised body until the separate frontmatter lane addresses them.
 
 The worker result is `ready-to-integrate`; this record does not claim coordinator integration, coordinator verification, central `verified` state, or catalog-wide VG-001 completion.
+
+Coordinator integration verification completed at `2026-07-14T18:41:08+00:00` against integrated commits `0ea1702` and `85100a9`: the complete target and proposal were reread; exact definitions, mode-first and human-question routing, availability-aware capture/conversion, evidence formats, complete Runtime context, escalation, visible-complaint and mismatch preservation, classification, orchestrated fields/failed-step evidence/blocked handling, final outputs, producer/caller/human ownership, frontmatter identity, Pi visibility, repo-local provenance, and exact scope passed independent checks. The YAML-aware audit parsed/accounted for all 33 skills with zero errors and one explicit warning: the target's byte-preserved ffmpeg/ffprobe/file-command grants are not directly used by the revised body and remain deferred to the excluded frontmatter/grant lane. `playwright-cli` 0.1.14 availability and zero open browsers were confirmed, `git diff --check` passed, and `bash tests/run.sh` passed all 12 tests. The protected `pi/settings.json` content and diff hashes remained `7d3f4713d7239e8cda3f75597a55f1767fecdf7964324630e4e74dc686d12e05` and `8298a9063e3ebf2988000d176057a41c31cf20c10bbabe92fb57d47f9f2738d5`. Residual risks are runtime-varying capture capabilities, incomplete supplied evidence, and the deferred grant warning.
 
 ## Explicit exclusions
 
