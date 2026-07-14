@@ -80,4 +80,3 @@ Completion criterion: failure leaves no partial artifact edit from this run, or 
 ## Reference
 
 - When the pinned comparison is non-empty after Git preflight, load [REFERENCE.md](REFERENCE.md) because it contains the evidence prompts, output forms, and detailed checklists.
-- When a discrepancy requires terminology work, load [`ubiquitous-language`](../ubiquitous-language/SKILL.md) before glossary edits because that skill owns canonical-location selection and terminology updates while this workflow retains plan, integration, review, and acceptance authority.
