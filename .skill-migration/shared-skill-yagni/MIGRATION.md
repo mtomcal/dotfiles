@@ -171,7 +171,7 @@ The sequence follows WF-007: durable decisions, authoring owner, correctness rep
 | `SK-027` | skill | `visual-qa` | simplify inline | SK-001, SK-005, SK-021, SK-026 | verified |
 | `SK-028` | skill | `wayfinder` | retain substance | SK-001 | verified |
 | `SK-029` | skill | `teach` | move detail to Reference | SK-001, SK-007, SK-023 | verified |
-| `SK-030` | skill | `create-agents-md` | move detail to Reference | SK-001 | integrating |
+| `SK-030` | skill | `create-agents-md` | move detail to Reference | SK-001 | verified |
 | `SK-031` | skill | `curator` | move detail to Reference | SK-001 | claimed |
 | `SK-032` | skill | `em-train` | consolidate/delegate | SK-001, SK-007, SK-014 | queued |
 | `NEW-001` | new skill | Generic Git delivery | independently invocable PR/CI/stale-branch owner | SK-001, SK-014, SK-024 | verified |
@@ -199,4 +199,4 @@ The final catalog gate additionally checks all 33 original skills, the proposal-
 
 `MG-001` revision 2, `MG-002` revision 1, and SK-001 through SK-005 are verified. Parallel mode is active.
 
-`MG-001` revision 2, `MG-002` revision 1, SK-001 through SK-029, and NEW-001 are verified. SK-030 and SK-031 are claimed with disjoint scopes. The remaining verified-blocker frontier contains SK-032 and SK-033. SK-027 carries one deferred frontmatter-lane warning for unchanged unused command grants, and NEW-001's intentionally absent Pi visibility awaits final reconciliation. No queued production file is authorized until claimed with an item-specific exact proposal in `proposal-ready` state.
+`MG-001` revision 2, `MG-002` revision 1, SK-001 through SK-030, and NEW-001 are verified. SK-031 remains claimed. The remaining verified-blocker frontier contains SK-032 and SK-033. SK-027 carries one deferred frontmatter-lane warning for unchanged unused command grants, and NEW-001's intentionally absent Pi visibility awaits final reconciliation. No queued production file is authorized until claimed with an item-specific exact proposal in `proposal-ready` state.

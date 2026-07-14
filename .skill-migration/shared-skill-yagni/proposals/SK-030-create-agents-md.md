@@ -1,7 +1,7 @@
 ---
 id: SK-030
 target: create-agents-md
-status: ready-to-integrate
+status: verified
 revision: 1
 blocked-by: [SK-001, SK-018, SK-004, SK-012]
 source-verdict: move detail to Reference
@@ -147,6 +147,8 @@ Worker verification completed at `2026-07-14T19:01:11+00:00`.
 - Residual risks: Tree hash equality intentionally cannot detect content-only architecture or manifest changes, so an incremental no-op is explicitly only a structural result. Detector manifest/dependency inference remains approximate and its pre-existing deep-mode extras remain outside this migration. Unresolved human answers remain marked rather than silently confirmed. These are disclosed behavior limits, not verification failures.
 
 The worker result is `ready-to-integrate`; this record does not claim coordinator integration, coordinator verification, central `verified` state, or catalog-wide VG-001 completion.
+
+Coordinator integration verification completed at `2026-07-14T19:04:41+00:00` against integrated commits `d15d801` and `bd0022d`: the complete target, proposal, new briefing, unchanged template/catalog/detector, and composed owner boundaries were reread; exact definitions, create/update-first routing, detector evidence, full-generation draft/confidence/confirmation, update no-op/structural/removal/dependency/human-content gates, mandatory scoped deep pass, Herdr interaction/direct fallback/parent ownership/no-ID rules, final hash/count report, frontmatter identity, Pi visibility, repo-local provenance, exact three-file scope, links, and modes passed independent checks. The unchanged executable detector passed `bash -n` and produced parseable JSON with all actual module fields; one initial verifier assertion expected `dominant_language` while the unchanged script correctly emits `dominant_lang`, and the corrected exact-interface assertion passed without production change. The YAML-aware audit parsed/accounted for all 34 skills with zero errors and the one deferred SK-027 grant warning, `git diff --check` passed, and `bash tests/run.sh` passed all 12 tests. The protected `pi/settings.json` content and diff hashes remained `7d3f4713d7239e8cda3f75597a55f1767fecdf7964324630e4e74dc686d12e05` and `8298a9063e3ebf2988000d176057a41c31cf20c10bbabe92fb57d47f9f2738d5`. Residual risks remain structural-only tree hashes, approximate dependency inference, and explicit unresolved human answers.
 
 ## Explicit exclusions
 
