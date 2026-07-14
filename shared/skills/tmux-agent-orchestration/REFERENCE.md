@@ -1,456 +1,300 @@
 # Tmux Agent Orchestration Reference
 
-## Preferred Shape
+Load this file only for tmux-specific command formation or recovery after the worker scope, ownership, isolation, names, and bounds are fixed in `SKILL.md`. Replace every placeholder with the current run's values; examples are not authorization to create additional workers or resources.
 
-For parallel implementation work:
+## Preflight and Runtime Variables
 
-- one `tmux` session
-- one named window per task
-- one separate clone per task
-- one branch per task
+Use names containing only letters, digits, `_`, and `-`, and make the session name unique to the bounded run.
 
-This avoids workers stomping on each other in one worktree.
+```bash
+SOURCE=/absolute/path/to/original
+SOURCE_OID=$(git -C "$SOURCE" rev-parse 'HEAD^{commit}')
+CLONE_PARENT=/absolute/path/to/owned-clone-parent
+BUNDLE="$CLONE_PARENT/run-name"
+SESSION=agent-run-name
+POLL_SECONDS=30
+DEADLINE_EPOCH=0                 # replace with the agreed deadline
 
-## First Step: Choose The CLI Agent
+command -v tmux
+tmux -V
+PREEXISTING_SESSIONS=$(tmux list-sessions -F '#{session_name}' 2>/dev/null || true)
+printf '%s\n' "$PREEXISTING_SESSIONS"
+if tmux has-session -t "=$SESSION" 2>/dev/null; then
+  printf 'session collision: %s\n' "$SESSION" >&2
+  exit 1
+fi
+```
 
-If the user has not already specified the agent CLI, ask before launching.
+Do not kill or reuse a collision. Choose a new deterministic name only within the caller-approved run scope. Keep session/window/pane observations as current-run state, not durable workflow identity.
 
-Recommended question:
+## Inspect the Exact Agent Command
+
+Ask which CLI to use only when the request did not specify one. Every selected executable must pass discovery before launch:
+
+```bash
+command -v "$CLI"
+"$CLI" --version
+"$CLI" --help
+```
+
+Read current help for:
+
+- working-directory selection;
+- interactive versus non-interactive mode;
+- whether an initial prompt is an argument or must be submitted in the TUI;
+- approval, sandbox, permission, and tool controls; and
+- continuation/session behavior.
+
+Codex, Claude, Pi, and Copilot do not share one flag shape. Form and record the exact `CLI_COMMAND` for this run. Tmux's `-c "$CLONE"` establishes the pane directory, but it does not replace a CLI-specific directory flag when current help requires one. Do not carry a remembered `--yolo`, `-C`, `-p`, or permission flag across CLIs or versions.
+
+If the selected CLI is absent or its safe command shape cannot be established, launch nothing for that worker and return to the caller's in-process fallback.
+
+## Create and Verify Worker Clones
+
+For each scoped task, choose one clone path, one branch, and one window name:
+
+```bash
+TASK=task-a
+CLONE="$BUNDLE/$TASK"
+BRANCH=worker/task-a
+WINDOW=task-a
+
+mkdir -p -- "$BUNDLE"
+git clone --no-hardlinks "$SOURCE" "$CLONE"
+git -C "$CLONE" switch -c "$BRANCH" "$SOURCE_OID"
+
+realpath "$CLONE"
+git -C "$CLONE" rev-parse --show-toplevel
+git -C "$CLONE" branch --show-current
+git -C "$CLONE" remote -v
+git -C "$CLONE" status --short --branch
+```
+
+Compare canonical paths across all workers and reject duplicates. Verify the source revision is committed before cloning; uncommitted source changes are not silently transferred. A local-path `origin` is valid clone evidence and must not be repointed by this skill. If later delivery is requested, `git-delivery` discovers and validates its own topology.
+
+If workers were accidentally started in one checkout, interrupt only affected workers, preserve their changes, create the correct clones/branches, and relaunch within the original worker bound. Do not delete the collided checkout until its work is accounted for.
+
+## Build the Full Prompt
+
+Store one complete prompt per worker in the owned bundle. It must state:
 
 ```text
-Which CLI agent should I launch in tmux for these workers: codex, claude, or a mixed setup?
+Worker clone: <absolute clone path>
+Task branch: <branch>
+Task: <complete task and source authorities>
+Editing authority: <exact editable files/areas>
+Forbidden paths/actions: <protected scope>
+Further delegation: <authorized or forbidden>
+Required checks: <commands/evidence>
+Required result: <commit, files, summary, limitations>
+Do not edit the original checkout or another worker clone.
+Return evidence to the caller; do not expand scope or claim caller acceptance.
 ```
 
-Do not assume `codex` just because this skill is being used.
+Use `write` or a quoted heredoc to create the prompt without shell interpolation. Review the complete file before injecting it. Prompt files are run-owned temporary artifacts removed with the clone bundle only after results are retained.
 
-Common cases:
+## Launch Named Windows
 
-- `codex` everywhere
-- `claude` everywhere
-- Codex as the top-level orchestrator launching Claude workers
-- Claude as the top-level orchestrator launching Codex workers
-
-## Agent Command Shape
-
-Do not hardcode `codex --yolo` as the only launch pattern.
-
-First inspect or confirm the CLI:
+Start the first worker in the named session and the rest in named windows. `CLI_COMMAND` is the exact interactive command established from current help; submit the full prompt only after its TUI is ready.
 
 ```bash
-command -v codex
-command -v claude
-codex --help | sed -n '1,120p'
-claude --help | sed -n '1,120p'
+tmux new-session -d -s "$SESSION" -n "$WINDOW" -c "$CLONE" "$CLI_COMMAND"
+
+# For each additional worker, with its own WINDOW, CLONE, and CLI_COMMAND:
+tmux new-window -d -t "=$SESSION" -n "$WINDOW" -c "$CLONE" "$CLI_COMMAND"
+
+tmux list-windows -t "=$SESSION" -F '#{window_name}'
+tmux list-panes -s -t "=$SESSION" \
+  -F '#{session_name}:#{window_name}.#{pane_index} #{pane_current_path} #{pane_current_command}'
 ```
 
-The exact command flags, prompt submission model, and non-interactive options may differ.
+Wait until capture output shows the CLI is ready. Target the full session/window name rather than a numeric index. For every worker, compare `pane_current_path` with `realpath "$CLONE"` before giving edit authority.
 
-Treat these as variables:
-
-- executable name
-- working-directory flag
-- approval / sandbox flags
-- whether initial prompt can be passed as an argument
-- whether a non-interactive mode exists
-- whether a TUI prompt needs special submission handling
-
-## Launch Pattern
-
-### 1. Create clones
-
-Use a timestamped parent directory and one clone per task:
+Inject the initial prompt with a run-unique named buffer:
 
 ```bash
-BASE="/home/mtomcal/code/project-clones/$(date +%Y%m%d-%H%M%S)"
-mkdir -p "$BASE"
-git clone /path/to/original "$BASE/task-a"
-git clone /path/to/original "$BASE/task-b"
+TARGET="$SESSION:$WINDOW"
+BUFFER="${SESSION}_${WINDOW}_prompt"
+PROMPT_TEXT=$(<"$PROMPT_FILE")
+
+tmux set-buffer -b "$BUFFER" -- "$PROMPT_TEXT"
+tmux paste-buffer -d -b "$BUFFER" -t "$TARGET"
+tmux send-keys -t "$TARGET" Enter
+sleep 1
+tmux capture-pane -p -S -120 -t "$TARGET"
 ```
 
-### 2. Start tmux session and windows
-
-For Codex:
+If text remains in the composer with no new activity, send one raw carriage return and inspect again:
 
 ```bash
-tmux new-session -d -s my-session -c "$BASE/task-a" -n task-a \
-  "bash -lc 'codex --yolo -C \"$BASE/task-a\" \"$(cat /tmp/task-a.prompt)\"'"
-
-tmux new-window -t my-session -c "$BASE/task-b" -n task-b \
-  "bash -lc 'codex --yolo -C \"$BASE/task-b\" \"$(cat /tmp/task-b.prompt)\"'"
+tmux send-keys -t "$TARGET" C-m
+sleep 1
+tmux capture-pane -p -S -120 -t "$TARGET"
 ```
 
-For other CLIs, adapt the command shape after checking help output.
+A working indicator, new assistant/tool output, a changed capture beyond the pasted text, or corresponding Git activity proves the processing transition. Raw prompt text alone does not. If neither `Enter` nor one `C-m` produces a transition, classify the prompt as unsubmitted; do not keep sending keys blindly or add a replacement worker beyond the bound.
 
-Prompt text should explicitly include:
+## Steer an Existing TUI
 
-- the exact clone path
-- do not use the original checkout
-- whether subagents are authorized
-- any commit / PR / verification requirements
-
-## Steering Existing TUI Panes
-
-This section applies to any CLI TUI, not just Codex.
-
-### Safe prompt injection
-
-Use `tmux set-buffer`, `paste-buffer`, then `send-keys Enter`:
+Capture before steering, inject one concise follow-up through a unique buffer, and capture after each submission attempt:
 
 ```bash
-tmux set-buffer -- "Open the PR now..."
-tmux paste-buffer -t my-session:1
-tmux send-keys -t my-session:1 Enter
+TARGET="$SESSION:$WINDOW"
+BUFFER="${SESSION}_${WINDOW}_followup"
+BEFORE=$(tmux capture-pane -p -S -120 -t "$TARGET")
+
+tmux set-buffer -b "$BUFFER" -- "$FOLLOWUP"
+tmux paste-buffer -d -b "$BUFFER" -t "$TARGET"
+tmux send-keys -t "$TARGET" Enter
+sleep 1
+AFTER=$(tmux capture-pane -p -S -120 -t "$TARGET")
+printf '%s\n' "$AFTER"
 ```
 
-If the prompt still appears in the composer, send a raw carriage return:
+If `AFTER` only adds the visible prompt, send `C-m` once and recapture. Verify new processing or Git activity before saying the worker accepted the follow-up. When steering repeatedly fails or the CLI has a safer non-interactive form, stop TUI steering and return the task to the caller's in-process fallback; do not infer a command shape without current help.
+
+## Monitor Pane and Git State
+
+Use the bounded cadence and deadline. Prefer named targets and the scoped session rather than polling all server panes.
 
 ```bash
-tmux send-keys -t my-session:1 C-m
+TARGET="$SESSION:$WINDOW"
+
+date -Is
+tmux capture-pane -p -S -120 -t "$TARGET" | tail -n 50
+tmux display-message -p -t "$TARGET" \
+  '#{pane_current_path} #{pane_current_command} #{pane_dead}'
+git -C "$CLONE" rev-parse --show-toplevel
+git -C "$CLONE" branch --show-current
+git -C "$CLONE" remote -v
+git -C "$CLONE" status --short --branch
+git -C "$CLONE" log --oneline --decorate -n 5
 ```
 
-### Required submission verification
+Classify each worker as:
 
-After steering a TUI pane, always verify submission immediately.
+- **active** — recent processing evidence and/or expected Git movement;
+- **blocked** — explicit question, permission prompt, error, or missing authority;
+- **exited** — pane/window ended before result evidence was collected; or
+- **complete** — the worker returned its result and required pane plus Git/check evidence agrees.
 
-Minimum rule:
+An idle-looking pane may be awaiting input or finished; a vanished short-lived window may have succeeded or failed. Inspect Git state and returned output rather than guessing. On deadline, stop polling and report the latest evidence and owner/action.
 
-1. paste prompt
-2. send `C-m`
-3. inspect the pane
-4. confirm one of:
-   - `Working` appears
-   - new assistant or tool activity appears
-   - the raw `› ...` prompt is no longer just sitting in the composer
+For delivery tasks, monitor only transport evidence here. Invoke `git-delivery` with the delivery scope, base/head or PR identity, authorized mutations, checks, and bound; use its report for PR/CI/stale-head/pushed-head claims. Do not add GitHub, branch-rebuild, check-log, merge/rebase, or conflict-resolution commands to this reference.
 
-If none of those happen, treat the prompt as not submitted and retry.
+## Tmux-Specific Failure Handling
 
-## Critical Lesson: Seeing Text Is Not Submission
+### Session-name collision
 
-A pasted prompt can sit in the TUI composer without being submitted.
+**Evidence:** `tmux has-session -t "=$SESSION"` succeeds before launch.
 
-Evidence that it was **not** submitted:
+**Response:** preserve that session. Stop or choose a new deterministic caller-approved name; never kill/reuse it as presumed stale.
 
-- the pane still shows the raw `›` prompt text
-- there is no assistant response after it
-- there is no `Working` indicator
-- no new shell/git activity follows
+### Same-checkout collision
 
-Evidence that it **was** submitted:
+**Evidence:** two pane paths or `rev-parse --show-toplevel` results match.
 
-- the pane shows `• Working`
-- the model starts printing new reasoning or tool activity
-- later `capture-pane` output changes beyond the pasted prompt
+**Response:** interrupt affected workers, preserve changes, create distinct clones/branches, and relaunch only within the authorized worker set.
 
-Always verify this after steering a pane.
+### Wrong clone, branch, or remote
 
-This is a hard rule, not a nice-to-have.
+**Evidence:** pane current path, canonical clone path, branch, or `remote -v` differs from scope.
 
-## Monitoring Commands
-
-### List windows and current paths
-
-```bash
-tmux list-windows -t my-session -F '#I:#W'
-tmux list-panes -a -F '#S:#I:#W #{pane_current_path}'
-```
-
-### Inspect recent pane output
-
-```bash
-tmux capture-pane -p -t my-session:1 | tail -n 40
-```
-
-### Poll multiple panes
-
-```bash
-for w in 1 2 3; do
-  echo "=== WINDOW $w ==="
-  tmux capture-pane -p -t my-session:$w | tail -n 30
-done
-```
-
-### Check clone state
-
-```bash
-git -C /path/to/clone status --short
-git -C /path/to/clone log --oneline --decorate -n 3
-git -C /path/to/clone remote -v
-```
-
-## Clone Isolation Rules
-
-For coding tasks, always verify:
-
-- each pane path is a different clone
-- each clone has the expected remote
-- each clone is on the expected branch
-
-Useful check:
-
-```bash
-tmux list-panes -a -F '#S:#I:#W #{pane_current_path}'
-```
-
-If workers were started in the same checkout by mistake:
-
-1. stop or interrupt them
-2. create separate clones
-3. relaunch each worker against its own clone
-4. state clearly in each prompt that the clone is exclusive and the original checkout must not be modified
-
-## PR Kickoff Guidance
-
-If implementation workers are done and need PRs:
-
-- prefer giving the PR task in the worker's initial prompt if you already know that is required
-- otherwise steer the pane with a very short concrete follow-up
-- include branch name, commit to cherry-pick, base branch, and PR title/body requirements
-
-Example follow-up:
-
-```text
-Open the PR now. Repoint origin to the GitHub repo, create branch codex/task-name from origin/main, cherry-pick only <commit>, push, and run gh pr create --base main.
-```
-
-## Clean PR Branch Workflow
-
-Do not assume the worker's current branch is PR-ready.
-
-Preferred PR shape:
-
-1. verify the implementation commit hash
-2. verify the clone remote points at GitHub, not a local path
-3. fetch `origin`
-4. create a fresh branch from `origin/main`
-5. cherry-pick only the intended implementation commit
-6. push that branch
-7. create the PR
-
-Why:
-
-- worker clones may still contain earlier setup commits
-- worker branches may start from a docs or scaffolding commit
-- unrelated local changes may exist in the clone
-
-### Remote sanity check
-
-Before pushing a PR branch, confirm the clone remote:
-
-```bash
-git -C /path/to/clone remote -v
-```
-
-If `origin` points at a local path, repoint it or add a GitHub remote first.
-
-## CI Follow-Through
-
-After a PR is opened, do not stop at `PR created`.
-
-Check status:
-
-```bash
-gh pr checks <pr-number>
-gh pr view <pr-number> --json statusCheckRollup
-```
-
-If CI is red:
-
-1. route the original worker back onto that same PR
-2. tell it to stay on the PR until checks are green
-3. pull logs for the failing run
-4. reproduce locally in the worker clone
-5. fix, push, and continue monitoring
-
-Useful commands:
-
-```bash
-gh run view <run-id> --log-failed
-gh run view <run-id> --job <job-id> --log
-```
-
-Hard rule:
-
-- `fix pushed` is not done
-- `all required checks green` is done
-
-## Merge Drift Follow-Up
-
-Before sending a worker back onto an open PR, inspect the PR's current mergeability:
-
-```bash
-gh pr view <pr-number> --json mergeStateStatus,headRefName,baseRefName,url
-```
-
-Interpretation:
-
-- `CLEAN`: no merge-conflict follow-up is needed right now
-- `DIRTY`: the PR must be reconciled against the base branch
-- other states still warrant inspection before you assume the branch is current
-
-When a PR has gone stale because another PR merged first:
-
-1. send the original worker back onto that PR
-2. tell it to fetch `origin`
-3. rebase or merge `origin/main` into the PR branch
-4. inspect conflict hunks for behavioral correctness, not just textual resolution
-5. pay attention to silent auto-merge drift in overlapping files even when there are no conflict markers
-6. rerun the targeted verification plus the broader suite needed for confidence
-7. push the updated branch
-8. re-check `gh pr view` or `gh pr checks`
-
-Important:
-
-- a locally rebased branch may still look stale on GitHub until it is pushed
-- `git status --short --branch` showing `ahead` and `behind` after a rebase usually means the local branch is updated but the remote PR branch is not yet
-- do not report the PR as refreshed until the push completes
-
-### Silent semantic drift
-
-Conflict markers are not the only risk. Auto-merged files can still be wrong.
-
-Review especially:
-
-- shared adapter layers
-- publication and transport code
-- event routing files
-- any place where two refactors changed the same behavior through different abstractions
-
-If a newer path on `main` still hand-builds behavior that the rebased PR was centralizing, fix that composition gap explicitly.
-
-## When To Avoid TUI Steering
-
-For one-shot tasks like opening a PR, a non-interactive mode such as `codex exec` can be more reliable than steering an idle TUI pane.
-
-Use TUI steering when:
-
-- you want the same worker context to continue
-- you are actively watching the pane
-- you verify submission succeeded
-
-Use a non-interactive path when:
-
-- you need deterministic execution
-- you want captured output
-- the TUI keeps leaving prompts in the composer
-- the chosen CLI has a better non-interactive path than its TUI
-- the task is a one-shot operational step such as opening a PR
-
-## Failure Modes To Watch For
-
-### Same-worktree collision
-
-Symptom:
-- multiple workers modify one checkout
-
-Fix:
-- stop them and relaunch in separate clones
+**Response:** stop the affected worker before edits, correct or recreate its clone, reverify all four fields, and resend the complete prompt.
 
 ### Prompt not submitted
 
-Symptom:
-- raw prompt remains visible as `› ...`
+**Evidence:** raw prompt remains in the composer; capture has no working indicator, assistant/tool output, or corresponding Git activity.
 
-Fix:
-- send `Enter` or `C-m`, then verify `Working`
+**Response:** send `Enter`, inspect, then send one `C-m` only if still unsubmitted. If no transition follows, report unsubmitted and return to caller control.
 
-### Wrong remote in clones
+### Worker blocked on authority or permission
 
-Symptom:
-- clone `origin` points at a local path
+**Evidence:** pane asks for scope, approval, sandbox, tool, credential, or destructive-action permission.
 
-Fix:
-- repoint origin or add a GitHub remote before push/PR work
+**Response:** compare the request with the recorded authority. Steer only an already-authorized clarification; otherwise return the decision to the caller. Never widen authority merely to clear a prompt.
 
-### Temporary tmux windows disappear
+### Worker window disappears
 
-Symptom:
-- short-lived jobs exit and their window numbers vanish
+**Evidence:** the named window is absent before a result was collected.
 
-Fix:
-- inspect outcomes via git state, remote branches, or PR list instead of assuming they completed
+**Response:** inspect the clone branch/status/log and any captured return output. Classify it as exited unless the required result and checks are independently evidenced. Relaunch in the same clone/window only when the caller's original bound and scope still authorize it.
 
-### Local branch updated, PR still stale
+### Monitoring deadline reached
 
-Symptom:
-- worker says the rebase finished
-- local branch is ahead/behind
-- GitHub PR still shows `DIRTY` or an old head SHA
+**Evidence:** current time reaches the recorded deadline without verified completion.
 
-Fix:
-- wait for verification to finish
-- push the rebased branch
-- re-check `gh pr view <pr-number> --json mergeStateStatus,headRefOid`
+**Response:** stop polling, preserve session/clones, and report each worker's pane/Git state and exact next owner/action. Do not turn timeout into cleanup authorization.
 
-### False-negative cleanup check
+### Dirty or unretained clone at cleanup
 
-Symptom:
-- a removal command ran, but an immediate existence check still reports the old path
+**Evidence:** short status, branch, or expected commit/result shows work not safely retained or explicitly abandoned.
 
-Fix:
-- re-run the filesystem check directly
-- prefer `ls` or `find` against the exact path over relying on one stale-looking result
-- treat the second direct check as authoritative
+**Response:** do not remove the bundle. Return the evidence to the caller for retention or abandonment choice.
 
-## Cleanup
+### Exact cleanup check fails
 
-After all work is merged or explicitly abandoned, clean up both the session and the clones.
+**Evidence:** the named session or exact bundle still exists after its targeted removal.
 
-### Kill the orchestration session
+**Response:** directly rerun `tmux has-session`, `ls -ld`, or `find` for that exact resource. Report what remains; never widen to `kill-server`, wildcard deletion, a parent path, or unrelated sessions.
+
+## Exact Cleanup
+
+Before cleanup, collect every result and inspect every clone:
 
 ```bash
-tmux kill-session -t <session-name>
-tmux list-sessions
+for clone in "$BUNDLE"/*; do
+  test -d "$clone/.git" || continue
+  printf '=== %s ===\n' "$clone"
+  git -C "$clone" status --short --branch
+  git -C "$clone" log --oneline --decorate -n 3
+done
 ```
 
-Verify the named worker session is gone before you assume cleanup is complete.
-
-### Remove the clone bundle
+Validate the target before destructive action:
 
 ```bash
-rm -rf /path/to/clone-bundle
-find /path/to/clone-bundle -maxdepth 1
+BUNDLE_REAL=$(realpath -m -- "$BUNDLE")
+PARENT_REAL=$(realpath -m -- "$CLONE_PARENT")
+test -n "$BUNDLE_REAL"
+test "$BUNDLE_REAL" != /
+case "$BUNDLE_REAL" in
+  "$PARENT_REAL"/*) ;;
+  *) printf 'bundle outside owned parent\n' >&2; exit 1 ;;
+esac
 ```
 
-If the check reports the directory still exists, run a second direct `ls` or `find` on that exact path. Filesystem checks can occasionally look inconsistent when issued back-to-back; verify again before concluding cleanup failed.
-
-Keep unrelated tmux sessions intact. Only remove the worker session and clone bundle associated with this orchestration run.
-
-## Monitoring Cadence
-
-For each worker, keep checking:
-
-1. pane output
-2. clone path
-3. branch name
-4. remote correctness
-5. intended commit present
-6. PR created
-7. CI green
-
-Useful commands:
+Confirm that the bundle contains only this run's known clones and that all work is retained or explicitly abandoned. Then target only the exact resources:
 
 ```bash
-tmux capture-pane -p -t my-session:1 | tail -n 40
-git -C /path/to/clone status --short
-git -C /path/to/clone log --oneline --decorate -n 3
-gh pr list --state open
-gh pr checks <pr-number>
-git ls-remote --heads https://github.com/owner/repo.git 'codex/*'
+if tmux has-session -t "=$SESSION" 2>/dev/null; then
+  tmux kill-session -t "=$SESSION"
+fi
+if tmux has-session -t "=$SESSION" 2>/dev/null; then
+  printf 'session still exists: %s\n' "$SESSION" >&2
+  exit 1
+fi
+
+rm -rf -- "$BUNDLE_REAL"
+if test -e "$BUNDLE_REAL"; then
+  ls -ld -- "$BUNDLE_REAL"
+  exit 1
+fi
 ```
 
-## Checklist
+Finally list session names and compare them with `PREEXISTING_SESSIONS`:
 
-- [ ] ask which CLI agent to use unless already specified
-- [ ] confirm the chosen CLI command shape before launch
-- [ ] one clone per worker
-- [ ] named tmux session and windows
-- [ ] initial prompt includes clone path and authorization rules
-- [ ] TUI follow-up prompts are actually submitted and verified with `Working` or new activity
-- [ ] pane shows `Working` after steering
-- [ ] clone remotes are correct before push/PR tasks
-- [ ] PRs are created from clean branches off `origin/main`
-- [ ] merge-drift follow-ups start by checking `mergeStateStatus`
-- [ ] rebased PR branches are pushed before reporting them refreshed
-- [ ] CI is monitored until green, not just until PR creation
-- [ ] monitor by pane output and git state, not assumption
-- [ ] worker session and clone bundle are cleaned up at the end
+```bash
+AFTER_SESSIONS=$(tmux list-sessions -F '#{session_name}' 2>/dev/null || true)
+printf '%s\n' "$AFTER_SESSIONS"
+while IFS= read -r existing; do
+  test -z "$existing" || printf '%s\n' "$AFTER_SESSIONS" | grep -Fx -- "$existing" >/dev/null || {
+    printf 'unrelated session missing: %s\n' "$existing" >&2
+    exit 1
+  }
+done <<EOF_SESSIONS
+$PREEXISTING_SESSIONS
+EOF_SESSIONS
+```
+
+Cleanup is complete only when the exact session and bundle are absent and every unrelated pre-existing session remains. If cleanup was not authorized or is blocked by unretained work, preserve resources and report their exact names/paths instead.
