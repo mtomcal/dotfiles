@@ -8,80 +8,93 @@ allowed-tools: read,write,edit,bash
 
 # Bootstrap Specs
 
-Conduct an interactive interview to discover a project's domain, systems, and terminology, then generate a complete `specs/` suite that any AI agent can implement from.
+## Language Definitions
 
-## Quick start
+- **Greenfield** — mode for a project without implementation source code, producing meta-files and skeleton specs.
+- **Brownfield** — human-confirmed mode proposed when implementation source exists, producing a spec-extraction plan rather than individual system specs.
+- **Skeleton spec** — unauthored system-spec scaffold with required headings, prompts, and initial metadata.
+- **Meta-file** — suite-level governance, navigation, language, design, parameter, or progress artifact that may be regenerated without overwriting authored system specs.
 
-1. Invoke the skill in a project directory
-2. Answer the interview questions (one at a time, resolving each branch)
-3. Confirm the proposed structure (system list, dependencies, reading order)
-4. Receive a complete `specs/` folder ready for authoring
+## Workflow
 
-## Two modes
+Use this workflow to interview the user, obtain one approval before writing, and generate or safely refresh a language-agnostic `specs/` suite.
 
-### Greenfield (default)
+### 1. Route the mode and inspect existing state
 
-No code exists yet. The interview produces spec files with headings, guidance prompts, and pre-filled metadata. Specs start at version `0.1.0` — the shape is there, the content needs authoring.
+Inspect the project for project-owned implementation source and for an existing `specs/` folder. Propose **Brownfield** when implementation source exists; otherwise propose **Greenfield**. The proposal is evidence for question 3, not an automatic choice: the user confirms the mode.
 
-### Brownfield
+If `specs/` already exists, inventory its meta-files and individual system specs before the interview. Treat the run as a rerun and retain that inventory for overwrite review.
 
-Code already exists. The interview produces a `PLAN.md` for a long-running agent that reads the codebase and writes fully-authored specs. The agent extracts requirements, behavior, rules, and acceptance criteria — never code or file references.
+Completion criterion: the proposed mode cites the source evidence, the user will make the final mode decision, and every existing spec-suite file is classified before any write.
 
-Detect brownfield when the project already has source files. Ask the user to confirm.
+### 2. Conduct the interview
 
-## Process
+Ask these eight questions one at a time. Wait for each answer, investigate facts available from current project evidence, probe consequential branches, and resolve the answer before continuing.
 
-### Step 1: Interview
+1. **"What is this project?"** — Establish domain, purpose, target user, and a one-paragraph summary.
+2. **"What languages and frameworks are in the stack?"** — Build the technology-dependencies table.
+3. **"Greenfield or Brownfield?"** — Present the evidence-based proposal from step 1 and ask the user to confirm or change it. Brownfield is selected only by this confirmation.
+4. **"What are the major systems or modules?"** — Start with the user's list, then propose additions from domain heuristics (for example, a game may need a game loop, a SaaS may need auth, and a CLI may need config). The user confirms or adjusts them.
+5. **"Any terms you suspect might be overloaded, or is it too early to tell?"** — Propose likely collisions from the domain and system list. Accept “not sure yet”; Bootstrap seeds initial terms, while `ubiquitous-language` owns later refinement.
+6. **"Does this project have user-facing surfaces?"** — Include UI, CLI, and API surfaces. Generate a design-language preamble only when a surface exists.
+7. **"Any clear dependencies you already know about?"** — Propose a dependency graph from common domain patterns. The user confirms, adds, or removes edges. Accept “not sure”; later spec authoring may refine it.
+8. **"Which system should an implementing agent read first?"** — Propose a reading order derived from the graph, with foundations before leaves. The user confirms or adjusts it.
 
-Ask these **8 questions one at a time**, resolving each before moving to the next. Each answer may prompt follow-up questions. Use the grill-me technique: one question, wait for answer, probe for completeness, then move on.
+Completion criterion: all eight answers and follow-up decisions are resolved, provisional terminology is identified, and the selected mode is human-confirmed.
 
-1. **"What is this project?"** — Domain, purpose, target user. One paragraph.
-2. **"What languages and frameworks are in the stack?"** — Build the technology dependencies table.
-3. **"Greenfield or brownfield?"** — Determines output mode. Brownfield if code exists.
-4. **"What are the major systems or modules?"** — User lists what they know. Skill proposes additions based on domain heuristics (e.g., a game needs a game loop; a SaaS needs auth; a CLI needs config). User confirms or adjusts.
-5. **"Any terms you suspect might be overloaded, or is it too early to tell?"** — Skill proposes suspected term collisions based on the domain and system list (e.g., "client" usually means different things in auth vs business logic; "state" in a game could be match state or player state). Accept "not sure yet" — ubiquitous language gets refined later.
-6. **"Does this project have user-facing surfaces?"** — UI, CLI, API endpoints, etc. If yes, generate a design language preamble.
-7. **"Any clear dependencies you already know about?"** — Skill proposes a dependency graph based on common patterns for the domain and system list. User confirms, adds, or removes edges. Accept "not sure" — dependencies can be refined as specs are authored.
-8. **"Which system should an implementing agent read first?"** — Skill proposes a reading order derived from the dependency graph (foundation systems first, leaf systems last). User confirms or adjusts.
+### 3. Propose the complete generation scope and obtain approval
 
-After all questions: propose the complete system list, dependency graph, and reading order. **Wait for user confirmation before generating.**
+Present one complete proposal containing:
 
-### Step 2: Generate structure
+- selected mode and project summary;
+- final system list;
+- dependency graph and derived reading order;
+- exact mode-specific file list; and
+- on a rerun, every existing meta-file proposed for overwrite, with a summary or diff of the candidate replacement.
 
-Produce all files in `specs/` (see [REFERENCE.md](REFERENCE.md) for full templates):
+Allow the user to add, remove, or rename systems and adjust dependencies or reading order. Revise and re-present the complete proposal until the user explicitly approves it. **Do not write generated files before this approval.** The approval covers only the displayed structure and exact overwrite set.
 
-| File | Content |
-|------|---------|
-| `SPEC-OF-SPECS.md` | Template constitution, conventions, required sections |
-| `README.md` | Reading order, dependency graph (Mermaid), quick reference, checklist |
-| `UBIQUITOUS_LANGUAGE.md` | Domain glossary preamble (populated from interview) |
-| `DESIGN_LANGUAGE.md` | Interface vocabulary + visual tokens (only if user-facing surfaces) |
-| `parameters.md` | Centralized tuning values with "why" column |
-| `{system}.md` per system | Skeleton spec with headings, guidance prompts, pre-filled metadata |
-| `SPEC-OF-SPECS-PLAN.md` | Progress tracker |
+Completion criterion: one explicit pre-generation approval covers every file to create or overwrite; no structural choice or overwrite remains implicit.
 
-For **brownfield**: skip individual specs. Produce `PLAN.md` with system-to-code mapping, extraction strategies, and authoring order.
+### 4. Generate the approved suite
 
-### Step 3: Confirm and iterate
+Load the exact templates identified in the Reference section, then generate only the approved files.
 
-Show the generated file list and dependency graph. User can add/remove/rename systems before final generation.
+For **Greenfield**, generate:
 
-## Key conventions
+- `SPEC-OF-SPECS.md` for conventions and required sections;
+- `README.md` for reading order, Mermaid dependency graph, quick reference, and checklist;
+- `UBIQUITOUS_LANGUAGE.md` as the initial domain-glossary seed;
+- `DESIGN_LANGUAGE.md` only for user-facing surfaces;
+- `parameters.md` with a rationale/WHY column;
+- one `{system}.md` skeleton spec per confirmed system; and
+- `SPEC-OF-SPECS-PLAN.md` as the spec-authoring progress tracker.
 
-- **No code in specs.** Pseudocode, schema tables, and decision tables only. Specs are language-agnostic behavior contracts.
-- **Specs are prescriptive**, not descriptive. "The system MUST…" not "the system currently…"
-- **Every constant has a WHY.** The parameters spec requires rationale for every value.
-- **Test scenarios use `TS-{PREFIX}-{NUMBER}` format.** The SPEC-OF-SPECS defines the format; the actual index gets created when specs have content.
+For **Brownfield**, generate the same meta-files and progress tracker but no individual system specs. Also generate `PLAN.md` as the Bootstrap-owned **spec-extraction plan**, with system-to-code evidence mapping, discovery strategies, extraction focus, and authoring order. It directs an extracting agent to turn implementation evidence into fully authored prescriptive requirements, behavior rules, error handling, parameters, and acceptance/test scenarios; it is not a `create-plan` plan workspace, implementation plan, slice graph, or `.plan` control plane. Code locations may appear in this extraction artifact, but not in the resulting system specs.
 
-## Re-running
+Apply these rules while generating and validating:
 
-Re-running on an existing `specs/` folder regenerates **meta-files only** (SPEC-OF-SPECS, README, ubiquitous language, design language, progress tracker). Individual spec files — which contain authored content — are never overwritten.
+- Specs are prescriptive behavior contracts: use “The system MUST…”, not descriptions of what code currently does.
+- Specs contain no implementation code, snippets, implementation-source file paths, or other implementation references. Use language-agnostic pseudocode, schema tables, and decision tables. Brownfield code mappings remain in the spec-extraction plan only.
+- Every constant or parameter has a rationale explaining WHY the value exists.
+- Test scenarios use `TS-{PREFIX}-{NUMBER}`; the SPEC-OF-SPECS defines the format, and content authoring creates the actual index.
+- Skeleton specs start at version `0.1.0`.
 
-## Relationship to other skills
+On a rerun, regenerate only meta-files explicitly approved in step 3. Never create, replace, rename, or delete an individual system spec. Treat the existing suite glossary as live authority: preserve its definitions and route approved term additions or refinements through `ubiquitous-language` at the applicable suite location rather than replacing it from the initial seed template. Other meta-file changes remain limited to the exact approved overwrite set.
 
-- **ubiquitous-language** — Bootstrap produces the initial glossary. Ubiquitous-language refines it as the project evolves.
-- **create-plan** — Specs feed create-plan's spec-driven mode. The two skills compose but have no hard dependency.
+Completion criterion: every write is approved, mode-correct, template-conformant, and within rerun boundaries; before/after hashes or diffs prove that individual system specs were not overwritten.
 
-## Advanced features
+### 5. Validate and report the generated result
 
-See [REFERENCE.md](REFERENCE.md) for: spec template, SPEC-OF-SPECS template, README template, brownfield PLAN template, skeleton spec format, design language format, ubiquitous language format.
+Validate the actual file list, required headings, relative links, dependency graph, reading order, mode-specific inclusions and exclusions, and approved overwrite scope. For Brownfield, verify that `PLAN.md` is qualified as a spec-extraction plan and that no individual skeleton specs were generated. For reruns, verify the existing glossary and every individual system spec were preserved except for approved owner-routed glossary merges.
+
+Show the actual generated file list and dependency graph, report validation failures and preserved files, and identify `ubiquitous-language` for later glossary evolution. The resulting specs may feed `create-plan` after they are authored, but Bootstrap has no hard dependency on that workflow.
+
+If the user requests a structural correction after this report, return to step 3, present the revised file and overwrite scope, and obtain a new approval before additional writes. Do not describe already-written output as awaiting “final generation.”
+
+Completion criterion: reported files and graph match disk, all validation checks pass or failures are explicit, and any further structural write is behind a renewed pre-generation approval.
+
+## Reference
+
+- Load [REFERENCE.md](REFERENCE.md) when generating or validating files because it contains the exact suite, system-spec, progress-tracker, and spec-extraction-plan templates.
+- Load [EXAMPLES.md](EXAMPLES.md) only when a concrete Greenfield/Brownfield interview or game, API, or CLI output example would clarify the user's choices; examples are illustrative, while this Workflow and `REFERENCE.md` remain authoritative.

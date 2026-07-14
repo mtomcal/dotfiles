@@ -1,6 +1,8 @@
 # Bootstrap Specs Examples
 
-Worked examples showing the interview and output for different project types.
+Worked examples showing the interview and output for different project types. Load only when a concrete example clarifies a choice. These examples are illustrative; the approval rules in `SKILL.md` and exact templates in `REFERENCE.md` are authoritative.
+
+Every example assumes the skill presents the complete system list, dependency graph, reading order, mode-specific file list, and any overwrite scope after question 8, then receives explicit approval before writing generated files.
 
 ---
 
@@ -59,6 +61,8 @@ User confirms. No adjustments.
 
 User confirms.
 
+*The skill presents the complete Greenfield generation proposal. The user explicitly approves it before any files are written.*
+
 ### Generated files
 
 ```
@@ -78,8 +82,7 @@ specs/
 ├── player-state.md
 ├── networking.md
 ├── matchmaking.md
-├── SPEC-OF-SPECS-PLAN.md
-└── reference/          (empty, for screenshots/diagrams later)
+└── SPEC-OF-SPECS-PLAN.md
 ```
 
 ### Ubiquitous language excerpt
@@ -180,9 +183,11 @@ User confirms. No adjustments.
 
 User confirms.
 
+*The skill presents the complete Brownfield generation proposal. The user explicitly approves it before any files are written.*
+
 ### Generated output
 
-Instead of skeleton specs, the skill produces a PLAN.md:
+Instead of skeleton specs, the skill produces a qualified `PLAN.md` spec-extraction plan. It maps code evidence for specification authoring; it is not an implementation plan, plan workspace, slice graph, or `.plan` control plane:
 
 ```
 specs/
@@ -190,9 +195,9 @@ specs/
 ├── README.md
 ├── UBIQUITOUS_LANGUAGE.md
 ├── DESIGN_LANGUAGE.md
-├── PARAMETERS.md
-├── PLAN.md       (extraction plan, not skeleton specs)
-└── reference/    (empty)
+├── parameters.md
+├── SPEC-OF-SPECS-PLAN.md
+└── PLAN.md       (spec-extraction plan, not system skeletons or implementation control state)
 ```
 
 ### PLAN.md excerpt (Code Mapping section)
@@ -268,6 +273,8 @@ User confirms. No adjustments.
 3. Profiles, symlinks
 4. Conflict detection
 5. Sync
+
+User confirms. The skill then presents the complete Greenfield generation proposal, including the exact file list, and the user explicitly approves it before any generated excerpt or file is written.
 
 ### Design language excerpt (CLI)
 

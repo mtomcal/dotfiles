@@ -510,8 +510,10 @@ For brownfield projects, generate a PLAN.md instead of skeleton specs. This plan
 # {Project Name} Spec Extraction Plan
 
 > **Created**: {DATE}
+> **Artifact**: Spec-extraction plan — not an implementation plan, plan workspace, slice graph, or `.plan` control plane
 > **Mode**: Brownfield — extracting specs from existing codebase
-> **Approach**: Descriptive requirements extraction (no code references)
+> **Approach**: Convert implementation evidence into prescriptive, language-agnostic behavior contracts
+> **Ownership**: Bootstrap Specs generates this plan; the extracting agent follows it to author the spec suite
 
 ---
 
@@ -533,9 +535,9 @@ For brownfield projects, generate a PLAN.md instead of skeleton specs. This plan
 
 For each system, the extracting agent MUST:
 
-1. **Read the code** to understand current behavior
+1. **Read the code** to understand current behavior; code paths and search terms stay in this extraction plan as evidence mappings
 2. **Write prescriptive specs** — define what the system MUST do, phrased as requirements and rules, not as a description of what the code currently does
-3. **Include no code** — no file paths, no code snippets, no implementation references. Specs are behavior contracts.
+3. **Include no implementation references in resulting specs** — no file paths, code snippets, or implementation references. The authored specs are behavior contracts.
 4. **Extract parameters** — any magic numbers, thresholds, or configuration values belong in parameters.md with rationale
 5. **Identify error cases** — look for error handling, edge cases, and failure modes in the code
 6. **Derive test scenarios** — from existing tests, from documented behavior, and from error paths discovered
