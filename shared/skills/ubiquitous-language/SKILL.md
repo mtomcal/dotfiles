@@ -1,6 +1,6 @@
 ---
 name: ubiquitous-language
-description: Extract a DDD-style ubiquitous language glossary from the current conversation, specs, plans, or brownfield domain language, flagging ambiguities and proposing canonical terms. Saves to UBIQUITOUS_LANGUAGE.md. Use when user wants to define domain terms, build a glossary, harden terminology, create or update a ubiquitous language, refine spec-suite vocabulary, extract bounded-context terms from brownfield systems, or mentions "domain model" or "DDD".
+description: Extract a DDD-style ubiquitous language glossary from the current conversation, specs, plans, or brownfield domain language, flagging ambiguities and proposing canonical terms. Writes the repository's canonical glossary. Use when user wants to define domain terms, build a glossary, harden terminology, create or update a ubiquitous language, refine spec-suite vocabulary, extract bounded-context terms from brownfield systems, or mentions "domain model" or "DDD".
 metadata:
   short-description: Extract DDD glossary from conversation
 allowed-tools: read,write,edit,bash
@@ -8,90 +8,90 @@ allowed-tools: read,write,edit,bash
 
 # Ubiquitous Language
 
-Extract and formalize domain terminology from the current conversation, specs,
-plans, or brownfield system evidence into a consistent glossary, saved to a
-local file.
+## Language Definitions
 
-## Process
+- **Ubiquitous language** — shared vocabulary used consistently by humans, specs, and implementation in an applicable context.
+- **Bounded context** — scope where a term has one authoritative meaning.
+- **Canonical term** — preferred name for one concept in that context.
+- **Alias to avoid** — synonym or shorthand obscuring the canonical distinction.
+- **Flagged ambiguity** — unresolved collision, overload, or boundary question recorded explicitly.
 
-1. **Scan the conversation** for domain-relevant nouns, verbs, and concepts
-2. **Identify problems**:
-   - Same word used for different concepts (ambiguity)
-   - Different words used for the same concept (synonyms)
-   - Vague or overloaded terms
-3. **Propose a canonical glossary** with opinionated term choices
-4. **Write to `UBIQUITOUS_LANGUAGE.md`** in the working directory using the format below
-5. **Output a summary** inline in the conversation
+## Workflow
 
-## Output Format
+Use this workflow to create a glossary or update its terminology as understanding evolves.
 
-Write a `UBIQUITOUS_LANGUAGE.md` file with this structure:
+### 1. Route mode and canonical location
+
+Choose **create** when no applicable glossary exists and **update** when refining, rerunning, or adding evidence to an existing glossary. Resolve one canonical path before gathering terms or writing:
+
+1. Use the glossary path declared by repository guidance or the applicable spec suite.
+2. Otherwise, use the existing glossary for the requested bounded context.
+3. Otherwise, follow the repository's established documentation or spec convention.
+4. Only when no authority, applicable glossary, or convention exists, create `UBIQUITOUS_LANGUAGE.md` at the repository root.
+
+If multiple locations remain plausibly authoritative, ask the user which bounded context and glossary owns the terms; do not create a competing file. In update mode, read the complete canonical glossary before proceeding.
+
+Completion criterion: create/update mode, applicable bounded context, and exactly one authoritative artifact path are known.
+
+### 2. Gather domain evidence
+
+Scan the current conversation, relevant specs and plans, and brownfield system evidence such as domain-facing source, tests, and documentation. Extract domain-relevant nouns, verbs, and concepts, then identify:
+
+- one word used for different concepts;
+- different words used for the same concept;
+- vague or overloaded terms; and
+- meanings that differ across bounded contexts.
+
+Include module, class, or other implementation names only when they carry domain meaning. Exclude generic programming concepts such as arrays, functions, or endpoints unless the domain gives them a specific meaning.
+
+Completion criterion: every candidate is grounded in available evidence, and each synonym, overload, or context collision is identified rather than silently normalized.
+
+### 3. Propose canonical language
+
+Make opinionated choices: select the best canonical term and list competing synonyms or shorthand as aliases to avoid. Keep each definition to one sentence that says what the concept **is**, not merely what it does. Do not force one meaning across bounded contexts.
+
+Record unresolved conflicts as flagged ambiguities with a clear recommended distinction instead of presenting them as settled. Identify relationships among canonical terms and express cardinality where evidence supports it.
+
+Completion criterion: every included term has one proposed meaning in its context, aliases are explicit, relationships are evidenced, and unresolved choices remain visibly flagged.
+
+### 4. Write or merge the glossary
+
+For a new artifact, use this compact schema:
 
 ```md
 # Ubiquitous Language
 
-## Order lifecycle
+## <Natural term group>
 
-| Term        | Definition                                              | Aliases to avoid      |
-| ----------- | ------------------------------------------------------- | --------------------- |
-| **Order**   | A customer's request to purchase one or more items      | Purchase, transaction |
-| **Invoice** | A request for payment sent to a customer after delivery | Bill, payment request |
-
-## People
-
-| Term         | Definition                                  | Aliases to avoid       |
-| ------------ | ------------------------------------------- | ---------------------- |
-| **Customer** | A person or organization that places orders | Client, buyer, account |
-| **User**     | An authentication identity in the system    | Login, account         |
+| Term | Definition | Aliases to avoid |
+|------|------------|------------------|
+| **<Canonical term>** | <One-sentence definition of what it is> | <Synonyms or shorthand> |
 
 ## Relationships
 
-- An **Invoice** belongs to exactly one **Customer**
-- An **Order** produces one or more **Invoices**
+- A **<Term>** relates to one or more **<Other terms>**.
 
 ## Example dialogue
 
-> **Dev:** "When a **Customer** places an **Order**, do we create the **Invoice** immediately?"
-> **Domain expert:** "No — an **Invoice** is only generated once a **Fulfillment** is confirmed. A single **Order** can produce multiple **Invoices** if items ship in separate **Shipments**."
-> **Dev:** "So if a **Shipment** is cancelled before dispatch, no **Invoice** exists for it?"
-> **Domain expert:** "Exactly. The **Invoice** lifecycle is tied to the **Fulfillment**, not the **Order**."
+> **Dev:** "<Question using canonical terms>"
+> **Domain expert:** "<Answer clarifying a relationship or boundary>"
+> <Continue for 3–5 exchanges.>
 
 ## Flagged ambiguities
 
-- "account" was used to mean both **Customer** and **User** — these are distinct concepts: a **Customer** places orders, while a **User** is an authentication identity that may or may not represent a **Customer**.
+- "<ambiguous wording>" was used for <conflicting meanings> — <recommended distinction>.
 ```
 
-## Rules
+Create multiple term tables only when natural subdomains, lifecycles, or actor groups emerge, with each group under its own heading; use one table for a cohesive domain rather than forcing groups. Use bold canonical terms in relationships and include cardinality where evident. Write a 3–5-exchange developer/domain-expert dialogue that uses the terms naturally and clarifies boundaries. Keep `Flagged ambiguities`; state `None` when no ambiguity remains.
 
-- **Be opinionated.** When multiple words exist for the same concept, pick the best one and list the others as aliases to avoid.
-- **Flag conflicts explicitly.** If a term is used ambiguously in the conversation, call it out in the "Flagged ambiguities" section with a clear recommendation.
-- **Only include terms relevant for domain experts.** Skip the names of modules or classes unless they have meaning in the domain language.
-- **Keep definitions tight.** One sentence max. Define what it IS, not what it does.
-- **Show relationships.** Use bold term names and express cardinality where obvious.
-- **Only include domain terms.** Skip generic programming concepts (array, function, endpoint) unless they have domain-specific meaning.
-- **Group terms into multiple tables** when natural clusters emerge (e.g. by subdomain, lifecycle, or actor). Each group gets its own heading and table. If all terms belong to a single cohesive domain, one table is fine — don't force groupings.
-- **Write an example dialogue.** A short conversation (3-5 exchanges) between a dev and a domain expert that demonstrates how the terms interact naturally. The dialogue should clarify boundaries between related concepts and show terms being used precisely.
+In update mode, preserve the canonical artifact's established preamble, table shape, and project-owned fields. Merge new evidence without dropping unrelated accepted terms or groups, revise definitions whose meaning evolved, rewrite the dialogue to incorporate new terms or relationships, and add or re-flag unresolved ambiguities.
 
-<example>
+Completion criterion: the saved artifact follows its authoritative form, contains grouped terms, relationships, one example dialogue, and explicit ambiguity status, and preserves unrelated accepted content during updates.
 
-## Example dialogue
+### 5. Verify and report
 
-> **Dev:** "How do I test the **sync service** without Docker?"
+Reread the complete saved glossary. Confirm terms are domain-relevant, definitions are one sentence, canonical choices and aliases are consistent, relationships match the evidence, the dialogue demonstrates the vocabulary, and every known conflict is explicit.
 
-> **Domain expert:** "Provide the **filesystem layer** instead of the **Docker layer**. It implements the same **Sandbox service** interface but uses a local directory as the **sandbox**."
+Report the exact artifact path, create/update mode, principal canonical choices, and unresolved flagged ambiguities in a concise conversational summary.
 
-> **Dev:** "So **sync-in** still creates a **bundle** and unpacks it?"
-
-> **Domain expert:** "Exactly. The **sync service** doesn't know which layer it's talking to. It calls `exec` and `copyIn` — the **filesystem layer** just runs those as local shell commands."
-
-</example>
-
-## Re-running
-
-When invoked again in the same conversation:
-
-1. Read the existing `UBIQUITOUS_LANGUAGE.md`
-2. Incorporate any new terms from subsequent discussion
-3. Update definitions if understanding has evolved
-4. Re-flag any new ambiguities
-5. Rewrite the example dialogue to incorporate new terms
+Completion criterion: the artifact is internally consistent and the final response identifies what changed, where it was written, and what remains unresolved.
