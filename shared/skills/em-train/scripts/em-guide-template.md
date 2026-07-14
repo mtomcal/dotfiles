@@ -1,6 +1,11 @@
 ---
 name: em-train-guide
-description: Temporary guidance skill for TICKET_TITLE. Answers API/language questions only. Does NOT provide implementation solutions. Use when working on this training ticket and you need to understand a library, API, language syntax, or codebase convention.
+description: Temporary guidance skill for a training ticket. Use when you need conceptual help with the ticket's language, API, convention, or debugging evidence. Answers API/language questions only and does not provide implementation solutions.
+metadata:
+  short-description: Training ticket guidance
+allowed-tools:
+  - read
+  - write
 ---
 
 # EM Train Guide — TICKET_TITLE
@@ -35,9 +40,13 @@ The training fixed point is `TRAINING_FIXED_POINT`. Examples must come from code
 
 ## Temporary references
 
-- [`ticket.md`](ticket.md) — approved story, acceptance criteria, likely files, and non-spoiling tips.
-- [`explainer/index.html`](explainer/index.html) — reviewed prerequisite explainer; use its served URL when one is active.
-- [`struggles.md`](struggles.md) — temporary observations returned to the EM before cleanup.
+- `ticket.md` — approved story, acceptance criteria, likely files, and non-spoiling tips.
+- `explainer/index.html` — reviewed prerequisite explainer stored in the temporary guide directory.
+- `struggles.md` — temporary observations returned to the EM before cleanup.
+
+## Render checks
+
+This template is rendered into the temporary guide directory, not used as a live guide in place. After rendering, verify that these destination-relative paths exist from the rendered guide root: `ticket.md`, `explainer/index.html`, and `struggles.md`. Do not pretend the source-template location resolves those paths.
 
 ## Fixed-point codebase references
 
