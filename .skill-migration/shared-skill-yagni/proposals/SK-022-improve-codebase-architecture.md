@@ -1,7 +1,7 @@
 ---
 id: SK-022
 target: improve-codebase-architecture
-status: ready-to-integrate
+status: verified
 blocked-by: [SK-001, SK-013]
 source-verdict: simplify inline
 ---
@@ -139,6 +139,8 @@ Acceptance requires exact two-file scope, canonical three-section body, all thre
 - Residual risk: runtime Herdr and platform-opener availability vary by environment. The preserved in-process exploration fallback, opener-failure tolerance, mandatory absolute-path return, and unchanged support contract bound that risk. No report was generated during this documentation migration because doing so would exercise rather than verify the shipped workflow and would create no production evidence beyond the complete contract review.
 
 This worker result is `ready-to-integrate`; it does not claim coordinator integration, central `verified` state, SK-021, VG-001, or another migration item.
+
+Coordinator integration verification completed at `2026-07-14T18:00:29+00:00` against integrated commit `4f9b2cc`: the complete target, proposal, unchanged HTML report support, and verified design owner were reread; exact definitions, single-load composition, scoping/ranking, friction tests, Herdr/direct/isolation rules, candidate evidence, mandatory temporary visual report, all support-owned fields and diagrams, selection/approval stop, frontmatter identity, Pi visibility, Matt Pocock/MIT provenance, and exact scope passed independent checks. The YAML-aware audit accounted for all 33 skills with zero errors and warnings, `git diff --check` passed, and `bash tests/run.sh` passed all 12 tests. The protected `pi/settings.json` content and diff hashes remained `7d3f4713d7239e8cda3f75597a55f1767fecdf7964324630e4e74dc686d12e05` and `8298a9063e3ebf2988000d176057a41c31cf20c10bbabe92fb57d47f9f2738d5`. Residual risk remains environment-dependent Herdr and opener availability, bounded by direct fallback and unconditional path reporting.
 
 ## Explicit exclusions
 
