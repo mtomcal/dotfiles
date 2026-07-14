@@ -13,55 +13,52 @@ allowed-tools:
 
 # DESIGN.md
 
-## Quick Start
+## Language Definitions
 
-Use this skill to create or maintain a Google-style `DESIGN.md`: YAML front matter for machine-readable tokens plus Markdown sections for human-readable design rationale.
-
-Canonical section order:
-
-1. `## Overview`
-2. `## Colors`
-3. `## Typography`
-4. `## Layout`
-5. `## Elevation & Depth`
-6. `## Shapes`
-7. `## Components`
-8. `## Do's and Don'ts`
+- **Design contract** — agent-readable `DESIGN.md` combining machine tokens and human rules for visual identity.
+- **Design token** — named reusable visual value or component rule.
+- **Token reference** — `{category.name}` pointer to a declared token.
+- **Orphaned token** — declared token with no current use or explained future use.
 
 ## Workflow
 
-1. Inspect existing durable context first: `AGENTS.md`, README files, specs, visual QA docs, CSS/theme files, component files, asset directories, screenshots, and product references.
-2. Extract current design decisions instead of inventing a new style. Prefer existing CSS variables, theme tokens, component classes, rendered screenshots, and repeated UI patterns.
-3. Write YAML front matter with exact tokens:
+1. **Route first.** Select the target and mode:
+   - **Create** — write a new design contract.
+   - **Update** — revise one from evidence or explicit direction.
+   - **Audit** — compare one with implementation and rendered evidence without editing.
+   - **Validate** — lint structure; lint does not establish rendered fidelity.
+
+2. **Extract before inventing.** For create, update, and audit, inspect applicable `AGENTS.md`, READMEs, specs, visual QA docs, CSS/themes, components, assets, screenshots, and product references. Prefer existing variables, tokens, classes, renders, and repeated patterns. Label explicit direction rather than presenting it as extracted evidence. Finish when every rule has evidence or direction.
+
+3. **Create or update the exact artifact contract.** YAML front matter contains:
    - `version`, `name`, and optional `description`
    - `colors` as hex sRGB values
    - `typography` with `fontFamily`, `fontSize`, `fontWeight`, `lineHeight`, and `letterSpacing`
    - `rounded`, `spacing`, and `components`
-4. Use token references in components, for example `{colors.primary}` and `{typography.button}`.
-5. Write concise Markdown rationale in canonical section order. Explain when to use patterns, what to avoid, and how agents should preserve the product's visual identity.
-6. Validate with the official linter when network/package access is available:
 
-```sh
-npx @google/design.md lint DESIGN.md
-```
+   Use token references such as `{colors.primary}` and `{typography.button}`:
+   - Store colors as `#` hex values and opacity as a base color token plus prose.
+   - Give dimensions units where required; use `0px`, not `"0"`, for zero letter spacing.
+   - Correct the model behind contrast warnings. Model colored text on a dark surface rather than falsely modeling a filled colored badge.
+   - Reject orphaned tokens unless prose explains future use.
+   - Focus component tokens on reusable buttons, panels, cards, nav, progress, forms, status, and major repeated surfaces.
 
-## Token Rules
+   Write concise rationale in this exact Markdown section order:
 
-- Colors must be `#` hex values. If implementation uses opacity, store the base color token and explain opacity in prose.
-- Dimensions need units where the spec expects dimensions. Use `0px`, not `"0"`, for zero letter spacing.
-- Component contrast warnings often mean the token is modeled incorrectly. If the UI uses colored text on a dark surface, model that rather than a filled colored badge.
-- Avoid orphaned tokens unless the prose clearly explains future use.
-- Keep component tokens focused on reusable surfaces: buttons, panels, cards, nav, progress, forms, status, and major repeated UI elements.
+   1. `## Overview`
+   2. `## Colors`
+   3. `## Typography`
+   4. `## Layout`
+   5. `## Elevation & Depth`
+   6. `## Shapes`
+   7. `## Components`
+   8. `## Do's and Don'ts`
 
-## Updating Existing DESIGN.md
+   Explain when to use patterns, what to avoid, and how agents preserve the product's visual identity. Production is complete when the token rules and section order are exact.
 
-When updating an existing file:
+4. **Apply mode gates.** Each applicable gate must pass.
+   - **Update:** Preserve naming unless clearly misleading and explain intent, not only changed values. When comparing versions, run `npx @google/design.md diff DESIGN.md DESIGN-v2.md`; the first path is before and the second after. Update repository guidance such as `AGENTS.md` only when needed for discovery or compliance.
+   - **Audit:** Compare tokens, components, and prose with source and rendered evidence. Report mismatches and reject broad generic guidance, one-off visual trivia, copied CSS dumps, invented style, ungrounded tokens, or advice conflicting with rendered UI or project instructions. Do not edit in audit-only mode.
+   - **Lint:** For create, update, audit, and validate, run `npx @google/design.md lint DESIGN.md` with the actual path when network/package access is available. Correct failures only in create or update mode; otherwise report them. If unavailable, disclose that lint did not run and do not claim lint-clean completion.
 
-- Preserve established naming unless it is clearly misleading.
-- Diff intent, not just values: explain any design direction changes in prose.
-- Run `npx @google/design.md diff DESIGN.md DESIGN-v2.md` when comparing two versions.
-- Update repo guidance such as `AGENTS.md` if agents need to discover or obey the design contract.
-
-## Quality Bar
-
-A useful `DESIGN.md` is compact, specific, lint-clean, and grounded in the actual product. Reject broad generic guidance, one-off visual trivia, copied CSS dumps, and style advice that conflicts with the rendered UI or existing project instructions.
+5. **Report by mode.** Return the artifact path, create/update evidence or direction, update intent and applicable diff result, audit findings, and exact lint outcome. A useful design contract is compact, specific, grounded in the actual product, and lint-clean when lint can run.
