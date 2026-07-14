@@ -102,6 +102,4 @@ Completion: the stored hash matches the written tree, or the no-op hash matches 
 
 ## Reference
 
-- When scanning structure for either mode, run [the deterministic detector](scripts/detect-structure.sh) because it owns the tree, Tree hash, ecosystem, module-candidate, dependency, entry-point, and warning output consumed by this workflow.
-- When drafting a new map or adding ownership sections during a structural update, load [the AGENTS.md template](TEMPLATE.md) because it owns the artifact skeleton, marker placement, and field layout.
 - When the mandatory deep pass is reached, load [the coding-principles catalog](PRINCIPLES_CATALOG.md) because it owns the seven-category question inventory, and load [the deep-pass briefing](GRILL_BRIEFING.md) because it owns the structured interview brief and returned-findings schema.
