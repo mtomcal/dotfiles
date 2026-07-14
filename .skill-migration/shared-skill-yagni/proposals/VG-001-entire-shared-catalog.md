@@ -1,7 +1,7 @@
 ---
 id: VG-001
 target: entire-shared-catalog
-status: integrating
+status: verified
 revision: 2
 blocked-by: [MG-002, SK-001-SK-033, NEW-001]
 source-verdict: final catalog verification and reconciliation
@@ -62,23 +62,23 @@ Not a skill body change.
 
 ## Behavior-preservation checklist
 
-- [ ] All 36 prerequisite/skill/new rows before VG-001 are centrally `verified`, every corresponding proposal is `verified`, and blocker/frontier state is consistent.
-- [ ] Exactly 34 top-level shared skills exist: all 33 originals plus `git-delivery`; each directory name equals frontmatter `name` and contains `SKILL.md`.
-- [ ] Every skill parses under the union schema with non-empty `name`, `description`, `metadata.short-description`, and `allowed-tools`; every description contains concrete `Use when` text and is at most 1024 characters.
-- [ ] Every body has `Language Definitions` first and only earned optional `Workflow`, `Activities`, and `Reference` sections in canonical order, with no unapproved level-two section.
-- [ ] Each of the 33 original WF-008 definition sets, plus `handoff`'s exact no-terms statement and Git Delivery's proposal-authorized definitions, remains present and owner-local.
-- [ ] Every original WF-003/004/005 behavior ledger is covered by its checked verified proposal and integrated coordinator record; no proposal has a pending checklist item or unrecorded residual risk.
-- [ ] Composition pointers preserve caller ownership, required local gates, returned evidence, and full in-process fallback; owner links resolve for transport, review, visual, teaching, planning, language, authoring, and Git-delivery routes.
-- [ ] Required local Markdown links/fragments resolve. Template/example/generated-output links are separately classified and validated against their generation contract rather than misreported as missing source files.
-- [ ] Every changed/retained executable support surface passes syntax or installed-help checks applicable to its language: shell helpers, tmux fenced recipes, Ralph loop, structure detector, Git/gh, Playwright CLI, ffmpeg/ffprobe, and agent CLI surfaces.
-- [ ] Support files named by each Reference pointer exist; mandatory load conditions are explicit in each main skill.
-- [ ] Known imported sources and licenses are represented in `THIRD_PARTY_NOTICES.md`; locally authored skills are not assigned invented notices; no proposal reports an unresolved provenance conflict.
-- [ ] Exactly 33 original Pi skill symlinks resolve to `../../shared/skills/<name>`; no stale or non-symlink Pi skill entry exists; `git-delivery` remains deliberately absent under the migration exclusion and is recorded as residual follow-up.
-- [ ] The unchanged SK-027 unused-command-grant warning is reported baseline-aware; no frontmatter redesign or out-of-scope repair is made.
-- [ ] Specs 2.3.0/0.7.0, the completed ownership/composition decisions, and the final ledger state are semantically consistent.
-- [ ] `git diff --check` and all 12 repository shell tests pass.
-- [ ] `pi/settings.json` remains untouched and unstaged with protected content/diff hashes `7d3f4713d7239e8cda3f75597a55f1767fecdf7964324630e4e74dc686d12e05` and `8298a9063e3ebf2988000d176057a41c31cf20c10bbabe92fb57d47f9f2738d5`.
-- [ ] Final diff from the claim baseline contains only this proposal and coordinator-owned ledger changes; no production or protected path changes.
+- [x] All 36 prerequisite/skill/new rows before VG-001 are centrally `verified`, every corresponding proposal is `verified`, and blocker/frontier state is consistent.
+- [x] Exactly 34 top-level shared skills exist: all 33 originals plus `git-delivery`; each directory name equals frontmatter `name` and contains `SKILL.md`.
+- [x] Every skill parses under the union schema with non-empty `name`, `description`, `metadata.short-description`, and `allowed-tools`; every description contains concrete `Use when` text and is at most 1024 characters.
+- [x] Every body has `Language Definitions` first and only earned optional `Workflow`, `Activities`, and `Reference` sections in canonical order, with no unapproved level-two section.
+- [x] Each of the 33 original WF-008 definition sets, plus `handoff`'s exact no-terms statement and Git Delivery's proposal-authorized definitions, remains present and owner-local.
+- [x] Every original WF-003/004/005 behavior ledger is covered by its checked verified proposal and integrated coordinator record; no proposal has a pending checklist item or unrecorded residual risk.
+- [x] Composition pointers preserve caller ownership, required local gates, returned evidence, and full in-process fallback; owner links resolve for transport, review, visual, teaching, planning, language, authoring, and Git-delivery routes.
+- [x] Required local Markdown links/fragments resolve. Template/example/generated-output links are separately classified and validated against their generation contract rather than misreported as missing source files.
+- [x] Every changed/retained executable support surface passes syntax or installed-help checks applicable to its language: shell helpers, tmux fenced recipes, Ralph loop, structure detector, Git/gh, Playwright CLI, ffmpeg/ffprobe, and agent CLI surfaces.
+- [x] Support files named by each Reference pointer exist; mandatory load conditions are explicit in each main skill.
+- [x] Known imported sources and licenses are represented in `THIRD_PARTY_NOTICES.md`; locally authored skills are not assigned invented notices; no proposal reports an unresolved provenance conflict.
+- [x] Exactly 33 original Pi skill symlinks resolve to `../../shared/skills/<name>`; no stale or non-symlink Pi skill entry exists; `git-delivery` remains deliberately absent under the migration exclusion and is recorded as residual follow-up.
+- [x] The unchanged SK-027 unused-command-grant warning is reported baseline-aware; no frontmatter redesign or out-of-scope repair is made.
+- [x] Specs 2.3.0/0.7.0, the completed ownership/composition decisions, and the final ledger state are semantically consistent.
+- [x] `git diff --check` and all 12 repository shell tests pass.
+- [x] `pi/settings.json` remains untouched and unstaged with protected content/diff hashes `7d3f4713d7239e8cda3f75597a55f1767fecdf7964324630e4e74dc686d12e05` and `8298a9063e3ebf2988000d176057a41c31cf20c10bbabe92fb57d47f9f2738d5`.
+- [x] Final diff from the claim baseline contains only this proposal, the coordinator-owned ledger, and the authorized SK-033 checklist reconciliation; no production or protected path changes.
 
 ## Dependencies, provenance, and risks
 
@@ -92,7 +92,7 @@ Not a skill body change.
 
 ## Verification
 
-1. Parse ledger rows and proposal frontmatter with a YAML-aware script. Expect 35 verified blockers before VG-001 and 36 verified non-VG proposal records; reject pending proposal checkboxes outside explanatory code samples.
+1. Parse ledger rows and proposal frontmatter with a YAML-aware script. Expect 36 verified blockers before VG-001 and 36 verified non-VG proposal records; reject pending proposal checkboxes outside explanatory code samples.
 2. Parse all `shared/skills/*/SKILL.md` files. Expect 34 unique directory/name matches, valid union frontmatter, concrete trigger descriptions within 1024 characters, and canonical body sections.
 3. Compare every original skill with WF-008 and its family ledger through the integrated proposal's completed checklist and coordinator verification record; separately inspect Git Delivery's authorized definitions and workflow.
 4. Resolve source-time Markdown paths/fragments across all 86 catalog files. Classify bootstrap templates, generated EM Train links, and virtual `skill:` routes explicitly; validate their generation/route contracts.
@@ -103,9 +103,21 @@ Not a skill body change.
 9. Compare shared names and `pi/skills`: expect exact resolving symlinks for all 33 original skills, no stale entries, and only authorized `git-delivery` absent.
 10. Check spec/body/ownership/composition clauses and final ledger statements for contradiction.
 11. Run `git diff --check` and `bash tests/run.sh`; expect all 12 tests to pass.
-12. Compare paths/modes from baseline `179156f85b1b3e897d9555e2905a5adeeeac0cfb`, verify protected settings hashes, and inspect status. Expect only this proposal and ledger changes plus the pre-existing unstaged `pi/settings.json` modification.
+12. Compare paths/modes from baseline `179156f85b1b3e897d9555e2905a5adeeeac0cfb`, verify protected settings hashes, and inspect status. Expect only this proposal, ledger changes, and the SK-033 checklist reconciliation plus the pre-existing unstaged `pi/settings.json` modification.
 
 Acceptance requires all checks above, exact classification of the one visibility exclusion and one frontmatter warning, no unresolved behavior/provenance/composition contradiction, no production edit, and an exact three-file control-artifact scope.
+
+## Final verification record
+
+Coordinator verification completed at `2026-07-14T19:45:21+00:00` from claim baseline `179156f85b1b3e897d9555e2905a5adeeeac0cfb` against the integrated 34-skill catalog. YAML-aware control checks found all 36 blockers and non-VG proposals centrally verified with no remaining unchecked item checklist. The final catalog contained 34 directory/name-matched skills and 86 files; all 34 frontmatter blocks parsed with zero errors, concrete `Use when` descriptions within 1024 characters, and canonical body section order. All 32 WF-008 definition sets, `handoff`'s exact no-terms statement, and Git Delivery's four authorized definitions matched their owners. The 33 family-ledger records mapped exactly to the original skills, and verified proposal records plus focused owner-seam checks preserved composition/fallback boundaries.
+
+Link verification resolved 87 source-time paths/fragments and classified exactly six generation-time links: three Bootstrap Specs output/example links and three rendered EM Train guide links; a temporary rendered guide resolved all three. Required Reference links and load conditions passed, and retired `tdd/refactoring.md` and `create-explainer/EXAMPLES.md` remained absent. Both executable shell supports and 115 documented shell fences passed syntax checks after replacing documented angle placeholders. The structure detector emitted its complete JSON contract with hash `2821dedbdd77f18a180a15b48feb967e1a144d2542e55c9682ceccc336c8a10f`, 25 detected modules, and one expected limitation (`No package manager detected. Parsing limited to directory conventions only.`). An isolated fake-Codex Ralph probe proved bounded commit evidence and exact `/done` sentinel handling. Thirteen HTML supports parsed and all 13 inline scripts passed `node --check`.
+
+Installed Git 2.43.0, GitHub CLI 2.45.0, Playwright CLI 0.1.14, ffmpeg/ffprobe 6.1.1, tmux 3.4, Herdr, Codex, Claude, Pi, and Copilot help surfaces covered the retained command families without live browser, worker, PR, CI, media, or remote mutation. Provenance records retained Matt Pocock/MIT, Herdr/AGPL, and Microsoft Playwright CLI/Apache-2.0 source and license evidence. The complete union-frontmatter audit reported `discovered=34 parsed=34 errors=0 warnings=1`; the sole warning is the unchanged SK-027 unused command grants deferred to the separate frontmatter lane.
+
+All 33 original Pi entries are exact resolving symlinks to the canonical shared catalog, with no stale/non-symlink entry. `git-delivery` remains the only absent Pi name under the migration-wide visibility exclusion and is recorded as a discoverability follow-up rather than silently changed. Specs 2.3.0 and 0.7.0 agree with the final body/ownership/composition state. `git diff --check` passed and `bash tests/run.sh` passed both files/all 12 tests. The baseline-aware range contains exactly this proposal, `MIGRATION.md`, and the authorized SK-033 checklist reconciliation, all mode `100644`; no production file changed. The pre-existing unstaged `pi/settings.json` remained untouched with content hash `7d3f4713d7239e8cda3f75597a55f1767fecdf7964324630e4e74dc686d12e05` and diff hash `8298a9063e3ebf2988000d176057a41c31cf20c10bbabe92fb57d47f9f2738d5`.
+
+Residual follow-up is intentionally limited to the separately scoped Git Delivery Pi discoverability decision and SK-027 frontmatter grant warning. Neither invalidates the body migration or permits an out-of-scope repair here.
 
 ## Explicit exclusions
 
