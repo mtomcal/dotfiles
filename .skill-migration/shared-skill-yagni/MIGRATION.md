@@ -147,7 +147,7 @@ The sequence follows WF-007: durable decisions, authoring owner, correctness rep
 | `SK-003` | skill | `gameplay-asset-imagegen` | simplify inline | SK-001 | verified |
 | `SK-004` | skill | `herdr` | simplify inline | SK-001, MG-002 | verified |
 | `SK-005` | skill | `playwright` | move detail to Reference | SK-001, MG-002 | verified |
-| `SK-006` | skill | `ralph` | simplify inline | SK-001 | claimed |
+| `SK-006` | skill | `ralph` | simplify inline | SK-001 | integrating |
 | `SK-007` | skill | `create-explainer` | simplify inline | SK-001 | verified |
 | `SK-008` | skill | `test-quality-verifier` | retain substance; clarify routing | SK-001 | queued |
 | `SK-009` | skill | `ubiquitous-language` | simplify inline | SK-001, MG-001 | queued |
@@ -199,4 +199,4 @@ The final catalog gate additionally checks all 33 original skills, the proposal-
 
 `MG-001` revision 2, `MG-002` revision 1, and SK-001 through SK-005 are verified. Parallel mode is active.
 
-`MG-001` revision 2, `MG-002` revision 1, and SK-001 through SK-005 plus SK-007 are verified. `SK-006` remains claimed while its revision 2 result awaits integration. All other unblocked items remain queued until the active worker result is integrated and the frontier is recomputed. No later production file is authorized without its item-specific exact proposal in `proposal-ready` state.
+`MG-001` revision 2, `MG-002` revision 1, and SK-001 through SK-005 plus SK-007 are verified. `SK-006` revision 2 is integrating. All other unblocked items remain queued until the active worker result is verified and the frontier is recomputed. No later production file is authorized without its item-specific exact proposal in `proposal-ready` state.
