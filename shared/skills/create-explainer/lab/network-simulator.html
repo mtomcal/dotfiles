@@ -108,7 +108,7 @@ function updateSim() {
     row("var(--network)", "t=" + (lat * 2 + 2) + "ms", "Response reaches client") +
     row("var(--fx)", "t=" + (lat * 2 + 2) + "ms", "Client renders result") +
     divider("Total round-trip: <span style='color:var(--accent);font-weight:700'>~" + total + "ms</span>" +
-      (loss > 0 ? " &nbsp;|&nbsp; Packet loss: <span style='color:var(--danger)'"> + loss + "%</span>" : ""));
+      (loss > 0 ? " &nbsp;|&nbsp; Packet loss: <span style='color:var(--danger)'>" + loss + "%</span>" : ""));
 }
 
 function row(color, time, desc) {
