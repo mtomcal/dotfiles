@@ -1,7 +1,7 @@
 ---
 id: SK-015
 target: create-plan
-status: ready-to-integrate
+status: verified
 blocked-by: [SK-001]
 source-verdict: simplify inline
 ---
@@ -133,6 +133,10 @@ SK-001 is verified and owns the canonical skill-body contract, so SK-015 is unbl
 - Repository checks: PASS. `git diff --check` is clean and `bash tests/run.sh` passes both shell test files and all 12 tests.
 - Resulting SHA-256 values: target `aa7a305f9b7862da054d064e320c06c6ba930954a55e3c50b8dbf0ffba94403a`; PLAN format `536948a9e6f090a42308aa53b7f82ab169f4301885554cd6499174661d555e5e`; slice format `397457bb0ae14c5cdc2a2403a885043f01a068bbdd8d26897551ab6f02401f3b`; verification format `92f199834f9d7774a9a521ad3a2268b455b9e80edefe0dd7b42cb5a52b488505`.
 - Residual risk: none beyond the deliberate dependency on the three unchanged local schema files; complete-file, link, and contract checks passed.
+
+## Integrated verification
+
+- Coordinator verification timestamp: `2026-07-14T17:29:01+00:00`. Exact scope, complete target/support review, canonical shape, nine definitions, lifecycle/state/recovery gates, links, provenance, and settings preservation passed. Repository tests passed 12/12 and diff check passed.
 
 ## Explicit exclusions
 
