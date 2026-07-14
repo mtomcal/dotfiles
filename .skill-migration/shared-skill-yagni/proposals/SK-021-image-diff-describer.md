@@ -1,7 +1,7 @@
 ---
 id: SK-021
 target: image-diff-describer
-status: proposal-ready
+status: ready-to-integrate
 blocked-by: [SK-001]
 source-verdict: Retain substance while adding confirmed language and colocating the no-verdict output contract with production
 ---
@@ -36,7 +36,7 @@ SK-001 is verified and owns the canonical body contract. WF-007 places `image-di
 
 - Add `Language Definitions` with the four WF-008-confirmed operational definitions: Neutral diff artifact, Raw diffing, Verdict, and Visual ambiguity.
 - Add explicit in-process fallback when neither a repo-local wrapper nor raw-comparison delegate is available; this makes the existing direct-comparison path checkable without changing ownership.
-- Add a completion criterion requiring all five output fields, explicit uncertainty, and absence of criteria, severity, recommendations, or verdict.
+- Add a completion criterion requiring all five output fields, explicit uncertainty, and absence of applied criteria, severity, recommendations, or verdict.
 
 ### Change or move
 
@@ -59,20 +59,20 @@ SK-001 is verified and owns the canonical body contract. WF-007 places `image-di
 
 ## Behavior-preservation checklist
 
-- [ ] Frontmatter `name`, description, short description, and `allowed-tools: read,bash` remain byte-identical; the description retains its exact `Use when` triggers.
-- [ ] Invocation remains a bias-resistant, neutral visual description requested before a separate judge, reviewer, or downstream criteria pass.
-- [ ] Input gathering retains reference image path and candidate image paths.
-- [ ] Comparison scope retains full-scene, asset-only, and HUD-only choices.
-- [ ] A repo-local wrapper, when present, still takes precedence over improvising a prompt.
-- [ ] Raw-comparison delegation remains conditional on availability and receives the full brief without acceptance criteria, forbidden elements, or expected outcomes.
-- [ ] Direct in-process comparison remains the fallback and does not claim an independent delegate.
-- [ ] Comparison remains limited to observable visual differences and explicitly reports ambiguity or low confidence.
-- [ ] The skill issues no PASS/FAIL verdict, severity/blocking classification, criteria-based judgment, or hidden-goal implementation recommendation.
-- [ ] The project-specific-criteria exception remains limited to requested quotation as visible text.
-- [ ] Structured output retains exactly the five required fields: evidence checked; overall composition differences; detailed differences by category; highest-salience visual deltas; ambiguities or low-confidence reads.
-- [ ] The completed artifact is saved or returned for a separate reviewer or judge; this skill retains artifact ownership but not downstream acceptance authority.
-- [ ] No capture, recording conversion, general visual QA, scoped judgment, or final human acceptance ownership moves into this skill.
-- [ ] Frontmatter ownership, provenance state, target location, Pi symlink visibility, and conditional wrapper behavior remain unchanged.
+- [x] Frontmatter `name`, description, short description, and `allowed-tools: read,bash` remain byte-identical; the description retains its exact `Use when` triggers.
+- [x] Invocation remains a bias-resistant, neutral visual description requested before a separate judge, reviewer, or downstream criteria pass.
+- [x] Input gathering retains reference image path and candidate image paths.
+- [x] Comparison scope retains full-scene, asset-only, and HUD-only choices.
+- [x] A repo-local wrapper, when present, still takes precedence over improvising a prompt.
+- [x] Raw-comparison delegation remains conditional on availability and receives the full brief without acceptance criteria, forbidden elements, or expected outcomes.
+- [x] Direct in-process comparison remains the fallback and does not claim an independent delegate.
+- [x] Comparison remains limited to observable visual differences and explicitly reports ambiguity or low confidence.
+- [x] The skill issues no PASS/FAIL verdict, severity/blocking classification, criteria-based judgment, or hidden-goal implementation recommendation.
+- [x] The project-specific-criteria exception remains limited to requested quotation as visible text.
+- [x] Structured output retains exactly the five required fields: evidence checked; overall composition differences; detailed differences by category; highest-salience visual deltas; ambiguities or low-confidence reads.
+- [x] The completed artifact is saved or returned for a separate reviewer or judge; this skill retains artifact ownership but not downstream acceptance authority.
+- [x] No capture, recording conversion, general visual QA, scoped judgment, or final human acceptance ownership moves into this skill.
+- [x] Frontmatter ownership, provenance state, target location, Pi symlink visibility, and conditional wrapper behavior remain unchanged.
 
 ## Dependencies, provenance, and risks
 
@@ -93,6 +93,24 @@ SK-001 is verified and owns the canonical body contract. WF-007 places `image-di
 - Run the repository's YAML-aware full-catalog union-frontmatter audit defined by `audit-shared-skills`; require zero new target findings and report any unrelated baseline findings without editing them.
 - `test "$(readlink pi/skills/image-diff-describer)" = '../../shared/skills/image-diff-describer' && test -f pi/skills/image-diff-describer/SKILL.md` — Pi visibility remains resolving and unchanged.
 - `git diff --name-only 5cd3e4b..HEAD` plus worktree status — only the exact proposal and target production file may change; `.skill-migration/shared-skill-yagni/MIGRATION.md` remains baseline claim state and `pi/settings.json` remains untouched.
+
+## Implementation and verification record
+
+Worker verification completed at `2026-07-14T17:53:05+00:00`.
+
+- Proposal-before-edit control: revision 1 reached committed `proposal-ready` state at `7be0c97` with the exact proposal/target file set before production editing. No material file-set, authority, ownership, provenance, behavior, or removal revision was needed; the same revision now records `ready-to-integrate`.
+- Actual production diff: `shared/skills/image-diff-describer/SKILL.md` has 34 insertions and 24 removals relative to claim baseline `5cd3e4b8497ae0c0c3686654d104a7c93b711cb6`; its resulting SHA-256 is `659a7e87be6ede21069abd9a91bda4a525635efab8924310a3f279b5d7aa9714`. This proposal is the only additional item-local file.
+- Complete-file and behavior-ledger review: PASS. All triggers, image paths, comparison scopes, wrapper precedence, delegate brief fields, in-process fallback, observable-only comparison, ambiguity handling, output prohibitions, five output fields, save/return behavior, ownership, and separate-reviewer boundary remain inline.
+- Canonical body and confirmed language: PASS. Level-two headings are exactly `Language Definitions` then `Workflow`; no `Activities` or `Reference` is invented. All four WF-008 definitions appear once with exact wording, and the one Workflow retains four ordered stages with local observable completion criteria.
+- Neutrality and output authority: PASS. Raw comparison receives no acceptance criteria, forbidden elements, or expected outcomes. The resulting artifact cannot issue PASS/FAIL, blocking/non-blocking or severity classification, applied criteria, recommendations, or a verdict; the visible-text quotation exception and explicit low-confidence reporting remain intact. `highest-salience` remains an observation category rather than severity.
+- Routing, delegation, and wrapper behavior: PASS. A project-local wrapper still precedes prompt improvisation; an available raw-comparison delegate receives only the complete neutral brief; otherwise the workflow compares in process without claiming independent delegation.
+- Frontmatter and tool grants: PASS. The opening YAML block is byte-identical to baseline. PyYAML 6.0.1 parsed all fields; `read` remains needed for image evidence and `bash` for project wrapper/path discovery and invocation. No schema, description, trigger, or tool grant changed.
+- Baseline-aware union audit: PASS. PyYAML 6.0.1 parsed and accounted for all 33 baseline and all 33 result skill frontmatters; both report zero errors and zero warnings for required fields, description length, and exact `Use when` phrase. Manual target grant review found no unused grant.
+- Support, executable, provenance, and visibility review: PASS. The target has no links, support files, target-owned scripts, fixed command syntax, or repository-local wrapper to validate. Complete history confirms repository-local introduction at `0152596` and only the later frontmatter update at `353218e`; no target notice or license change is required. `pi/skills/image-diff-describer` remains the resolving `../../shared/skills/image-diff-describer` symlink.
+- Repository and exact-scope verification: PASS. `bash tests/run.sh` passed both shell files and all 12 tests; scoped `git diff --check` passed. Baseline-aware inspection contains exactly this proposal and target. No diff exists in `MIGRATION.md`, `pi/settings.json`, specs, notices, adjacent skills, scripts, wrappers, deployment, tests, or Pi visibility paths, and no live Herdr ID is persisted.
+- Residual risk: a future project-local wrapper may have its own transport interface that must be discovered at invocation time; this repository has no wrapper whose help can be checked now. The retained rule requires that wrapper to preserve the same no-criteria brief. `Highest-salience` may be misread as severity, but the adjacent prohibition and artifact definition explicitly disallow severity classification.
+
+The worker result is `ready-to-integrate`; this record does not claim coordinator integration, coordinator verification, or catalog-wide VG-001 completion.
 
 ## Explicit exclusions
 
