@@ -1,7 +1,7 @@
 ---
 id: SK-016
 target: diagnosing-bugs
-status: ready-to-integrate
+status: verified
 revision: 1
 blocked-by: [SK-001]
 source-verdict: retain substance
@@ -145,6 +145,10 @@ Worker verification completed at `2026-07-14T17:27:50+00:00`.
 - Residual risk: a genuinely missing honest seam cannot produce a regression test without violating the no-shallow-test guardrail. The workflow now reports that limitation explicitly while still requiring the original symptom command to go green; any seam improvement remains separate post-fix architecture work.
 
 The worker result is `ready-to-integrate`; this record does not claim coordinator integration, central verification, VG-001, SK-015, or any other migration item.
+
+## Integrated verification
+
+- Coordinator verification `2026-07-14T17:30:16+00:00`: exact scope, complete skill, six gates, five definitions, TDD/no-seam branches, provenance, tests 12/12, diff check, visibility, and preserved settings passed.
 
 ## Explicit exclusions
 
