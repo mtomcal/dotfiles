@@ -157,7 +157,7 @@ The sequence follows WF-007: durable decisions, authoring owner, correctness rep
 | `SK-013` | skill | `codebase-design` | retain substance | SK-001 | verified |
 | `SK-014` | skill | `code-review` | retain substance | SK-001 | verified |
 | `SK-015` | skill | `create-plan` | simplify inline | SK-001 | verified |
-| `SK-016` | skill | `diagnosing-bugs` | retain substance | SK-001 | claimed |
+| `SK-016` | skill | `diagnosing-bugs` | retain substance | SK-001 | integrating |
 | `SK-017` | skill | `design-md` | simplify inline | SK-001 | claimed |
 | `SK-018` | skill | `grill-me` | retain substance | SK-001, MG-002 | queued |
 | `SK-019` | skill | `handoff` | retain substance | SK-001 | queued |
@@ -199,4 +199,4 @@ The final catalog gate additionally checks all 33 original skills, the proposal-
 
 `MG-001` revision 2, `MG-002` revision 1, and SK-001 through SK-005 are verified. Parallel mode is active.
 
-`MG-001` revision 2, `MG-002` revision 1, and SK-001 through SK-015 are verified. SK-016 and SK-017 are claimed; their scopes are disjoint. No later production file is authorized without its item-specific exact proposal in `proposal-ready` state.
+`MG-001` revision 2, `MG-002` revision 1, and SK-001 through SK-015 are verified. SK-016 is integrating and SK-017 remains claimed. No later production file is authorized without its item-specific exact proposal in `proposal-ready` state.
