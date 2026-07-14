@@ -76,36 +76,36 @@ These are the exact three regular Markdown files authorized by revision 1, all m
 
 ## Behavior-preservation checklist
 
-- [ ] Frontmatter remains byte-identical, valid under the union schema, under the description limit, and uses the existing `read,write,bash` grants.
-- [ ] The exact four WF-008 definitions are present without additions or wording drift.
-- [ ] Tmux remains invocable for parallel Codex, Claude, Pi, Copilot, or mixed CLI workers when explicitly selected; Herdr's default role does not disable it.
-- [ ] If the request omits the CLI, ask which installed agent CLI to use before launching; if supplied, do not ask redundantly.
-- [ ] Run `command -v`, `--version`, and current `--help` for the selected CLI; inspect working-directory, interactive/non-interactive prompt, approval/sandbox/permission, and initial-prompt shape instead of assuming flags.
-- [ ] Record caller-owned task brief, exact edit authority/forbidden paths, acceptance checks, returned evidence, worker/timeout/poll bounds, and cleanup disposition before transport actions.
-- [ ] Select checkout isolation before transport; every editable worker gets exactly one task, one isolated clone, and one task branch, and a separate pane never counts as isolation.
-- [ ] Verify each clone's canonical path, expected branch, remote, and uniqueness; workers may not edit the original checkout or another worker clone.
-- [ ] Use one deterministic named orchestration session with one deterministic named window per bounded worker; detect collisions and preserve all unrelated sessions.
-- [ ] Give every worker a full initial prompt containing clone/branch/task, editing authority, forbidden paths, delegation authority, checks, commit/return evidence, and original-checkout prohibition.
-- [ ] Launch only the authorized worker set; no speculative worker, pane, window, or subagent is added.
-- [ ] TUI steering uses named targets and buffer paste, sends Enter, inspects the pane, retries with C-m only when still unsubmitted, and verifies a processing transition through a working indicator, assistant/tool output, changed capture, or corresponding Git activity.
-- [ ] Visible composer text alone is explicitly insufficient; failed transition is reported as unsubmitted and is not treated as worker progress.
-- [ ] Monitoring correlates pane capture/current command/path with clone branch/remote/status/log and uses the recorded cadence/deadline; completion is never inferred from a vanished window or idle-looking pane alone.
-- [ ] Worker blocks, permission prompts, exited panes, same-checkout collisions, branch/path/remote mismatches, and unsubmitted prompts have tmux-specific stop/retry/relaunch or in-process fallback handling.
-- [ ] The caller remains sole owner of workflow state, brief changes, editing authority, acceptance, and cleanup decision; workers return evidence rather than silently expanding scope.
-- [ ] If tmux/the CLI is unavailable or delegation cannot continue safely, the caller performs the authorized task in-process and preserves the same checks/return contract.
-- [ ] PR creation/update, CI-to-green, stale-head refresh, pushed-head proof, generic review, and semantic conflict handling route explicitly to verified `git-delivery`, not copied commands.
-- [ ] Delivery handoff retains minimum local context: goal/scope, base/head or PR identity, permitted remote/metadata/rewrite/fix state changes, checks, and bound.
-- [ ] A worker may execute the composed delivery process, but the caller retains delivery state/acceptance and invokes `git-delivery` directly in-process if worker transport is unavailable.
-- [ ] No hard-coded `origin`, `main`, GitHub repository, branch, PR command, check command, merge/rebase method, or semantic-conflict procedure remains in tmux-owned guidance.
-- [ ] Before cleanup, worker results and Git state are collected and every uncommitted/unretained change blocks clone deletion until explicitly retained or abandoned.
-- [ ] Cleanup targets only the exact named orchestration session and exact owned clone bundle; it never uses `kill-server`, wildcard session deletion, or broad clone removal.
-- [ ] Cleanup verifies the exact session no longer exists, the exact clone bundle no longer exists, and every unrelated pre-existing tmux session remains present; failures are reported without widening deletion.
-- [ ] `REFERENCE.md` retains executable tmux launch/steer/monitor/cleanup commands and tmux-specific failure modes without becoming a second Workflow or delivery manual.
-- [ ] Every Workflow stage and Activity has an observable completion criterion, and required main-path ownership/fallback rules remain inline.
-- [ ] Relative Markdown pointers resolve one level deep; Reference commands are consistent with installed tmux 3.4 and the command-probed CLI approach.
-- [ ] Local repository provenance remains accurate; no unsupported third-party attribution/license is added and `THIRD_PARTY_NOTICES.md` remains unchanged.
-- [ ] `pi/skills/tmux-agent-orchestration` remains tracked mode `120000`, resolves to `../../shared/skills/tmux-agent-orchestration`, and exposes both target files.
-- [ ] Semantic YAGNI governs the resulting text; no fixed line target or size gate applies.
+- [x] Frontmatter remains byte-identical, valid under the union schema, under the description limit, and uses the existing `read,write,bash` grants.
+- [x] The exact four WF-008 definitions are present without additions or wording drift.
+- [x] Tmux remains invocable for parallel Codex, Claude, Pi, Copilot, or mixed CLI workers when explicitly selected; Herdr's default role does not disable it.
+- [x] If the request omits the CLI, ask which installed agent CLI to use before launching; if supplied, do not ask redundantly.
+- [x] Run `command -v`, `--version`, and current `--help` for the selected CLI; inspect working-directory, interactive/non-interactive prompt, approval/sandbox/permission, and initial-prompt shape instead of assuming flags.
+- [x] Record caller-owned task brief, exact edit authority/forbidden paths, acceptance checks, returned evidence, worker/timeout/poll bounds, and cleanup disposition before transport actions.
+- [x] Select checkout isolation before transport; every editable worker gets exactly one task, one isolated clone, and one task branch, and a separate pane never counts as isolation.
+- [x] Verify each clone's canonical path, expected branch, remote, and uniqueness; workers may not edit the original checkout or another worker clone.
+- [x] Use one deterministic named orchestration session with one deterministic named window per bounded worker; detect collisions and preserve all unrelated sessions.
+- [x] Give every worker a full initial prompt containing clone/branch/task, editing authority, forbidden paths, delegation authority, checks, commit/return evidence, and original-checkout prohibition.
+- [x] Launch only the authorized worker set; no speculative worker, pane, window, or subagent is added.
+- [x] TUI steering uses named targets and buffer paste, sends Enter, inspects the pane, retries with C-m only when still unsubmitted, and verifies a processing transition through a working indicator, assistant/tool output, changed capture, or corresponding Git activity.
+- [x] Visible composer text alone is explicitly insufficient; failed transition is reported as unsubmitted and is not treated as worker progress.
+- [x] Monitoring correlates pane capture/current command/path with clone branch/remote/status/log and uses the recorded cadence/deadline; completion is never inferred from a vanished window or idle-looking pane alone.
+- [x] Worker blocks, permission prompts, exited panes, same-checkout collisions, branch/path/remote mismatches, and unsubmitted prompts have tmux-specific stop/retry/relaunch or in-process fallback handling.
+- [x] The caller remains sole owner of workflow state, brief changes, editing authority, acceptance, and cleanup decision; workers return evidence rather than silently expanding scope.
+- [x] If tmux/the CLI is unavailable or delegation cannot continue safely, the caller performs the authorized task in-process and preserves the same checks/return contract.
+- [x] PR creation/update, CI-to-green, stale-head refresh, pushed-head proof, generic review, and semantic conflict handling route explicitly to verified `git-delivery`, not copied commands.
+- [x] Delivery handoff retains minimum local context: goal/scope, base/head or PR identity, permitted remote/metadata/rewrite/fix state changes, checks, and bound.
+- [x] A worker may execute the composed delivery process, but the caller retains delivery state/acceptance and invokes `git-delivery` directly in-process if worker transport is unavailable.
+- [x] No hard-coded `origin`, `main`, GitHub repository, branch, PR command, check command, merge/rebase method, or semantic-conflict procedure remains in tmux-owned guidance.
+- [x] Before cleanup, worker results and Git state are collected and every uncommitted/unretained change blocks clone deletion until explicitly retained or abandoned.
+- [x] Cleanup targets only the exact named orchestration session and exact owned clone bundle; it never uses `kill-server`, wildcard session deletion, or broad clone removal.
+- [x] Cleanup verifies the exact session no longer exists, the exact clone bundle no longer exists, and every unrelated pre-existing tmux session remains present; failures are reported without widening deletion.
+- [x] `REFERENCE.md` retains executable tmux launch/steer/monitor/cleanup commands and tmux-specific failure modes without becoming a second Workflow or delivery manual.
+- [x] Every Workflow stage and Activity has an observable completion criterion, and required main-path ownership/fallback rules remain inline.
+- [x] Relative Markdown pointers resolve one level deep; Reference commands are consistent with installed tmux 3.4 and the command-probed CLI approach.
+- [x] Local repository provenance remains accurate; no unsupported third-party attribution/license is added and `THIRD_PARTY_NOTICES.md` remains unchanged.
+- [x] `pi/skills/tmux-agent-orchestration` remains tracked mode `120000`, resolves to `../../shared/skills/tmux-agent-orchestration`, and exposes both target files.
+- [x] Semantic YAGNI governs the resulting text; no fixed line target or size gate applies.
 
 ## Dependencies, provenance, and risks
 

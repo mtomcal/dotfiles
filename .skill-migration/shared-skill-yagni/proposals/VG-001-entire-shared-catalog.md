@@ -2,7 +2,7 @@
 id: VG-001
 target: entire-shared-catalog
 status: integrating
-revision: 1
+revision: 2
 blocked-by: [MG-002, SK-001-SK-033, NEW-001]
 source-verdict: final catalog verification and reconciliation
 baseline: 179156f85b1b3e897d9555e2905a5adeeeac0cfb
@@ -33,7 +33,9 @@ No authority conflict requires a production edit. The apparent Git-delivery visi
 - `.skill-migration/shared-skill-yagni/proposals/VG-001-entire-shared-catalog.md` — final gate authority, matrix, results, exceptions, and coordinator verification record.
 - `.skill-migration/shared-skill-yagni/MIGRATION.md` — coordinator-owned transition of VG-001 through `integrating` to `verified` and final frontier summary.
 
-These are the exact two mode-`100644` Markdown files authorized by revision 1. No production skill, support file, spec, notice, AGENTS map, test, deployment/discovery file, settings file, or symlink is authorized to change.
+- `.skill-migration/shared-skill-yagni/proposals/SK-033-tmux-agent-orchestration.md` — reconcile 30 unchecked checklist markers with its existing worker and coordinator verification records; wording and evidence remain unchanged.
+
+These are the exact three mode-`100644` Markdown files authorized by revision 2. No production skill, support file, spec, notice, AGENTS map, test, deployment/discovery file, settings file, or symlink is authorized to change.
 
 ## Proposed changes
 
@@ -41,6 +43,7 @@ These are the exact two mode-`100644` Markdown files authorized by revision 1. N
 
 - Add this durable final-gate record with exact catalog counts, commands, evidence, exceptions, and residual risks.
 - Add a final verification record after all checks run, including immutable baseline/range, settings hashes, and observed catalog/proposal/visibility state.
+- Mark SK-033's 30 behavior-preservation entries complete because its worker record and coordinator integration record already independently evidence every entry; change no checklist wording or production file.
 
 ### Change or move
 
@@ -102,11 +105,11 @@ Not a skill body change.
 11. Run `git diff --check` and `bash tests/run.sh`; expect all 12 tests to pass.
 12. Compare paths/modes from baseline `179156f85b1b3e897d9555e2905a5adeeeac0cfb`, verify protected settings hashes, and inspect status. Expect only this proposal and ledger changes plus the pre-existing unstaged `pi/settings.json` modification.
 
-Acceptance requires all checks above, exact classification of the one visibility exclusion and one frontmatter warning, no unresolved behavior/provenance/composition contradiction, no production edit, and an exact two-file control-artifact scope.
+Acceptance requires all checks above, exact classification of the one visibility exclusion and one frontmatter warning, no unresolved behavior/provenance/composition contradiction, no production edit, and an exact three-file control-artifact scope.
 
 ## Explicit exclusions
 
-- No edit to any `shared/skills/` file, `.wayfinder/` file, spec/glossary, `AGENTS.md`, `THIRD_PARTY_NOTICES.md`, test, installer/deployment/discovery source, agent config, or any Pi file/symlink.
+- No edit to any `shared/skills/` file, `.wayfinder/` file, spec/glossary, `AGENTS.md`, `THIRD_PARTY_NOTICES.md`, test, installer/deployment/discovery source, agent config, Pi file/symlink, or proposal other than the explicitly authorized SK-033 checklist reconciliation.
 - No edit, stage, normalization, restoration, or disclosure of `pi/settings.json`.
 - No new `pi/skills/git-delivery` symlink under this migration's explicit visibility exclusion.
 - No SK-027 frontmatter repair, union-schema redesign, grant portability redesign, new skill, new support file, generated artifact, or fixed line target.
@@ -116,6 +119,6 @@ Acceptance requires all checks above, exact classification of the one visibility
 ## Standing authorization
 
 - Human directive timestamp: `2026-07-14T15:55:39+00:00`
-- Proposal revision: `1`
-- Authorization effect: after the scope check passes, the standing directive authorizes only this proposal and coordinator-owned final ledger changes; all production and visibility surfaces remain read-only.
-- Scope check: `PASS — revision 1 read MAP → WF-007 D7 and complete recommendation set → all WF-003/004/005 family ledgers through their verified item records → WF-008 → WF-006 → current specs/AGENTS → verified audit-shared-skills and all 36 completed proposals/coordinator records → complete 34-skill/86-file inventory → provenance notices → support/installed command surfaces in the mandated order. All 36 blockers are centrally verified. The exact scope is this proposal plus coordinator-owned ledger status/frontier cleanup, both mode 100644. The complete final behavior matrix, source/generated-link classification, command/support/provenance/frontmatter/composition/visibility checks, one deferred SK-027 warning, deliberate NEW-001 Pi exclusion, no-production-edit boundary, protected settings hashes, and acceptance criteria are fixed. No authority conflict or material scope gap remains; final verification may proceed under the standing directive.`
+- Proposal revision: `2`
+- Authorization effect: after the scope check passes, the standing directive authorizes this proposal, coordinator-owned final ledger changes, and only SK-033's checklist-marker reconciliation; all production and visibility surfaces remain read-only.
+- Scope check: `PASS — revision 2 repeats revision 1's strict authority and exact final-gate review, then adds only SK-033's proposal checklist markers after preflight found 30 unchecked entries. SK-033's immutable worker record and coordinator integration record explicitly evidence all 30 unchanged checklist statements, exact target scope, independent reviews, commands, behavior, provenance, Pi visibility, and residual risks. The exact scope is now three mode-100644 control artifacts: VG-001 proposal, coordinator ledger, and SK-033 proposal markers. No production, visibility, ownership, behavior, wording, or evidence changes are authorized. The full final matrix, one warning, one visibility exclusion, settings hashes, and acceptance criteria otherwise remain revision-1-identical; final verification may resume under the standing directive.`
