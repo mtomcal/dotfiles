@@ -166,7 +166,7 @@ The sequence follows WF-007: durable decisions, authoring owner, correctness rep
 | `SK-022` | skill | `improve-codebase-architecture` | simplify inline | SK-001, SK-013 | verified |
 | `SK-023` | skill | `research` | retain substance | SK-001 | verified |
 | `SK-024` | skill | `resolving-merge-conflicts` | retain substance | SK-001 | verified |
-| `SK-025` | skill | `tdd` | simplify inline | SK-001, SK-013 | claimed |
+| `SK-025` | skill | `tdd` | simplify inline | SK-001, SK-013 | integrating |
 | `SK-026` | skill | `video-to-contact-sheet` | simplify inline | SK-001 | claimed |
 | `SK-027` | skill | `visual-qa` | simplify inline | SK-001, SK-005, SK-021, SK-026 | queued |
 | `SK-028` | skill | `wayfinder` | retain substance | SK-001 | queued |
