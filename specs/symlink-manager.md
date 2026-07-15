@@ -1,7 +1,7 @@
 # Symlink Manager
 
-> **Version**: 1.3.2
-> **Last Updated**: 2026-07-14
+> **Version**: 1.4.0
+> **Last Updated**: 2026-07-15
 > **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md)
 > **Depended By**: [AI Agent Config](ai-agent-config.md), [Herdr Config](herdr-config.md), [Install Orchestrator](install-orchestrator.md), [Neovim Config](neovim-config.md), [Shell Config](shell-config.md), [Tmux Config](tmux-config.md)
 
@@ -9,7 +9,7 @@
 
 ## Overview
 
-The Symlink Manager is responsible for deploying configuration files from the dotfiles repository to their expected locations on the filesystem by creating symbolic links. It ensures that every configuration file lives in exactly one canonical source — the version-controlled repository — and that the system path points to that source via a symlink.
+The Symlink Manager is responsible for deploying managed configuration files from the dotfiles repository to their expected locations on the filesystem by creating symbolic links. It ensures that every managed configuration file lives in exactly one canonical source — the version-controlled repository — and that the system path points to that source via a symlink. Mutable local runtime files, such as Pi settings, are outside this module's ownership.
 
 The system MUST handle three concerns:
 
@@ -75,7 +75,6 @@ The complete set of symlink deployments the system MUST establish. Most entries 
 | **Claude Code** | ~/.claude/skills | shared/skills | replace-symlink (directory) | Always |
 | **Claude Code** | ~/.claude/settings.json | claude/settings.json | replace-symlink | Source file must exist |
 | **Claude Code** | ~/.claude/statusline.sh | claude/statusline.sh | replace-symlink | Source file must exist |
-| **Pi** | ~/.pi/agent/settings.json | pi/settings.json | replace-symlink | Always |
 | **Pi** | ~/.pi/agent/models.json | pi/models.json | replace-symlink | Always |
 | **Pi** | ~/.pi/agent/skills | pi/skills | replace-symlink (directory) | Always |
 | **Pi** | ~/.pi/agent/extensions/herdr-agent-state | pi/extensions/herdr-agent-state | replace-symlink (directory) | Always |
@@ -429,6 +428,7 @@ Expected Output: First run: all symlinks created, backups made for any conflicti
 
 | Version | Date | Summary |
 |---------|------|---------|
+| 1.4.0 | 2026-07-15 | Removed mutable Pi settings from symlink ownership; they are local runtime state managed by the Pi installer. |
 | 1.3.2 | 2026-07-14 | Corrected the four-agent shared-skill topology and Pi visibility-layer contract. |
 | 1.3.1 | 2026-07-06 | Clarified full-install idempotency expectations for modules that complete official updater paths rather than reporting only existing state. |
 | 1.3.0 | 2026-07-05 | Added Herdr config symlink deployment and clarified that Herdr runtime state is not deployed from the dotfiles repo. |

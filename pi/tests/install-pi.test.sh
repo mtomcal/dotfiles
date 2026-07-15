@@ -47,7 +47,7 @@ source_install() {
     INSTALL_SH_NO_MAIN=1 source "$DOTFILES_DIR/install.sh"
 }
 
-test_deploys_single_pi_agent_config() {
+test_deploys_pi_config_with_local_settings() {
     local home agent
     home="$(new_tmp)"
     source_install
@@ -56,7 +56,8 @@ test_deploys_single_pi_agent_config() {
 
     agent="$home/.pi/agent"
     [[ -d "$agent" ]] || fail "missing Pi agent dir"
-    assert_symlink_to "$agent/settings.json" "$DOTFILES_DIR/pi/settings.json"
+    assert_file_contains "$agent/settings.json" "{}"
+    [[ ! -L "$agent/settings.json" ]] || fail "settings.json must be local state, not a symlink"
     assert_symlink_to "$agent/models.json" "$DOTFILES_DIR/pi/models.json"
     assert_symlink_to "$agent/skills" "$DOTFILES_DIR/pi/skills"
     assert_symlink_to "$agent/extensions/herdr-agent-state" "$DOTFILES_DIR/pi/extensions/herdr-agent-state"
@@ -67,6 +68,25 @@ test_deploys_single_pi_agent_config() {
     [[ ! -L "$agent/sessions" ]] || fail "sessions must be local state, not a symlink"
     assert_file_contains "$agent/auth.json" "{}"
     [[ ! -L "$agent/auth.json" ]] || fail "auth.json must be local state, not a symlink"
+}
+
+test_deploy_migrates_managed_settings_to_local_state() {
+    local home agent legacy_settings before after
+    home="$(new_tmp)"
+    source_install
+
+    agent="$home/.pi/agent"
+    legacy_settings="$(new_tmp)/settings.json"
+    printf '{"local":true}\n' > "$legacy_settings"
+    mkdir -p "$agent"
+    ln -s "$legacy_settings" "$agent/settings.json"
+    before="$(cat "$agent/settings.json")"
+
+    HOME="$home" DOTFILES_DIR="$DOTFILES_DIR" deploy_pi_config
+
+    [[ ! -L "$agent/settings.json" ]] || fail "settings.json must be migrated from a symlink"
+    after="$(cat "$agent/settings.json")"
+    [[ "$after" == "$before" ]] || fail "settings migration did not preserve existing settings"
 }
 
 test_deploy_prunes_stale_extension_symlinks() {
@@ -119,7 +139,8 @@ test_install_code_has_no_profile_or_subagent_dependencies() {
     fi
 }
 
-test_deploys_single_pi_agent_config
+test_deploys_pi_config_with_local_settings
+test_deploy_migrates_managed_settings_to_local_state
 test_deploy_prunes_stale_extension_symlinks
 test_reinstall_is_idempotent_for_pi_config_symlinks
 test_deploys_pi_wrappers_only

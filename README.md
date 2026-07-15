@@ -207,7 +207,6 @@ dotfiles/
 │   └── README.md          # Claude Code documentation
 ├── pi/
 │   ├── extensions/        # Pi extensions (web-search, inherit-last-model, herdr-agent-state)
-│   ├── settings.json      # Pi settings (~/.pi/agent/settings.json)
 │   ├── models.json        # Pi model/provider config (~/.pi/agent/models.json)
 │   ├── skills/            # Pi-visible skills
 │   ├── pi.sh              # Pi wrapper (~/.local/bin/pi)
@@ -1000,7 +999,7 @@ pi  # First launch prompts for authentication
 
 **Features**:
 - 30+ LLM providers (Anthropic, OpenAI, Google, and more)
-- Ollama Cloud models (GLM 5.1, MiniMax M2.7, Kimi K2.6, DeepSeek V4 Pro/Flash)
+- Ollama Cloud models (GLM 5.2, MiniMax M3, Kimi K2.7 Code, Qwen 3.5 397B, DeepSeek V4 Pro/Flash)
 - TypeScript extensions for custom tools and workflows
 - Herdr agent-state extension enabled in the Pi runtime
 - Session tree navigation and branching
@@ -1013,18 +1012,18 @@ pi                 # Start interactive session
 
 **Config layout**:
 
-The installer preserves the npm-installed executable as `~/.local/bin/pi-bin`, then installs the repo wrapper at `~/.local/bin/pi`. Pi reads one repo-owned config tree at `~/.pi/agent`.
+The installer preserves the npm-installed executable as `~/.local/bin/pi-bin`, then installs the repo wrapper at `~/.local/bin/pi`. Pi reads one config tree at `~/.pi/agent`; mutable settings stay local while shared resources come from the repository.
 
 | Target | Source |
 |--------|--------|
-| `~/.pi/agent/settings.json` | `pi/settings.json` |
+| `~/.pi/agent/settings.json` | Local runtime state (not tracked) |
 | `~/.pi/agent/models.json` | `pi/models.json` |
 | `~/.pi/agent/skills` | `pi/skills` |
 | `~/.pi/agent/extensions/herdr-agent-state` | `pi/extensions/herdr-agent-state` |
 | `~/.pi/agent/extensions/inherit-last-model` | `pi/extensions/inherit-last-model` |
 | `~/.pi/agent/extensions/web-search` | `pi/extensions/web-search` |
 
-Sessions and auth stay local under `~/.pi/agent/` and are not tracked.
+Settings, sessions, and auth stay local under `~/.pi/agent/` and are not tracked.
 
 ##### Pi Sandbox (`pis`)
 

@@ -1387,6 +1387,27 @@ deploy_pi_wrappers() {
     done
 }
 
+prepare_pi_agent_settings() {
+    local agent="$HOME/.pi/agent"
+    local settings="$agent/settings.json"
+    local migrated_settings
+
+    mkdir -p "$agent"
+    if [ -L "$settings" ]; then
+        if [ -f "$settings" ]; then
+            migrated_settings="$agent/.settings.json.migrate.$$"
+            cp "$settings" "$migrated_settings" || return 1
+            rm "$settings" || return 1
+            mv "$migrated_settings" "$settings" || return 1
+        else
+            rm "$settings"
+        fi
+    fi
+    if [ ! -f "$settings" ]; then
+        printf '{}\n' > "$settings"
+    fi
+}
+
 prepare_pi_agent_auth() {
     local agent="$HOME/.pi/agent"
 
@@ -1411,9 +1432,9 @@ deploy_pi_config() {
     local extension
 
     mkdir -p "$agent/extensions" "$agent/sessions"
+    prepare_pi_agent_settings
     prepare_pi_agent_auth
 
-    replace_symlink "$DOTFILES_DIR/pi/settings.json" "$agent/settings.json"
     replace_symlink "$DOTFILES_DIR/pi/models.json" "$agent/models.json"
     replace_symlink "$DOTFILES_DIR/pi/skills" "$agent/skills"
 

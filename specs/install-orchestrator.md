@@ -1,7 +1,7 @@
 # Install Orchestrator
 
-> **Spec Version**: 1.3.2
-> **Last Updated**: 2026-07-06
+> **Spec Version**: 1.4.0
+> **Last Updated**: 2026-07-15
 > **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md), [Design Language](DESIGN_LANGUAGE.md), [Tool Provisioning](tool-provisioning.md), [Symlink Manager](symlink-manager.md), [Herdr Config](herdr-config.md)
 > **Depended By**: None (this is the top-level orchestrator)
 
@@ -11,7 +11,7 @@
 
 The Install Orchestrator is the top-level entry point for deploying the entire dotfiles-managed development environment. It detects the platform, resolves module dependencies, presents an interactive or command-line-driven module selection interface, and then executes each selected module in dependency order. The orchestrator guarantees idempotency — running it multiple times with the same module list MUST produce the same system state without errors, data loss, or redundant operations.
 
-For Pi, the orchestrator deploys the single repo-owned runtime config under `~/.pi/agent` and installs wrapper commands.
+For Pi, the orchestrator deploys tracked runtime resources under `~/.pi/agent`, preserves mutable local settings, and installs wrapper commands.
 
 The orchestrator does NOT implement any module's internal logic (package installation, symlink creation, etc.). It calls per-module functions that own those details. This spec governs the orchestration flow, phase ordering, platform branching, module dependency resolution, interactive menu behavior, and failure reporting.
 
@@ -77,8 +77,8 @@ The orchestrator does NOT implement any module's internal logic (package install
 When the `pi` module is selected, the orchestrator MUST:
 
 1. Install the shared Pi binary once.
-2. Deploy `pi/settings.json`, `pi/models.json`, `pi/skills`, and enabled Pi extensions into `~/.pi/agent/`.
-3. Preserve local Pi auth and session state under `~/.pi/agent/`.
+2. Deploy `pi/models.json`, `pi/skills`, and enabled Pi extensions into `~/.pi/agent/`.
+3. Initialize and preserve local Pi settings, auth, and session state under `~/.pi/agent/`; migrate a legacy managed settings symlink to a regular file without losing content.
 4. Deploy wrapper commands `pi` and `pis`.
 
 ### Installation Profile
@@ -518,6 +518,7 @@ Expected Output: The runner syntax-checks shell test files, executes each top-le
 
 | Version | Date | Summary |
 |---------|------|---------|
+| 1.4.0 | 2026-07-15 | Made Pi settings local runtime state and required content-preserving migration from the former repo-managed symlink. |
 | 1.3.2 | 2026-07-06 | Added the shell test suite contract: `bash tests/run.sh` discovers top-level shell tests, syntax-checks them, and uses a shared harness for install-script unit tests. |
 | 1.3.1 | 2026-07-06 | Clarified idempotency wording for modules that run official updater paths such as Claude Code's `latest` installer. |
 | 1.3.0 | 2026-07-05 | Added Herdr modules, included Herdr in every standard installation profile, specified Herdr integration skip behavior, and documented the Herdr default replacement migration rule. |

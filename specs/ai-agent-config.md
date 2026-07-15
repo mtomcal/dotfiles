@@ -1,6 +1,6 @@
 # AI Agent Configuration Specification
 
-> **Version**: 3.0.0
+> **Version**: 3.1.0
 > **Last Updated**: 2026-07-15
 > **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md), [Design Language](DESIGN_LANGUAGE.md), [Symlink Manager](symlink-manager.md), [Tool Provisioning](tool-provisioning.md), [Herdr Config](herdr-config.md), [Skill Library](skill-library.md)
 > **Depended By**: Install Orchestrator (INSTL)
@@ -10,7 +10,7 @@
 
 ## Overview
 
-The AI Agent Configuration system provisions and configures four AI coding assistants: Codex CLI, Claude Code, Pi, and GitHub Copilot CLI. Each supported **agent** receives a repo-owned **agent config** deployed by the dotfiles symlink pattern. It exposes the canonical [Skill Library](skill-library.md) to each runtime without owning skill content or authoring semantics.
+The AI Agent Configuration system provisions and configures four AI coding assistants: Codex CLI, Claude Code, Pi, and GitHub Copilot CLI. Each supported **agent** receives a repo-owned **agent config** deployed by the dotfiles symlink pattern, while mutable Pi settings remain local runtime state. It exposes the canonical [Skill Library](skill-library.md) to each runtime without owning skill content or authoring semantics.
 
 The system MUST ensure that:
 
@@ -64,11 +64,11 @@ The system MUST ensure that:
 
 ### Pi Coding Agent
 
-Pi has one repo-owned runtime config rooted at `~/.pi/agent`.
+Pi has one runtime config rooted at `~/.pi/agent`; tracked resources are repo-owned while mutable settings remain local.
 
 | Target Path | Source Path | Deploy Mode |
 |-------------|-------------|-------------|
-| `~/.pi/agent/settings.json` | `pi/settings.json` | symlink |
+| `~/.pi/agent/settings.json` | — | local file; initialize, migrate, and preserve |
 | `~/.pi/agent/models.json` | `pi/models.json` | symlink |
 | `~/.pi/agent/skills/` | `pi/skills/` | symlink |
 | `~/.pi/agent/extensions/herdr-agent-state/` | `pi/extensions/herdr-agent-state/` | symlink |
@@ -77,7 +77,7 @@ Pi has one repo-owned runtime config rooted at `~/.pi/agent`.
 | `~/.local/bin/pi` | `pi/pi.sh` | symlink wrapper |
 | `~/.local/bin/pis` | `pi/pis.sh` | symlink wrapper |
 
-`~/.pi/agent/auth.json` and `~/.pi/agent/sessions/` are local runtime state and MUST NOT be symlinked to tracked files.
+`~/.pi/agent/settings.json`, `~/.pi/agent/auth.json`, and `~/.pi/agent/sessions/` are local runtime state and MUST NOT be symlinked to tracked files. When migrating a legacy managed settings symlink, installation MUST preserve its resolved content in a regular local file.
 
 ### GitHub Copilot CLI
 
@@ -125,7 +125,7 @@ The `pis` script provides a Docker sandbox wrapper for Pi.
 |-------|---------------------|
 | Codex CLI | Credentials, session/history data, local runtime state, local config overrides |
 | Claude Code | Credentials, session/history data, project-specific data, local runtime state, debug artifacts |
-| Pi | Credentials, session/history data, local runtime binaries, sessions, auth files |
+| Pi | Credentials, session/history data, local runtime binaries, sessions, auth files, mutable settings |
 | Copilot CLI | Auth state and local runtime data under the user's XDG config directory |
 
 ---
@@ -167,7 +167,7 @@ Preconditions: The Pi module runs.
 
 Input: Inspect `~/.pi/agent`.
 
-Expected Output: `settings.json`, `models.json`, `skills`, and the three shipped extensions are symlinks to the dotfiles repo. `auth.json` and `sessions/` are local state.
+Expected Output: `models.json`, `skills`, and the three shipped extensions are symlinks to the dotfiles repo. `settings.json`, `auth.json`, and `sessions/` are local state; a legacy settings symlink is migrated without losing its content.
 
 ### TS-AIAGT-003: Removed Pi Surfaces Stay Removed
 
@@ -199,6 +199,7 @@ Expected Output: Claude, Codex, and Copilot expose the canonical catalog directl
 
 | Version | Date | Change |
 |---------|------|--------|
+| 3.1.0 | 2026-07-15 | Made mutable Pi settings unversioned local state with content-preserving migration from the legacy managed symlink. |
 | 3.0.0 | 2026-07-15 | Removed retired catalog visibility entries and specialist agent surfaces. |
 | 2.4.0 | 2026-07-14 | Moved shared-skill content, authoring, composition, provenance, and workflow-state contracts into the Skill Library bounded context; retained catalog exposure and runtime deployment ownership. |
 | 2.3.0 | 2026-07-14 | Added the canonical shared-skill body and semantic YAGNI contracts, behavior-preservation gates, catalog ownership and composition boundaries, qualified workflow artifacts, provenance gates, and verification scenarios. |
