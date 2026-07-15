@@ -1,6 +1,6 @@
 # Skill Library Specification
 
-> **Version**: 2.0.0
+> **Version**: 3.1.0
 > **Last Updated**: 2026-07-15
 > **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md), [Herdr Config](herdr-config.md)
 > **Depended By**: AI Agent Configuration (AIAGT)
@@ -101,6 +101,25 @@ All Skill Library parameters are authoritative in [Parameters > Skill Library](p
 | retained owner | location | Required unless replacement approved | Resulting source of truth |
 | replacement approval | evidence | Required when ownership changes | Human-approved replacement owner |
 
+### Implementation Plan
+
+| Field | Type | Constraints | Description |
+|-------|------|-------------|-------------|
+| path | absolute path | `/tmp/agent-plans/<repo-id>/plans/<plan-id>/PLAN.md` | Sole artifact produced by `create-plan` |
+| source comparison | fixed Git comparison | Two full commit hashes | Changed specs establish scope; desired behavior and current code/tests are read at the fixed head |
+| contents | technical plan | Immutable; sequential; single-agent | Objective, sources, gaps, vertical steps, dependencies, criteria, test seams, files, commands, risks, assumptions, and exclusions |
+| source digest | SHA-256 | Required | Pins the exact immutable artifact for execution |
+
+### Execution Ledger
+
+| Field | Type | Constraints | Description |
+|-------|------|-------------|-------------|
+| path | absolute directory | `/tmp/agent-plans/<repo-id>/ledgers/<ledger-id>/` | Recoverable execution state owned by `divide-plan` |
+| source | implementation-plan identity | Absolute path, SHA-256, repository identity, and full Git points | Blocks execution when any identity check fails |
+| contents | file set | `PLAN.md`, `slices/`, `verifications/` | State, dependencies, attempts, commits, integration, decisions, and recovery evidence |
+| writer | actor | Exactly one coordinator | Agents return commits, findings, or evidence without mutating ledger state |
+| active pointer | repository-local text file | `.plan` contains one absolute ledger path | Incomplete active state is not replaced without explicit approval |
+
 ---
 
 ## Behavior
@@ -188,12 +207,13 @@ A revision is complete only when:
 6. Generic Standards and Spec review remain owned by `code-review`.
 7. Visual work MUST preserve capture, optional recording conversion, evidence limitations, and caller or human acceptance. Capture and conversion workflows MUST return evidence directly without claiming final acceptance.
 8. Templates, output contracts, ranking models, and checklists remain owned by their domain producer rather than a universal schema.
-9. When a workflow delegates through Herdr, it SHOULD compose the shared Herdr skill instead of duplicating terminal commands and MUST retain an in-process fallback outside Herdr.
+9. When a workflow delegates through Herdr, it MUST compose the shared Herdr skill instead of duplicating terminal commands. It MUST retain an in-process fallback outside Herdr unless its protected contract declares Herdr a hard precondition; a hard-precondition workflow MUST stop outside Herdr rather than provide a reduced fallback.
 10. Public Herdr IDs MUST be refreshed after topology changes; neither public IDs nor legacy display selectors may become durable workflow identity.
+11. An agent-specific Herdr skill MUST compose the generic Herdr skill for CLI transport, current IDs, input primitives, output inspection, status races, and cleanup. It MAY own only agent-specific launch, readiness, submission, interaction, and steering behavior.
 
 ### Workflow Artifact and State Ownership
 
-Plan-workspace slices, spec-extraction plans, teaching state, and generated artifacts are non-interchangeable. Each workflow MUST use qualified artifact names and preserve its own writer, lifecycle, approval gates, and state transitions.
+Implementation plans, execution-ledger slices, spec-extraction plans, teaching state, and generated artifacts are non-interchangeable. Each workflow MUST use qualified artifact names and preserve its own writer, lifecycle, approval gates, and state transitions.
 
 Reciprocal routing MAY compose workflows but MUST NOT transfer state or artifact ownership implicitly.
 
@@ -208,17 +228,36 @@ Reciprocal routing MAY compose workflows but MUST NOT transfer state or artifact
 | `handoff` | Writes redacted timestamped Markdown under the operating system's temporary handoff directory and reports its absolute path |
 | `research` | Produces durable primary-source-backed notes using the repository convention or an approved location |
 | `improve-codebase-architecture` | Produces a temporary visual HTML report with before-and-after diagrams and candidate comparison |
-| `create-plan` | Stores recoverable orchestration state in a temporary plan workspace with isolated editable slices and independent verification artifacts |
+| `herdr` | Owns generic Herdr CLI mechanics, including a safe executable race that prechecks and concurrently observes `done`, `idle`, and `blocked`, cancels remaining waits, and inspects output |
+| `herdr-claude-code` | Composes `herdr` and owns exact Claude launch, readiness, explicit prompt submission, completion observation, and blocked-agent steering without duplicating generic transport |
+| `create-plan` | Pins a fixed spec diff and writes one immutable single-agent implementation plan containing only remaining current-state gaps and no execution state |
+| `divide-plan` | Requires an explicit implementation-plan path and Herdr, then owns coordinator-controlled execution ledgers, context-sized TDD slices, isolated implementation, evidence-gated integration, final review, and recovery |
 | `teach` | Requires an approved teaching workspace and preserves mission, resources, learning records, lessons, references, assets, and notes |
 | `grill-me` | Grounds terminology and evidence, probes consequential branches one question at a time, and defers durable edits until shared understanding |
 
 ### Specialized State Contracts
 
-An active plan workspace MUST be stored beneath `/tmp/agent-plans/<repo-id>/<plan-id>/` with `PLAN.md`, a `slices/` directory, and a `verifications/` directory. The repository-local `.plan` file MUST contain the active workspace's absolute path and be locally excluded from Git. A missing target is stale state and MUST NOT be guessed or reconstructed.
+`create-plan` MUST require one fixed two-endpoint spec comparison. “Last X commits” MUST mean `HEAD~X..HEAD`, and both endpoints MUST be resolved to full hashes. Changed specs establish scope; specs at the fixed head define desired behavior; code and tests at that same head establish current-state gaps. Already-satisfied requirements MUST be retained as evidence and excluded from implementation work. Ambiguity or contradiction MUST stop planning.
 
-`PLAN.md` MUST record the immutable objective, context sources, baseline, integration branch, execution defaults, dependency graph, derived frontier, slice states, Git or Herdr session references, verification matrix, acceptance criteria, recovery instructions, and decision history. The parent agent is the sole writer of plan control-plane state.
+Its only artifact MUST be `/tmp/agent-plans/<repo-id>/plans/<plan-id>/PLAN.md`. The implementation plan MUST be immutable and sequentially executable by one agent. It MUST include objective, sources, current-state gaps, ordered vertical steps, dependencies, acceptance and failure criteria, public test seams, likely files, commands, risks, assumptions, and exclusions. It MUST NOT contain RED/GREEN/REFACTOR instructions, `.plan`, worker or model configuration, worktrees, branches, slices, verification artifacts, or execution state.
 
-Every editable slice MUST fit one fresh agent context and use an isolated worktree and branch. Dependencies gate on integration. Independent Standards and Spec reviews MUST pass after the worker commit and before integration; Tests, Premortem, Security, and Visual reviews are selected by risk. Failed attempts remain append-only in the same verification artifact and return fixes to the original slice branch. Final integration and acceptance reviews run after all slices integrate.
+The generic `herdr` skill MUST precheck current agent state before waiting. When no terminal state is already present, it MUST start `done`, `idle`, and `blocked` waits concurrently, continue after the first successful wait, cancel and reap the remaining waiters, and read current output. `done` and `idle` are completion states; `blocked` is an immediate steering state. If every wait fails or times out, current state and output MUST be inspected before retry or failure reporting.
+
+`herdr-claude-code` MUST compose `herdr`, launch exactly `claude --dangerously-skip-permissions`, and verify Claude readiness before task submission. Prompt delivery MUST distinguish pasted text from submission: `[Pasted text #1]` is not sufficient evidence, an explicit Enter and output/state inspection are required, and blind prompt resends or repeated Enter presses are prohibited. Completion and blocking MUST use the base concurrent status Activity; blocked Claude agents MUST be inspected and steered before observation resumes.
+
+`divide-plan` MUST require an explicit implementation-plan path and `HERDR_ENV=1`; no non-Herdr fallback is required or permitted. It MUST validate repository identity, source path and SHA-256, and full Git points before creating or resuming state. It MUST compose the shared Herdr skill for terminal mechanics while retaining all task, checkout, ledger, evidence, transition, and acceptance ownership. When an implementation or oversight configuration selects Claude Code, it MUST route that role through `herdr-claude-code`; non-Claude roles MUST continue through the generic Herdr skill.
+
+An execution ledger MUST be stored beneath `/tmp/agent-plans/<repo-id>/ledgers/<ledger-id>/` with `PLAN.md`, `slices/`, and `verifications/`. Repository-local `.plan` MUST point only to the active execution ledger and be locally excluded from Git. A stale target MUST NOT be guessed or reconstructed, and an incomplete active ledger MUST NOT be replaced without explicit approval. The source implementation plan and all plans, ledgers, branches, and worktrees MUST NOT be automatically mutated, deleted, or cleaned.
+
+Before writing a new ledger, `divide-plan` MUST inspect source-plan risk and ask only relevant orchestration questions one at a time. It MUST record exact implementation and oversight model ids and thinking levels plus one observation timeout. Exceptional final passes MAY be proposed only for concrete risk and MUST require user approval. No stalled-worker threshold is part of the timing policy.
+
+The coordinator MUST be the sole ledger writer and state owner. It MAY run mechanical commands but MUST NOT implement or review. Every editable slice and final remediation batch MUST use an isolated worktree and branch before Herdr transport. Each slice MUST fit one fresh context, own explicit RED/GREEN/REFACTOR guidance, and become ready only after all blockers are integrated. Recoverability, full fixed-point evidence, integration-gated dependencies, append-preserved failed attempts, and stale-state reconciliation MUST be maintained.
+
+For each slice, implementation MUST produce a commit and required evidence. An independent oversight agent MUST compose `test-quality-verifier` in audit-only mode at that fixed point. Findings MUST return to the same implementer, and verification MUST rerun at every new fixed point. The coordinator MUST run mechanical evidence gates before integration. At most two correction attempts are allowed; unresolved work then blocks the ledger. Standards, Spec, Premortem, Security, Visual, and general code review MUST NOT be default per-slice passes.
+
+After all slices integrate, repository gates and independent Standards, Spec, Premortem, and Security passes MUST run against one integrated fixed point, in parallel where possible. Standards and Spec MUST compose `code-review`. Findings MUST be collected and deduplicated, then batch-remediated by an editable agent using the oversight configuration rather than original slice workers. All four final passes MUST rerun at every new fixed point. At most two remediation batches are allowed; unresolved findings then block the ledger.
+
+A Herdr observation timeout MUST lead to immediate state and output inspection. Blocked, premature-idle, error, missing-evidence, or input-needed evidence MUST be steered immediately; idle or missing panes MUST NOT establish success. Recovery MUST reconcile source SHA-256, Git topology and commits, recompute the frontier from integrated blockers, and rediscover live Herdr resources without persisting pane identity.
 
 The teaching workflow MUST obtain approval for a dedicated workspace before scaffolding. It MUST ground lessons in an agreed mission, use primary-source research, maintain durable resources and demonstrated-learning records, prefer reusable lesson assets, and distinguish knowledge acquisition, skill practice, and wisdom from real-world interaction. Interactive codebase lessons SHOULD compose `create-explainer` without weakening teaching-workspace ownership or citation requirements.
 
@@ -243,6 +282,12 @@ Imported skill material MUST be treated as a locally maintained fork. Before imp
 | Behavior loss | Material revision lacks retained or approved replacement ownership | Behavior-preservation review | Stop the restructure | Restore behavior or obtain replacement-owner approval |
 | Provenance gap | Imported material lacks source, revision, license, or attribution | Provenance review | Stop movement or rewriting | Complete the repository provenance record |
 | Composition ownership leak | Callee implicitly takes caller state, gates, or acceptance | Contract review | Reject the composition | Restore caller ownership or approve an explicit replacement contract |
+| Invalid implementation-plan source | Source path, repository id, SHA-256, or fixed Git point does not match | Divide-plan preflight | Stop before ledger mutation or agent launch | Supply the exact immutable plan or restore the missing Git evidence |
+| Active-ledger conflict | `.plan` is stale, incompatible, or points to an incomplete ledger that would be replaced | Active-state inspection | Stop and report the exact active state | Obtain explicit replacement approval or resume/reconcile the existing ledger |
+| Correction limit reached | A slice still fails verification or mechanical gates after two correction attempts | Ledger attempt count | Set ledger status to blocked | Preserve evidence and request an explicit new decision |
+| Remediation limit reached | Final findings remain after two remediation batches and full review reruns | Ledger remediation count | Set ledger status to blocked | Preserve every fixed point and finding for explicit recovery |
+| Agent status race exhausted | All concurrent `done`, `idle`, and `blocked` waits fail or time out | Base Herdr wait results | Inspect current pane state and output; do not infer completion or failure | Retry only from inspected evidence or report the limitation |
+| Claude prompt not submitted | Claude displays `[Pasted text #1]` or remains idle after prompt delivery | Claude composer plus pane state/output inspection | Send an explicit Enter and inspect once; do not resend the prompt blindly | Report exact composer/state evidence if processing still does not begin |
 
 ---
 
@@ -331,11 +376,53 @@ Preconditions: A new or revised skill and all auxiliary files are available.
 Input: Review each instruction for behavioral value, duplication, sediment, speculation, and unnecessary navigation.
 Expected Output: Required behavior remains concise; unnecessary content is removed rather than displaced; no fixed line limit substitutes for semantic review.
 
+### TS-SKILL-010: Immutable Implementation Plan
+
+Category: Integration
+Priority: Critical
+Preconditions: A fixed comparison changes authoritative specs.
+Input: Run `create-plan` against the comparison and inspect the resulting artifact.
+Expected Output: Exactly one immutable implementation-plan file records full Git points, all requirement dispositions, and only remaining sequential work; no `.plan`, slice, worker, review, or execution state is created.
+
+### TS-SKILL-011: Recoverable Herdr Execution Ledger
+
+Category: End-to-End
+Priority: Critical
+Preconditions: A valid implementation plan exists and execution runs inside Herdr.
+Input: Run `divide-plan`, interrupt after at least one verification attempt, and resume through `.plan`.
+Expected Output: Repository and source identities validate; isolated slices resume from integration-gated state; failed attempts remain; test-quality and mechanical gates precede integration; final mandatory passes share a fixed point.
+
+### TS-SKILL-012: Execution Limits and Hard Preconditions
+
+Category: Integration
+Priority: Critical
+Preconditions: Divide-plan preflight or verification can be exercised.
+Input: Attempt execution outside Herdr, replace an incomplete active ledger without approval, exceed slice corrections, and exceed final remediation batches.
+Expected Output: Non-Herdr execution and unapproved replacement stop; the third required slice correction and third final remediation batch are not launched; ledger state is blocked with preserved evidence.
+
+### TS-SKILL-013: Concurrent Herdr Terminal-State Wait
+
+Category: Integration
+Priority: Critical
+Preconditions: A detected agent pane can transition to `done`, `idle`, or `blocked`.
+Input: Invoke the base Herdr coordination Activity from working state and separately from each already-terminal state.
+Expected Output: Current terminal state returns immediately; otherwise all three waits start concurrently, the first success wins, remaining waiters are cancelled and reaped, output is read, and complete exhaustion triggers state/output inspection.
+
+### TS-SKILL-014: Claude Code Herdr Orchestration
+
+Category: End-to-End
+Priority: High
+Preconditions: Claude Code and Herdr are available and an authorized checkout is selected.
+Input: Launch the Claude Code Herdr workflow, submit a prompt that renders as `[Pasted text #1]`, and exercise completion and blocked states.
+Expected Output: Claude launches with `--dangerously-skip-permissions`; readiness is inspected; explicit Enter produces submission evidence without prompt duplication; base concurrent waiting observes completion or blocking; blocked output is inspected and steered.
+
 ---
 
 ## Changelog
 
 | Version | Date | Change |
 |---------|------|--------|
+| 3.1.0 | 2026-07-15 | Added executable concurrent Herdr terminal-state waiting and a composing Claude Code orchestration specialization with divide-plan routing. |
+| 3.0.0 | 2026-07-15 | Split immutable single-agent implementation planning from Herdr-only execution ledgers, established coordinator ownership, test-quality integration gates, and bounded final review remediation. |
 | 2.0.0 | 2026-07-15 | Removed retired workflow contracts and made surviving visual evidence return directly to the caller or human. |
 | 1.0.0 | 2026-07-14 | Established the Skill Library bounded context, including portable discovery, canonical skill bodies, branch-based Reference semantics, semantic YAGNI, composition, state ownership, provenance, and verification contracts. |

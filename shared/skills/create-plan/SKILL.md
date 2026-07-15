@@ -1,102 +1,109 @@
 ---
 name: create-plan
-description: Create and operate a file-based implementation control plane with dependency-ordered TDD slices, isolated workers, independent verification, and recoverable state. Use when planning a feature, bug fix, migration, or refactor that may span multiple fresh agent contexts or parallel worktrees.
+description: Create one immutable, single-agent technical implementation plan from a fixed spec diff, limited to behavior still missing at the fixed head. Use when a feature, fix, migration, or refactor has approved spec changes and needs a sequential implementation plan before execution is divided or orchestrated.
 metadata:
-  short-description: Orchestrate verified TDD slice plans
-allowed-tools: read,write,edit,bash
+  short-description: Create an immutable implementation plan
+allowed-tools: read,write,bash
 ---
 
 # Create Plan
 
 ## Language Definitions
 
-- **Plan workspace** — temporary file-based implementation control plane.
-- **Active-plan pointer** — repository-local `.plan` file identifying it.
-- **Orchestration index** — parent-owned `PLAN.md` holding objective, Git topology, dependencies, verification, and recovery.
-- **Slice** — fresh-context packet delivering one vertical behavior.
-- **Frontier** — ready slices whose blockers are integrated.
-- **Fixed point** — immutable commit under review.
-- **Verification artifact** — durable record of one review axis and its attempts.
-- **Integration baseline** — commit from which integration and slice worktrees originate.
-- **Parent owner** — orchestrating agent solely responsible for state, verification records, and integration.
+- **Implementation plan** — immutable `PLAN.md` describing the remaining technical work that one agent can execute sequentially.
+- **Fixed spec diff** — one two-endpoint Git comparison whose full commit hashes establish planning scope.
+- **Current-state gap** — desired behavior in changed specs that code or tests at the fixed head do not yet satisfy.
 
-The parent owner is called the parent below. Repository glossary wording is authoritative where it overlaps. Plan workspaces and slices are distinct from spec-extraction plans, teaching state, and Herdr workspaces; each has its own owner and lifecycle.
+Repository glossary wording is authoritative where it overlaps. An implementation plan is not a spec-extraction plan, execution ledger, slice packet, or repository-local `.plan` state.
 
 ## Workflow
 
-### 1. Route, open, or create the plan workspace
+### 1. Pin the fixed spec diff
 
-Find the repository root and inspect its text `.plan` file before planning:
+Find the canonical repository root. Require either one explicit `<base>..<head>` comparison or a request for the last positive integer `X` commits. Interpret “last X commits” exactly as `HEAD~X..HEAD`. Reject missing endpoints, three-dot notation, multiple comparisons, invalid commits, or an empty comparison.
 
-- If `.plan` exists, read its one absolute path. If that target or its `PLAN.md` is missing, report **stale active-plan state** and stop. Do not guess, search `/tmp` for a replacement, or silently rebuild it. Replace the pointer only after explicit user direction.
-- If `.plan` does not exist, choose a stable repo id (repository basename plus a short hash of its canonical root) and descriptive plan id, then create `/tmp/agent-plans/<repo-id>/<plan-id>/` with `PLAN.md`, `slices/`, and `verifications/`. Write that absolute directory path plus a newline to `.plan`. Add an exact `.plan` line to local `.git/info/exclude` if absent; do not require a tracked `.gitignore` change. Never place implementation secrets in this temporary state.
+Resolve both endpoints to full commit hashes and use only that pinned comparison thereafter. Enumerate every changed path under the repository's authoritative spec suite; those changed specs establish scope. If no authoritative spec changed, stop and report that there is no fixed spec scope rather than planning from adjacent code changes.
 
-Before writing, read specs, the ubiquitous language, user decisions, relevant research, and current code. Classify the context as spec-driven, research-driven, decision-driven, or hybrid. If unresolved uncertainty prevents a safe implementation shape, return the unresolved decisions and supporting evidence to the caller and stop instead of inventing a plan.
+Choose a stable repository id from the repository basename plus a short hash of its canonical root, and a descriptive plan id. The only allowed artifact path is `/tmp/agent-plans/<repo-id>/plans/<plan-id>/PLAN.md`. If that file already exists, stop; never overwrite or amend an implementation plan. Do not read or write `.plan`.
 
-Completion criterion: `.plan` resolves to one workspace, required context sources are named, and no consequential implementation decision remains implicit.
+Completion criterion: the canonical root, repository id, full base and head hashes, exact comparison, changed specs, and unused artifact path are fixed.
 
-### 2. Build the orchestration index
+### 2. Establish desired and current behavior
 
-Before creating or changing `PLAN.md`, load [PLAN-FORMAT.md](PLAN-FORMAT.md) because it owns the complete `PLAN.md` schema and invariants. Record the immutable objective and amendment authority, fixed context sources, full baseline, dedicated integration branch and worktree, explicit `pi` and/or `pis` model and thinking defaults, dependency DAG and derived frontier, slice states and Git/Herdr session references, verification matrix, global acceptance criteria, recovery instructions, and decision/attempt log.
+Read the changed specs as they exist at the fixed head; they are authoritative for desired behavior within the diff's scope. Read applicable glossary and repository guidance, then inspect relevant code and tests at that same fixed head. Account for every changed requirement as one of:
 
-The parent is the sole writer of `PLAN.md`, slice state, verification artifacts, and integration records. Workers and reviewers return commits or findings without mutating the control plane or assuming acceptance authority. Herdr pane ids are live lookup hints only; never persist them as durable identity because they compact.
+- already satisfied, with concrete code/test evidence;
+- a current-state gap, with evidence of what is absent or contradictory; or
+- ambiguous/contradictory, with the conflicting sources quoted.
 
-Completion criterion: every slice has a DAG node, every blocker exists, the graph is acyclic, and the frontier is exactly the `ready` slices whose blockers are `integrated`.
+Already-satisfied behavior is evidence, not implementation work. If any ambiguity or contradiction prevents a safe technical sequence, stop before writing the artifact and report the exact decision needed. Do not infer desired behavior from code when it conflicts with the fixed specs.
 
-### 3. Write fresh-context slices
+Completion criterion: every changed requirement has an evidenced disposition, and only current-state gaps remain in implementation scope.
 
-Before writing any `slices/NNN-<vertical-slice>.md`, load [SLICE-FORMAT.md](SLICE-FORMAT.md) because it owns the packet schema and tracer-bullet evidence. Each packet must fit one fresh agent context and state its vertical behavior, acceptance and failure criteria, blockers, refactor-resilient public test seam, ordered RED/GREEN/REFACTOR tracer bullets, focused commands, likely files, constraints, authorized scope, and required completion evidence.
+### 3. Design one sequential technical plan
 
-Prefer narrow end-to-end behavior over horizontal layers. Observe one behavior test fail for the intended reason, implement the minimum passing change, and only then begin the next cycle. For a wide mechanical refactor that cannot stay green as a vertical slice, use **expand → migrate in bounded green batches → contract**; encode every migration dependency, keep the old form until all migration slices integrate, and block contraction on every migration.
+Design ordered vertical steps that one agent can execute from the fixed head. Each step must deliver observable behavior through the applicable layers rather than a horizontal schema-, service-, or UI-only task unless that layer is itself the specified outcome. State dependencies explicitly and order each step after its prerequisites.
 
-Present the slice breakdown and blocker edges to the user when granularity or scope was not already approved. Do not start execution while any task packet exceeds one fresh context.
+For a wide migration or mechanical refactor, use expand → migrate in bounded passing batches → contract. Preserve the old form until every migration step is complete, and place contraction after all migrations.
 
-Completion criterion: each packet is independently understandable, verifiable, and authorized to change only its declared slice.
+The plan must contain this compact structure:
 
-### 4. Derive verification from risk
+```markdown
+# <Objective> — Implementation Plan
 
-Before selecting passes or writing `verifications/*.md`, load [VERIFICATION-FORMAT.md](VERIFICATION-FORMAT.md) because it owns the risk matrix, append-only attempt schema, axis boundaries, and final-review formats. Standards and Spec reviews are mandatory independent passes for every slice. Also enable:
+## Identity
+- Plan path: <absolute path>
+- Repository root: <canonical absolute path>
+- Repository id: <stable id>
+- Base commit: <full hash>
+- Head commit: <full hash>
+- Spec comparison: <full-base>..<full-head>
+- Created: <timestamp>
+- Immutability: never amend or overwrite this file
 
-- Tests for behavior, test, public-seam, regression, or migration changes;
-- Premortem for operational, migration, concurrency, recovery, human-use, or hard-to-observe failure risk;
-- Security for trust-boundary, credential, permission, input, dependency, network, or data-exposure risk; and
-- Visual for user-visible layout, rendering, motion, responsive, screenshot, video, or artifact-fidelity risk.
+## Objective
+<Desired behavioral outcome within the changed-spec scope.>
 
-Create flat per-slice placeholders only for enabled passes, such as `001-standards.md`, `001-spec.md`, `001-tests.md`, and `001-premortem.md`. Reserve `final-integration.md` and `final-acceptance.md`.
+## Sources
+| Source | Fixed point | Authority and relevance |
+|---|---|---|
 
-Completion criterion: every enabled review has explicit criteria, and every disabled risk dimension has a written rationale in `PLAN.md`.
+## Current-state gaps
+| Requirement | Desired behavior | Current evidence | Disposition / gap |
+|---|---|---|---|
 
-### 5. Execute the dependency frontier
+## Ordered implementation steps
+### Step N — <vertical behavior>
+- Delivers: ...
+- Depends on: <earlier steps or none>
+- Acceptance criteria: ...
+- Failure criteria: ...
+- Public test seam: ...
+- Why the seam survives refactoring: ...
+- Likely files: ...
+- Focused commands: ...
+- Risks: ...
 
-Use only these transitions:
+## Global acceptance
+1. ...
 
-```text
-ready -> implementing -> implemented -> verifying
-      -> needs-fix -> implementing
-      -> verified -> integrated
+## Assumptions
+- ... or `none`
+
+## Exclusions
+- ...
 ```
 
-Launch only frontier slices whose blockers are integrated, never merely implemented or verified.
+Include every required source, current-state disposition, remaining gap, dependency, acceptance and failure criterion, public test seam, likely file, focused command, risk, assumption, and exclusion. If all requirements are already satisfied, write `none` under ordered implementation steps and preserve the evidence explaining why no implementation remains.
 
-For each editable slice, create one Git worktree and branch from the recorded integration baseline. Authorize the worker to edit and commit only that slice and to return the full commit hash plus required evidence; editable agents never share a checkout. When `HERDR_ENV=1`, load the shared `herdr` skill, launch `pi` or `pis` in a new pane with the exact `PLAN.md` command and an economical explicit model/thinking level where suitable, and refresh live pane ids whenever controlling Herdr. Outside Herdr, run one worker at a time in-process or use a fresh agent context with the same branch, commit, and evidence contract. Never reintroduce removed Pi subagent tools, preset reviewer roles, profiles, or profile runtimes.
+Do not include RED/GREEN/REFACTOR instructions, `.plan`, execution state, worker or model configuration, worktrees, branches, slices, verification artifacts, or orchestration instructions. Those belong to execution, not the implementation plan.
 
-A returned commit moves the slice only to `implemented`; worker claims never establish verification. Pin that commit as the review fixed point and move the slice to `verifying`. Read-only reviewers may share the relevant checkout. Under Herdr, use separate smarter Pi instances where appropriate and provide only each axis's criteria; otherwise run explicitly separate in-process checklists.
+Completion criterion: every remaining gap is covered by at least one ordered step, every step traces to changed-spec evidence, and one agent can execute the sequence without making an unstated design decision.
 
-The parent records every result in its verification artifact. `PASS` on every enabled pass moves the slice to `verified`. `NEEDS-FIX` returns work through `needs-fix -> implementing` to the original slice branch; append the new fixed point and attempt to the same artifact after the fix, never overwrite failed history. `BLOCKED` records the blocker without pretending the review ran.
+### 4. Write once and verify
 
-Only after verification may the parent cherry-pick approved commit(s) onto the integration branch, run focused integration checks, record the integration commit, and mark the slice `integrated`. Resolve cherry-pick conflicts by both source intents; never let a worker alter another slice for integration convenience.
+Create only the plan directory and `PLAN.md`; never create auxiliary files. Write the complete candidate once, then reread it without changing it. Verify the path is under the fixed repository id, identity hashes match the pinned commits, every changed requirement is accounted for, every gap maps to ordered work and global acceptance, and every excluded execution concern is absent. Compute and report the file's SHA-256 so downstream execution can pin the exact source.
 
-Completion criterion: every integrated slice has isolated implementation commit(s), passing enabled verification attempts, parent-run checks, and an integration commit recorded in `PLAN.md`.
+If verification fails before the write, fix the in-memory candidate. If the written file does not verify, report the invalid immutable artifact and create a new plan id only with user approval; never repair it in place.
 
-### 6. Finish and recover
-
-After every slice is integrated:
-
-1. run repository-wide quality gates on the integration branch;
-2. complete `final-integration.md` against cross-slice interactions, conflicts, migration order, and all repository gates;
-3. complete `final-acceptance.md` against the immutable objective, every global criterion, and required human or visual evidence; and
-4. report remaining worktrees, branches, and the integration branch. Do not merge branches or delete worktrees or branches without authorization.
-
-On interruption, reopen `.plan` and stop if its target is stale. Compare the recorded baseline, integration branch, worktrees, branches, and commits with Git; treat mismatches as reconciliation work and record corrections before changing state. Recompute the frontier from integrated blockers and rediscover live Herdr ids. Never infer success from an idle or missing pane.
-
-Completion criterion: both final reviews pass, every acceptance criterion has evidence, and another parent can resume from `.plan` without conversation history.
+Completion criterion: exactly one immutable `PLAN.md` exists at the reported absolute path, its SHA-256 is reported, and no execution ledger or `.plan` state was created.

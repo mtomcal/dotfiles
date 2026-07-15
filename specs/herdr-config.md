@@ -1,6 +1,6 @@
 # Herdr Configuration Specification
 
-> **Version**: 0.1.1
+> **Version**: 0.2.0
 > **Last Updated**: 2026-07-14
 > **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md), [Design Language](DESIGN_LANGUAGE.md), [Symlink Manager](symlink-manager.md), [Tool Provisioning](tool-provisioning.md)
 > **Depended By**: Shell Config, Skill Library, AI Agent Config, Install Orchestrator
@@ -134,7 +134,7 @@ Herdr integrations for agents managed by this repo MUST be repo-owned. The imple
 
 ### HERDR-CONFIG-008: Shared Skill Distribution
 
-The Herdr skill MUST live under `shared/skills/herdr/`. Non-Pi agents receive it through their shared skills symlink. Pi receives it through `pi/skills/`.
+The generic Herdr skill MUST live under `shared/skills/herdr/`, and the Claude Code specialization MUST live under `shared/skills/herdr-claude-code/`. Non-Pi agents receive both through their shared skills symlink. Pi receives both through `pi/skills/`. The specialization MUST compose the generic skill rather than copy its CLI mechanics.
 
 ---
 
@@ -216,12 +216,12 @@ Preconditions: Herdr integrations module selected
 Input: Run install
 Expected Output: Integration files are deployed from dotfiles-managed sources; no direct default-path Herdr installer mutation is required for steady state
 
-TS-HERDR-008: Herdr skill is available to all agents
+TS-HERDR-008: Herdr skills are available to all agents
 Category: Integration
 Priority: High
-Preconditions: shared/skills/herdr/SKILL.md exists
+Preconditions: shared/skills/herdr/SKILL.md and shared/skills/herdr-claude-code/SKILL.md exist
 Input: Inspect non-Pi skills symlinks and Pi skills
-Expected Output: Non-Pi agents resolve herdr through shared/skills; Pi includes herdr through pi/skills
+Expected Output: Non-Pi agents resolve both skills through shared/skills; Pi includes herdr and herdr-claude-code through pi/skills; the specialization composes the base skill
 ```
 
 ---
@@ -230,5 +230,6 @@ Expected Output: Non-Pi agents resolve herdr through shared/skills; Pi includes 
 
 | Version | Date | Summary |
 |---------|------|---------|
+| 0.2.0 | 2026-07-15 | Added cross-agent distribution of the composing Claude Code Herdr specialization beside the generic base skill. |
 | 0.1.1 | 2026-07-14 | Registered the Skill Library as a consumer of Herdr delegation and runtime-identity contracts. |
 | 0.1.0 | 2026-07-05 | Initial Herdr migration spec: Herdr default replacement path, Ctrl-a parity, SSH default, runtime-state hygiene, repo-owned integrations, and shared Herdr skill distribution. |

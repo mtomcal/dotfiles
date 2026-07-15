@@ -4,7 +4,7 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 
 ## Map
 
-<!-- TREE-HASH: cd032873303a7a7d38f987ab22f25578b86211d9fbfacc85cf639bd204fc671b -->
+<!-- TREE-HASH: 2e97357a25e92f477b008dc87966475510e1f536d502d776251ffe76f4284181 -->
 
 <!-- TREE-START -->
 ```
@@ -42,10 +42,12 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 |   |   |-- curator -> ../../shared/skills/curator
 |   |   |-- design-md -> ../../shared/skills/design-md
 |   |   |-- diagnosing-bugs -> ../../shared/skills/diagnosing-bugs
+|   |   |-- divide-plan -> ../../shared/skills/divide-plan
 |   |   |-- em-train -> ../../shared/skills/em-train
 |   |   |-- grill-me -> ../../shared/skills/grill-me
 |   |   |-- handoff -> ../../shared/skills/handoff
 |   |   |-- herdr -> ../../shared/skills/herdr
+|   |   |-- herdr-claude-code -> ../../shared/skills/herdr-claude-code
 |   |   |-- improve-codebase-architecture -> ../../shared/skills/improve-codebase-architecture
 |   |   |-- playwright -> ../../shared/skills/playwright
 |   |   |-- prototype -> ../../shared/skills/prototype
@@ -73,11 +75,13 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 |       |-- curator
 |       |-- design-md
 |       |-- diagnosing-bugs
+|       |-- divide-plan
 |       |-- em-train
 |       |   `-- scripts
 |       |-- grill-me
 |       |-- handoff
 |       |-- herdr
+|       |-- herdr-claude-code
 |       |-- improve-codebase-architecture
 |       |-- playwright
 |       |   `-- references
@@ -98,7 +102,7 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 |-- yazi
 `-- zsh
 
-89 directories
+93 directories
 ```
 <!-- TREE-END -->
 

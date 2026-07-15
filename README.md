@@ -187,10 +187,12 @@ dotfiles/
 │       ├── playwright/
 │       ├── video-to-contact-sheet/
 │       ├── create-plan/
+│       ├── divide-plan/
 │       ├── teach/
 │       ├── research/
 │       ├── code-review/
 │       ├── herdr/
+│       ├── herdr-claude-code/
 │       ├── ubiquitous-language/
 │       ├── audit-shared-skills/
 │       └── grill-me/
@@ -273,7 +275,7 @@ The `herdr_integrations` module deploys repo-owned integration artifacts from `h
 | GitHub Copilot CLI | `herdr/integrations/copilot/herdr-agent-state.sh` symlinked into `~/.config/copilot/hooks/` |
 | Pi | `pi/extensions/herdr-agent-state/` deployed to `~/.pi/agent/extensions/` |
 
-Agents also share the `shared/skills/herdr/` skill, which lets agents running inside Herdr inspect panes, split workspaces, wait on output, and coordinate other panes through the `herdr` CLI.
+Agents also share the generic `shared/skills/herdr/` skill, which owns Herdr CLI transport and concurrent agent-state observation. `shared/skills/herdr-claude-code/` composes that base for reliable Claude Code launch, readiness, prompt submission, and blocked-agent steering without duplicating generic pane mechanics.
 
 Re-run integrations after changing agent config:
 
@@ -915,13 +917,15 @@ Codex, Claude, Pi, and Copilot share a single skills directory at `shared/skills
 |-------|-------------|
 | `playwright` | Browser automation, scripted capture, and Playwright test workflows |
 | `video-to-contact-sheet` | Convert recordings into trimmed clips, contact sheets, and focused crops |
-| `create-plan` | Operate a recoverable plan workspace of dependency-ordered TDD slices and verification artifacts |
+| `create-plan` | Create one immutable single-agent implementation plan from a fixed spec diff |
+| `divide-plan` | Divide an implementation plan into TDD slices and operate its recoverable Herdr execution ledger |
 | `teach` | Build a durable, researched teaching workspace with HTML lessons and learning records |
 | `code-review` | Review a fixed diff independently against repository standards and originating requirements |
 | `research` | Produce durable primary-source-backed investigation artifacts |
 | `test-quality-verifier` | Audit tests for vague assertions, improve coverage, produce a structured report |
 | `improve-codebase-architecture` | Find architecture deepening opportunities and present a visual HTML review _(adapted from [mattpocock/skills](https://github.com/mattpocock/skills))_ |
-| `herdr` | Control Herdr workspaces, tabs, panes, agent status, and output from inside a Herdr pane |
+| `herdr` | Control Herdr workspaces, tabs, panes, output, and concurrent agent status from inside Herdr |
+| `herdr-claude-code` | Reliably launch, prompt, observe, and steer Claude Code by composing base Herdr transport |
 | `ubiquitous-language` | Extract a DDD-style glossary from project evidence _(adapted from [mattpocock/skills](https://github.com/mattpocock/skills))_ |
 | `audit-shared-skills` | Audit `shared/skills/` for cross-agent frontmatter compatibility, flag and fix issues |
 | `grill-me` | Resolve design branches through evidence-grounded, term-aware interviewing |

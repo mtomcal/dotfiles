@@ -1,6 +1,6 @@
 # Ubiquitous Language
 
-> **Version**: 0.9.0
+> **Version**: 1.1.0
 > **Last Updated**: 2026-07-15
 > **Purpose**: Shared vocabulary for all specs. Every term used in multiple specs MUST be defined here. Read this before any other spec.
 
@@ -59,7 +59,8 @@
 | **Herdr runtime state** | Local-only Herdr session files, pane history, sockets, and generated state outside the dotfiles repo | "Herdr config" | Must remain out of git even when pane history is enabled |
 | **Herdr integration** | A hook, plugin, or agent-side file that reports agent lifecycle/session state to Herdr | "Herdr plugin" | Use "integration" unless the upstream artifact is specifically a Pi extension/plugin |
 | **repo-owned Herdr integration** | A Herdr integration whose files are tracked or generated inside the dotfiles repo and deployed by the dotfiles flow instead of written directly by Herdr's installer to live config paths | "default Herdr install path" | Required for this repo so agent config ownership stays centralized |
-| **Herdr skill** | The upstream Herdr operating instructions stored as a cross-agent skill under `shared/skills/herdr/` | "global Herdr skill" | Tracked in the shared skills directory so all supported agents can use it consistently |
+| **Herdr skill** | The adapted upstream operating instructions under `shared/skills/herdr/` that own generic Herdr CLI transport and status-observation mechanics | "global Herdr skill" | Tracked in the shared skills directory so all supported agents can use it consistently. |
+| **Claude Code Herdr skill** | The repository-authored specialization under `shared/skills/herdr-claude-code/` that composes the Herdr skill and owns Claude Code launch, readiness, prompt-submission, and steering behavior | "Claude Herdr mechanics", "Claude transport fork" | It does not duplicate or replace generic Herdr commands. |
 
 ## Agent Domain
 
@@ -89,13 +90,15 @@
 | **semantic YAGNI** | Retaining skill content only when it changes execution behavior, safety, ownership, outputs, or completion evidence | "line limit", "make it shorter" | Unnecessary content is removed rather than relocated to a Reference file |
 | **hill climbing** | Avoidable repository navigation required to reconstruct an executable contract that should be locally available | "code exploration" | Universally loaded companion files create hill climbing without progressive-disclosure benefit |
 | **behavior-preservation ledger** | An audit record mapping each required behavior to its retained location or replacement owner | "change summary", "checklist" | Covers triggers, branches, gates, failures, guardrails, outputs, ownership, and completion conditions |
-| **spec-extraction plan** | The brownfield Bootstrap Specs artifact that directs extraction of specifications from implementation evidence | "plan workspace", "slice graph" | It is not a plan workspace or implementation slice graph |
-| **teaching workspace** | The dedicated durable directory containing one learner's mission, resources, lessons, references, assets, and evidence | "plan workspace", "Herdr workspace" | Teaching state has its own owner and lifecycle |
-| **frontier** | The derived set of currently actionable plan slices whose blockers are integrated | "queue", "backlog" | Plan slice blockers must be integrated. |
-| **plan workspace** | The temporary, file-based control plane for one implementation effort, containing its orchestration index, slices, and verification artifacts | "PLAN.md", "plan file" | Stored under the OS temporary plan root and reached through the active-plan pointer. |
-| **slice** | A fresh-context implementation packet that delivers one vertical behavior through ordered red, green, and refactor cycles | "task", "ticket" | Editable slices receive isolated worktrees and branches. |
-| **verification artifact** | A durable Markdown record of one review axis, fixed point, criteria, attempts, evidence, and verdict | "review output", "review note" | Owned by the parent agent; failed attempts are appended rather than overwritten. |
-| **active-plan pointer** | The repository-local text file `.plan` whose single absolute path identifies the active plan workspace | "plan state", "plan link" | It is locally excluded from Git; a missing target is stale state and must not be guessed. |
+| **implementation plan** | The immutable single-agent technical `PLAN.md` produced from a fixed spec diff and limited to desired behavior not yet satisfied at the fixed head | "plan workspace", "execution ledger" | Created by `create-plan`; it contains no worker, slice, worktree, review, or execution state. |
+| **execution ledger** | The coordinator-owned recoverable directory containing divided slices, dependency and state records, commits, verification attempts, integration records, decisions, and recovery data | "plan workspace", "control plane" | Created and operated by `divide-plan`; repository-local `.plan` points only to the active execution ledger. |
+| **coordinator** | The sole writer and state owner of an execution ledger, responsible for division, isolated worktrees, agent control, evidence gates, integration, transitions, and recovery without implementing or reviewing | "parent owner", "parent agent" | Herdr transports the coordinator's tasks but does not acquire execution-ledger ownership. |
+| **spec-extraction plan** | The brownfield Bootstrap Specs artifact that directs extraction of specifications from implementation evidence | "implementation plan", "execution ledger", "slice graph" | It does not direct code implementation or execution orchestration. |
+| **teaching workspace** | The dedicated durable directory containing one learner's mission, resources, lessons, references, assets, and evidence | "execution ledger", "Herdr workspace" | Teaching state has its own owner and lifecycle. |
+| **frontier** | The derived set of currently actionable execution slices whose blockers are integrated | "queue", "backlog" | Slice blockers must be integrated. |
+| **slice** | A fresh-context execution packet that delivers one vertical behavior through ordered red, green, and refactor cycles | "task", "ticket" | Editable slices receive isolated worktrees and branches under coordinator control. |
+| **verification artifact** | A durable Markdown record of one review axis or evidence gate, fixed point, criteria, attempts, evidence, and verdict | "review output", "review note" | Owned by the coordinator; failed attempts are appended rather than overwritten. |
+| **active-plan pointer** | The repository-local text file `.plan` whose single absolute path identifies the active execution ledger | "plan state", "plan link" | It is locally excluded from Git; a missing or incompatible target is stale state and must not be guessed. |
 
 ## Tooling Domain
 
@@ -123,15 +126,18 @@
 - A **public Herdr ID** MUST be refreshed after topology changes, while a **legacy display selector** MUST NOT be treated as durable identity
 - **Herdr config** is deployed by the **dotfiles** repo, while **Herdr runtime state** remains local-only and out of git
 - A **repo-owned Herdr integration** is generated or copied into **agent configs** before deployment, rather than installed directly into live runtime paths
-- The **Herdr skill** lives in the **shared skills directory** and is visible to supported agents through their skills deployment paths
-- An **active-plan pointer** identifies one **plan workspace**, which contains multiple **slices** and their **verification artifacts**
-- A plan **frontier** contains ready **slices** only after every blocking slice is integrated
+- The **Herdr skill** and **Claude Code Herdr skill** live in the **shared skills directory** and are visible to supported agents through their skills deployment paths
+- The **Claude Code Herdr skill** composes the **Herdr skill**, which retains generic terminal transport and concurrent agent-status waiting
+- An **implementation plan** may be divided into an **execution ledger**, while remaining immutable and independently addressable by path and SHA-256
+- An **active-plan pointer** identifies one **execution ledger**, which contains multiple **slices** and their **verification artifacts**
+- A **coordinator** solely owns execution-ledger state, while Herdr supplies terminal transport and agents return commits or findings
+- An execution **frontier** contains ready **slices** only after every blocking slice is integrated
 - The **Skill Library** owns each canonical **skill** in the **shared skills directory**, while **agent configs** expose that catalog to supported runtimes
 - A **skill body** uses the **Language Definitions section** and only the optional sections earned by its behavior
 - A **core instruction** remains in the **skill body**, while a **Reference pointer** loads a **Reference file** only after its **branch outcome** occurs
 - **Semantic YAGNI** removes unnecessary content instead of moving it into a Reference file, reducing avoidable **hill climbing**
 - A **behavior-preservation ledger** is required before a material skill-body restructure
-- A **plan workspace**, **spec-extraction plan**, **teaching workspace**, and **Herdr workspace** have distinct owners and lifecycles
+- An **implementation plan**, **execution ledger**, **spec-extraction plan**, **teaching workspace**, and **Herdr workspace** have distinct owners and lifecycles
 
 ---
 
@@ -145,13 +151,15 @@
 - **"strong model"** or **"weak model"** are informal terms that should be avoided in specs. Prefer specific model/provider names and rationale.
 - **"profile"** refers to install profiles (Full, Minimal, Work, Custom). Pi profiles are no longer a supported concept in this repo.
 - **"integration"** is overloaded between Herdr integrations, shell integrations, and editor integrations. Use **Herdr integration** when referring to Herdr agent lifecycle/session hooks.
-- **"workspace"** is overloaded between a project workspace, **plan workspace**, **teaching workspace**, and **Herdr workspace**. Use the qualified term for each durable or terminal context.
-- **"plan"** is overloaded between a **plan workspace** and **spec-extraction plan**. These artifacts are non-interchangeable and MUST use their qualified names.
+- **"workspace"** is overloaded between a project workspace, **teaching workspace**, and **Herdr workspace**. An **execution ledger** is not a workspace; use the qualified term for each durable or terminal context.
+- **"plan"** is overloaded between an **implementation plan** and **spec-extraction plan**. These artifacts and an **execution ledger** are non-interchangeable and MUST use their qualified names.
+- **"parent"** or **"parent owner"** formerly named the actor controlling implementation state. Use **coordinator** for the sole execution-ledger writer and state owner.
 - **"current pane"** can mean the **caller pane** or **focused pane**. Discover the caller from runtime context rather than inferring it from focus.
 - Skill-local definitions belong in the owning **skill body**; terms shared by specs or multiple workflows belong in this project glossary.
 - Bare **"Reference"** can mean the section, pointer, or target file. Use **Reference section**, **Reference pointer**, or **Reference file**; a universally required companion file is not a Reference file.
 - **"progressive disclosure"** is sometimes used for any delayed file load. In the Skill Library it requires a branch outcome and a successful supported route that does not load the selected file.
 - **"prefix key"** is ambiguous after Herdr adoption. Use **multiplexer prefix key** for shared behavior, **tmux prefix key** for tmux, and **Herdr prefix key** for Herdr.
+- **"Herdr skill"** means the generic base transport workflow. Use **Claude Code Herdr skill** for Claude-specific launch, composer, and steering behavior.
 
 ---
 
@@ -159,6 +167,8 @@
 
 | Version | Date | Change |
 |---------|------|--------|
+| 1.1.0 | 2026-07-15 | Distinguished the generic Herdr skill from its composing Claude Code orchestration specialization. |
+| 1.0.0 | 2026-07-15 | Replaced plan-workspace and parent-owner terminology with immutable implementation plans, coordinator-owned execution ledgers, and active-ledger routing. |
 | 0.9.0 | 2026-07-15 | Removed vocabulary and relationships owned solely by retired workflows while preserving plan-frontier terminology. |
 | 0.8.0 | 2026-07-14 | Established the Skill Library bounded context and distinguished core instructions, branch outcomes, Reference sections, Reference pointers, Reference files, semantic YAGNI, progressive disclosure, and hill climbing. |
 | 0.7.0 | 2026-07-14 | Added the shared-skill body vocabulary, qualified workflow artifacts, and Herdr caller and runtime identity distinctions. |
@@ -169,9 +179,9 @@
 > **Domain Expert**: "No. The **Skill Library** owns skill semantics; the **agent config** only exposes canonical skills to a runtime."
 > **Dev**: "Can every successful route load the same **Reference file** if the pointer appears near a later step?"
 > **Domain Expert**: "No. That is sequencing. A valid **Reference pointer** requires a **branch outcome** and at least one successful no-load route."
-> **Dev**: "What happens after the branch outcome occurs?"
-> **Domain Expert**: "Loading the selected **Reference file** becomes mandatory, while unrelated branch context remains undisclosed."
 > **Dev**: "Where does universally required behavior go?"
 > **Domain Expert**: "Keep it as a compact **core instruction** in the skill body; **semantic YAGNI** removes unnecessary detail instead of creating **hill climbing**."
-> **Dev**: "Who deploys the catalog to Pi?"
-> **Domain Expert**: "AI Agent Configuration deploys Pi's visibility layer, while the **Skill Library** remains the content owner."
+> **Dev**: "Does `create-plan` open an **execution ledger**?"
+> **Domain Expert**: "No. It writes one immutable **implementation plan**. A **coordinator** later uses `divide-plan` to create the active **execution ledger** and its **slices**."
+> **Dev**: "Should `divide-plan` teach the **Claude Code Herdr skill** how to split panes or race statuses?"
+> **Domain Expert**: "No. It composes the **Herdr skill** for generic transport and keeps only Claude launch, readiness, prompt submission, and steering behavior."
