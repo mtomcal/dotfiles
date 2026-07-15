@@ -109,10 +109,10 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 ## Modules
 
 ### Agent configs (`claude/`, `codex/`, `pi/`, `copilot/`)
-- **Purpose**: Each directory holds one AI agent's role files, tracked configuration, commands, or runtime wrappers. All are deployed by `install.sh`; Pi's mutable settings stay local under `~/.pi/agent/settings.json`.
+- **Purpose**: Each directory holds one AI agent's role files, tracked configuration, commands, or runtime wrappers. All are deployed by `install.sh`; Claude and Pi keep mutable settings in their local runtime directories.
 - **Owns**: Per-agent: `agents/` where supported, `commands/` where supported, and tracked configuration such as `config.toml` or `models.json`. Pi also owns `extensions/` (custom TypeScript), `skills/` (Pi-visible shared skill symlinks), and the `pi`/`pis` wrappers.
 - **Depends on**: `shared/skills/` for cross-agent skills. Pi's runtime skills path resolves to `pi/skills/`, which is a visibility layer of symlinks to shared skills.
-- **Rules**: Agents never reference each other's configs. Shared skills `npx skills@latest add` into any non-Pi agent lands in `shared/skills/` automatically. Pi has one runtime config at `~/.pi/agent`; `settings.json` is unversioned local state while tracked resources remain repo-owned. Do not reintroduce Pi profiles, `pim`, subagent roles, or the subagent extension.
+- **Rules**: Agents never reference each other's configs. Shared skills `npx skills@latest add` into any non-Pi agent lands in `shared/skills/` automatically. Claude's `~/.claude/settings.json` and Pi's `~/.pi/agent/settings.json` are unversioned local state while tracked resources remain repo-owned. Pi has one runtime config at `~/.pi/agent`; do not reintroduce Pi profiles, `pim`, subagent roles, or the subagent extension.
 - **Entry points**: Agent root dirs. Each contains the settings file(s), wrappers, or config sources the agent loads at startup.
 
 ### `herdr/`
@@ -178,6 +178,7 @@ Primary entry point: `./install.sh` — idempotent, safe to re-run. Auto-detects
 
 ## Anti-patterns
 
+- **Versioning mutable agent settings**: `~/.claude/settings.json` and `~/.pi/agent/settings.json` are runtime-owned and intentionally untracked; do not add repo-managed copies.
 - **Modifying `~/.config/nvim/` directly**: Changes are lost on kickstart updates. All customizations go in `nvim/custom/plugins/`.
 - **Wrong platform package names** (e.g., `fd` on Ubuntu): Always use `install_package()` (install.sh:114-138) which handles platform mapping. Test both platforms.
 - **Skills missing cross-agent frontmatter**: Every skill needs `name`, `description`, `metadata.short-description`, `allowed-tools`. Run `audit-shared-skills` to verify.

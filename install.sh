@@ -952,6 +952,23 @@ is_dotfiles_managed_claude_settings() {
     [ "$update_path" = "$managed_path" ]
 }
 
+prepare_claude_agent_settings() {
+    local settings="$HOME/.claude/settings.json"
+    local migrated_settings
+
+    if ! is_dotfiles_managed_claude_settings "$settings"; then
+        return 0
+    fi
+    if [ -f "$settings" ]; then
+        migrated_settings="$HOME/.claude/.settings.json.migrate.$$"
+        cp "$settings" "$migrated_settings" || return 1
+        rm "$settings" || return 1
+        mv "$migrated_settings" "$settings" || return 1
+    else
+        rm "$settings"
+    fi
+}
+
 has_nested_session_hook() {
     local settings_path="$1"
     local command="$2"
@@ -982,6 +999,18 @@ jq_update_file() {
         rm -f "$tmp"
         return 1
     fi
+}
+
+ensure_claude_statusline_setting() {
+    local settings="$HOME/.claude/settings.json"
+
+    ensure_json_object_file "$settings" || return 1
+    jq_update_file "$settings" '
+        .statusLine = {
+            type: "command",
+            command: "~/.claude/statusline.sh"
+        }
+    '
 }
 
 add_nested_session_hook() {
@@ -1096,13 +1125,15 @@ configure_herdr_integrations() {
         local claude_hook="$HOME/.claude/hooks/herdr-agent-state.sh"
         mkdir -p "$HOME/.claude/hooks"
         replace_symlink "$DOTFILES_DIR/herdr/integrations/claude/herdr-agent-state.sh" "$claude_hook"
-        ensure_json_object_file "$HOME/.claude/settings.json" || return 1
+        local claude_settings_were_managed=0
         if is_dotfiles_managed_claude_settings "$HOME/.claude/settings.json"; then
-            if ! has_nested_session_hook "$HOME/.claude/settings.json" "$(portable_claude_herdr_hook_command)" "*"; then
-                print_error "Dotfiles-managed Claude settings missing portable Herdr hook"
-                return 1
-            fi
-        else
+            claude_settings_were_managed=1
+        fi
+        prepare_claude_agent_settings || return 1
+        ensure_json_object_file "$HOME/.claude/settings.json" || return 1
+        if [ "$claude_settings_were_managed" -eq 1 ]; then
+            add_nested_session_hook "$HOME/.claude/settings.json" "$(portable_claude_herdr_hook_command)" "*" || return 1
+        elif ! has_nested_session_hook "$HOME/.claude/settings.json" "$(portable_claude_herdr_hook_command)" "*"; then
             add_nested_session_hook "$HOME/.claude/settings.json" "$(herdr_hook_command "$claude_hook" session)" "*" || return 1
         fi
         print_success "Claude Herdr integration configured"
@@ -1175,37 +1206,32 @@ install_claude() {
     print_header "Installing Claude Code"
 
     local claude_settings="$HOME/.claude/settings.json"
-    local settings_existed_before=0
-    local protect_managed_settings=0
+    local preserved_settings=""
 
-    if [ -e "$claude_settings" ] || [ -L "$claude_settings" ]; then
-        settings_existed_before=1
-    fi
+    prepare_claude_agent_settings || return 1
 
-    if is_dotfiles_managed_claude_settings "$claude_settings"; then
-        protect_managed_settings=1
-        rm "$claude_settings"
+    if [ -f "$claude_settings" ] && [ ! -L "$claude_settings" ]; then
+        preserved_settings="$HOME/.claude/.settings.json.install.$$"
+        mv "$claude_settings" "$preserved_settings" || return 1
     fi
 
     print_info "Installing/updating Claude Code CLI to latest..."
     if ! curl -fsSL https://claude.ai/install.sh | bash -s latest; then
-        if [ "$protect_managed_settings" -eq 1 ] && [ ! -e "$claude_settings" ]; then
-            ln -s "$DOTFILES_DIR/claude/settings.json" "$claude_settings"
+        if [ -n "$preserved_settings" ]; then
+            rm -f "$claude_settings"
+            mv "$preserved_settings" "$claude_settings"
         fi
         return 1
     fi
     export PATH="$HOME/.local/bin:$PATH"
 
-    if { [ "$protect_managed_settings" -eq 1 ] || [ "$settings_existed_before" -eq 0 ]; } &&
-        [ -f "$claude_settings" ] && [ ! -L "$claude_settings" ]; then
-        rm "$claude_settings"
+    if [ -n "$preserved_settings" ]; then
+        rm -f "$claude_settings"
+        mv "$preserved_settings" "$claude_settings" || return 1
     fi
 
     if [ ! -x "$HOME/.local/bin/claude" ]; then
         print_error "Claude Code CLI install failed: ~/.local/bin/claude not found"
-        if [ "$protect_managed_settings" -eq 1 ] && [ ! -e "$claude_settings" ]; then
-            ln -s "$DOTFILES_DIR/claude/settings.json" "$claude_settings"
-        fi
         return 1
     fi
 
@@ -1244,18 +1270,6 @@ install_claude() {
     fi
     ln -s "$DOTFILES_DIR/shared/skills" "$HOME/.claude/skills"
 
-    # Link settings
-    if [ -f "$HOME/.claude/settings.json" ] && [ ! -L "$HOME/.claude/settings.json" ]; then
-        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-        mv "$HOME/.claude/settings.json" "$HOME/.claude/settings.json.backup.$TIMESTAMP"
-    fi
-    if [ -L "$HOME/.claude/settings.json" ]; then
-        rm "$HOME/.claude/settings.json"
-    fi
-    if [ -f "$DOTFILES_DIR/claude/settings.json" ]; then
-        ln -s "$DOTFILES_DIR/claude/settings.json" "$HOME/.claude/settings.json"
-    fi
-
     # Link statusline
     if [ -L "$HOME/.claude/statusline.sh" ]; then
         rm "$HOME/.claude/statusline.sh"
@@ -1265,6 +1279,7 @@ install_claude() {
     fi
     if [ -f "$DOTFILES_DIR/claude/statusline.sh" ]; then
         ln -s "$DOTFILES_DIR/claude/statusline.sh" "$HOME/.claude/statusline.sh"
+        ensure_claude_statusline_setting || return 1
     fi
 
     print_success "Claude Code configured"
@@ -1778,9 +1793,9 @@ resolve_dependencies() {
                 resolved+=("zsh_config")
                 ;;
             "claude")
-                # Claude Code needs curl
-                if ! command -v curl &> /dev/null; then
-                    print_warning "Adding curl (required by Claude Code)" >&2
+                # Claude Code needs curl for installation and jq for local settings updates.
+                if ! command -v curl &> /dev/null || ! command -v jq &> /dev/null; then
+                    print_warning "Adding base tools (required by Claude Code)" >&2
                     resolved+=("base_tools")
                 fi
                 resolved+=("claude")

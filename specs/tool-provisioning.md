@@ -1,7 +1,7 @@
 # Tool Provisioning
 
-> **Version**: 1.2.1
-> **Last Updated**: 2026-07-06
+> **Version**: 1.3.0
+> **Last Updated**: 2026-07-15
 > **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md), [Design Language](DESIGN_LANGUAGE.md), [Symlink Manager](symlink-manager.md)
 > **Depended By**: Install Orchestrator
 
@@ -134,7 +134,7 @@ Packages with different names across platforms MUST use the `install_package` fu
 | herdr_config | herdr | Config deployment assumes Herdr can be launched after install |
 | herdr_integrations | herdr, relevant agent configs | Repo-owned integration source generation/deployment |
 | zsh_config | zsh | Shell config sourcing needs zsh |
-| claude | curl | Installer needs curl |
+| claude | curl, jq | Installer needs curl; local settings updates need jq |
 | pi | npm | npm global install for Pi binary |
 | codex | npm | npm global install for Codex binary |
 | copilot | curl | Installer needs curl |
@@ -500,7 +500,7 @@ DEPLOY config symlinks for settings, agents, skills
 curl -fsSL https://claude.ai/install.sh | bash -s latest
 ```
 
-This rule applies even when `command -v claude` succeeds. The dotfiles-managed Claude settings disable Claude Code's auto-updater, so skipping the installer would leave stale binaries in place. After the installer runs, the module MUST verify that `~/.local/bin/claude` exists and is executable. If another `claude` binary appears earlier in `PATH`, the module MUST emit a warning.
+This rule applies even when `command -v claude` succeeds so the module delegates idempotent updates to the official installer. Existing local `~/.claude/settings.json` content MUST be protected from installer rewrites and restored afterward; settings generated on a fresh installation MUST remain local. A legacy dotfiles-managed settings symlink MUST be migrated to a regular local file without losing its resolved content. When the tracked status-line script is deployed, the module MUST set local `statusLine` configuration to execute `~/.claude/statusline.sh` without replacing unrelated settings. After the installer runs, the module MUST verify that `~/.local/bin/claude` exists and is executable. If another `claude` binary appears earlier in `PATH`, the module MUST emit a warning.
 
 **Codex config.toml special case**: The config.toml file MUST be copied (not symlinked) from the dotfiles template because Codex writes machine-specific values into it. The behavior is controlled by the `CODEX_CONFIG_TEMPLATE_MODE` parameter:
 - `preserve` (default): If a local config.toml exists, keep it; if only a symlink exists, convert it to a local copy
@@ -875,6 +875,7 @@ Expected Output: Installer is skipped and success is emitted without reinstallin
 
 | Version | Date | Summary |
 |---------|------|---------|
+| 1.3.0 | 2026-07-15 | Made Claude settings local runtime state, preserved them across installer runs, and defined legacy symlink migration. |
 | 1.2.1 | 2026-07-06 | Required Claude Code to run the official installer with the `latest` target on every Claude module execution, with user-local binary verification. |
 | 1.2.0 | 2026-07-05 | Added Herdr direct-installer provisioning, Herdr modules, error handling, and tests. |
 | 1.1.0 | 2026-06-02 | Clarified that Pi installs a single shared binary. |

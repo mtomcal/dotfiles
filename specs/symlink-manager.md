@@ -1,6 +1,6 @@
 # Symlink Manager
 
-> **Version**: 1.4.0
+> **Version**: 1.5.0
 > **Last Updated**: 2026-07-15
 > **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md)
 > **Depended By**: [AI Agent Config](ai-agent-config.md), [Herdr Config](herdr-config.md), [Install Orchestrator](install-orchestrator.md), [Neovim Config](neovim-config.md), [Shell Config](shell-config.md), [Tmux Config](tmux-config.md)
@@ -73,7 +73,6 @@ The complete set of symlink deployments the system MUST establish. Most entries 
 | **Claude Code** | ~/.claude/commands | claude/commands | replace-symlink (directory) | Always |
 | **Claude Code** | ~/.claude/agents | claude/agents | replace-symlink (directory) | Always |
 | **Claude Code** | ~/.claude/skills | shared/skills | replace-symlink (directory) | Always |
-| **Claude Code** | ~/.claude/settings.json | claude/settings.json | replace-symlink | Source file must exist |
 | **Claude Code** | ~/.claude/statusline.sh | claude/statusline.sh | replace-symlink | Source file must exist |
 | **Pi** | ~/.pi/agent/models.json | pi/models.json | replace-symlink | Always |
 | **Pi** | ~/.pi/agent/skills | pi/skills | replace-symlink (directory) | Always |
@@ -279,7 +278,7 @@ The installer runs in strict mode where any unhandled operation failure terminat
 
 ### Conditional Source Existence
 
-Some mappings have the condition "Source file must exist" — these are for optional configuration files that may or may not be present in the dotfiles repository. The system MUST check for source existence and skip deployment if the source is absent. Examples include `claude/settings.json` and `claude/statusline.sh`.
+Some mappings have the condition "Source file must exist" — these are for optional configuration files that may or may not be present in the dotfiles repository. The system MUST check for source existence and skip deployment if the source is absent. One example is `claude/statusline.sh`.
 
 ### Zsh Source Append Idempotency
 
@@ -324,12 +323,12 @@ Preconditions: All symlinks are already correctly deployed from a previous run
 Input: Run the same install module again
 Expected Output: All symlinks remain correctly pointing to the dotfiles sources; no backup files are created; no errors are produced; the system reports success for each step
 
-### TS-SYMLK-006: Conditional symlink skipped when source absent
+### TS-SYMLK-006: Conditional statusline symlink skipped when source absent
 Category: Unit
 Priority: High
-Preconditions: The dotfiles repository does not contain `claude/settings.json`
+Preconditions: The dotfiles repository does not contain `claude/statusline.sh`
 Input: Run the Claude Code module
-Expected Output: The settings.json symlink is NOT created; no error is reported; all other Claude Code symlinks are created normally
+Expected Output: The statusline symlink is NOT created; no error is reported; all other Claude Code symlinks are created normally
 
 ### TS-SYMLK-007: Codex config template preserve mode
 Category: Unit
@@ -428,6 +427,7 @@ Expected Output: First run: all symlinks created, backups made for any conflicti
 
 | Version | Date | Summary |
 |---------|------|---------|
+| 1.5.0 | 2026-07-15 | Removed mutable Claude settings from symlink ownership; they are local runtime state managed by the Claude installer. |
 | 1.4.0 | 2026-07-15 | Removed mutable Pi settings from symlink ownership; they are local runtime state managed by the Pi installer. |
 | 1.3.2 | 2026-07-14 | Corrected the four-agent shared-skill topology and Pi visibility-layer contract. |
 | 1.3.1 | 2026-07-06 | Clarified full-install idempotency expectations for modules that complete official updater paths rather than reporting only existing state. |

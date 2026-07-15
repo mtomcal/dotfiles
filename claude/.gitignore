@@ -2,7 +2,8 @@
 .credentials.json
 credentials.json
 
-# Local settings (machine-specific permissions)
+# Local settings (machine-specific permissions and runtime preferences)
+settings.json
 settings.local.json
 
 # User-specific data

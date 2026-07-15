@@ -203,7 +203,6 @@ dotfiles/
 ├── claude/
 │   ├── agents/            # Claude Code subagents
 
-│   ├── settings.json      # Claude Code settings
 │   └── README.md          # Claude Code documentation
 ├── pi/
 │   ├── extensions/        # Pi extensions (web-search, inherit-last-model, herdr-agent-state)

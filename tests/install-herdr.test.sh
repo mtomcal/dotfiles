@@ -133,7 +133,7 @@ test_configure_herdr_integrations_preserves_claude_settings_symlink() {
     assert_claude_herdr_hook "$managed_settings" "$(herdr_hook_command "$hook_path" session)"
 }
 
-test_configure_herdr_integrations_does_not_mutate_tracked_claude_settings() {
+test_configure_herdr_integrations_migrates_managed_claude_settings() {
     local home
     local dotfiles
     local tracked_settings
@@ -142,7 +142,7 @@ test_configure_herdr_integrations_does_not_mutate_tracked_claude_settings() {
     dotfiles="$(new_tmp)"
     tracked_settings="$dotfiles/claude/settings.json"
     mkdir -p "$home/.claude" "$dotfiles/claude" "$dotfiles/herdr/integrations/claude"
-    cp "$DOTFILES_DIR/claude/settings.json" "$tracked_settings"
+    printf '{"env":{"KEEP_ME":"1"}}\n' > "$tracked_settings"
     cp "$DOTFILES_DIR/herdr/integrations/claude/herdr-agent-state.sh" "$dotfiles/herdr/integrations/claude/herdr-agent-state.sh"
     git -C "$dotfiles" init -q
     git -C "$dotfiles" add claude/settings.json
@@ -152,18 +152,17 @@ test_configure_herdr_integrations_does_not_mutate_tracked_claude_settings() {
 
     HOME="$home" DOTFILES_DIR="$dotfiles" configure_herdr_integrations >/tmp/install-herdr-managed-settings.out
 
-    assert_symlink_to "$home/.claude/settings.json" "$tracked_settings"
+    [[ ! -L "$home/.claude/settings.json" ]] || fail "expected managed Claude settings to migrate to local state"
     git -C "$dotfiles" diff --exit-code -- claude/settings.json >/tmp/install-herdr-managed-settings.diff || {
         cat /tmp/install-herdr-managed-settings.diff >&2
-        fail "configure_herdr_integrations changed tracked claude/settings.json"
+        fail "configure_herdr_integrations changed legacy Claude settings source"
     }
-    ! grep -F "$home" "$tracked_settings" >/dev/null || fail "tracked Claude settings contain HOME-specific path"
+    ! grep -F "$home" "$tracked_settings" >/dev/null || fail "legacy Claude settings source contains HOME-specific path"
     assert_claude_herdr_hook "$home/.claude/settings.json" "$(portable_claude_herdr_hook_command)"
 }
 
-test_install_claude_preserves_local_settings_backup_and_deploys_symlink() {
+test_install_claude_preserves_local_settings_file() {
     local home
-    local backup
 
     home="$(new_tmp)"
     mkdir -p "$home/.claude"
@@ -184,10 +183,8 @@ test_install_claude_preserves_local_settings_backup_and_deploys_symlink() {
     HOME="$home" DOTFILES_DIR="$DOTFILES_DIR" install_claude >/tmp/install-herdr-claude-install.out
     unset -f claude curl
 
-    assert_symlink_to "$home/.claude/settings.json" "$DOTFILES_DIR/claude/settings.json"
-    backup="$(find "$home/.claude" -maxdepth 1 -name 'settings.json.backup.*' -print -quit)"
-    [[ -n "$backup" ]] || fail "expected local Claude settings backup"
-    jq -e '.local == true' "$backup" >/dev/null || fail "expected local Claude settings backup contents to be preserved"
+    [[ ! -L "$home/.claude/settings.json" ]] || fail "expected Claude settings to remain local state"
+    jq -e '.local == true' "$home/.claude/settings.json" >/dev/null || fail "expected local Claude settings contents to be preserved"
 }
 
 test_execute_modules_runs_herdr_integrations_after_agent_modules() {

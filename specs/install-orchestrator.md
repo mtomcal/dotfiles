@@ -1,6 +1,6 @@
 # Install Orchestrator
 
-> **Spec Version**: 1.4.0
+> **Spec Version**: 1.5.0
 > **Last Updated**: 2026-07-15
 > **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md), [Design Language](DESIGN_LANGUAGE.md), [Tool Provisioning](tool-provisioning.md), [Symlink Manager](symlink-manager.md), [Herdr Config](herdr-config.md)
 > **Depended By**: None (this is the top-level orchestrator)
@@ -103,7 +103,7 @@ Modules declare implicit prerequisites via the dependency resolver. The resolver
 | `herdr` | `base_tools` | Only if `curl` is not found |
 | `herdr_config` | `herdr` | Only if `herdr` is not found |
 | `herdr_integrations` | `herdr` | Only if `herdr` is not found; agent-specific integration deployment skips missing agent configs |
-| `claude` | `base_tools` | Only if `curl` is not found |
+| `claude` | `base_tools` | Only if `curl` or `jq` is not found |
 | `copilot` | `base_tools` | Only if `curl` is not found |
 | `pi` | `nodejs` | Only if `npm` is not found |
 | `pi_sandbox` | Docker (external) | Not auto-installed; warning issued if missing |
@@ -518,6 +518,7 @@ Expected Output: The runner syntax-checks shell test files, executes each top-le
 
 | Version | Date | Summary |
 |---------|------|---------|
+| 1.5.0 | 2026-07-15 | Made Claude settings local runtime state and added jq-backed status-line configuration. |
 | 1.4.0 | 2026-07-15 | Made Pi settings local runtime state and required content-preserving migration from the former repo-managed symlink. |
 | 1.3.2 | 2026-07-06 | Added the shell test suite contract: `bash tests/run.sh` discovers top-level shell tests, syntax-checks them, and uses a shared harness for install-script unit tests. |
 | 1.3.1 | 2026-07-06 | Clarified idempotency wording for modules that run official updater paths such as Claude Code's `latest` installer. |

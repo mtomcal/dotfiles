@@ -1,6 +1,6 @@
 # AI Agent Configuration Specification
 
-> **Version**: 3.1.0
+> **Version**: 3.2.0
 > **Last Updated**: 2026-07-15
 > **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md), [Design Language](DESIGN_LANGUAGE.md), [Symlink Manager](symlink-manager.md), [Tool Provisioning](tool-provisioning.md), [Herdr Config](herdr-config.md), [Skill Library](skill-library.md)
 > **Depended By**: Install Orchestrator (INSTL)
@@ -59,8 +59,10 @@ The system MUST ensure that:
 | `~/.claude/commands/` | `claude/commands/` | symlink |
 | `~/.claude/agents/` | `claude/agents/` | symlink |
 | `~/.claude/skills/` | `shared/skills/` | symlink |
-| `~/.claude/settings.json` | `claude/settings.json` | symlink when present |
+| `~/.claude/settings.json` | — | local file; generate, migrate, and preserve |
 | `~/.claude/statusline.sh` | `claude/statusline.sh` | symlink when present |
+
+`~/.claude/settings.json` is mutable local runtime state and MUST NOT be symlinked to a tracked file. Installation MUST preserve existing local settings across upstream installer runs, migrate the resolved content of the legacy managed settings symlink into a regular local file, and configure the tracked `~/.claude/statusline.sh` command without replacing unrelated settings.
 
 ### Pi Coding Agent
 
@@ -95,7 +97,7 @@ Pi has one runtime config rooted at `~/.pi/agent`; tracked resources are repo-ow
 |-------|-----------|-------------|
 | Codex CLI | npm global with `--prefix ~/.local` | Binary must land in `~/.local/bin/` |
 | Pi | npm global with `--prefix ~/.local` | The npm `pi` binary is preserved as `~/.local/bin/pi-bin`; wrapper owns `~/.local/bin/pi` |
-| Claude Code | official curl installer | Dotfiles settings are restored after installer runs |
+| Claude Code | official curl installer | Local settings are preserved and the tracked status line is configured after installer runs |
 | Copilot CLI | official curl installer | Binary lands under the user-local path |
 
 The installer MUST remove legacy Pi wrapper symlinks for `pim`, `pi-*`, and `pis-*` when they point at dotfiles-managed Pi wrapper scripts.
@@ -124,7 +126,7 @@ The `pis` script provides a Docker sandbox wrapper for Pi.
 | Agent | Excluded Categories |
 |-------|---------------------|
 | Codex CLI | Credentials, session/history data, local runtime state, local config overrides |
-| Claude Code | Credentials, session/history data, project-specific data, local runtime state, debug artifacts |
+| Claude Code | Credentials, session/history data, project-specific data, mutable settings, local runtime state, debug artifacts |
 | Pi | Credentials, session/history data, local runtime binaries, sessions, auth files, mutable settings |
 | Copilot CLI | Auth state and local runtime data under the user's XDG config directory |
 
@@ -199,6 +201,7 @@ Expected Output: Claude, Codex, and Copilot expose the canonical catalog directl
 
 | Version | Date | Change |
 |---------|------|--------|
+| 3.2.0 | 2026-07-15 | Made mutable Claude settings unversioned local state and required preservation across installation and migration. |
 | 3.1.0 | 2026-07-15 | Made mutable Pi settings unversioned local state with content-preserving migration from the legacy managed symlink. |
 | 3.0.0 | 2026-07-15 | Removed retired catalog visibility entries and specialist agent surfaces. |
 | 2.4.0 | 2026-07-14 | Moved shared-skill content, authoring, composition, provenance, and workflow-state contracts into the Skill Library bounded context; retained catalog exposure and runtime deployment ownership. |
