@@ -9,8 +9,12 @@
         "supportsReasoningEffort": true
       },
       "models": [
-        { "id": "gpt-oss:120b", "name": "GPT OSS 120B (Ollama Cloud)", "contextWindow": 131072, "maxTokens": 16384, "reasoning": true },
-        { "id": "gpt-oss:20b", "name": "GPT OSS 20B (Ollama Cloud)", "contextWindow": 131072, "maxTokens": 16384, "reasoning": true }
+        { "id": "kimi-k2.7-code", "name": "Kimi K2.7 Code (Ollama Cloud)", "contextWindow": 262144, "maxTokens": 16384, "reasoning": true, "input": ["text", "image"] },
+        { "id": "minimax-m3", "name": "MiniMax M3 (Ollama Cloud)", "contextWindow": 524288, "maxTokens": 16384, "reasoning": true, "input": ["text", "image"] },
+        { "id": "glm-5.2", "name": "GLM 5.2 (Ollama Cloud)", "contextWindow": 1000000, "maxTokens": 16384, "reasoning": true },
+        { "id": "qwen3.5:397b", "name": "Qwen 3.5 397B (Ollama Cloud)", "contextWindow": 262144, "maxTokens": 16384, "reasoning": true, "input": ["text", "image"] },
+        { "id": "deepseek-v4-flash", "name": "DeepSeek V4 Flash (Ollama Cloud)", "contextWindow": 1048576, "maxTokens": 16384, "reasoning": true },
+        { "id": "deepseek-v4-pro", "name": "DeepSeek V4 Pro (Ollama Cloud)", "contextWindow": 524288, "maxTokens": 16384, "reasoning": true }
       ]
     },
     "opencode-go": {
