@@ -59,7 +59,7 @@ A changed fixed point invalidates the prior mechanical pass and requires a new a
 
 ## Final pass artifact
 
-Use `final-standards.md`, `final-spec.md`, `final-premortem.md`, `final-security.md`, and `final-<approved-exception>.md`.
+Use `final-test-quality.md`, `final-standards.md`, `final-spec.md`, `final-premortem.md`, `final-security.md`, and one `final-<risk-triggered-or-approved-exception>.md` per risk-triggered or approved exceptional gate. `final-test-quality.md` records the integrated Test Quality pass and is separate from the per-slice `<slice-number>-test-quality.md` artifacts.
 
 ```markdown
 # Final <Axis> Verification
@@ -81,7 +81,7 @@ Use `final-standards.md`, `final-spec.md`, `final-premortem.md`, `final-security
 - Limitations: ...
 ```
 
-Standards and Spec remain separate axes even when one composed `code-review` invocation coordinates them. Every mandatory pass records every reviewed integrated fixed point; no pass can waive another.
+Standards and Spec remain separate axes even when one composed `code-review` invocation coordinates them. The mandatory integrated passes are Test Quality, Standards, Spec, Premortem, and Security; each risk-triggered or approved exceptional gate records its own artifact. Every mandatory pass records every reviewed integrated fixed point; no pass can waive another.
 
 ## Final findings and remediation artifact
 
@@ -100,10 +100,12 @@ Use `final-findings.md`.
 - Returned commit: <full hash>
 - Integrated fixed point: <full hash>
 - Evidence: ...
-- Result: rerun all mandatory passes
+- Repository gates rerun: <result>
+- Reviews rerun: <failed reviews plus passing reviews the impact invalidated>
+- Reviews not rerun: <review — rationale it was unaffected>
 ```
 
-Append each fixed-point finding set and remediation batch. Do not erase resolved findings. A maximum of two remediation batches is allowed.
+Append each fixed-point finding set and remediation batch. Do not erase resolved findings. After any remediation always rerun repository gates, rerun failed and invalidated passing reviews, and record why any not-rerun review was unaffected. A maximum of two remediation batches is allowed.
 
 ## Verdict invariants
 

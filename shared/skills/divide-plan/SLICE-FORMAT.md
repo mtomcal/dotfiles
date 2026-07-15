@@ -24,6 +24,15 @@ Directly apply this operational format to every `slices/NNN-<vertical-behavior>.
 - Must preserve: ...
 - Excluded adjacent work: ...
 
+## Retained proposed execution trace(s)
+<Every relevant source proposed execution trace, verbatim. Retain all traces that touch this slice's frames.>
+
+## Slice-scope frame mapping
+- Owned frames: <frames this slice implements or changes>
+- Dependency frames: <frames this slice calls but does not own>
+- Required ordering: <binding observable/safety-critical order this slice must honor>
+- Proposed frames allowed to vary: <internal frames whose structure may change, with rationale>
+
 ## Acceptance and failure criteria
 1. Acceptance: <specific machine- or human-verifiable outcome>
 2. Failure: <boundary or incorrect behavior that must be distinguished>
@@ -76,3 +85,5 @@ Directly apply this operational format to every `slices/NNN-<vertical-behavior>.
 - If the packet cannot fit one fresh context, divide it before launch.
 - For wide changes, expansion preserves old and new forms, bounded migration packets stay green, and contraction is blocked by every migration.
 - The coordinator owns packet state. The implementer edits only the assigned checkout and returns evidence.
+- Retain every relevant source proposed execution trace verbatim; never rewrite or summarize it. The slice-scope frame mapping is added separately and must not alter the retained trace.
+- Every binding frame and required order in a retained trace maps to at least one slice; permitted deviations from proposed internal frames appear in returned evidence.

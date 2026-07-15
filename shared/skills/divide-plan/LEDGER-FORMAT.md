@@ -55,11 +55,14 @@ Directly apply this operational format whenever creating or updating an executio
 ## Final review state
 - Reviewed integration fixed point: <full hash or pending>
 - Repository gates: pending | pass | needs-remediation | blocked
+- Test Quality (integrated): pending | pass | needs-remediation | blocked
 - Standards: pending | pass | needs-remediation | blocked
 - Spec: pending | pass | needs-remediation | blocked
 - Premortem: pending | pass | needs-remediation | blocked
 - Security: pending | pass | needs-remediation | blocked
+- Risk-triggered gates: <gate: state per source-plan risk, or none>
 - Exceptional passes: <states or none>
+- Rerun rationale (last remediation): <which reviews were rerun, and why each not-rerun review was unaffected>
 - Final remediation batches used: <0..2>
 
 ## Acceptance

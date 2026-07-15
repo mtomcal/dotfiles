@@ -32,12 +32,14 @@ Require one explicit absolute implementation-plan path. Do not infer a latest pl
 - the current canonical repository root and stable repository id match the plan;
 - its full base and head commits exist;
 - its recorded comparison and changed-spec sources are coherent;
-- its absolute source path matches the supplied path; and
-- it has the immutable single-agent implementation-plan structure.
+- its absolute source path matches the supplied path;
+- it has the immutable single-agent implementation-plan structure;
+- every ordered step carries at least one proposed execution trace; and
+- unless it is an empty (`none`) plan, it defines the mandatory final review gates plus any risk-triggered gates.
 
-Stop on any mismatch, missing fixed point, malformed source, ambiguity, or contradiction. Never automatically modify, replace, move, or delete the source plan.
+Stop on any mismatch, missing fixed point, malformed source, missing trace or final review gate, ambiguity, or contradiction. Never automatically modify, replace, move, or delete the source plan.
 
-Completion criterion: Herdr is available, its skill is loaded, and the explicit source path, SHA-256, repository identity, and Git fixed points are verified.
+Completion criterion: Herdr is available, its skill is loaded, and the explicit source path, SHA-256, repository identity, Git fixed points, per-step proposed execution traces, and defined final review gates are verified.
 
 ### 2. Inspect active state and settle orchestration choices
 
@@ -66,9 +68,11 @@ Choose an unused descriptive ledger id and create `/tmp/agent-plans/<repo-id>/le
 
 Divide every remaining implementation-plan step into vertical slices that each fit one fresh agent context. Before writing packets, load and directly apply [`SLICE-FORMAT.md`](SLICE-FORMAT.md). Every source-plan gap and acceptance criterion must map to at least one slice. Encode only genuine dependencies; a slice becomes frontier-ready only when every blocker is integrated. Preserve expand → bounded green migration → contract ordering for wide changes. Put explicit RED/GREEN/REFACTOR instructions in each packet because implementation agents may use an economical model.
 
+Retain every relevant source proposed execution trace verbatim in each derived slice, then add a separate slice-scope mapping naming owned frames, dependency frames, required ordering, and proposed frames allowed to vary. If one plan step becomes multiple slices, each applicable slice retains the complete relevant trace; if a slice covers multiple traces, retain all. Every binding frame and required order must map to at least one slice. Slice elaboration stays separate from the retained trace. A consequential contradiction between a trace and the slice division blocks; permitted deviations appear in returned evidence.
+
 Create a dedicated integration branch and isolated integration worktree from the source plan's head commit. Write the ledger's absolute directory path plus one newline to `.plan`, and add an exact `.plan` line to `.git/info/exclude` if absent. Do not put secrets in ledger state. Never overwrite an existing ledger id or mutate the source implementation plan.
 
-Completion criterion: `.plan` resolves to one new execution ledger, the ledger validates against its operational format, every source-plan gap is covered by a context-sized slice, the DAG is acyclic, and the frontier equals ready slices whose blockers are integrated.
+Completion criterion: `.plan` resolves to one new execution ledger, the ledger validates against its operational format, every source-plan gap is covered by a context-sized slice, every source trace is retained verbatim in each applicable slice with its slice-scope frame mapping, every binding frame and required order maps to at least one slice, the DAG is acyclic, and the frontier equals ready slices whose blockers are integrated.
 
 ### 4. Implement and verify each frontier slice
 
@@ -88,19 +92,20 @@ Completion criterion: every integrated slice has isolated implementation commits
 
 ### 5. Review and remediate the integrated fixed point
 
-After all slices integrate, pin the integration branch head and run all repository gates. Then launch independent oversight work, parallel where possible, against that fixed point:
+After all slices integrate, pin the integration branch head, run all repository gates, and hold that one unchanged integrated candidate for every review. The source plan's final review gates are the minimum contract; `divide-plan` may strengthen but not skip them. Then launch independent oversight work against that fixed point, concurrently where supported and sequentially otherwise:
 
+- run a final integrated Test Quality pass by composing [`test-quality-verifier`](../test-quality-verifier/SKILL.md) in audit-only mode across the integrated scope — this is in addition to, not a replacement for, the independent per-slice test-quality checks in step 4;
 - compose [`code-review`](../code-review/SKILL.md) for independent Standards and Spec axes against the source plan's fixed head and requirements;
 - run a Premortem pass for cross-slice, operational, migration, recovery, concurrency, and human-use failure modes; and
 - run a Security pass for trust boundaries, credentials, permissions, inputs, dependencies, network paths, and data exposure.
 
-Use the exact oversight configuration for every pass. Run any explicitly approved exceptional pass beside these four. Record each pass and fixed point using `VERIFICATION-FORMAT.md`. Findings are evidence only; reviewers do not mutate the ledger or decide acceptance.
+Use the exact oversight configuration for every pass. Run every risk-triggered gate the source plan defines (Visual, Performance, Migration, Compatibility, or other) and any separately approved exceptional pass beside these mandatory passes. Record each pass and fixed point using `VERIFICATION-FORMAT.md`. Reviewers report findings and do not edit during passes; findings are evidence only and never mutate the ledger or decide acceptance.
 
-The coordinator collects and deduplicates all repository-gate and review findings without collapsing axis ownership. If findings remain, launch one isolated editable remediation agent using the oversight configuration, not an original slice worker. Give it the complete batch, exact fixed point, authorized scope, and evidence contract. Integrate its returned commit mechanically, pin the new fixed point, rerun repository gates, and rerun all four mandatory passes; rerun approved exceptional passes while their risk remains applicable.
+The coordinator collects and consolidates all repository-gate and review findings without collapsing axis ownership. If findings remain, launch one isolated editable remediation agent using the oversight configuration, not an original slice worker. Give it the complete consolidated batch, exact fixed point, authorized scope, and evidence contract. Integrate its returned commit mechanically and pin the new fixed point. After any remediation always rerun repository gates, rerun every failed review, and rerun each passing review the remediation's impact invalidates, recording rationale for any review not rerun; do not automatically rerun reviews the change cannot affect.
 
-Allow at most two final remediation batches. If findings remain after the second rerun, set the ledger to `blocked` and preserve all fixed points, findings, and attempts. The coordinator never performs remediation edits itself.
+Allow at most two final remediation batches. If findings remain after the second batch's reruns, set the ledger to `blocked` and preserve all fixed points, findings, and attempts. The coordinator never performs remediation edits itself.
 
-Completion criterion: repository gates and all four mandatory final passes, plus approved exceptional passes, pass against the same integrated fixed point, or the ledger is explicitly blocked with append-preserved evidence after two remediation batches.
+Completion criterion: repository gates and all mandatory final passes — Test Quality, Standards, Spec, Premortem, and Security — plus every risk-triggered and approved exceptional pass, pass against the same integrated fixed point with recorded rerun rationale, or the ledger is explicitly blocked with append-preserved evidence after two remediation batches.
 
 ### 6. Complete or recover
 

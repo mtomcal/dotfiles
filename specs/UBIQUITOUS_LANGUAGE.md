@@ -1,6 +1,6 @@
 # Ubiquitous Language
 
-> **Version**: 1.1.0
+> **Version**: 1.2.0
 > **Last Updated**: 2026-07-15
 > **Purpose**: Shared vocabulary for all specs. Every term used in multiple specs MUST be defined here. Read this before any other spec.
 
@@ -90,7 +90,9 @@
 | **semantic YAGNI** | Retaining skill content only when it changes execution behavior, safety, ownership, outputs, or completion evidence | "line limit", "make it shorter" | Unnecessary content is removed rather than relocated to a Reference file |
 | **hill climbing** | Avoidable repository navigation required to reconstruct an executable contract that should be locally available | "code exploration" | Universally loaded companion files create hill climbing without progressive-disclosure benefit |
 | **behavior-preservation ledger** | An audit record mapping each required behavior to its retained location or replacement owner | "change summary", "checklist" | Covers triggers, branches, gates, failures, guardrails, outputs, ownership, and completion conditions |
-| **implementation plan** | The immutable single-agent technical `PLAN.md` produced from a fixed spec diff and limited to desired behavior not yet satisfied at the fixed head | "plan workspace", "execution ledger" | Created by `create-plan`; it contains no worker, slice, worktree, review, or execution state. |
+| **implementation plan** | The immutable single-agent technical `PLAN.md` produced from a fixed spec diff and limited to desired behavior not yet satisfied at the fixed head | "plan workspace", "execution ledger" | Created by `create-plan`; it defines binding final review gates but contains no reviewer or model configuration, worker, slice, worktree, verification artifact, review result, or mutable execution state. |
+| **review gate** | A binding final quality check an implementation plan requires after ordered implementation, defined by gate order, criteria, blocking behavior, and evidence but free of reviewer or model configuration | "review pass", "review step" | Mandatory gates are repository tests/lint/type/build, Test Quality, Standards, Spec, Premortem, and Security; concrete risk MAY add gates such as Visual, Performance, Migration, or Compatibility. A review gate defines the check, never its results or execution state. |
+| **proposed execution trace** | An evidence-grounded, debugger-style representation of intended runtime call order and depth for an ordered implementation step, rendered as a nested call tree with sequence numbers, `path:symbol` where known, and frame markers | "call graph", "stack trace", "sequence diagram" | Every ordered implementation step has at least one; distinct entry points or asynchronous roots get separate traces. It is neither an actual captured runtime stack trace nor an exhaustive control-flow diagram. Non-runtime work MAY use an explicitly justified ordered operational flow instead. |
 | **execution ledger** | The coordinator-owned recoverable directory containing divided slices, dependency and state records, commits, verification attempts, integration records, decisions, and recovery data | "plan workspace", "control plane" | Created and operated by `divide-plan`; repository-local `.plan` points only to the active execution ledger. |
 | **coordinator** | The sole writer and state owner of an execution ledger, responsible for division, isolated worktrees, agent control, evidence gates, integration, transitions, and recovery without implementing or reviewing | "parent owner", "parent agent" | Herdr transports the coordinator's tasks but does not acquire execution-ledger ownership. |
 | **spec-extraction plan** | The brownfield Bootstrap Specs artifact that directs extraction of specifications from implementation evidence | "implementation plan", "execution ledger", "slice graph" | It does not direct code implementation or execution orchestration. |
@@ -129,6 +131,9 @@
 - The **Herdr skill** and **Claude Code Herdr skill** live in the **shared skills directory** and are visible to supported agents through their skills deployment paths
 - The **Claude Code Herdr skill** composes the **Herdr skill**, which retains generic terminal transport and concurrent agent-status waiting
 - An **implementation plan** may be divided into an **execution ledger**, while remaining immutable and independently addressable by path and SHA-256
+- An **implementation plan** carries at least one **proposed execution trace** per ordered step and defines binding **review gates**, while recording no review results or execution state
+- A **review gate** defines a required final check; the **execution ledger** and direct execution report its results, never the immutable **implementation plan**
+- A **proposed execution trace** in an **implementation plan** is retained verbatim in each derived **slice**, which then adds a slice-scope mapping of owned, dependency, required-order, and proposed-variable frames
 - An **active-plan pointer** identifies one **execution ledger**, which contains multiple **slices** and their **verification artifacts**
 - A **coordinator** solely owns execution-ledger state, while Herdr supplies terminal transport and agents return commits or findings
 - An execution **frontier** contains ready **slices** only after every blocking slice is integrated
@@ -153,6 +158,8 @@
 - **"integration"** is overloaded between Herdr integrations, shell integrations, and editor integrations. Use **Herdr integration** when referring to Herdr agent lifecycle/session hooks.
 - **"workspace"** is overloaded between a project workspace, **teaching workspace**, and **Herdr workspace**. An **execution ledger** is not a workspace; use the qualified term for each durable or terminal context.
 - **"plan"** is overloaded between an **implementation plan** and **spec-extraction plan**. These artifacts and an **execution ledger** are non-interchangeable and MUST use their qualified names.
+- **"review"** in an **implementation plan** means a defined **review gate** (order, criteria, blocking, evidence), never a recorded review result or reviewer/model configuration. Review results live in the **execution ledger** or the direct-execution final response.
+- **"trace"** is ambiguous between a **proposed execution trace** (evidence-grounded intended call order and depth) and an actual captured runtime stack trace. Implementation plans use the proposed form; they never contain captured runtime traces or exhaustive call graphs.
 - **"parent"** or **"parent owner"** formerly named the actor controlling implementation state. Use **coordinator** for the sole execution-ledger writer and state owner.
 - **"current pane"** can mean the **caller pane** or **focused pane**. Discover the caller from runtime context rather than inferring it from focus.
 - Skill-local definitions belong in the owning **skill body**; terms shared by specs or multiple workflows belong in this project glossary.
@@ -167,6 +174,7 @@
 
 | Version | Date | Change |
 |---------|------|--------|
+| 1.2.0 | 2026-07-15 | Added `review gate` and `proposed execution trace`; redefined the immutable implementation plan to define binding final review gates while still excluding review results, reviewer/model configuration, and execution state. |
 | 1.1.0 | 2026-07-15 | Distinguished the generic Herdr skill from its composing Claude Code orchestration specialization. |
 | 1.0.0 | 2026-07-15 | Replaced plan-workspace and parent-owner terminology with immutable implementation plans, coordinator-owned execution ledgers, and active-ledger routing. |
 | 0.9.0 | 2026-07-15 | Removed vocabulary and relationships owned solely by retired workflows while preserving plan-frontier terminology. |
@@ -185,3 +193,7 @@
 > **Domain Expert**: "No. It writes one immutable **implementation plan**. A **coordinator** later uses `divide-plan` to create the active **execution ledger** and its **slices**."
 > **Dev**: "Should `divide-plan` teach the **Claude Code Herdr skill** how to split panes or race statuses?"
 > **Domain Expert**: "No. It composes the **Herdr skill** for generic transport and keeps only Claude launch, readiness, prompt submission, and steering behavior."
+> **Dev**: "Does an **implementation plan** now record which reviewer ran the Security **review gate**?"
+> **Domain Expert**: "No. The plan defines the gate's order, criteria, blocking behavior, and evidence. Reviewer and model configuration and every review result live in the **execution ledger** or the direct-execution final response."
+> **Dev**: "Is a **proposed execution trace** a real stack trace I captured at runtime?"
+> **Domain Expert**: "No. It is an evidence-grounded call tree of intended order and depth per ordered step. `divide-plan` retains it verbatim in each **slice** and adds the slice-scope frame mapping."

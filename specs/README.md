@@ -117,7 +117,7 @@ graph TD
 | [herdr-config.md](herdr-config.md) | Herdr default multiplexer and migration contract | 0.2.0 |
 | [tmux-config.md](tmux-config.md) | Tmux keybindings and nested sessions | 1.1.0 |
 | [neovim-config.md](neovim-config.md) | Kickstart + custom plugin layer | 1.0.0 |
-| [skill-library.md](skill-library.md) | Shared-skill catalog and authoring contracts | 3.1.0 |
+| [skill-library.md](skill-library.md) | Shared-skill catalog and authoring contracts | 4.0.0 |
 | [ai-agent-config.md](ai-agent-config.md) | AI agent runtime configs and catalog exposure | 3.0.0 |
 | [install-orchestrator.md](install-orchestrator.md) | Top-level idempotent setup orchestrator | 1.3.2 |
 
