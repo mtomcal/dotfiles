@@ -20,7 +20,7 @@ allowed-tools: read,write,edit,bash
 - **Integration baseline** — commit from which integration and slice worktrees originate.
 - **Parent owner** — orchestrating agent solely responsible for state, verification records, and integration.
 
-The parent owner is called the parent below. Repository glossary wording is authoritative where it overlaps. Plan workspaces and slices are not Wayfinder decision tickets, spec-extraction plans, Ralph job plans, teaching state, or Herdr workspaces; each has its own owner and lifecycle.
+The parent owner is called the parent below. Repository glossary wording is authoritative where it overlaps. Plan workspaces and slices are distinct from spec-extraction plans, teaching state, and Herdr workspaces; each has its own owner and lifecycle.
 
 ## Workflow
 
@@ -31,7 +31,7 @@ Find the repository root and inspect its text `.plan` file before planning:
 - If `.plan` exists, read its one absolute path. If that target or its `PLAN.md` is missing, report **stale active-plan state** and stop. Do not guess, search `/tmp` for a replacement, or silently rebuild it. Replace the pointer only after explicit user direction.
 - If `.plan` does not exist, choose a stable repo id (repository basename plus a short hash of its canonical root) and descriptive plan id, then create `/tmp/agent-plans/<repo-id>/<plan-id>/` with `PLAN.md`, `slices/`, and `verifications/`. Write that absolute directory path plus a newline to `.plan`. Add an exact `.plan` line to local `.git/info/exclude` if absent; do not require a tracked `.gitignore` change. Never place implementation secrets in this temporary state.
 
-Before writing, read specs, the ubiquitous language, user decisions, relevant research, and current code. Classify the context as spec-driven, research-driven, decision-driven, or hybrid. If unresolved uncertainty prevents a safe implementation shape, route to `wayfinder` instead of inventing a plan.
+Before writing, read specs, the ubiquitous language, user decisions, relevant research, and current code. Classify the context as spec-driven, research-driven, decision-driven, or hybrid. If unresolved uncertainty prevents a safe implementation shape, return the unresolved decisions and supporting evidence to the caller and stop instead of inventing a plan.
 
 Completion criterion: `.plan` resolves to one workspace, required context sources are named, and no consequential implementation decision remains implicit.
 

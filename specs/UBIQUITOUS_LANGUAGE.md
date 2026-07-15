@@ -1,7 +1,7 @@
 # Ubiquitous Language
 
-> **Version**: 0.8.0
-> **Last Updated**: 2026-07-14
+> **Version**: 0.9.0
+> **Last Updated**: 2026-07-15
 > **Purpose**: Shared vocabulary for all specs. Every term used in multiple specs MUST be defined here. Read this before any other spec.
 
 > **Usage note**: Throughout all specs, the bare term "install" should be disambiguated using one of the three defined terms: **install** (the complete install.sh run), **install (dependency)** (a single package), or **install (Mason)** (a Neovim package). Use the specific term wherever context is ambiguous.
@@ -90,12 +90,8 @@
 | **hill climbing** | Avoidable repository navigation required to reconstruct an executable contract that should be locally available | "code exploration" | Universally loaded companion files create hill climbing without progressive-disclosure benefit |
 | **behavior-preservation ledger** | An audit record mapping each required behavior to its retained location or replacement owner | "change summary", "checklist" | Covers triggers, branches, gates, failures, guardrails, outputs, ownership, and completion conditions |
 | **spec-extraction plan** | The brownfield Bootstrap Specs artifact that directs extraction of specifications from implementation evidence | "plan workspace", "slice graph" | It is not a plan workspace or implementation slice graph |
-| **Ralph job plan** | The mutable `IMPLEMENTATION_PLAN.md` state used by a Ralph job | "plan workspace", "orchestration index" | It is not the repository plan workspace |
 | **teaching workspace** | The dedicated durable directory containing one learner's mission, resources, lessons, references, assets, and evidence | "plan workspace", "Herdr workspace" | Teaching state has its own owner and lifecycle |
-| **neutral diff artifact** | Structured observable image differences without criteria, severity, recommendations, or verdict | "visual review", "acceptance verdict" | Owned by `image-diff-describer`; it does not imply visual acceptance |
-| **Wayfinder map** | The low-resolution Markdown index for one uncertainty-resolution effort, containing its destination, decision summaries, fog of war, and scope boundary | "roadmap", "issue epic" | Lives under `.wayfinder/<effort-slug>/MAP.md`; detailed answers remain in decision tickets. |
-| **decision ticket** | A session-sized question whose evidenced resolution advances a Wayfinder map toward its destination | "implementation ticket", "slice" | Resolves uncertainty rather than delivering production behavior. |
-| **frontier** | The derived set of currently actionable items whose dependency blockers have reached the required terminal state | "queue", "backlog" | Wayfinder blockers must be resolved; plan slice blockers must be integrated. |
+| **frontier** | The derived set of currently actionable plan slices whose blockers are integrated | "queue", "backlog" | Plan slice blockers must be integrated. |
 | **plan workspace** | The temporary, file-based control plane for one implementation effort, containing its orchestration index, slices, and verification artifacts | "PLAN.md", "plan file" | Stored under the OS temporary plan root and reached through the active-plan pointer. |
 | **slice** | A fresh-context implementation packet that delivers one vertical behavior through ordered red, green, and refactor cycles | "task", "ticket" | Editable slices receive isolated worktrees and branches. |
 | **verification artifact** | A durable Markdown record of one review axis, fixed point, criteria, attempts, evidence, and verdict | "review output", "review note" | Owned by the parent agent; failed attempts are appended rather than overwritten. |
@@ -128,7 +124,6 @@
 - **Herdr config** is deployed by the **dotfiles** repo, while **Herdr runtime state** remains local-only and out of git
 - A **repo-owned Herdr integration** is generated or copied into **agent configs** before deployment, rather than installed directly into live runtime paths
 - The **Herdr skill** lives in the **shared skills directory** and is visible to supported agents through their skills deployment paths
-- A **Wayfinder map** indexes multiple **decision tickets** and derives its **frontier** from resolved ticket blockers
 - An **active-plan pointer** identifies one **plan workspace**, which contains multiple **slices** and their **verification artifacts**
 - A plan **frontier** contains ready **slices** only after every blocking slice is integrated
 - The **Skill Library** owns each canonical **skill** in the **shared skills directory**, while **agent configs** expose that catalog to supported runtimes
@@ -136,8 +131,7 @@
 - A **core instruction** remains in the **skill body**, while a **Reference pointer** loads a **Reference file** only after its **branch outcome** occurs
 - **Semantic YAGNI** removes unnecessary content instead of moving it into a Reference file, reducing avoidable **hill climbing**
 - A **behavior-preservation ledger** is required before a material skill-body restructure
-- A **plan workspace**, **spec-extraction plan**, **Ralph job plan**, **teaching workspace**, and **Herdr workspace** have distinct owners and lifecycles
-- A **neutral diff artifact** may inform visual review but does not supply acceptance
+- A **plan workspace**, **spec-extraction plan**, **teaching workspace**, and **Herdr workspace** have distinct owners and lifecycles
 
 ---
 
@@ -152,9 +146,8 @@
 - **"profile"** refers to install profiles (Full, Minimal, Work, Custom). Pi profiles are no longer a supported concept in this repo.
 - **"integration"** is overloaded between Herdr integrations, shell integrations, and editor integrations. Use **Herdr integration** when referring to Herdr agent lifecycle/session hooks.
 - **"workspace"** is overloaded between a project workspace, **plan workspace**, **teaching workspace**, and **Herdr workspace**. Use the qualified term for each durable or terminal context.
-- **"plan"** is overloaded between a **plan workspace**, **spec-extraction plan**, and **Ralph job plan**. These artifacts are non-interchangeable and MUST use their qualified names.
+- **"plan"** is overloaded between a **plan workspace** and **spec-extraction plan**. These artifacts are non-interchangeable and MUST use their qualified names.
 - **"current pane"** can mean the **caller pane** or **focused pane**. Discover the caller from runtime context rather than inferring it from focus.
-- **"visual comparison"** can mean neutral description or acceptance judgment. Use **neutral diff artifact** only for no-verdict evidence.
 - Skill-local definitions belong in the owning **skill body**; terms shared by specs or multiple workflows belong in this project glossary.
 - Bare **"Reference"** can mean the section, pointer, or target file. Use **Reference section**, **Reference pointer**, or **Reference file**; a universally required companion file is not a Reference file.
 - **"progressive disclosure"** is sometimes used for any delayed file load. In the Skill Library it requires a branch outcome and a successful supported route that does not load the selected file.
@@ -166,8 +159,9 @@
 
 | Version | Date | Change |
 |---------|------|--------|
+| 0.9.0 | 2026-07-15 | Removed vocabulary and relationships owned solely by retired workflows while preserving plan-frontier terminology. |
 | 0.8.0 | 2026-07-14 | Established the Skill Library bounded context and distinguished core instructions, branch outcomes, Reference sections, Reference pointers, Reference files, semantic YAGNI, progressive disclosure, and hill climbing. |
-| 0.7.0 | 2026-07-14 | Added the shared-skill body vocabulary, qualified workflow artifacts, Herdr caller and runtime identity distinctions, and neutral visual evidence ownership. |
+| 0.7.0 | 2026-07-14 | Added the shared-skill body vocabulary, qualified workflow artifacts, and Herdr caller and runtime identity distinctions. |
 
 ## Example Dialogue
 

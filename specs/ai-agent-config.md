@@ -1,7 +1,7 @@
 # AI Agent Configuration Specification
 
-> **Version**: 2.4.0
-> **Last Updated**: 2026-07-14
+> **Version**: 3.0.0
+> **Last Updated**: 2026-07-15
 > **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md), [Design Language](DESIGN_LANGUAGE.md), [Symlink Manager](symlink-manager.md), [Tool Provisioning](tool-provisioning.md), [Herdr Config](herdr-config.md), [Skill Library](skill-library.md)
 > **Depended By**: Install Orchestrator (INSTL)
 > **Prefix**: AIAGT
@@ -199,8 +199,9 @@ Expected Output: Claude, Codex, and Copilot expose the canonical catalog directl
 
 | Version | Date | Change |
 |---------|------|--------|
+| 3.0.0 | 2026-07-15 | Removed retired catalog visibility entries and specialist agent surfaces. |
 | 2.4.0 | 2026-07-14 | Moved shared-skill content, authoring, composition, provenance, and workflow-state contracts into the Skill Library bounded context; retained catalog exposure and runtime deployment ownership. |
 | 2.3.0 | 2026-07-14 | Added the canonical shared-skill body and semantic YAGNI contracts, behavior-preservation gates, catalog ownership and composition boundaries, qualified workflow artifacts, provenance gates, and verification scenarios. |
-| 2.2.0 | 2026-07-14 | Added Wayfinder and teaching workflows, a recoverable file-based plan control plane, domain-aware grilling, and repaired post-decomposition skill visibility. |
+| 2.2.0 | 2026-07-14 | Added teaching workflows, a recoverable file-based plan control plane, domain-aware grilling, and repaired post-decomposition skill visibility. |
 | 2.1.0 | 2026-07-14 | Added locally maintained cross-agent workflow skills, delegation fallbacks, provenance requirements, and the visual architecture-report contract. |
 | 2.0.0 | 2026-07-08 | Unshipped retired agent/profile/delegation surfaces. Pi now deploys one repo-owned config under `~/.pi/agent`. |

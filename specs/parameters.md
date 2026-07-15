@@ -1,7 +1,7 @@
 # Parameters
 
-> **Spec Version**: 1.7.0
-> **Last Updated**: 2026-07-14
+> **Spec Version**: 2.0.0
+> **Last Updated**: 2026-07-15
 > **Depends On**: None (foundational spec)
 > **Depended By**: All other specs
 
@@ -149,8 +149,6 @@ Parameters serve three purposes:
 | `SANDBOX_HOST_USER_ARG` | `HOST_USER` | string | Docker build arg name for the host username; defaults to `mtomcal` in the Dockerfile, overridden by `pis` script at build time |
 | `SANDBOX_HOST_UID_ARG` | `HOST_UID` | string | Docker build arg name for the host user UID; defaults to `1000` in the Dockerfile, overridden by `pis` script at build time |
 | `SANDBOX_HOST_GID_ARG` | `HOST_GID` | string | Docker build arg name for the host user GID; defaults to `1000` in the Dockerfile, overridden by `pis` script at build time |
-| `RALPH_DEFAULT_ITERATIONS` | 25 | count | Default max loop iterations for Ralph agentic loop |
-| `RALPH_DONE_PATTERN` | /done | string | Pattern that signals loop completion in Ralph worker output |
 
 ## Skill Library
 
@@ -174,6 +172,7 @@ Parameters serve three purposes:
 
 | Version | Date | Summary |
 |---------|------|---------|
+| 2.0.0 | 2026-07-15 | Removed parameters owned solely by retired catalog workflows. |
 | 1.7.0 | 2026-07-14 | Added canonical Skill Library paths, naming, discovery, Reference-depth, and section-order parameters. |
 | 1.6.0 | 2026-07-05 | Added Herdr install, config, alias, SSH multiplexer, pane history, and shared skill parameters for the Herdr replacement path. |
 | 1.4.0 | 2026-05-19 | Added AGENT_SKILLS_DIR_PI for Pi's composed skills directory |

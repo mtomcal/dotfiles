@@ -15,7 +15,6 @@ The following locally maintained skills contain material adapted in July 2026 fr
 - `resolving-merge-conflicts`
 - `tdd`
 - `teach`
-- `wayfinder`
 - `write-a-skill`
 
 Separately, `shared/skills/grill-me/SKILL.md` contains material adapted from [`skills/productivity/grill-me/SKILL.md`](https://github.com/mattpocock/skills/blob/62f43a18177be6ec82da242e59ffbc490a4c22ea/skills/productivity/grill-me/SKILL.md) at commit `62f43a18177be6ec82da242e59ffbc490a4c22ea`. It was imported locally at commit `80eafee1882c0f2fccc0c066ac3a5e3572f25f02` and subsequently expanded for repository glossary, evidence, and routing behavior. It remains covered by the Matt Pocock MIT license reproduced below.

@@ -48,7 +48,7 @@ allowed-tools: read,edit,bash
 3. **Report every skill and finding.** Group results by skill, show `[ok]` for passing fields, and use only `[error]` and `[warn]` for findings:
 
    ```text
-   skill: ralph
+   skill: research
      [ok] name
      [ok] description
      [ok] metadata.short-description

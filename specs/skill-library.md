@@ -1,7 +1,7 @@
 # Skill Library Specification
 
-> **Version**: 1.0.0
-> **Last Updated**: 2026-07-14
+> **Version**: 2.0.0
+> **Last Updated**: 2026-07-15
 > **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md), [Herdr Config](herdr-config.md)
 > **Depended By**: AI Agent Configuration (AIAGT)
 > **Prefix**: SKILL
@@ -185,15 +185,15 @@ A revision is complete only when:
 3. A composed skill imports a process, not ownership. The caller retains artifact location, user gates, workflow state, acceptance authority, and return criteria unless an approved contract names a replacement owner.
 4. Terminal transport skills own terminal mechanics. Their callers retain task briefs, checkout decisions, workflow state, returned-evidence contracts, in-process fallbacks, and acceptance.
 5. Checkout isolation MUST be selected before terminal transport. Read-only delegates MAY share a checkout; editable delegates MUST use isolated checkouts; separate panes alone are not isolation.
-6. Generic Standards and Spec review remain owned by `code-review`; specialist reviewers retain their narrow contracts and MUST NOT waive or rerank another axis.
-7. Visual work MUST preserve its applicable stages: capture, optional recording conversion, optional neutral diff production, general QA or scoped judgment, and caller or human acceptance. A specialist verdict MUST NOT claim final human acceptance.
+6. Generic Standards and Spec review remain owned by `code-review`.
+7. Visual work MUST preserve capture, optional recording conversion, evidence limitations, and caller or human acceptance. Capture and conversion workflows MUST return evidence directly without claiming final acceptance.
 8. Templates, output contracts, ranking models, and checklists remain owned by their domain producer rather than a universal schema.
 9. When a workflow delegates through Herdr, it SHOULD compose the shared Herdr skill instead of duplicating terminal commands and MUST retain an in-process fallback outside Herdr.
 10. Public Herdr IDs MUST be refreshed after topology changes; neither public IDs nor legacy display selectors may become durable workflow identity.
 
 ### Workflow Artifact and State Ownership
 
-Decision tickets, plan-workspace slices, spec-extraction plans, Ralph job plans, teaching state, and generated artifacts are non-interchangeable. Each workflow MUST use qualified artifact names and preserve its own writer, lifecycle, approval gates, and state transitions.
+Plan-workspace slices, spec-extraction plans, teaching state, and generated artifacts are non-interchangeable. Each workflow MUST use qualified artifact names and preserve its own writer, lifecycle, approval gates, and state transitions.
 
 Reciprocal routing MAY compose workflows but MUST NOT transfer state or artifact ownership implicitly.
 
@@ -208,14 +208,11 @@ Reciprocal routing MAY compose workflows but MUST NOT transfer state or artifact
 | `handoff` | Writes redacted timestamped Markdown under the operating system's temporary handoff directory and reports its absolute path |
 | `research` | Produces durable primary-source-backed notes using the repository convention or an approved location |
 | `improve-codebase-architecture` | Produces a temporary visual HTML report with before-and-after diagrams and candidate comparison |
-| `wayfinder` | Resolves uncertainty in parent-owned maps and decision tickets, then routes clarified terminology, behavior, and implementation onward |
 | `create-plan` | Stores recoverable orchestration state in a temporary plan workspace with isolated editable slices and independent verification artifacts |
 | `teach` | Requires an approved teaching workspace and preserves mission, resources, learning records, lessons, references, assets, and notes |
 | `grill-me` | Grounds terminology and evidence, probes consequential branches one question at a time, and defers durable edits until shared understanding |
 
 ### Specialized State Contracts
-
-A Wayfinder effort MUST store one `MAP.md` and numbered decision-ticket files under `.wayfinder/<effort-slug>/`. Ticket frontmatter MUST contain an effort-local identifier, supported ticket type, supported lifecycle status, and blocker list. The parent agent is the sole writer of map and ticket state; delegated findings return through agent output. Wayfinder MUST stop before production implementation and route clarified terminology, behavior, and implementation to their owning workflows.
 
 An active plan workspace MUST be stored beneath `/tmp/agent-plans/<repo-id>/<plan-id>/` with `PLAN.md`, a `slices/` directory, and a `verifications/` directory. The repository-local `.plan` file MUST contain the active workspace's absolute path and be locally excluded from Git. A missing target is stale state and MUST NOT be guessed or reconstructed.
 
@@ -340,4 +337,5 @@ Expected Output: Required behavior remains concise; unnecessary content is remov
 
 | Version | Date | Change |
 |---------|------|--------|
+| 2.0.0 | 2026-07-15 | Removed retired workflow contracts and made surviving visual evidence return directly to the caller or human. |
 | 1.0.0 | 2026-07-14 | Established the Skill Library bounded context, including portable discovery, canonical skill bodies, branch-based Reference semantics, semantic YAGNI, composition, state ownership, provenance, and verification contracts. |

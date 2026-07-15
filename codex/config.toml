@@ -13,10 +13,6 @@ hooks = true
 description = "Audit tests for vague assertions, improve coverage, and report results."
 config_file = "agents/test_quality_verifier.toml"
 
-[agents.playwright_visual_qa]
-description = "Browser-based visual QA using playwright-cli; report layout/a11y/console/network issues."
-config_file = "agents/playwright_visual_qa.toml"
-
 # Optional: mark specific repos as trusted (paths are machine-specific).
 # [projects."/absolute/path/to/repo"]
 # trust_level = "trusted"

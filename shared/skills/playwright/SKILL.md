@@ -18,7 +18,7 @@ metadata:
 
 ## Workflow
 
-1. **Route the task before acting.** Use `visual-qa` when the task is pass/fail visual review. Playwright owns browser interaction and capture; the caller retains the scenario and acceptance decision. Use `video-to-contact-sheet` after capture when a Playwright recording needs trimming or frame-sampled evidence. For an existing Playwright test setup, load the test Reference below before running or debugging tests. For a specialized command family, load only its matching Reference below. Check `playwright-cli --help <command>` against the installed executable before relying on static syntax.
+1. **Route the task before acting.** Playwright owns browser interaction and capture; the caller retains the scenario and acceptance decision. For a pass/fail review request, gather the requested browser evidence and return it directly to the caller without claiming acceptance. Use `video-to-contact-sheet` after capture when a Playwright recording needs trimming or frame-sampled evidence. For an existing Playwright test setup, load the test Reference below before running or debugging tests. For a specialized command family, load only its matching Reference below. Check `playwright-cli --help <command>` against the installed executable before relying on static syntax.
 
 2. **Run one minimal browser scenario.** First confirm the CLI. Prefer the global executable; if it is unavailable, try the project-local package. Stop after the first successful version check and use that invocation consistently:
 

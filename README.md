@@ -185,9 +185,8 @@ dotfiles/
 ├── shared/
 │   └── skills/            # Canonical skill catalog — exposed to all agents
 │       ├── playwright/
-│       ├── visual-qa/
+│       ├── video-to-contact-sheet/
 │       ├── create-plan/
-│       ├── wayfinder/
 │       ├── teach/
 │       ├── research/
 │       ├── code-review/
@@ -915,14 +914,12 @@ Codex, Claude, Pi, and Copilot share a single skills directory at `shared/skills
 | Skill | Description |
 |-------|-------------|
 | `playwright` | Browser automation, scripted capture, and Playwright test workflows |
-| `visual-qa` | Tool-agnostic visual QA across browser, app, image, and recorded artifacts |
+| `video-to-contact-sheet` | Convert recordings into trimmed clips, contact sheets, and focused crops |
 | `create-plan` | Operate a recoverable plan workspace of dependency-ordered TDD slices and verification artifacts |
-| `wayfinder` | Resolve large, foggy efforts through local decision tickets before implementation planning |
 | `teach` | Build a durable, researched teaching workspace with HTML lessons and learning records |
 | `code-review` | Review a fixed diff independently against repository standards and originating requirements |
 | `research` | Produce durable primary-source-backed investigation artifacts |
 | `test-quality-verifier` | Audit tests for vague assertions, improve coverage, produce a structured report |
-| `ralph` | Set up and launch a `loop.sh` iterative agentic job (PROMPT.md + IMPLEMENTATION_PLAN.md + ORCHESTRATOR.md) |
 | `improve-codebase-architecture` | Find architecture deepening opportunities and present a visual HTML review _(adapted from [mattpocock/skills](https://github.com/mattpocock/skills))_ |
 | `herdr` | Control Herdr workspaces, tabs, panes, agent status, and output from inside a Herdr pane |
 | `ubiquitous-language` | Extract a DDD-style glossary from project evidence _(adapted from [mattpocock/skills](https://github.com/mattpocock/skills))_ |
@@ -1027,7 +1024,7 @@ Sessions and auth stay local under `~/.pi/agent/` and are not tracked.
 
 ##### Pi Sandbox (`pis`)
 
-Run Pi inside a Docker container for safe agentic coding. The container is ephemeral — destroyed after each session. Your project directory is mounted read-write; everything else on the host is isolated. Pi runs inside a tmux session, enabling the tmux orchestration skill to spawn additional Pi agents in separate panes/windows.
+Run Pi inside a Docker container for safe agentic coding. The container is ephemeral — destroyed after each session. Your project directory is mounted read-write; everything else on the host is isolated. Pi runs inside a tmux session for stable terminal behavior inside the container.
 
 **Prerequisites**: Docker must be installed. The image builds automatically on first run.
 

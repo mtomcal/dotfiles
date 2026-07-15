@@ -4,7 +4,7 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 
 ## Map
 
-<!-- TREE-HASH: 87fdcc34952818d00987446413c1f420b54fef7ded9f62db7b367d9b3c1a46fe -->
+<!-- TREE-HASH: cd032873303a7a7d38f987ab22f25578b86211d9fbfacc85cf639bd204fc671b -->
 
 <!-- TREE-START -->
 ```
@@ -43,28 +43,20 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 |   |   |-- design-md -> ../../shared/skills/design-md
 |   |   |-- diagnosing-bugs -> ../../shared/skills/diagnosing-bugs
 |   |   |-- em-train -> ../../shared/skills/em-train
-|   |   |-- gameplay-asset-imagegen -> ../../shared/skills/gameplay-asset-imagegen
-|   |   |-- git-delivery -> ../../shared/skills/git-delivery
 |   |   |-- grill-me -> ../../shared/skills/grill-me
 |   |   |-- handoff -> ../../shared/skills/handoff
 |   |   |-- herdr -> ../../shared/skills/herdr
-|   |   |-- image-comparison-judge -> ../../shared/skills/image-comparison-judge
-|   |   |-- image-diff-describer -> ../../shared/skills/image-diff-describer
 |   |   |-- improve-codebase-architecture -> ../../shared/skills/improve-codebase-architecture
 |   |   |-- playwright -> ../../shared/skills/playwright
 |   |   |-- prototype -> ../../shared/skills/prototype
-|   |   |-- ralph -> ../../shared/skills/ralph
 |   |   |-- research -> ../../shared/skills/research
 |   |   |-- resolving-merge-conflicts -> ../../shared/skills/resolving-merge-conflicts
 |   |   |-- tdd -> ../../shared/skills/tdd
 |   |   |-- teach -> ../../shared/skills/teach
 |   |   |-- test-quality-verifier -> ../../shared/skills/test-quality-verifier
-|   |   |-- tmux-agent-orchestration -> ../../shared/skills/tmux-agent-orchestration
 |   |   |-- ubiquitous-language -> ../../shared/skills/ubiquitous-language
 |   |   |-- update-specs -> ../../shared/skills/update-specs
 |   |   |-- video-to-contact-sheet -> ../../shared/skills/video-to-contact-sheet
-|   |   |-- visual-qa -> ../../shared/skills/visual-qa
-|   |   |-- wayfinder -> ../../shared/skills/wayfinder
 |   |   `-- write-a-skill -> ../../shared/skills/write-a-skill
 |   `-- tests
 |-- shared
@@ -83,30 +75,21 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 |       |-- diagnosing-bugs
 |       |-- em-train
 |       |   `-- scripts
-|       |-- gameplay-asset-imagegen
-|       |-- git-delivery
 |       |-- grill-me
 |       |-- handoff
 |       |-- herdr
-|       |-- image-comparison-judge
-|       |-- image-diff-describer
 |       |-- improve-codebase-architecture
 |       |-- playwright
 |       |   `-- references
 |       |-- prototype
-|       |-- ralph
-|       |   `-- references
 |       |-- research
 |       |-- resolving-merge-conflicts
 |       |-- tdd
 |       |-- teach
 |       |-- test-quality-verifier
-|       |-- tmux-agent-orchestration
 |       |-- ubiquitous-language
 |       |-- update-specs
 |       |-- video-to-contact-sheet
-|       |-- visual-qa
-|       |-- wayfinder
 |       `-- write-a-skill
 |-- specs
 |-- tests
@@ -115,7 +98,7 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 |-- yazi
 `-- zsh
 
-106 directories
+89 directories
 ```
 <!-- TREE-END -->
 

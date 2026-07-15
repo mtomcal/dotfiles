@@ -23,7 +23,7 @@ allowed-tools: read,write,edit,Bash(find:*),Bash(rg:*),Bash(npx:*)
    - **Audit** — compare one with implementation and rendered evidence without editing.
    - **Validate** — lint structure; lint does not establish rendered fidelity.
 
-2. **Extract before inventing.** For create, update, and audit, inspect applicable `AGENTS.md`, READMEs, specs, visual QA docs, CSS/themes, components, assets, screenshots, and product references. Prefer existing variables, tokens, classes, renders, and repeated patterns. Label explicit direction rather than presenting it as extracted evidence. Finish when every rule has evidence or direction.
+2. **Extract before inventing.** For create, update, and audit, inspect applicable `AGENTS.md`, READMEs, specs, design docs, CSS/themes, components, assets, screenshots, and product references. Prefer existing variables, tokens, classes, renders, and repeated patterns. Label explicit direction rather than presenting it as extracted evidence. Finish when every rule has evidence or direction.
 
 3. **Create or update the exact artifact contract.** YAML front matter contains:
    - `version`, `name`, and optional `description`
