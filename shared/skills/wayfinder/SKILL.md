@@ -41,7 +41,7 @@ If the effort exists, load `MAP.md` and only the frontier tickets needed for the
 2. Explore breadth-first across the decision space. Separate sharp questions from fog.
 3. If the route is already clear and fits one planning context, do not create a map; route directly to `create-plan`.
 4. Ask before creating `.wayfinder/<effort-slug>/`.
-5. Load the mandatory format reference below, write the map and currently specifiable tickets, then add blocking edges in a second pass.
+5. Load [FORMATS.md](FORMATS.md) before creating or changing `MAP.md` or any ticket because it defines the required sections, frontmatter, ticket types and statuses, blocker semantics, state transitions, and durable-state exclusions. Write `MAP.md` and the currently specifiable tickets first, then add and verify blocker edges in a second pass.
 
 The parent agent is the sole writer of `MAP.md` and ticket state. Completion criterion: the destination is stable, every live ticket is a decision or uncertainty-unblocking task, and the derived frontier is non-contradictory.
 
@@ -98,7 +98,3 @@ The effort is complete when the destination is clear, no open or in-progress tic
 - keep `.wayfinder/` as the decision trail unless the repository's documented artifact policy says otherwise
 
 Do not call the effort complete merely because the current frontier is empty; an empty frontier with unresolved tickets means blocked or inconsistent state.
-
-## Reference
-
-- Load [FORMATS.md](FORMATS.md) whenever creating or changing a Wayfinder map or ticket because it owns the exact map sections, ticket frontmatter, ticket types and statuses, blocker semantics, state transitions, and durable-state exclusions.

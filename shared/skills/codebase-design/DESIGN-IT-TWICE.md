@@ -1,6 +1,6 @@
 # Design It Twice
 
-Use this branch for consequential interfaces or when the user asks for alternatives. Read [SKILL.md](SKILL.md) and, when dependencies matter, [DEEPENING.md](DEEPENING.md).
+Use this branch for consequential interfaces or when the user asks for alternatives. Read [SKILL.md](SKILL.md). Dependency classification is selected there.
 
 ## Frame the design
 

@@ -37,7 +37,7 @@ Completion criterion: `.plan` resolves to one workspace, required context source
 
 ### 2. Build the orchestration index
 
-Before creating or changing `PLAN.md`, load its schema from Reference. Record the immutable objective and amendment authority, fixed context sources, full baseline, dedicated integration branch and worktree, explicit `pi` and/or `pis` model and thinking defaults, dependency DAG and derived frontier, slice states and Git/Herdr session references, verification matrix, global acceptance criteria, recovery instructions, and decision/attempt log.
+Before creating or changing `PLAN.md`, load [PLAN-FORMAT.md](PLAN-FORMAT.md) because it owns the complete `PLAN.md` schema and invariants. Record the immutable objective and amendment authority, fixed context sources, full baseline, dedicated integration branch and worktree, explicit `pi` and/or `pis` model and thinking defaults, dependency DAG and derived frontier, slice states and Git/Herdr session references, verification matrix, global acceptance criteria, recovery instructions, and decision/attempt log.
 
 The parent is the sole writer of `PLAN.md`, slice state, verification artifacts, and integration records. Workers and reviewers return commits or findings without mutating the control plane or assuming acceptance authority. Herdr pane ids are live lookup hints only; never persist them as durable identity because they compact.
 
@@ -45,7 +45,7 @@ Completion criterion: every slice has a DAG node, every blocker exists, the grap
 
 ### 3. Write fresh-context slices
 
-Before writing any `slices/NNN-<vertical-slice>.md`, load its packet schema from Reference. Each packet must fit one fresh agent context and state its vertical behavior, acceptance and failure criteria, blockers, refactor-resilient public test seam, ordered RED/GREEN/REFACTOR tracer bullets, focused commands, likely files, constraints, authorized scope, and required completion evidence.
+Before writing any `slices/NNN-<vertical-slice>.md`, load [SLICE-FORMAT.md](SLICE-FORMAT.md) because it owns the packet schema and tracer-bullet evidence. Each packet must fit one fresh agent context and state its vertical behavior, acceptance and failure criteria, blockers, refactor-resilient public test seam, ordered RED/GREEN/REFACTOR tracer bullets, focused commands, likely files, constraints, authorized scope, and required completion evidence.
 
 Prefer narrow end-to-end behavior over horizontal layers. Observe one behavior test fail for the intended reason, implement the minimum passing change, and only then begin the next cycle. For a wide mechanical refactor that cannot stay green as a vertical slice, use **expand → migrate in bounded green batches → contract**; encode every migration dependency, keep the old form until all migration slices integrate, and block contraction on every migration.
 
@@ -55,7 +55,7 @@ Completion criterion: each packet is independently understandable, verifiable, a
 
 ### 4. Derive verification from risk
 
-Before selecting passes or writing `verifications/*.md`, load the risk matrix and artifact schema from Reference. Standards and Spec reviews are mandatory independent passes for every slice. Also enable:
+Before selecting passes or writing `verifications/*.md`, load [VERIFICATION-FORMAT.md](VERIFICATION-FORMAT.md) because it owns the risk matrix, append-only attempt schema, axis boundaries, and final-review formats. Standards and Spec reviews are mandatory independent passes for every slice. Also enable:
 
 - Tests for behavior, test, public-seam, regression, or migration changes;
 - Premortem for operational, migration, concurrency, recovery, human-use, or hard-to-observe failure risk;
@@ -100,9 +100,3 @@ After every slice is integrated:
 On interruption, reopen `.plan` and stop if its target is stale. Compare the recorded baseline, integration branch, worktrees, branches, and commits with Git; treat mismatches as reconciliation work and record corrections before changing state. Recompute the frontier from integrated blockers and rediscover live Herdr ids. Never infer success from an idle or missing pane.
 
 Completion criterion: both final reviews pass, every acceptance criterion has evidence, and another parent can resume from `.plan` without conversation history.
-
-## Reference
-
-- Load [PLAN-FORMAT.md](PLAN-FORMAT.md) whenever creating or changing the orchestration index because it owns the complete `PLAN.md` schema and invariants.
-- Load [SLICE-FORMAT.md](SLICE-FORMAT.md) whenever writing a slice because it owns packet fields, tracer-bullet evidence, and expand–migrate–contract rules.
-- Load [VERIFICATION-FORMAT.md](VERIFICATION-FORMAT.md) whenever selecting review passes or writing verification artifacts because it owns the risk matrix, append-only attempt schema, axis boundaries, and final-review formats.

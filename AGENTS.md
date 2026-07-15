@@ -4,7 +4,7 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 
 ## Map
 
-<!-- TREE-HASH: 3405562331df11660d904d5ae5c01ac986742852aa54468a2b4d526912725ddd -->
+<!-- TREE-HASH: 87fdcc34952818d00987446413c1f420b54fef7ded9f62db7b367d9b3c1a46fe -->
 
 <!-- TREE-START -->
 ```
@@ -44,6 +44,7 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 |   |   |-- diagnosing-bugs -> ../../shared/skills/diagnosing-bugs
 |   |   |-- em-train -> ../../shared/skills/em-train
 |   |   |-- gameplay-asset-imagegen -> ../../shared/skills/gameplay-asset-imagegen
+|   |   |-- git-delivery -> ../../shared/skills/git-delivery
 |   |   |-- grill-me -> ../../shared/skills/grill-me
 |   |   |-- handoff -> ../../shared/skills/handoff
 |   |   |-- herdr -> ../../shared/skills/herdr
@@ -83,6 +84,7 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 |       |-- em-train
 |       |   `-- scripts
 |       |-- gameplay-asset-imagegen
+|       |-- git-delivery
 |       |-- grill-me
 |       |-- handoff
 |       |-- herdr
@@ -108,9 +110,12 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 |       `-- write-a-skill
 |-- specs
 |-- tests
+|   `-- lib
 |-- tmux
 |-- yazi
 `-- zsh
+
+106 directories
 ```
 <!-- TREE-END -->
 

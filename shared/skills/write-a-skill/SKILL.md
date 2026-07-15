@@ -14,7 +14,9 @@ allowed-tools: read,write,edit,bash
 - **Leading word** — recognizable term that cues the intended behavior.
 - **Context load** — instructions consuming model context.
 - **Human cognitive load** — effort to remember, select, and invoke a skill.
-- **Context pointer** — conditional link stating when and why to load support.
+- **Reference pointer** — conditional link that names a concrete branch outcome, states why support is needed, and makes the selected Reference file mandatory once the branch is true.
+- **Reference file** — local Markdown support loaded only after its pointer is selected and containing only the detail necessary for that branch.
+- **Successful no-load route** — a supported branch path that completes without loading the selected Reference file.
 - **Progressive disclosure** — staged loading of the catalog description, invoked `SKILL.md`, and conditionally selected support.
 - **Sediment** — stale instruction remaining after behavior changed.
 - **Sprawl** — live detail obscuring the primary path.
@@ -48,13 +50,12 @@ Use only the semantic sections the skill earns, in this order:
 1. `Language Definitions` is mandatory and contains only execution-relevant skill-local terms, or the exact statement “No skill-specific terms.”
 2. `Workflow` is optional and contains at most one primary end-to-end process, with routing or mode selection first.
 3. `Activities` is optional and contains independently reusable commands, actions, or recipes selected outside the required end-to-end sequence; it does not restate ordinary Workflow steps.
-4. `Reference` is optional and contains Markdown pointers that state when and why support must be loaded.
+4. `Reference` is optional and contains only branch-specific Reference pointers. Each pointer must name the concrete branch outcome that selects it, say why the target is necessary, give enough routing information to choose the branch before loading, and point to a local Markdown file one level deep from the skill directory.
 
-Omit optional sections the behavior does not require. Put ordered main-path actions in `Workflow` when a process exists. Keep always-needed rules beside the Workflow step or Activity they govern. Move only branch-specific or detail-heavy material behind a clearly worded context pointer in a sibling Markdown file, while retaining a compact executable contract inline. Required instructions must not hide behind optional wording.
-
+Omit optional sections the behavior does not require. Put ordered main-path actions in `Workflow` when a process exists. Keep always-needed rules beside the Workflow step or Activity they govern. Move only branch-specific or detail-heavy material behind a clearly worded Reference pointer in a sibling Markdown file, while retaining a compact executable contract inline. Keep scripts, templates, and composed skills beside the governing Workflow step or Activity instead of in Reference. Once the branch outcome is true, loading the selected target becomes mandatory. Required instructions must not hide behind optional wording.
 Add scripts only for deterministic, repeated operations where generated commands would be less reliable. Keep one source of truth for each behavior.
 
-Completion criterion: every included section earns its role, every Reference pointer states when and why to load its target, relative paths resolve from the skill directory, and the required main path remains executable without conditionally loaded support.
+Completion criterion: every included section earns its role, every Reference pointer names a concrete branch outcome, states when and why to load its target, preserves at least one successful supported no-load route, relative paths resolve one level deep from the skill directory, and the required main path remains executable without conditionally loaded support.
 
 ### 3. Write checkable behavior
 

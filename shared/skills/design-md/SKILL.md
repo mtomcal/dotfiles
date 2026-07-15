@@ -3,12 +3,7 @@ name: design-md
 description: Create, update, audit, and validate Google DESIGN.md files for AI coding agents from existing UI, CSS, assets, screenshots, or design direction. Use when the user asks for DESIGN.md, design.md, an agent-readable design spec, design tokens, visual design contracts, or wants UI agents to follow an existing product style.
 metadata:
   short-description: Build and validate DESIGN.md files
-allowed-tools:
-  - read
-  - bash
-  - grep
-  - ls
-  - find
+allowed-tools: read,write,edit,Bash(find:*),Bash(rg:*),Bash(npx:*)
 ---
 
 # DESIGN.md

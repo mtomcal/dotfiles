@@ -1,7 +1,7 @@
 ---
 name: visual-qa
 description: "Perform visual QA across browser, app, and recorded artifacts. Use when checking layout, responsive behavior, console/network issues, motion/readability problems, screenshots, or review videos, and route to browser-specific skills or video-to-contact-sheet as needed."
-allowed-tools: Bash(ffmpeg:*) Bash(ffprobe:*) Bash(find:*) Bash(mkdir:*) Bash(ls:*) Bash(du:*) Bash(jq:*) Bash(sed:*) Bash(cat:*)
+allowed-tools: Bash(find:*) Bash(ls:*) Bash(jq:*) Bash(sed:*) Bash(cat:*)
 metadata:
   short-description: Tool-agnostic visual QA and evidence review
 ---

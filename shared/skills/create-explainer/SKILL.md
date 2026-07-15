@@ -50,9 +50,9 @@ Write durable source to the user/caller-selected destination, defaulting to `./e
 |------|-------------------|
 | Condensed | `index.html` only: summary, 2–4 source-grounded sections with diagrams/examples, and a file/ownership map. No lab. |
 | Guided | `index.html` + `main.js`: Condensed content plus exactly one concept-shaped lab with active recall, a source-grounded visual, learner action before reveal, and feedback. |
-| Full Lab | `index.html` + `main.js`: 10+ sections, multiple concept-shaped labs, architecture map, 5–10-question quiz, concept graph, quick reference, and the applicable practice components defined in the tier Reference. |
+| Full Lab | `index.html` + `main.js`: 10+ sections, multiple concept-shaped labs, architecture map, 5–10-question quiz, concept graph, quick reference, and applicable practice components selected by concept shape from `lab/README.md#lab-selection-matrix`. |
 
-Keep the output self-contained: no build step or external dependency. Use lab templates rather than rebuilding their mechanics, and choose by concept shape rather than visual novelty. For code-heavy or cross-language explainers, use a 1400px content width, overflow-safe code blocks, side-by-side comparisons, and a mobile single-column layout.
+Keep the output self-contained: no build step or external dependency. Use lab templates rather than rebuilding their mechanics, and choose by concept shape rather than visual novelty. For Guided and Full Lab, choose the template from `lab/README.md#lab-selection-matrix` by concept shape; keep the selected lab's mechanics beside this step instead of maintaining a second catalog. For code-heavy or cross-language explainers, use a 1400px content width, overflow-safe code blocks, side-by-side comparisons, and a mobile single-column layout.
 
 For a large Full Lab, drafting may be delegated only after the user approves sub-agent use. Select read-only versus editable isolation before transport. The producer retains the shell, CSS, navigation, source map, integration, IDs, review, destination, and final acceptance. Delegate only self-contained sections or labs; retry narrowly or draft locally when returned work is unusable. Completion: the tier contract is present at the durable destination and every template adaptation is grounded in the mapped source.
 
@@ -102,8 +102,4 @@ Completion: the user can locate the source, open the live reviewed artifact, und
 
 ## Reference
 
-- Load [Intake and persona](REFERENCE.md#intake-and-persona) during step 1 when answers must be collected or persona/cross-language adaptation needs detail.
-- Load [Tier planning and drafting](REFERENCE.md#tier-planning-and-drafting) after tier routing when planning exact sections, Full Lab practice, delegation, or HTML/JS implementation.
-- Load [Reviewer checklist](REFERENCE.md#reviewer-checklist) during the mandatory reviewer pass to apply the detailed claim and findings contract.
-- Load [Browser validation](REFERENCE.md#browser-validation) after page identity is verified to run the tested responsive, expanded-state, interaction, console, and cleanup recipe.
-- Load the [lab selection matrix and integration guide](lab/README.md#lab-selection-matrix) when drafting Guided or Full Lab output so templates match the concept and retain their minimum learning behavior.
+- Load [Intake and persona](REFERENCE.md#intake-and-persona) only when the concept, audience, or depth still needs calibration.

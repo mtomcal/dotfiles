@@ -58,7 +58,7 @@ Completion criterion: one explicit pre-generation approval covers every file to 
 
 ### 4. Generate the approved suite
 
-Load the exact templates identified in the Reference section, then generate only the approved files.
+Load [REFERENCE.md](REFERENCE.md) before generating the approved files, then generate only the approved files.
 
 For **Greenfield**, generate:
 
@@ -96,5 +96,4 @@ Completion criterion: reported files and graph match disk, all validation checks
 
 ## Reference
 
-- Load [REFERENCE.md](REFERENCE.md) when generating or validating files because it contains the exact suite, system-spec, progress-tracker, and spec-extraction-plan templates.
-- Load [EXAMPLES.md](EXAMPLES.md) only when a concrete Greenfield/Brownfield interview or game, API, or CLI output example would clarify the user's choices; examples are illustrative, while this Workflow and `REFERENCE.md` remain authoritative.
+- Load [EXAMPLES.md](EXAMPLES.md) only when a concrete Greenfield/Brownfield interview or game, API, or CLI output example would clarify the user's choices; examples are illustrative, while this Workflow remains authoritative.

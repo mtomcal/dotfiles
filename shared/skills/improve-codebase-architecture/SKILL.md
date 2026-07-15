@@ -36,7 +36,7 @@ Completion criterion: every Architecture candidate is grounded in files, observe
 
 ### 3. Create the mandatory HTML report
 
-Load the report schema in `Reference`, then write a fresh report to `${TMPDIR:-/tmp}/architecture-review-<timestamp>.html`. Include:
+Use `HTML-REPORT.md` as the static HTML skeleton, then write a fresh report to `${TMPDIR:-/tmp}/architecture-review-<timestamp>.html`. Include:
 
 - the reviewed scope and Hotspot evidence
 - a comparison summary across all candidates
@@ -53,7 +53,3 @@ Completion criterion: the HTML exists outside the repository, every candidate ha
 Ask which candidate the user wants to explore. For the selected candidate, clarify constraints, dependencies, preserved invariants, migration, and tests. If alternative interfaces are useful, follow the already-loaded `codebase-design` Design It Twice branch. Record durable domain or design decisions in the relevant spec; offer to record a rejection only when its rationale would prevent future rediscovery.
 
 Completion criterion: the selected candidate's constraints, invariants, migration, tests, and durable decisions are clear. Stop before implementation until the user chooses a candidate and approves its interface or implementation plan.
-
-## Reference
-
-- Before producing the mandatory visual review, load [HTML-REPORT.md](HTML-REPORT.md) for its static HTML skeleton, candidate-card and comparison fields, badges, diagram patterns, and visual conventions.
