@@ -70,7 +70,7 @@ For **Greenfield**, generate:
 - one `{system}.md` skeleton spec per confirmed system; and
 - `SPEC-OF-SPECS-PLAN.md` as the spec-authoring progress tracker.
 
-For **Brownfield**, generate the same meta-files and progress tracker but no individual system specs. Also generate `PLAN.md` as the Bootstrap-owned **spec-extraction plan**, with system-to-code evidence mapping, discovery strategies, extraction focus, and authoring order. It directs an extracting agent to turn implementation evidence into fully authored prescriptive requirements, behavior rules, error handling, parameters, and acceptance/test scenarios; it is not a `create-plan` plan workspace, implementation plan, slice graph, or `.plan` control plane. Code locations may appear in this extraction artifact, but not in the resulting system specs.
+For **Brownfield**, generate the same meta-files and progress tracker but no individual system specs. Also generate `PLAN.md` as the Bootstrap-owned **spec-extraction plan**, with system-to-code evidence mapping, discovery strategies, extraction focus, and authoring order. It directs an extracting agent to turn implementation evidence into fully authored prescriptive requirements, behavior rules, error handling, parameters, and acceptance/test scenarios; it is not a `create-plan` implementation plan, `divide-plan` execution ledger, slice graph, or `.plan` state. Code locations may appear in this extraction artifact, but not in the resulting system specs.
 
 Apply these rules while generating and validating:
 
@@ -88,7 +88,7 @@ Completion criterion: every write is approved, mode-correct, template-conformant
 
 Validate the actual file list, required headings, relative links, dependency graph, reading order, mode-specific inclusions and exclusions, and approved overwrite scope. For Brownfield, verify that `PLAN.md` is qualified as a spec-extraction plan and that no individual skeleton specs were generated. For reruns, verify the existing glossary and every individual system spec were preserved except for approved owner-routed glossary merges.
 
-Show the actual generated file list and dependency graph, report validation failures and preserved files, and identify `ubiquitous-language` for later glossary evolution. The resulting specs may feed `create-plan` after they are authored, but Bootstrap has no hard dependency on that workflow.
+Show the actual generated file list and dependency graph, report validation failures and preserved files, and identify `ubiquitous-language` for later glossary evolution. The resulting specs may feed `create-plan` after they are authored; an implementation plan may later feed `divide-plan`, but Bootstrap has no hard dependency on either workflow.
 
 If the user requests a structural correction after this report, return to step 3, present the revised file and overwrite scope, and obtain a new approval before additional writes. Do not describe already-written output as awaiting “final generation.”
 

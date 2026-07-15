@@ -187,7 +187,7 @@ User confirms.
 
 ### Generated output
 
-Instead of skeleton specs, the skill produces a qualified `PLAN.md` spec-extraction plan. It maps code evidence for specification authoring; it is not an implementation plan, plan workspace, slice graph, or `.plan` control plane:
+Instead of skeleton specs, the skill produces a qualified `PLAN.md` spec-extraction plan. It maps code evidence for specification authoring; it is not an implementation plan, execution ledger, slice graph, or `.plan` state:
 
 ```
 specs/

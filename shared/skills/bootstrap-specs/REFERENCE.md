@@ -510,7 +510,7 @@ For brownfield projects, generate a PLAN.md instead of skeleton specs. This plan
 # {Project Name} Spec Extraction Plan
 
 > **Created**: {DATE}
-> **Artifact**: Spec-extraction plan — not an implementation plan, plan workspace, slice graph, or `.plan` control plane
+> **Artifact**: Spec-extraction plan — not an implementation plan, execution ledger, slice graph, or `.plan` state
 > **Mode**: Brownfield — extracting specs from existing codebase
 > **Approach**: Convert implementation evidence into prescriptive, language-agnostic behavior contracts
 > **Ownership**: Bootstrap Specs generates this plan; the extracting agent follows it to author the spec suite

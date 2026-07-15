@@ -83,7 +83,8 @@ Ask the user to confirm or correct the summary. Only after confirmation:
 
 - route accepted terminology to `ubiquitous-language`
 - route durable behavioral or design decisions to `update-specs`
-- route implementation-ready work to `create-plan`
+- route approved spec changes that need a single-agent implementation plan to `create-plan`
+- route an explicit immutable implementation plan that is ready for Herdr execution to `divide-plan`
 - return unresolved, multi-session uncertainty and its evidence directly to the caller, then stop
 
 Completion criterion: the user confirms the shared-understanding summary before any durable files are changed.

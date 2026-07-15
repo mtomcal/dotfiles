@@ -119,14 +119,71 @@ herdr pane read "$TARGET_PANE" --source recent-unwrapped --lines 40
 
 Use `--regex` for a regular-expression match. For `--source recent`, matching uses unwrapped recent text even though `pane read --source recent` remains rendered; inspect the matching form with `recent-unwrapped`. An output-wait timeout exits with status `1`.
 
-For detected agents, inspect `pane get` and wait for the state the context can produce:
+For detected agents, precheck current state, then race `done`, `idle`, and `blocked` instead of waiting for one status sequentially:
 
 ```bash
-herdr wait agent-status "$TARGET_PANE" --status "${EXPECTED_STATUS:?set EXPECTED_STATUS}" --timeout "${TIMEOUT_MS:-60000}"
-herdr pane read "$TARGET_PANE" --source recent-unwrapped --lines 100
+wait_agent_terminal_state() (
+  TARGET_PANE=${TARGET_PANE:?set TARGET_PANE from current Herdr data}
+  TIMEOUT_MS=${TIMEOUT_MS:-60000}
+  WAIT_DIR=
+  WAIT_PIDS=()
+
+  cleanup_waiters() {
+    local pid
+    for pid in "${WAIT_PIDS[@]}"; do [ -z "$pid" ] || kill "$pid" 2>/dev/null || true; done
+    for pid in "${WAIT_PIDS[@]}"; do [ -z "$pid" ] || wait "$pid" 2>/dev/null || true; done
+    [ -z "$WAIT_DIR" ] || rm -rf "$WAIT_DIR"
+  }
+  trap cleanup_waiters EXIT
+
+  CURRENT_STATUS=$(
+    herdr pane get "$TARGET_PANE" |
+      python3 -c 'import json,sys; print(json.load(sys.stdin)["result"]["pane"].get("agent_status", "unknown"))'
+  ) || exit 1
+  case "$CURRENT_STATUS" in
+    done|idle|blocked) printf '%s\n' "$CURRENT_STATUS"; exit 0 ;;
+    unknown) exit 1 ;;
+  esac
+
+  WAIT_DIR=$(mktemp -d)
+  WAIT_STATUSES=(done idle blocked)
+  for status in "${WAIT_STATUSES[@]}"; do
+    herdr wait agent-status "$TARGET_PANE" --status "$status" --timeout "$TIMEOUT_MS" \
+      >"$WAIT_DIR/$status.json" 2>"$WAIT_DIR/$status.err" &
+    WAIT_PIDS+=("$!")
+  done
+
+  REMAINING=${#WAIT_PIDS[@]}
+  while [ "$REMAINING" -gt 0 ]; do
+    for i in "${!WAIT_PIDS[@]}"; do
+      pid=${WAIT_PIDS[$i]}
+      [ -n "$pid" ] || continue
+      if ! kill -0 "$pid" 2>/dev/null; then
+        WAIT_PIDS[$i]=
+        REMAINING=$((REMAINING - 1))
+        if wait "$pid"; then printf '%s\n' "${WAIT_STATUSES[$i]}"; exit 0; fi
+      fi
+    done
+    [ "$REMAINING" -eq 0 ] || sleep 0.05
+  done
+  exit 1
+)
+
+if TERMINAL_STATUS=$(wait_agent_terminal_state); then
+  herdr pane read "$TARGET_PANE" --source recent-unwrapped --lines 100
+  case "$TERMINAL_STATUS" in
+    done|idle) printf 'agent completion observed: %s\n' "$TERMINAL_STATUS" ;;
+    blocked) printf 'agent blocked: inspect the transcript and steer now\n' >&2 ;;
+  esac
+else
+  herdr pane get "$TARGET_PANE"
+  herdr pane read "$TARGET_PANE" --source recent-unwrapped --lines 100
+fi
 ```
 
-Both `done` and `idle` can mean completion; the distinction is whether the completion is unseen or already observed. `blocked` needs input. `unknown` may be a plain shell or an agent not yet detected, so inspect output instead of waiting blindly on status. After any timeout, inspect `pane get` and current output before retrying, steering, or reporting failure.
+The function handles already-reported terminal states before creating waiters, starts all three waits concurrently, continues after the first success, and cancels/reaps the rest through its exit trap. Both `done` and `idle` mean completion; `blocked` requires immediate steering based on the transcript. Do not wait for only `done`, because observing the result can move the agent to `idle`.
+
+`unknown` may be a plain shell or an agent not yet detected, so inspect output instead of waiting blindly on status. If all three waits fail or time out, the failure branch inspects current state and output before retrying, steering, or reporting failure.
 
 Output and agent-status waits print JSON on success. Completion: the expected future event was observed, or timeout/current evidence was returned with the applicable limitation.
 

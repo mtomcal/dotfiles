@@ -7,6 +7,7 @@ The following locally maintained skills contain material adapted in July 2026 fr
 - `codebase-design`
 - `code-review`
 - `create-plan`
+- `divide-plan`
 - `diagnosing-bugs`
 - `handoff`
 - `improve-codebase-architecture`
@@ -19,7 +20,7 @@ The following locally maintained skills contain material adapted in July 2026 fr
 
 Separately, `shared/skills/grill-me/SKILL.md` contains material adapted from [`skills/productivity/grill-me/SKILL.md`](https://github.com/mattpocock/skills/blob/62f43a18177be6ec82da242e59ffbc490a4c22ea/skills/productivity/grill-me/SKILL.md) at commit `62f43a18177be6ec82da242e59ffbc490a4c22ea`. It was imported locally at commit `80eafee1882c0f2fccc0c066ac3a5e3572f25f02` and subsequently expanded for repository glossary, evidence, and routing behavior. It remains covered by the Matt Pocock MIT license reproduced below.
 
-These are one-time local forks adapted for this repository's cross-agent, specs-first, and Herdr-aware workflows. They are not automatically synchronized with upstream.
+These are one-time local forks adapted for this repository's cross-agent, specs-first, and Herdr-aware workflows. `divide-plan` was split locally from the adapted `create-plan` orchestration material in July 2026 and remains covered by the same recorded source revision and MIT license. They are not automatically synchronized with upstream.
 
 ### MIT License
 
@@ -46,6 +47,8 @@ SOFTWARE.
 ## Herdr
 
 `shared/skills/herdr/SKILL.md` is adapted from the root [`SKILL.md`](https://github.com/ogulcancelik/herdr/blob/6cbdba434fd15fc3818302a5843593da47db2eb4/SKILL.md) in [`ogulcancelik/herdr`](https://github.com/ogulcancelik/herdr) at commit `6cbdba434fd15fc3818302a5843593da47db2eb4`. It was introduced locally at commit `1007795a0e3608f271797dfc6f6c1ab2b72d5284` with repository frontmatter adaptations. It is a locally maintained adaptation and is not automatically synchronized with upstream.
+
+`shared/skills/herdr-claude-code/SKILL.md` is a repository-authored specialization that composes the adapted base skill without copying its generic CLI recipes. It is not represented as upstream Herdr material; the base skill's source, revision, local-fork status, and license attribution remain unchanged.
 
 The upstream package declares `AGPL-3.0-or-later`. The exact-revision [`LICENSE`](https://github.com/ogulcancelik/herdr/blob/6cbdba434fd15fc3818302a5843593da47db2eb4/LICENSE) is reproduced below.
 
