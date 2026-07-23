@@ -1,57 +1,60 @@
 # Update Specs Reference
 
-The authoritative discrepancy definitions are in [SKILL.md](SKILL.md#language-definitions). This file applies those terms without redefining them.
-
-The pinned comparison is already established by the main skill body before this file loads. Do not re-normalize, re-pin, or restate the Git boundary here; this file only carries post-selection evidence prompts, plan-shape reminders, and review/rollback checklists.
+The authoritative discrepancy definitions and evidence routing are in [SKILL.md](SKILL.md). This reference applies them without requiring a Git comparison.
 
 ## Classification Evidence
 
-Read in this order:
+Read the applicable sources in this order:
 
-1. `AGENTS.md` for module boundaries and repository rules.
-2. `specs/README.md` for suite reading order, dependencies, versions, and checklists.
-3. The applicable `SPEC-OF-SPECS` and relevant specs in their declared reading order.
-4. `git diff --stat` on the pinned comparison for changed paths and magnitude.
-5. `git diff` on the pinned comparison for complete implementation evidence.
+1. repository instructions for module boundaries and editing rules;
+2. `specs/README.md` for suite order, dependencies, versions, and checklists;
+3. the applicable `SPEC-OF-SPECS` and canonical glossary;
+4. relevant specs in declared reading order; and
+5. the declared evidence basis:
+   - confirmed human decision summary or decision artifact;
+   - pinned Git diff when supplied;
+   - relevant working-tree diff, history, code, and tests when implementation is the basis; or
+   - each of those sources separately when desired and implemented behavior must be compared.
 
-For every changed area, capture:
+For every relevant area, capture:
 
-- the owning module and governing spec, if any;
-- exact changed behavior, tests, paths, and command surfaces;
+- owning bounded context and governing spec;
+- exact approved or implemented behavior and its source;
 - applicable normative clauses and checklist entries;
 - the invariant, decision rule, or lifecycle rationale a future agent needs;
-- one classification from the authoritative definitions, plus a separate row when one area has distinct discrepancies; and
+- one classification from `SKILL.md`, with separate rows for distinct discrepancies; and
 - a concrete edit or explicit no-edit disposition.
-
-Reasoning-gap evidence often appears where source, generated output, runtime state, and active pointers form a multi-stage lifecycle; where Git, filesystem, or tool constraints determine safe behavior; or where a bug fix required reconstructing intent from implementation and tests. Use these as investigation prompts, not as replacement definitions.
 
 Build this table before editing:
 
 ```md
-| # | Spec File | Type | Implementation Evidence | Current Spec Evidence | Action |
-|---|-----------|------|-------------------------|-----------------------|--------|
+| # | Spec File | Type | Evidence | Current Spec Evidence | Action |
+|---|-----------|------|----------|-----------------------|--------|
 ```
 
 ## Execution Plan
 
-Present the discrepancy table and this information before artifact changes:
+Present this information before artifact changes:
 
 ```md
-## Spec Update Plan — <original boundary>
+## Spec Update Plan — <evidence basis>
 
-Pinned comparison: <base oid>..<head oid>
+Evidence:
+- <approved decisions, pinned comparison, working changes, implementation/tests, or combination>
+
 Dispositions: <counts by authoritative classification>
 
 Artifacts:
 - <exact path> — <edit/create/no-edit action and version/form>
 
 Terminology:
-- <none, or exact canonical glossary path resolved through ubiquitous-language before edits>
+- <none, or exact canonical glossary path resolved through ubiquitous-language>
 
 Editing mode:
-- <isolated delegated candidate or in-process fallback>
-- Pre-edit commit: <oid>
+- <isolated candidate or in-process>
+- Pre-edit state: <commit when useful plus exact per-path snapshots>
 - Authorized paths: <exact paths>
+- Unrelated working state: <paths that must remain untouched>
 
 Review:
 1. contract consistency
@@ -59,99 +62,102 @@ Review:
 3. mechanical quality
 
 Rollback:
-- restore/remove only the authorized paths produced by this run
+- restore/remove only this run's changes to authorized paths
 ```
 
-Presentation is the pre-edit sequence gate. Do not infer a separate approval requirement unless repository guidance or the user requires one.
+This is a visibility gate. Do not infer another approval request unless repository guidance or the caller requires one.
 
 ## Editing and Delegation
 
 The invoking agent owns the discrepancy table, authorized scope, pre-edit state, integration, acceptance, and final report.
 
-When delegation exists:
+Use an isolated editor only when the complete evidence basis can be represented there. If relevant evidence includes uncommitted target-file changes, edit in process or transport those exact changes deliberately; never silently drop them by starting from `HEAD`.
 
-1. Pin the implementation comparison and pre-edit commit before transport selection.
-2. Give a read-only investigator or reviewer the comparison, artifact scope, and expected evidence; read-only work may share a checkout.
-3. Give one editor an isolated worktree or clone from the pre-edit commit, the discrepancy table, exact authorized paths, spec/glossary authorities, and return contract. A separate pane without a separate checkout is insufficient.
-4. Require the editor to return a commit or patch, exact changed paths, version and changelog changes, evidence for each plan row, and concerns. The editor does not write the invoking checkout or durable workflow state directly.
-5. Run the three reviews against a pinned candidate commit. Return fixes to the same isolated editable checkout and update the candidate identity.
-6. After all three passes, integrate only the exact reviewed candidate. The invoking agent remains the durable writer/integrator and acceptance authority.
+A delegated editor receives the evidence basis, exact authorized paths, spec and glossary authorities, and return contract. It returns a commit or patch, exact changed paths, version/changelog evidence, and concerns. The invoking agent integrates only the reviewed candidate.
 
-Without delegation, perform the same ordered edits and reviews in process. Keep the pre-edit commit, exact path inventory, discrepancy table, and pass evidence visible so the fallback is behaviorally equivalent.
+Without delegation, perform the same ordered edits and reviews in process. Preserve the discrepancy table, path inventory, and pass evidence.
 
 ## Spec Authoring Rules
 
 For each candidate update:
 
-- Ground every behavioral change in the pinned implementation diff or tests; do not invent requirements.
-- Keep requirements prescriptive and follow the target suite's normative conventions.
-- Keep specs language-agnostic; use schema tables, decision tables, or pseudocode when structure is needed.
+- Ground every behavioral change in the declared evidence basis.
+- Explicitly label desired behavior that is not implemented; specs may prescribe approved future behavior without claiming implementation exists.
+- Keep requirements prescriptive and language-agnostic.
+- Use schema tables, decision tables, or pseudocode when structure is needed.
 - Follow the applicable `SPEC-OF-SPECS` required sections and version policy.
-- Bump every modified versioned spec as required and append its dated changelog entry.
-- For a new spec, follow the suite template and register its prefix, reading-order position, dependency relationships, checklist coverage, and README entry where the suite requires them.
-- When new or revised vocabulary is needed, use [`ubiquitous-language`](../ubiquitous-language/SKILL.md) to resolve the canonical glossary path before the plan gate, then continue that workflow during editing; preserve the glossary's established preamble and form. Return the glossary candidate to this workflow's review scope.
-- Update `specs/README.md` when recorded versions, reading order, dependency graph, implementation checklist, or suite scope changed.
-- Keep all edits inside the authorized artifact set. Revise the visible plan before material scope growth.
+- Bump every modified versioned spec and append its dated changelog entry.
+- Register new specs in suite order, dependency relationships, prefixes, and checklists where required.
+- Route new or revised vocabulary through [`ubiquitous-language`](../ubiquitous-language/SKILL.md) and include its candidate in the authorized review scope.
+- Update `specs/README.md` when versions, order, dependencies, checklist state, or suite scope changes.
+- Keep edits inside the authorized path set; revise the visible plan before material scope growth.
 
 ## Review Passes
 
-Run the passes sequentially against the same pinned candidate. Record PASS or FAIL with evidence and candidate identity. Fix failures in the authorized editable checkout and rerun failed passes; do not let one pass suppress another.
+Run each pass against the same candidate and record PASS or FAIL with evidence.
 
 ### Pass 1: Contract Consistency
 
-Check each added, changed, and removed normative clause against the pinned implementation diff and tests.
+Check each added, changed, and removed clause against the declared evidence basis.
 
 Fail when:
 
-- a new requirement lacks supporting implementation or test evidence;
-- a removed requirement still has clear implementation support;
-- a changed rationale describes behavior that does not exist;
-- a discrepancy-plan action is absent from the candidate; or
-- candidate scope exceeds the visible authorized plan.
+- a requirement lacks approved decision, implementation/test, or other declared support;
+- desired behavior is described as already implemented;
+- a removed requirement still has contrary evidence;
+- a discrepancy-plan action is absent; or
+- candidate scope exceeds the authorized plan.
 
 ### Pass 2: Cross-Spec Integrity
 
 Check:
 
-1. internal cross-references and section anchors resolve;
-2. glossary terms and aliases match the repository-authoritative glossary;
-3. reading order, prefixes, and dependency claims remain coherent;
-4. new and changed specs follow the applicable required form;
-5. linked design notes and repo-local explainers still exist; and
-6. every planned terminology change passed through the terminology owner.
+1. relative links and section anchors resolve;
+2. glossary terms and aliases match the canonical glossary;
+3. reading order, prefixes, and dependencies remain coherent;
+4. changed specs follow required form;
+5. linked design notes and repository artifacts still exist; and
+6. planned terminology changes passed through the terminology owner.
 
 ### Pass 3: Mechanical Quality
 
 Check:
 
-1. required version bumps are present and correctly classified;
-2. required dated changelog entries are present;
+1. version bumps match contract impact;
+2. dated changelog entries exist;
 3. Markdown links resolve;
-4. required sections occur in the prescribed order;
-5. language-specific code did not enter language-agnostic specs; and
-6. exact changed paths match the authorized artifact inventory.
+4. required sections remain in prescribed order;
+5. language-specific implementation code did not enter language-agnostic specs; and
+6. changed paths match the authorized inventory.
 
-## Rollback Procedure
+## Exact-Path Rollback
 
-Before editing, record the pre-edit commit, tracked authorized paths, and planned new paths. If a guardrail interrupts editing or a required gate cannot finish:
+Before editing, record for each authorized path:
 
-1. stop all editors and preserve the interruption evidence;
-2. in delegated mode, do not integrate the partial candidate and discard or reset only its isolated item worktree/branch;
-3. in in-process mode, restore each tracked item-produced path from the recorded pre-edit commit and remove only new paths created by this run;
-4. verify `git status --porcelain` contains no artifact edit from this run; and
-5. report the interruption, rolled-back paths, retained unrelated state, and smallest corrective next step.
+- whether it exists;
+- its exact content or a recoverable copy;
+- its pre-existing diff when tracked; and
+- whether this run may replace, merge with, or only append to it.
 
-Do not run a blanket restore over `specs/` or a glossary directory. Exact-path rollback preserves the clean preflight contract without expanding authority to unrelated files.
+If interrupted:
+
+1. stop editors and preserve failure evidence;
+2. discard an unintegrated isolated candidate;
+3. in process, restore only bytes changed by this run and remove only files created by this run;
+4. verify unrelated `git status --short` entries are unchanged; and
+5. report rolled-back paths and the smallest corrective step.
+
+Never use a broad checkout, reset, clean, or stash as a workflow prerequisite or rollback substitute.
 
 ## Completion Evidence
 
 On success, report:
 
-- original boundary and pinned object-ID comparison;
-- discrepancy table dispositions, including in-spec no-edit rows;
+- declared evidence basis and any pinned comparison actually used;
+- discrepancy dispositions, including no-edit rows;
 - exact created/modified paths and resulting versions;
-- terminology owner result and canonical glossary path when applicable;
-- candidate identity and integration evidence when delegated;
+- terminology result and canonical glossary path;
+- candidate identity when delegation was used;
 - contract, cross-spec, and mechanical review results;
-- `audit-shared-skills` result when shared-skill behavior changed; and
+- shared-skill audit result when applicable; and
 - unresolved concerns or follow-up work.
