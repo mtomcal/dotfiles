@@ -22,6 +22,12 @@ Workspace, tab, and pane use the project definitions in `specs/UBIQUITOUS_LANGUA
 
 ## Activities
 
+### Route supervision before transport
+
+Use this skill directly for terminal transport and resource control. When the caller asks to select implementation and escalation models, supervise a bounded editable worker, independently accept its candidate, or compare delegated cost against one strong model, load [`herdr-supervise`](../herdr-supervise/SKILL.md); it owns that supervision contract while this skill continues to own transport. When an explicit immutable implementation plan needs divided, recoverable execution, route to [`divide-plan`](../divide-plan/SKILL.md) instead.
+
+Completion: transport-only work remains here, bounded supervision composes `herdr-supervise`, and plan execution composes `divide-plan` without copying either workflow into this skill.
+
 ### Verify runtime context and discover live state
 
 Before any Herdr control command, verify this process is inside Herdr:
@@ -75,27 +81,38 @@ Choose the source by evidence needed:
 
 Completion: the requested current state or transcript was read in the format that preserves the evidence needed.
 
-### Split, run, send, or launch an agent
+### Create a named task tab, then run or launch
 
-For a command, server, test, or agent in a sibling pane, split the caller, preserve caller focus, parse the new public ID, then run, wait, and read. Set `DIRECTION` to `right` or `down`; set the command and expected output for the task.
+For every command, server, test, or agent started for your work, create a new task-owned **named tab** in the caller's workspace, preserve caller focus, parse the root pane from the creation response, then run, wait, and read. Name the tab for the concrete task; never use a default numbered label. Do not split the caller pane, add work to the caller's tab, or reuse another existing tab or pane merely because it is idle.
 
 ```bash
-DIRECTION=${DIRECTION:-right}
-NEW_PANE=$(
-  herdr pane split --current --direction "$DIRECTION" --no-focus |
-    python3 -c 'import sys,json; print(json.load(sys.stdin)["result"]["pane"]["pane_id"])'
+TASK_LABEL=${TASK_LABEL:?set a concrete task label}
+TASK_CWD=${TASK_CWD:?set the command or isolated-worktree cwd}
+CREATE_RESULT=$(herdr tab create \
+  --workspace "$HERDR_WORKSPACE_ID" \
+  --cwd "$TASK_CWD" \
+  --label "$TASK_LABEL" \
+  --no-focus)
+TASK_TAB=$(
+  printf '%s' "$CREATE_RESULT" |
+    python3 -c 'import sys,json; print(json.load(sys.stdin)["result"]["tab"]["tab_id"])'
 )
-herdr pane run "$NEW_PANE" "${COMMAND:?set COMMAND}"
-herdr wait output "$NEW_PANE" --match "${EXPECTED_OUTPUT:?set EXPECTED_OUTPUT}" --timeout "${TIMEOUT_MS:-30000}"
-herdr pane read "$NEW_PANE" --source recent-unwrapped --lines 50
+TARGET_PANE=$(
+  printf '%s' "$CREATE_RESULT" |
+    python3 -c 'import sys,json; print(json.load(sys.stdin)["result"]["root_pane"]["pane_id"])'
+)
+herdr pane run "$TARGET_PANE" "${COMMAND:?set COMMAND}"
+herdr wait output "$TARGET_PANE" --match "${EXPECTED_OUTPUT:?set EXPECTED_OUTPUT}" --timeout "${TIMEOUT_MS:-30000}"
+herdr pane read "$TARGET_PANE" --source recent-unwrapped --lines 50
 ```
 
 Use task-specific substitutions for servers, tests, and ordinary commands; do not copy the topology into separate recipes. For an interactive agent, run its normal executable first, inspect `pane get`, wait for `idle` when agent detection is available, then submit the task with `pane run`. If status is `unknown` or the pane is a plain shell, fall back to an expected prompt/output wait and transcript inspection. The caller chooses the executable, task, readiness signal, timeout, and acceptance evidence.
 
-Input commands remain distinct. For an existing pane, set `TARGET_PANE` from current context before using them:
+A task-owned tab MAY be split for additional processes only after the named tab exists. Split from a pane ID returned by that tab's create response or a later fresh list; never use `pane split --current` for background work because UI focus and caller context can diverge. Keep every resulting pane inside the task-owned tab.
+
+Input commands remain distinct. Send input to an existing pane only when the caller explicitly targeted that pane or when it belongs to the current task-owned tab; set `TARGET_PANE` from fresh Herdr data before using it:
 
 ```bash
-TARGET_PANE=${TARGET_PANE:-"$HERDR_PANE_ID"}
 herdr pane send-text "$TARGET_PANE" "${TEXT:?set TEXT}"
 herdr pane send-keys "$TARGET_PANE" Enter
 herdr pane run "$TARGET_PANE" "${COMMAND:?set COMMAND}"
@@ -103,9 +120,9 @@ herdr pane run "$TARGET_PANE" "${COMMAND:?set COMMAND}"
 
 `send-text` does not press Enter. `send-keys` sends the named keys. `pane run` sends text and then a real Enter in one request. These three commands print nothing on success.
 
-Herdr supplies terminal transport only. The caller retains the task brief, workflow state, returned-evidence contract, and acceptance decision. A separate pane is not checkout isolation; choose a shared read-only checkout or isolated editable worktree before selecting Herdr transport.
+Herdr supplies terminal transport only. The caller retains the task brief, workflow state, returned-evidence contract, and acceptance decision. A named tab is not checkout isolation; choose a shared read-only checkout or isolated editable worktree before selecting Herdr transport.
 
-Completion: the target ID came from the mutation response, caller focus was preserved unless a context switch was explicitly requested, and the requested command or agent reached an inspected result.
+Completion: a task-specific named tab was created without focus, the tab and root-pane IDs came from its mutation response, no existing user tab or pane was reused for launched work, and the requested command or agent reached an inspected result.
 
 ### Wait, diagnose, and coordinate
 

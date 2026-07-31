@@ -4,7 +4,7 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 
 ## Map
 
-<!-- TREE-HASH: 2e97357a25e92f477b008dc87966475510e1f536d502d776251ffe76f4284181 -->
+<!-- TREE-HASH: adf495f765be3b243aac9e4f35911171d7557ab6f2f90b294cedbd8acc7cc873 -->
 
 <!-- TREE-START -->
 ```
@@ -48,6 +48,7 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 |   |   |-- handoff -> ../../shared/skills/handoff
 |   |   |-- herdr -> ../../shared/skills/herdr
 |   |   |-- herdr-claude-code -> ../../shared/skills/herdr-claude-code
+|   |   |-- herdr-supervise -> ../../shared/skills/herdr-supervise
 |   |   |-- improve-codebase-architecture -> ../../shared/skills/improve-codebase-architecture
 |   |   |-- playwright -> ../../shared/skills/playwright
 |   |   |-- prototype -> ../../shared/skills/prototype
@@ -82,6 +83,7 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 |       |-- handoff
 |       |-- herdr
 |       |-- herdr-claude-code
+|       |-- herdr-supervise
 |       |-- improve-codebase-architecture
 |       |-- playwright
 |       |   `-- references

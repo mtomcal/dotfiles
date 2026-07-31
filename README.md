@@ -193,6 +193,7 @@ dotfiles/
 │       ├── code-review/
 │       ├── herdr/
 │       ├── herdr-claude-code/
+│       ├── herdr-supervise/
 │       ├── ubiquitous-language/
 │       ├── audit-shared-skills/
 │       └── grill-me/
@@ -273,7 +274,7 @@ The `herdr_integrations` module deploys repo-owned integration artifacts from `h
 | GitHub Copilot CLI | `herdr/integrations/copilot/herdr-agent-state.sh` symlinked into `~/.config/copilot/hooks/` |
 | Pi | `pi/extensions/herdr-agent-state/` deployed to `~/.pi/agent/extensions/` |
 
-Agents also share the generic `shared/skills/herdr/` skill, which owns Herdr CLI transport and concurrent agent-state observation. `shared/skills/herdr-claude-code/` composes that base for reliable Claude Code launch, readiness, prompt submission, and blocked-agent steering without duplicating generic pane mechanics.
+Agents also share the generic `shared/skills/herdr/` skill, which owns Herdr CLI transport and concurrent agent-state observation. `shared/skills/herdr-claude-code/` composes that base for reliable Claude Code launch, readiness, prompt submission, and blocked-agent steering. `shared/skills/herdr-supervise/` composes the same transport for bounded editable-worker supervision, preflight model and escalation selection, independent acceptance, cost tracking, and an efficiency verdict without duplicating generic pane mechanics.
 
 Re-run integrations after changing agent config:
 
@@ -924,6 +925,7 @@ Codex, Claude, Pi, and Copilot share a single skills directory at `shared/skills
 | `improve-codebase-architecture` | Find architecture deepening opportunities and present a visual HTML review _(adapted from [mattpocock/skills](https://github.com/mattpocock/skills))_ |
 | `herdr` | Control Herdr workspaces, tabs, panes, output, and concurrent agent status from inside Herdr |
 | `herdr-claude-code` | Reliably launch, prompt, observe, and steer Claude Code by composing base Herdr transport |
+| `herdr-supervise` | Supervise one bounded editable worker with preflight model selection, escalation, independent acceptance, cost tracking, and an efficiency verdict |
 | `ubiquitous-language` | Extract a DDD-style glossary from project evidence _(adapted from [mattpocock/skills](https://github.com/mattpocock/skills))_ |
 | `audit-shared-skills` | Audit `shared/skills/` for cross-agent frontmatter compatibility, flag and fix issues |
 | `grill-me` | Resolve design branches through evidence-grounded, term-aware interviewing |
