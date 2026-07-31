@@ -1,7 +1,7 @@
 # Design Language
 
-> **Version**: 0.2.0
-> **Last Updated**: 2026-07-05
+> **Version**: 0.3.0
+> **Last Updated**: 2026-07-31
 > **Purpose**: Shared interface vocabulary and visual tokens for all user-facing specs. Read this before authoring any UI, CLI, or config spec.
 
 ---
@@ -37,6 +37,16 @@
 | **Which-key menu** | A popup showing available keybindings after a partial prefix | After pressing the leader key or other prefix | For single-key direct mappings that need no discovery |
 | **Statusline component** | An indicator in the mini.statusline showing mode, indent, or git status | Persistent information that aids navigation without being intrusive | Ephemeral information that changes too rapidly to be useful |
 
+### Config UI (VS Code)
+
+| Element | Definition | When to use | When NOT to use |
+|---------|-----------|-------------|-----------------|
+| **VS Code command** | An editor action identified by a stable command identity and invoked from a keybinding or command interface | Managed format, diagnostics, file, Git, test, and debug actions | For shell commands or extension identities |
+| **Vim leader command (VS Code)** | A VSCodeVim normal-mode sequence beginning with Space | Modal equivalents of managed editor actions | When a native browser/editor shortcut must retain precedence |
+| **shortcut exception** | A key intentionally excluded from VSCodeVim handling so the browser or editor receives it | Native shortcuts required for editor, browser, or accessibility behavior | As an undocumented workaround for accidental mapping conflicts |
+| **manual action notice** | A completion message identifying a required UI action the installer cannot enforce through a supported interface | Disabling official Visual Studio Code Settings Sync | For behavior the installer can enforce and verify directly |
+| **private endpoint notice** | A completion message identifying the local endpoint configuration location and trust boundary without printing secrets | code-server bind, certificate, and password discovery guidance | To print passwords, private hostnames, or network-product details |
+
 ---
 
 ## Visual Tokens
@@ -67,6 +77,14 @@
 | `indent-spaces` | Detected by vim-sleuth (fallback) | Default indentation when no .editorconfig present |
 | `editorconfig` | Project .editorconfig settings | Takes precedence over heuristics |
 
+### VS Code Interaction Tokens
+
+| Token | Value | Usage |
+|-------|-------|-------|
+| `vscode-vim-leader` | Space | Shared VSCodeVim leader commands |
+| `code-server-default-bind` | 0.0.0.0:8080 | First-install private-network browser endpoint |
+| `settings-sync-action` | Manual disablement required | Supported limitation notice for official desktop Visual Studio Code |
+
 ---
 
 ## Naming Conventions
@@ -80,3 +98,14 @@
 | Zsh aliases | Short lowercase abbreviations | `lg`, `y`, `z`, `ta`, `tn`, `h`, `ha` |
 | Tmux keybindings | Mnemonic single keys after prefix | `c` (create window), `|` (split vertical), `-` (split horizontal) |
 | Herdr keybindings | Herdr action names with prefix-compatible bindings | `new_tab = "prefix+c"`, `split_horizontal = "prefix+minus"` |
+| VS Code extension manifests | Target-qualified lowercase filenames | `shared.txt`, `desktop.txt`, `code-server.txt` |
+| VS Code managed settings | Upstream conventional filenames | `settings.json`, `keybindings.json` |
+
+---
+
+## Changelog
+
+| Version | Date | Summary |
+|---------|------|---------|
+| 0.3.0 | 2026-07-31 | Added VS Code command, Vim leader, shortcut exception, manual action, private endpoint, interaction token, and naming vocabulary. |
+| 0.2.0 | 2026-07-05 | Established CLI, multiplexer, and Neovim interface vocabulary and visual tokens. |

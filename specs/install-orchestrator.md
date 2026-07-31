@@ -1,8 +1,8 @@
 # Install Orchestrator
 
-> **Spec Version**: 1.5.0
-> **Last Updated**: 2026-07-15
-> **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md), [Design Language](DESIGN_LANGUAGE.md), [Tool Provisioning](tool-provisioning.md), [Symlink Manager](symlink-manager.md), [Herdr Config](herdr-config.md)
+> **Spec Version**: 1.6.0
+> **Last Updated**: 2026-07-31
+> **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md), [Design Language](DESIGN_LANGUAGE.md), [Tool Provisioning](tool-provisioning.md), [Symlink Manager](symlink-manager.md), [Herdr Config](herdr-config.md), [VS Code Configuration](vscode-config.md)
 > **Depended By**: None (this is the top-level orchestrator)
 
 ---
@@ -12,6 +12,8 @@
 The Install Orchestrator is the top-level entry point for deploying the entire dotfiles-managed development environment. It detects the platform, resolves module dependencies, presents an interactive or command-line-driven module selection interface, and then executes each selected module in dependency order. The orchestrator guarantees idempotency — running it multiple times with the same module list MUST produce the same system state without errors, data loss, or redundant operations.
 
 For Pi, the orchestrator deploys tracked runtime resources under `~/.pi/agent`, preserves mutable local settings, and installs wrapper commands.
+
+For editors, the orchestrator provides official Visual Studio Code Desktop only on macOS, an explicit custom-only code-server service only on Ubuntu/Debian, and a separately selectable Python 3.10+ baseline runtime. These are approved desired modules and are not yet implemented.
 
 The orchestrator does NOT implement any module's internal logic (package installation, symlink creation, etc.). It calls per-module functions that own those details. This spec governs the orchestration flow, phase ordering, platform branching, module dependency resolution, interactive menu behavior, and failure reporting.
 
@@ -38,6 +40,7 @@ The orchestrator does NOT implement any module's internal logic (package install
 | [Design Language](DESIGN_LANGUAGE.md) | CLI output formatting tokens |
 | [Tool Provisioning](tool-provisioning.md) | Per-module install/configure function specifications |
 | [Symlink Manager](symlink-manager.md) | Cross-cutting symlink deployment and backup rules |
+| [VS Code Configuration](vscode-config.md) | Platform-scoped managed layer, extension, capture, Vim, and code-server lifecycle contracts |
 
 ---
 
@@ -70,7 +73,7 @@ The orchestrator does NOT implement any module's internal logic (package install
 | `name` | string | One of the valid module identifiers | Unique identifier for a selectable install unit |
 | `label` | string | Human-readable description | Displayed in menus and summaries |
 
-**Valid module identifiers**: `base_tools`, `neovim`, `nvim_config`, `tmux_config`, `herdr`, `herdr_config`, `herdr_integrations`, `zsh_ohmyzsh`, `zsh_config`, `golang` (toolchain only), `golang_full` (toolchain + LSP + tools), `nodejs`, `tui_tools`, `codex`, `codex_sandbox`, `claude`, `pi`, `pi_sandbox`, `copilot`, `playwright`
+**Valid module identifiers**: `base_tools`, `neovim`, `nvim_config`, `vscode`, `vscode_config`, `code_server`, `tmux_config`, `herdr`, `herdr_config`, `herdr_integrations`, `zsh_ohmyzsh`, `zsh_config`, `python`, `golang` (toolchain only), `golang_full` (toolchain + LSP + tools), `nodejs`, `tui_tools`, `codex`, `codex_sandbox`, `claude`, `pi`, `pi_sandbox`, `copilot`, `playwright`
 
 ### Pi Module Deployment Contract
 
@@ -81,13 +84,26 @@ When the `pi` module is selected, the orchestrator MUST:
 3. Initialize and preserve local Pi settings, auth, and session state under `~/.pi/agent/`; migrate a legacy managed settings symlink to a regular file without losing content.
 4. Deploy wrapper commands `pi` and `pis`.
 
+### Editor Module Contracts
+
+| Module | Supported Platform | Contract |
+|--------|--------------------|----------|
+| `vscode` | macOS | Install or update official stable Visual Studio Code through Homebrew Cask |
+| `vscode_config` | macOS | Deploy the VS Code managed layer, reconcile extensions, configure Vim key repeat, and report manual Settings Sync disablement |
+| `code_server` | Ubuntu/Debian | Install/update, configure, enable, start, reconcile, and health-check the authenticated HTTPS service |
+| `python` | Ubuntu/Debian and macOS | Install and verify native Python 3.10+ plus virtual-environment capability |
+
+`code_server` MUST be available in the Custom menu and through `--modules`, but MUST NOT be included in any standard installation profile.
+
 ### Installation Profile
 
-| Profile | Modules Included |
-|---------|-----------------|
-| `full` | base_tools, neovim, nvim_config, tmux_config, herdr, herdr_config, herdr_integrations, zsh_ohmyzsh, zsh_config, golang_full, nodejs, tui_tools, codex, codex_sandbox, claude, playwright, pi, pi_sandbox, copilot |
-| `minimal` | base_tools, neovim, nvim_config, tmux_config, herdr, herdr_config, herdr_integrations |
-| `work` | base_tools, neovim, nvim_config, tmux_config, herdr, herdr_config, herdr_integrations, tui_tools, copilot |
+| Profile | Common Modules Included | macOS-only Additions |
+|---------|-------------------------|----------------------|
+| `full` | base_tools, neovim, nvim_config, tmux_config, herdr, herdr_config, herdr_integrations, zsh_ohmyzsh, zsh_config, python, golang_full, nodejs, tui_tools, codex, codex_sandbox, claude, playwright, pi, pi_sandbox, copilot | vscode, vscode_config |
+| `minimal` | base_tools, neovim, nvim_config, tmux_config, herdr, herdr_config, herdr_integrations | none |
+| `work` | base_tools, neovim, nvim_config, tmux_config, herdr, herdr_config, herdr_integrations, python, tui_tools, copilot | vscode, vscode_config |
+
+On Ubuntu/Debian, standard profiles MUST omit the macOS-only additions rather than selecting and skipping them.
 
 ### Dependency Map
 
@@ -111,6 +127,9 @@ Modules declare implicit prerequisites via the dependency resolver. The resolver
 | `codex_sandbox` | `codex`, `nodejs`, Docker (external) | `nodejs` only if `npm` is not found; Docker warning issued if missing |
 | `playwright` | `nodejs` | Only if `npm` is not found |
 | `golang_full` | `golang` | Always (golang_full calls golang install internally) |
+| `vscode_config` | `vscode` | Only on macOS and only if the desktop editor command is not found |
+| `code_server` | `base_tools` | Only if curl is not found; service manager is a platform prerequisite |
+| `python` | none | Native package manager is initialized during platform setup |
 
 **Deduplication rule**: After dependency resolution, duplicate modules MUST be removed while preserving insertion order.
 
@@ -198,15 +217,22 @@ Phase 7: COMPLETION REPORT
 | `--profile` | `full`, `minimal`, `work` | Select a predefined profile |
 | `--modules` | comma-separated module names | Select specific modules |
 | `--codex-config-template` | `preserve` or `overwrite` | Control Codex config template behavior |
+| `--code-server-bind` | `address:port` | Set or replace the local code-server bind value when `code_server` is selected |
 | `--help` | — | Display help text and exit |
 
 **Precedence**: CLI arguments override interactive menu. If `--profile` or `--modules` is provided, the interactive menu is skipped entirely.
 
-**Terminology rule**: The `--profile` flag in `install.sh` refers to an installation profile (`full`, `minimal`, `work`).
+**Terminology rule**: The `--profile` flag in `install.sh` refers to an installation profile (`full`, `minimal`, `work`), not the Default Profile (VS Code).
+
+**Bind persistence rule**: On first `code_server` installation, absence of `--code-server-bind` selects the default bind. On reruns, absence of the flag preserves the local value. The orchestrator MUST NOT infer or persist hostnames, interface identities, or network-product details in tracked files.
 
 ### Module Execution Semantics
 
 - Modules execute sequentially in resolved order
+- Standard profile expansion is platform-aware before dependency resolution
+- Explicit selection of `vscode` or `vscode_config` outside macOS fails the selected module
+- Explicit selection of `code_server` outside Ubuntu/Debian fails the selected module
+- `code_server` is never inferred from another module or standard profile
 - Each module function returns 0 on success, non-zero on failure
 - On failure: the module name is appended to `FAILED_MODULES`, execution continues to the next module
 - The script runs in strict failure mode (errors halt execution by default), but module functions catch their own errors and report them to the failure tracker, allowing execution to continue to the next module
@@ -266,6 +292,12 @@ When Neovim's Lazy plugin sync reports local changes in cached plugins:
 | Herdr integration target missing | A managed agent config directory does not exist when `herdr_integrations` runs | `herdr_integrations` module | Skip that agent integration and continue | Install the relevant agent module and re-run |
 | Go version fetch failure | Version endpoint returns empty result | `install_golang` module | Print error, signal module failure | Module fails; user retries or installs Go manually || PATH conflict for npm-installed agents | The agent binary is found via PATH but not at `~/.local/bin/` | Post-install verification | Print warning identifying the conflicting binary path | User must ensure `~/.local/bin` is earlier in PATH |
 | Codex config symlink detected | Existing `~/.codex/config.toml` is a symlink | `install_codex` module | Remove symlink, copy template as regular file | Automatic; local config file created from template |
+| Unsupported desktop editor selection | `vscode` or `vscode_config` explicitly selected outside macOS | Module platform gate | Append selected module to failures; install no substitute editor | Select supported platform/module |
+| Unsupported code-server selection | `code_server` explicitly selected outside Ubuntu/Debian | Module platform gate | Append module to failures; create no service | Select supported platform/module |
+| Invalid code-server bind | Bind lacks valid address and port shape | Argument validation | Exit before module execution with usage guidance | Correct flag value |
+| code-server port conflict | Selected local port is occupied | Module preflight/startup | Append module to failures; do not choose alternate | Stop conflict or pass explicit bind |
+| Required VS Code extension failure | One or more manifest entries fail after all are attempted | Extension reconciliation | Append owning module to failures and list every failed extension | Correct manifest/marketplace or rerun |
+| Python below required version | Native interpreter reports less than 3.10 | `python` module verification | Append `python` to failures; add no third-party repository | Upgrade supported OS/package source |
 
 ---
 
@@ -297,6 +329,12 @@ When Neovim's Lazy plugin sync reports local changes in cached plugins:
 11. **Git config prompting**: Git user.name and user.email prompting is described in AGENTS.md but is **not currently implemented** in the install script. This feature may be added in a future version; for now, users must configure git identity manually.
 
 12. **Shell test suite**: Install-script unit tests MUST be runnable through `bash tests/run.sh`. The runner MUST syntax-check the runner, shared harness, and all top-level `tests/*.test.sh` files before execution. It MUST discover top-level `tests/*.test.sh` files in sorted order so new install-script tests are included by convention. Shared shell-test helpers SHOULD live in `tests/lib/harness.sh` to keep individual test files focused on behavior.
+
+13. **Platform-aware profiles**: Standard profiles define common modules plus macOS editor additions. Unsupported modules are omitted during profile expansion, while explicit unsupported selections remain errors.
+
+14. **Manual Settings Sync action**: The desktop completion report MUST state that Settings Sync must be disabled manually. It MUST NOT claim unsupported enforcement.
+
+15. **Private network neutrality**: Argument parsing and completion output MAY identify a generic bind value and local config path but MUST NOT name or configure a private-network product.
 
 ---
 
@@ -512,12 +550,62 @@ Preconditions: Top-level shell tests exist under `tests/*.test.sh`
 Input: `bash tests/run.sh`
 Expected Output: The runner syntax-checks shell test files, executes each top-level `*.test.sh` file in sorted order, reports per-file execution, and exits non-zero if syntax checking or any test file fails.
 
+### TS-INSTL-031: macOS profiles include desktop editor
+Category: Integration
+Priority: Critical
+Preconditions: macOS platform
+Input: Expand `full` and `work` profiles
+Expected Output: Both include python, vscode, and vscode_config; minimal omits all three except its existing modules
+
+### TS-INSTL-032: Linux profiles omit desktop editor
+Category: Integration
+Priority: Critical
+Preconditions: Ubuntu/Debian platform
+Input: Expand all standard profiles
+Expected Output: Full and work include python but omit vscode and vscode_config; no standard profile includes code_server
+
+### TS-INSTL-033: code-server is explicit only
+Category: Unit
+Priority: Critical
+Preconditions: Any supported profile selection
+Input: Resolve dependencies and execute profiles
+Expected Output: code_server appears only when explicitly selected through Custom or `--modules`
+
+### TS-INSTL-034: code-server bind first install and preservation
+Category: Integration
+Priority: Critical
+Preconditions: Supported Ubuntu/Debian host
+Input: First run with explicit bind, then rerun without bind flag
+Expected Output: Explicit value is stored locally and preserved on rerun; no address or hostname enters tracked files
+
+### TS-INSTL-035: Unsupported editor modules fail explicitly
+Category: Unit
+Priority: High
+Preconditions: Ubuntu/Debian for desktop case; macOS for server case
+Input: Explicit unsupported module selection
+Expected Output: Selected module is reported failed; no substitute editor or service is installed; unrelated modules continue
+
+### TS-INSTL-036: Python module is independently selectable
+Category: Integration
+Priority: High
+Preconditions: Supported platform without Python 3.10+
+Input: `--modules python`
+Expected Output: Native baseline is installed and verified without selecting an editor module
+
+### TS-INSTL-037: Desktop completion reports manual Settings Sync action
+Category: Unit
+Priority: High
+Preconditions: macOS vscode_config succeeds
+Input: Completion report
+Expected Output: Report requires manual Settings Sync disablement and does not claim persistent installer enforcement
+
 ---
 
 ## Changelog
 
 | Version | Date | Summary |
 |---------|------|---------|
+| 1.6.0 | 2026-07-31 | Added platform-aware macOS Visual Studio Code modules, explicit Ubuntu/Debian code-server, Python 3.10+ provisioning, bind override semantics, extension failure handling, and manual Settings Sync action. |
 | 1.5.0 | 2026-07-15 | Made Claude settings local runtime state and added jq-backed status-line configuration. |
 | 1.4.0 | 2026-07-15 | Made Pi settings local runtime state and required content-preserving migration from the former repo-managed symlink. |
 | 1.3.2 | 2026-07-06 | Added the shell test suite contract: `bash tests/run.sh` discovers top-level shell tests, syntax-checks them, and uses a shared harness for install-script unit tests. |

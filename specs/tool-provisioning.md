@@ -1,9 +1,9 @@
 # Tool Provisioning
 
-> **Version**: 1.3.0
-> **Last Updated**: 2026-07-15
+> **Version**: 1.4.0
+> **Last Updated**: 2026-07-31
 > **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md), [Design Language](DESIGN_LANGUAGE.md), [Symlink Manager](symlink-manager.md)
-> **Depended By**: Install Orchestrator
+> **Depended By**: [VS Code Configuration](vscode-config.md), Install Orchestrator
 
 ---
 
@@ -15,10 +15,13 @@ The Tool Provisioning system is responsible for installing, upgrading, and verif
 2. **Downloaded binaries** — fetched from upstream release URLs with architecture detection and placed in system or user-local paths
 3. **Mason packages** — LSP servers, formatters, and linters installed inside Neovim via headless Mason commands
 4. **Direct upstream installers** — official curl installers for selected user-local tools whose update path is owned by the tool itself
+5. **Editor distributions and runtimes** — platform-scoped Visual Studio Code, code-server, and baseline Python provisioning
 
 The system is **idempotent**: every function either checks whether the tool is already present and at a satisfactory version before attempting installation, or delegates idempotent update behavior to the tool's official installer. Re-running the full install produces the same result without errors, warnings, or unnecessary side effects.
 
 For Pi, tool provisioning installs one shared Pi binary. Profile-specific behavior is provided by deployed runtime configs and wrapper commands, not separate binary installs per profile.
+
+The Python, Visual Studio Code Desktop, and code-server clauses introduced in version 1.4.0 are approved desired behavior and are not yet implemented.
 
 ---
 
@@ -56,6 +59,12 @@ For Pi, tool provisioning installs one shared Pi binary. Profile-specific behavi
 | `GO_WORKSPACE` | ~/go-workspace | path | Go workspace directory (GOPATH); must be on PATH alongside Go install path; binaries installed via `go install` land in `~/go-workspace/bin/` |
 | `FNM_INSTALL_SCRIPT` | https://fnm.vercel.app/install | URL | Official fnm install script; not available via apt/brew on all platforms |
 | `HERDR_INSTALL_SCRIPT` | https://herdr.dev/install.sh | URL | Official Herdr direct installer; used on Linux and macOS to keep `herdr update` as the consistent update path |
+| `PYTHON_REQUIRED_VERSION` | 3.10 | major.minor | Native-package baseline for modern editor and project compatibility |
+| `PYTHON_UBUNTU_PACKAGES` | python3, python3-venv | list | Distro interpreter and virtual-environment support without third-party repositories |
+| `PYTHON_MACOS_PACKAGE` | python | Homebrew formula | Current stable interpreter without replacing system Python |
+| `VSCODE_MACOS_CASK` | visual-studio-code | Homebrew Cask | Official stable desktop distribution on macOS |
+| `CODE_SERVER_INSTALL_SCRIPT` | https://code-server.dev/install.sh | URL | Official stable code-server installation and update path on Ubuntu/Debian |
+| `CODE_SERVER_BIND_DEFAULT` | 0.0.0.0:8080 | address:port | First-install private-network listener default |
 
 ---
 
@@ -86,7 +95,8 @@ Packages with different names across platforms MUST use the `install_package` fu
 | fd-find | fd | Ubuntu ships fd as fd-find; macOS uses fd directly |
 | build-essential | gcc | Both provide C compiler; Ubuntu uses meta-package, macOS uses gcc formula |
 | xclip | — | Clipboard support; macOS not needed |
-| python3-venv | — | Python virtual environments; macOS not needed |
+| python3 | python | Baseline Python interpreter; Ubuntu uses distro package, macOS uses Homebrew formula |
+| python3-venv | — | Python virtual environments; macOS Homebrew Python includes venv support |
 | tree-sitter-cli | tree-sitter-cli | CLI split from library in 0.26+; macOS only |
 
 ### Tool Download Specification
@@ -106,6 +116,8 @@ Packages with different names across platforms MUST use the `install_package` fu
 | Playwright CLI | npm global install (no prefix — inconsistent) | same as Ubuntu | npm resolves @latest |
 | Copilot CLI | curl \| bash installer | same as Ubuntu | Official installer script; binary lands in ~/.local/bin |
 | Claude Code | curl \| bash installer with `latest` target | same as Ubuntu | Official installer script resolves latest release; binary lands in ~/.local/bin |
+| Visual Studio Code Desktop | Unsupported | Homebrew Cask install/upgrade | Homebrew stable Cask release |
+| code-server | Official direct installer | Unsupported | Official installer stable release |
 
 ### Mason Package Set
 
@@ -142,6 +154,10 @@ Packages with different names across platforms MUST use the `install_package` fu
 | sandbox_base | docker | Shared Docker base image for agent sandboxes |
 | pi_sandbox | docker | Sandbox runs in Docker container |
 | codex_sandbox | docker | Codex `--yolo` sandbox runs in Docker container |
+| python | native package manager | Baseline interpreter and venv support |
+| vscode | Homebrew | Official desktop Cask; macOS only |
+| vscode_config | vscode when desktop command is absent | Managed desktop files and extension CLI require Visual Studio Code |
+| code_server | curl, service manager | Official installer, persistent service, and HTTPS verification; Ubuntu/Debian only |
 
 ### Pi Command Surface
 
@@ -307,6 +323,54 @@ VERIFY installation via go version
 **Critical rule**: The `GOROOT` environment variable MUST be unset after installation to prevent poisoning the Go binary with stale paths.
 
 **Critical rule**: On macOS, the Homebrew Go binary path MUST be prepended to PATH to prevent shadowing by other Go installations.
+
+### Python Runtime Installation
+
+```
+IF os = ubuntu
+    INSTALL distro packages python3 and python3-venv
+ELSE IF os = macos
+    INSTALL or UPGRADE Homebrew Python
+END IF
+
+VERIFY interpreter version is at least PYTHON_REQUIRED_VERSION
+CREATE a temporary virtual environment
+RUN its interpreter
+REMOVE the temporary environment
+```
+
+The module MUST use native package-manager sources only. It MUST NOT add third-party Python repositories, replace a system interpreter symlink, define a global `python` alias, or install Poetry, pyenv, project dependencies, test tools, or global Python packages. If the native interpreter is below the required version, the module MUST fail with supported-version guidance.
+
+### Visual Studio Code Desktop Installation
+
+```
+IF os is not macos
+    FAIL as unsupported platform
+ELSE IF official desktop Cask is absent
+    INSTALL the stable Cask
+ELSE
+    REQUEST stable Cask upgrade
+END IF
+VERIFY the desktop editor command interface is available
+```
+
+The desktop module MUST retain official Microsoft Visual Studio Code rather than substitute VSCodium or another Code OSS distribution. It MUST NOT patch the application bundle or invalidate its signature to alter Settings Sync.
+
+### code-server Installation and Service Provisioning
+
+```
+IF os is not ubuntu
+    FAIL as unsupported platform
+END IF
+RUN the official stable installer
+PRESERVE local bind, password, and certificate state
+RECONCILE managed editor configuration and extensions
+ENABLE and START the service
+VERIFY active service state
+VERIFY local HTTPS response while accepting the generated certificate
+```
+
+Selecting `code_server` MUST actively request a stable update on every run. The module MUST leave the service enabled and running, MUST fail when its selected port is occupied, and MUST never choose a replacement port or alter firewall rules. Password and certificate material MUST remain local and absent from logs.
 
 ### Node.js Installation (via fnm)
 
@@ -573,6 +637,20 @@ Dependencies are resolved dynamically at runtime by checking whether prerequisit
 | Treesitter update fails | Headless TSUpdateSync returns non-zero | EMIT warning "parser update had issues" | Non-blocking; most parsers still work |
 | Neovim not found for Mason Go install | `nvim` command not found | EMIT info "Neovim not found — skip Go LSP tools" | User installs nvim first, then re-runs or uses `:MasonInstall` manually |
 
+### Python and Editor Provisioning Failures
+
+| Trigger | Detection | Response | Recovery |
+|---------|-----------|----------|----------|
+| Native Python is below 3.10 | Interpreter version check | Fail `python`; do not add third-party repository | Upgrade supported OS/package source |
+| Python virtual environment cannot run | Temporary venv verification fails | Fail `python`; remove temporary state | Repair native Python packages and rerun |
+| Desktop VS Code selected outside macOS | Platform check | Fail selected module | Use macOS desktop target |
+| code-server selected outside Ubuntu/Debian | Platform check | Fail selected module | Use supported Linux target |
+| Visual Studio Code Cask install/upgrade fails | Homebrew non-zero status | Fail `vscode` | Repair Homebrew/network and rerun |
+| code-server installer fails | Official installer non-zero status | Fail `code_server` | Check network and installer output, then rerun |
+| code-server port is occupied | Listener preflight or service bind failure | Fail without selecting another port | Stop conflicting process or provide explicit bind |
+| code-server service does not become active | Service manager status | Fail and report service diagnostics | Correct local config/service and rerun |
+| code-server HTTPS endpoint does not respond | Local HTTPS health verification | Fail without exposing secrets | Inspect service, bind, and certificate state |
+
 ### npm Global Install Failures
 
 | Trigger | Detection | Response | Recovery |
@@ -621,6 +699,12 @@ Dependencies are resolved dynamically at runtime by checking whether prerequisit
 10. **Module dependency resolution is runtime-dynamic**. Dependencies are not static — they depend on what is already installed on the system. A module that would normally need a prerequisite skips it if the prerequisite tool is already present.
 
 11. **Backup timestamp format MUST be consistent**. All file backups use the `BACKUP_TIMESTAMP_FMT` format (`%Y%m%d_%H%M%S`). This ensures chronological sortability and second-level granularity.
+
+12. **Python remains a baseline runtime**. The `python` module owns only a native interpreter and virtual-environment capability. Editor configuration and projects remain separate owners.
+
+13. **Editor targets are asymmetric by design**. Official desktop Visual Studio Code is macOS-only; code-server is Ubuntu/Debian-only. Unsupported explicit selection fails rather than silently skipping.
+
+14. **code-server secrets are local state**. Stable updates and configuration reconciliation preserve password, certificate, and bind state unless the user explicitly overrides the bind.
 
 ---
 
@@ -869,12 +953,67 @@ Input: herdr module
 Expected Output: Installer is skipped and success is emitted without reinstalling or changing channel state
 ```
 
+```
+TS-TOOL-028: Python native baseline on Ubuntu
+Category: Integration
+Priority: Critical
+Preconditions: Supported Ubuntu/Debian with no Python runtime
+Input: python module
+Expected Output: Native python3 and venv support are installed; version is at least 3.10; temporary venv executes successfully
+```
+
+```
+TS-TOOL-029: Python native baseline on macOS
+Category: Integration
+Priority: Critical
+Preconditions: macOS with Homebrew
+Input: python module
+Expected Output: Homebrew Python is installed/upgraded without replacing system Python; temporary venv executes successfully
+```
+
+```
+TS-TOOL-030: Old native Python fails without external repository
+Category: Unit
+Priority: High
+Preconditions: Native package source provides Python below 3.10
+Input: python module
+Expected Output: Module fails with version guidance and no third-party repository is added
+```
+
+```
+TS-TOOL-031: Official Visual Studio Code updates on macOS
+Category: Integration
+Priority: Critical
+Preconditions: macOS with Homebrew
+Input: vscode module twice
+Expected Output: Official stable Cask is installed then receives an idempotent upgrade request; command interface remains available
+```
+
+```
+TS-TOOL-032: code-server stable update preserves local state
+Category: Integration
+Priority: Critical
+Preconditions: Ubuntu/Debian with existing bind, password, and certificate state
+Input: code_server module
+Expected Output: Official stable installer runs; local state is preserved; service is enabled, active, and HTTPS-responsive
+```
+
+```
+TS-TOOL-033: Editor distribution platform boundaries
+Category: Unit
+Priority: High
+Preconditions: Ubuntu/Debian for desktop case and macOS for server case
+Input: Select unsupported editor module
+Expected Output: Selected module fails with supported-platform guidance and performs no substitute installation
+```
+
 ---
 
 ## Changelog
 
 | Version | Date | Summary |
 |---------|------|---------|
+| 1.4.0 | 2026-07-31 | Added native Python 3.10+ provisioning, macOS official Visual Studio Code installation/update, and Ubuntu/Debian code-server installation, service, security-state preservation, and health verification. |
 | 1.3.0 | 2026-07-15 | Made Claude settings local runtime state, preserved them across installer runs, and defined legacy symlink migration. |
 | 1.2.1 | 2026-07-06 | Required Claude Code to run the official installer with the `latest` target on every Claude module execution, with user-local binary verification. |
 | 1.2.0 | 2026-07-05 | Added Herdr direct-installer provisioning, Herdr modules, error handling, and tests. |

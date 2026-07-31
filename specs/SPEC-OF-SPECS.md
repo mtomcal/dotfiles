@@ -1,7 +1,7 @@
 # Spec-of-Specs: Personal Dotfiles Manager Documentation Blueprint
 
-> **Version**: 1.2.0
-> **Last Updated**: 2026-07-14
+> **Version**: 1.3.0
+> **Last Updated**: 2026-07-31
 > **Purpose**: Define the structure, content requirements, and templates for all specification files in `specs/`.
 > **Target Audience**: AI agents extracting specifications from an existing codebase with zero prior context.
 
@@ -81,6 +81,7 @@ The `PREFIX` should be a 2-6 character abbreviation of the spec name:
 | Tmux Config | TMUX |
 | Herdr Config | HERDR |
 | Neovim Config | NVIM |
+| VS Code Config | VSCODE |
 | AI Agent Config | AIAGT |
 | Skill Library | SKILL |
 | Install Orchestrator | INSTL |
@@ -131,4 +132,5 @@ An extracting agent MUST read specs in reading order to avoid forward references
 
 | Version | Date | Change |
 |---------|------|--------|
+| 1.3.0 | 2026-07-31 | Registered the VS Code Configuration system and `VSCODE` test prefix. |
 | 1.2.0 | 2026-07-14 | Registered the Skill Library system and `SKILL` test prefix. |

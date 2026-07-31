@@ -1,7 +1,7 @@
 # Ubiquitous Language
 
-> **Version**: 1.2.0
-> **Last Updated**: 2026-07-15
+> **Version**: 1.3.0
+> **Last Updated**: 2026-07-31
 > **Purpose**: Shared vocabulary for all specs. Every term used in multiple specs MUST be defined here. Read this before any other spec.
 
 > **Usage note**: Throughout all specs, the bare term "install" should be disambiguated using one of the three defined terms: **install** (the complete install.sh run), **install (dependency)** (a single package), or **install (Mason)** (a Neovim package). Use the specific term wherever context is ambiguous.
@@ -31,6 +31,14 @@
 | **plugin (Oh My Zsh)** | A Zsh plugin managed by the Oh My Zsh framework | — | Overloaded — disambiguate from Neovim plugin and Pi extension |
 | **extension (Pi)** | A TypeScript extension for the Pi coding agent | — | Overloaded — disambiguate from Neovim plugin and Oh My Zsh plugin |
 | **Mason package** | An LSP server, formatter, or linter installed via Mason inside Neovim | — | Not a "plugin" — these are external tools, not Neovim extensions |
+| **Visual Studio Code Desktop** | The official stable Microsoft desktop editor managed on macOS through its Homebrew Cask | "VS Code" when the target is ambiguous | Distinct from code-server and excluded on Linux in this dotfiles environment |
+| **code-server** | The browser-accessible Code OSS distribution managed as an explicit Ubuntu/Debian service | "VS Code server", "Codespace" | Distinct from Microsoft VS Code Server, Remote Tunnels, and GitHub Codespaces |
+| **Default Profile (VS Code)** | The unnamed base Visual Studio Code configuration scope whose user settings apply when no named profile is active | "global profile", "default settings" | The only VS Code profile scope owned by the dotfiles system |
+| **VS Code managed layer** | The repository-owned VS Code settings, keybindings, snippets, and extension manifests deployed to supported editor targets | "VS Code User folder", "synced settings" | Excludes authentication, profile internals, history, UI state, certificates, and machine-specific values |
+| **extension (VS Code)** | A publisher-qualified editor capability installed from a target's extension marketplace | "plugin", bare "extension" | Overloaded — disambiguate from extension (Pi), plugin (Neovim), and browser extensions |
+| **extension manifest (VS Code)** | A repository-owned required-presence list of unpinned or exceptionally pinned VS Code extension identities for one or both supported targets | "extension lockfile", "installed extension list" | Reconciliation installs or updates listed entries but never prunes unlisted extensions |
+| **private-network browser endpoint** | An authenticated HTTPS code-server listener intended for reachability through operator-controlled trusted networking | "public code server", "Codespace endpoint" | The repository does not name, discover, or configure a particular network product |
+| **VS Code capture** | An explicit non-deployment operation that imports existing desktop settings, keybindings, snippets, and extension identities into the VS Code managed layer | "sync", "install" | Normal install never captures or writes repository sources |
 
 ## Shell Domain
 
@@ -119,6 +127,11 @@
 - Pi exposes shared skills through `pi/skills/`, which is deployed to `~/.pi/agent/skills`
 - A **custom layer** can contain multiple **plugins (Neovim)**
 - A **kickstart** configuration imports exactly one **custom layer**
+- A **VS Code managed layer** deploys to the **Default Profile (VS Code)** of one or more supported editor targets
+- A **VS Code managed layer** contains three **extension manifests (VS Code)**: shared, desktop-specific, and code-server-specific
+- An **extension manifest (VS Code)** contains zero or more **extensions (VS Code)** and declares required presence without declaring an exact installed inventory
+- **VS Code capture** may initialize the **VS Code managed layer**, while install deploys that layer and never performs capture
+- **code-server** exposes one **private-network browser endpoint** whose bind value, password, and certificate remain local
 - The **install** process **deploys** multiple **symlinks** and **installs (dependency)** multiple system packages and Mason packages
 - A **symlink** always points from a system path to a source file in the **dotfiles** repo
 - **Tool provisioning** depends on **symlink management** for config deployment of TUI tools
@@ -149,7 +162,10 @@
 ## Flagged Ambiguities
 
 - **"install"** is used to mean the full install.sh run, a single system package installation, and a Mason package installation. These are distinct operations: use **install**, **install (dependency)**, and **install (Mason)** respectively.
-- **"plugin"** is used to mean a Neovim lazy.nvim plugin, an Oh My Zsh plugin, or a Pi extension. These are distinct concepts: use **plugin (Neovim)**, **plugin (Oh My Zsh)**, or **extension (Pi)** respectively.
+- **"plugin"** is used to mean a Neovim lazy.nvim plugin, an Oh My Zsh plugin, or an editor/agent extension. These are distinct concepts: use **plugin (Neovim)**, **plugin (Oh My Zsh)**, **extension (Pi)**, or **extension (VS Code)** respectively.
+- **"VS Code server"** can mean Microsoft VS Code Server, Remote Tunnels, GitHub Codespaces, or **code-server**. This suite uses **code-server** only for the managed browser distribution and excludes the other three.
+- **"profile"** can mean an installation profile or **Default Profile (VS Code)**. Qualify the term; named VS Code profiles are outside managed ownership.
+- **"sync"** can mean cloud Settings Sync or importing configuration. Use **VS Code capture** for repository import; Settings Sync is not authoritative and must be disabled manually.
 - **"config"** is used to mean a source file in the dotfiles repo, a deployed file on disk, or an application's own config format. Use **dotfiles** (repo source), **symlink** (deployed pointer), or name the specific application config format.
 - **"manager"** could mean the overall dotfiles manager concept, fnm (Fast Node Manager), or Mason (LSP manager). Use **dotfiles** (the system), **fnm**, or **Mason** specifically.
 - **"custom"** could mean the nvim/custom/ symlink layer, user customization in general, or the .zshrc.custom file. Use **custom layer** (Neovim), **custom shell config** (zsh), or **user customization** (general) respectively.
@@ -174,6 +190,7 @@
 
 | Version | Date | Change |
 |---------|------|--------|
+| 1.3.0 | 2026-07-31 | Added Visual Studio Code Desktop, code-server, Default Profile, VS Code managed layer, VS Code extension manifest, capture, and private-network browser endpoint terminology and distinctions. |
 | 1.2.0 | 2026-07-15 | Added `review gate` and `proposed execution trace`; redefined the immutable implementation plan to define binding final review gates while still excluding review results, reviewer/model configuration, and execution state. |
 | 1.1.0 | 2026-07-15 | Distinguished the generic Herdr skill from its composing Claude Code orchestration specialization. |
 | 1.0.0 | 2026-07-15 | Replaced plan-workspace and parent-owner terminology with immutable implementation plans, coordinator-owned execution ledgers, and active-ledger routing. |
@@ -183,8 +200,20 @@
 
 ## Example Dialogue
 
+> **Dev**: "Can install copy my current editor state into the repo?"
+> **Domain Expert**: "No. **VS Code capture** initializes the **VS Code managed layer** explicitly; install only deploys it to the **Default Profile (VS Code)**."
+> **Dev**: "Does the **extension manifest (VS Code)** remove extensions I installed experimentally?"
+> **Domain Expert**: "No. It requires listed **extensions (VS Code)** to be present but never prunes unlisted extensions."
+> **Dev**: "Does the **private-network browser endpoint** reveal which network product reaches it?"
+> **Domain Expert**: "No. **code-server** provides generic authenticated HTTPS access, while product-specific networking stays outside the repository."
+>
 > **Dev**: "Does AI Agent Configuration own how a shared skill is written?"
 > **Domain Expert**: "No. The **Skill Library** owns skill semantics; the **agent config** only exposes canonical skills to a runtime."
+> **Dev**: "Does an **implementation plan** record who ran a **review gate**?"
+> **Domain Expert**: "No. It defines the required check, while reviewer identity and results belong to the **execution ledger** or direct-execution report."
+
+### Additional Agent Workflow Examples
+
 > **Dev**: "Can every successful route load the same **Reference file** if the pointer appears near a later step?"
 > **Domain Expert**: "No. That is sequencing. A valid **Reference pointer** requires a **branch outcome** and at least one successful no-load route."
 > **Dev**: "Where does universally required behavior go?"
@@ -193,7 +222,5 @@
 > **Domain Expert**: "No. It writes one immutable **implementation plan**. A **coordinator** later uses `divide-plan` to create the active **execution ledger** and its **slices**."
 > **Dev**: "Should `divide-plan` teach the **Claude Code Herdr skill** how to split panes or race statuses?"
 > **Domain Expert**: "No. It composes the **Herdr skill** for generic transport and keeps only Claude launch, readiness, prompt submission, and steering behavior."
-> **Dev**: "Does an **implementation plan** now record which reviewer ran the Security **review gate**?"
-> **Domain Expert**: "No. The plan defines the gate's order, criteria, blocking behavior, and evidence. Reviewer and model configuration and every review result live in the **execution ledger** or the direct-execution final response."
 > **Dev**: "Is a **proposed execution trace** a real stack trace I captured at runtime?"
 > **Domain Expert**: "No. It is an evidence-grounded call tree of intended order and depth per ordered step. `divide-plan` retains it verbatim in each **slice** and adds the slice-scope frame mapping."

@@ -1,7 +1,7 @@
 # Parameters
 
-> **Spec Version**: 2.0.0
-> **Last Updated**: 2026-07-15
+> **Spec Version**: 2.1.0
+> **Last Updated**: 2026-07-31
 > **Depends On**: None (foundational spec)
 > **Depended By**: All other specs
 
@@ -96,6 +96,37 @@ Parameters serve three purposes:
 | `DAP_GO_ENABLED` | true | toggle | Enables debug adapter protocol integration for Go test debugging |
 | `NEOGIT_GRAPH_STYLE` | unicode | enum | Unicode branch graph for visual clarity in git log |
 
+## Python
+
+| Parameter | Value | Unit | Rationale |
+|-----------|-------|------|-----------|
+| `PYTHON_REQUIRED_VERSION` | 3.10 | major.minor | Oldest baseline available from native package sources on supported Ubuntu releases while remaining compatible with modern editor tooling |
+| `PYTHON_UBUNTU_PACKAGES` | python3, python3-venv | list | Provides a distro-owned interpreter and isolated project environments without third-party repositories or global project packages |
+| `PYTHON_MACOS_PACKAGE` | python | Homebrew formula | Provides the current stable Homebrew interpreter without replacing macOS system Python |
+| `PYTHON_GLOBAL_PACKAGES` | none | policy | Project dependencies, Poetry, pyenv, and test tools remain project-owned |
+
+## VS Code and code-server
+
+| Parameter | Value | Unit | Rationale |
+|-----------|-------|------|-----------|
+| `VSCODE_DESKTOP_PLATFORM` | macOS | platform | Desktop use is required on macOS only; Linux hosts use terminal tools or explicitly selected code-server |
+| `VSCODE_DESKTOP_DISTRIBUTION` | Official stable Visual Studio Code | distribution | Retains Microsoft Marketplace, Pylance, and Remote SSH compatibility |
+| `VSCODE_MACOS_CASK` | visual-studio-code | Homebrew Cask | Official Homebrew identity for stable Visual Studio Code |
+| `VSCODE_CONFIG_SOURCE` | ~/dotfiles/vscode | path | Single repository-owned source for managed settings, keybindings, snippets, and extension manifests |
+| `VSCODE_MACOS_USER_TARGET` | ~/Library/Application Support/Code/User | path | Official macOS Default Profile user-configuration location |
+| `VSCODE_CODE_SERVER_USER_TARGET` | ~/.local/share/code-server/User | path | code-server Default Profile user-configuration location |
+| `VSCODE_SETTINGS_SYNC` | manual-off | policy | Official Visual Studio Code has no supported persistent enforcement interface; manual disablement preserves repository authority without internal patching |
+| `VSCODE_EXTENSION_VERSION_MODE` | unpinned by default | policy | Compatible updates are preferred while explicit pins remain available for regressions |
+| `VSCODE_EXTENSION_RECONCILIATION` | install/update, no prune | policy | Required extensions remain present without deleting unmanaged experimentation |
+| `VSCODE_VIM_LEADER` | Space | key | Matches the existing Neovim leader and shared modal-editing muscle memory |
+| `CODE_SERVER_PLATFORM` | Ubuntu/Debian | platform | Browser endpoint is a headless Linux role; macOS code-server is outside scope |
+| `CODE_SERVER_INSTALL_SCRIPT` | https://code-server.dev/install.sh | URL | Official stable installer supports idempotent user-local updates on Ubuntu/Debian |
+| `CODE_SERVER_BIND_DEFAULT` | 0.0.0.0:8080 | address:port | Makes first installation reachable through operator-controlled private interfaces on a conventional development port |
+| `CODE_SERVER_CONFIG_PATH` | ~/.config/code-server/config.yaml | path | Standard local configuration path that preserves machine-specific bind and generated password state |
+| `CODE_SERVER_AUTH` | password | enum | Application authentication remains mandatory regardless of external network controls |
+| `CODE_SERVER_CERT` | generated | enum | Encrypts browser traffic without committing certificate material or requiring managed public PKI |
+| `CODE_SERVER_FIREWALL_MANAGEMENT` | off | toggle | Network reachability and interface trust are operator-owned and platform-specific |
+
 ## Shell
 
 | Parameter | Value | Unit | Rationale |
@@ -172,6 +203,7 @@ Parameters serve three purposes:
 
 | Version | Date | Summary |
 |---------|------|---------|
+| 2.1.0 | 2026-07-31 | Added Python 3.10+ runtime provisioning and macOS Visual Studio Code, Ubuntu/Debian code-server, managed-layer, extension, Vim, bind, authentication, and certificate parameters. |
 | 2.0.0 | 2026-07-15 | Removed parameters owned solely by retired catalog workflows. |
 | 1.7.0 | 2026-07-14 | Added canonical Skill Library paths, naming, discovery, Reference-depth, and section-order parameters. |
 | 1.6.0 | 2026-07-05 | Added Herdr install, config, alias, SSH multiplexer, pane history, and shared skill parameters for the Herdr replacement path. |

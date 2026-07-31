@@ -1,9 +1,9 @@
 # Symlink Manager
 
-> **Version**: 1.5.0
-> **Last Updated**: 2026-07-15
+> **Version**: 1.6.0
+> **Last Updated**: 2026-07-31
 > **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md)
-> **Depended By**: [AI Agent Config](ai-agent-config.md), [Herdr Config](herdr-config.md), [Install Orchestrator](install-orchestrator.md), [Neovim Config](neovim-config.md), [Shell Config](shell-config.md), [Tmux Config](tmux-config.md)
+> **Depended By**: [AI Agent Config](ai-agent-config.md), [Herdr Config](herdr-config.md), [Install Orchestrator](install-orchestrator.md), [Neovim Config](neovim-config.md), [VS Code Configuration](vscode-config.md), [Shell Config](shell-config.md), [Tmux Config](tmux-config.md)
 
 ---
 
@@ -18,6 +18,8 @@ The system MUST handle three concerns:
 3. **Idempotent deployment** — producing the same result whether run once or many times, without data loss
 
 The Symlink Manager is not a standalone program. It is a behavioral contract embedded within the install orchestrator. Every module that creates symlinks MUST adhere to the rules defined here.
+
+The VS Code managed-layer mappings introduced in version 1.6.0 are approved desired behavior and are not yet implemented.
 
 ---
 
@@ -65,6 +67,12 @@ The complete set of symlink deployments the system MUST establish. Most entries 
 | **Herdr** | ~/.config/herdr/config.toml | herdr/config.toml | replace-symlink | Source file must exist |
 | **Tmux** | ~/.tmux.conf | tmux/.tmux.conf | replace-symlink | Always |
 | **Neovim** | ~/.config/nvim/lua/custom | nvim/custom | replace-symlink (directory) | Always |
+| **VS Code Desktop** | ~/Library/Application Support/Code/User/settings.json | vscode/settings.json | replace-symlink | macOS `vscode_config` only |
+| **VS Code Desktop** | ~/Library/Application Support/Code/User/keybindings.json | vscode/keybindings.json | replace-symlink | macOS `vscode_config` only |
+| **VS Code Desktop** | ~/Library/Application Support/Code/User/snippets | vscode/snippets | replace-symlink (directory) | macOS `vscode_config` only |
+| **code-server** | ~/.local/share/code-server/User/settings.json | vscode/settings.json | replace-symlink | Ubuntu/Debian `code_server` only |
+| **code-server** | ~/.local/share/code-server/User/keybindings.json | vscode/keybindings.json | replace-symlink | Ubuntu/Debian `code_server` only |
+| **code-server** | ~/.local/share/code-server/User/snippets | vscode/snippets | replace-symlink (directory) | Ubuntu/Debian `code_server` only |
 | **Lazygit** | ~/.config/lazygit/config.yml (Linux) or ~/Library/Application Support/lazygit/config.yml (macOS) | lazygit/config.yml | replace-symlink | Always |
 | **Yazi** | ~/.config/yazi/yazi.toml | yazi/yazi.toml | replace-symlink | Source file must exist |
 | **Yazi** | ~/.config/yazi/keymap.toml | yazi/keymap.toml | replace-symlink | Source file must exist |
@@ -206,6 +214,14 @@ The neovim custom layer has special handling:
 
 Additionally, if the kickstart `init.lua` exists, the system MUST uncomment the custom plugin import line to ensure the custom layer is loaded. This is a text transformation on a non-symlinked file, separate from the symlink deployment.
 
+#### VS Code Managed Layer Deployment
+
+The VS Code managed layer MUST deploy individual settings and keybindings files plus one directory-level snippets symlink. The complete Visual Studio Code or code-server User directory MUST NOT be symlinked because it contains mutable history, profile, workspace, synchronization, and extension state.
+
+Desktop and code-server targets MUST resolve to the same three repository sources. Platform-specific target paths are selected by the owning module. Existing non-symlink files and snippets directories MUST be timestamp-backed up before deployment. Extension manifests are consumed by extension reconciliation and MUST NOT be deployed as symlinks.
+
+Local code-server configuration, including bind address, password, and certificate state, MUST remain a regular local file outside symlink ownership. If reconciliation modifies that local file, the owning module MUST preserve generated secrets and back up the file before unsafe replacement.
+
 #### Pi Sandbox Script Deployment
 
 The Pi sandbox runner script (`pis`) is symlinked from the dotfiles repository into `~/.local/bin/`. The system MUST ensure `~/.local/bin/` exists before creating the symlink. If a non-symlink file exists at the target, it MUST be backed up before replacement.
@@ -239,6 +255,8 @@ Claude, Codex, and Copilot use directory-level symlinks to the canonical source.
 | **Existing symlink points to wrong target** | A target path has a symlink pointing to a different source than expected | Not explicitly detected — treated the same as any existing symlink | Remove the existing symlink and create a new one pointing to the correct source | This is the correct behavior; re-running the deploy fixes the symlink |
 | **Dotfiles repo moved or removed** | Symlinks point to a dotfiles directory that no longer exists at the expected path | Symlinks become dangling; attempting to follow them fails | Not detected by the Symlink Manager at deploy time — this is an operational concern | Move the dotfiles repo back to its expected path or re-run install from the new location |
 | **Codex config symlink leakage** | The Codex config file at `~/.codex/config.toml` is a symlink instead of a regular file | Symlink test on the target path | If a symlink is detected, remove it and copy the template as a regular file (preserve mode) | This automatic conversion prevents local writes from flowing back to the repository |
+| **Whole VS Code User directory managed** | A deployment target would replace the complete editor User directory | Mapping validation | Reject deployment; only settings, keybindings, and snippets are managed | Remove broad mapping and rerun supported module |
+| **Local code-server secret at managed target** | A proposed symlink would include password or certificate state | Ownership validation | Reject secret-bearing mapping | Keep state in local code-server configuration/data paths |
 
 ---
 
@@ -421,12 +439,41 @@ Preconditions: Clean system; dotfiles repo is populated
 Input: Run full install, then re-run the same full install
 Expected Output: First run: all symlinks created, backups made for any conflicting files. Second run: all symlinks remain correct, no new backups created, no errors, and install steps either report existing state or complete their idempotent update path successfully
 
+### TS-SYMLK-019: VS Code deploys only managed surfaces
+Category: Integration
+Priority: Critical
+Preconditions: Supported editor target; populated vscode managed layer
+Input: Run owning configuration module
+Expected Output: Settings and keybindings are file symlinks; snippets is one directory symlink; the containing User directory remains a regular directory
+
+### TS-SYMLK-020: Both editor targets share canonical sources
+Category: Integration
+Priority: High
+Preconditions: Desktop and code-server targets are configured on their supported hosts
+Input: Resolve managed symlinks
+Expected Output: Both targets resolve settings, keybindings, and snippets to the same three repository sources
+
+### TS-SYMLK-021: Existing VS Code snippets are preserved
+Category: Integration
+Priority: Critical
+Preconditions: Unmanaged snippets directory contains user snippets
+Input: Run owning configuration module
+Expected Output: Existing snippets directory is timestamp-backed up before the managed directory symlink is deployed
+
+### TS-SYMLK-022: code-server secrets remain local
+Category: Unit
+Priority: Critical
+Preconditions: Local code-server config contains generated password and bind value
+Input: Run `code_server` repeatedly
+Expected Output: Local config remains a regular file, password is preserved, and no secret-bearing path becomes a repository symlink
+
 ---
 
 ## Changelog
 
 | Version | Date | Summary |
 |---------|------|---------|
+| 1.6.0 | 2026-07-31 | Added individual macOS Visual Studio Code and Ubuntu/Debian code-server managed-layer mappings while keeping complete User directories and code-server secrets local. |
 | 1.5.0 | 2026-07-15 | Removed mutable Claude settings from symlink ownership; they are local runtime state managed by the Claude installer. |
 | 1.4.0 | 2026-07-15 | Removed mutable Pi settings from symlink ownership; they are local runtime state managed by the Pi installer. |
 | 1.3.2 | 2026-07-14 | Corrected the four-agent shared-skill topology and Pi visibility-layer contract. |
