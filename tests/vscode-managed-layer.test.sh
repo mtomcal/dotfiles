@@ -329,8 +329,16 @@ CREDENTIAL_SIGNATURES=(
     '://[^/[:space:]@"]+:[^/[:space:]@"]+@'
 )
 
-# Names that introduce a secret when they are assigned a literal value.
-SECRET_NAME='(api[_-]?key|secret|password|passwd|token|credential|authorization|access[_-]?key)'
+# Names whose assignment to any literal value is a secret. There is no
+# legitimate reason for managed data to assign a literal to one of these.
+STRICT_SECRET_NAME='(password|passwd|credential|client[_-]?secret|secret|api[_-]?key|access[_-]?key|private[_-]?key)'
+
+# Names that also occur in ordinary parser, lexer, and protocol code, where
+# `token` routinely holds a syntax kind rather than a credential. These need
+# entropy, a provider prefix, or an authorization context before they count.
+GENERIC_SECRET_NAME='(token|authorization)'
+
+SECRET_NAME="(${STRICT_SECRET_NAME}|${GENERIC_SECRET_NAME})"
 
 # Distinguishes a literal secret from an identifier or a reference. Real
 # secrets carry entropy markers -- a digit, strong punctuation, or unusual
@@ -338,28 +346,23 @@ SECRET_NAME='(api[_-]?key|secret|password|passwd|token|credential|authorization|
 # `${1:placeholder}` do not.
 value_is_secret_like() {
     local value="$1"
-    local quoted="$2"
+    local class="$2"
 
-    [[ ${#value} -ge 6 ]] || return 1
-    # Environment-variable and snippet-placeholder references are not literals.
+    [[ -n "$value" ]] || return 1
+
+    # References and expressions are never literal secret material.
     case "$value" in
-        '$'* | '%'* | *'${'*) return 1 ;;
-        *'('*) return 1 ;;      # a call expression, not a literal
-        *'<'* | *'>'*) return 1 ;; # a documentation placeholder such as <token>
+        '$'* | '%'* | *'${'*) return 1 ;; # environment or snippet reference
+        *'('*) return 1 ;;                # a call expression
+        *'<'* | *'>'*) return 1 ;;        # a documented placeholder, e.g. <token>
+        *'{'* | *'}'*) return 1 ;;        # an object or interpolation literal
     esac
 
-    # A quoted literal assigned to a secret name is a secret, including
-    # passphrases that contain spaces.
-    [[ "$quoted" == "quoted" ]] && return 0
+    # A name that can only mean a credential is a secret whenever it is given
+    # any literal at all, including a spaces-only passphrase.
+    [[ "$class" == "strict" ]] && return 0
 
-    # Unquoted prose is not a credential, so a multi-word bare value must carry
-    # an entropy marker before it counts.
-    if [[ "$value" =~ [[:space:]] ]]; then
-        [[ "$value" =~ [0-9] ]] && return 0
-        [[ "$value" =~ [\&\!\#\%\^\*\?\@\|\+/=] ]] && return 0
-        return 1
-    fi
-
+    # Generic names need evidence beyond the name itself.
     [[ ${#value} -ge 20 ]] && return 0
     [[ "$value" =~ [0-9] ]] && return 0
     [[ "$value" =~ [\&\!\#\%\^\*\?\@\|\+/=] ]] && return 0
@@ -372,7 +375,7 @@ value_is_secret_like() {
 json_declares_secret_literal() {
     local file="$1"
 
-    jq -e --arg re "^${SECRET_NAME}$" '
+    jq -e --arg re "^${STRICT_SECRET_NAME}$" '
         [paths(scalars) as $p | {k: ($p[-1] | tostring), v: getpath($p)}]
         | map(select(
             (.k | ascii_downcase | test($re))
@@ -384,7 +387,7 @@ json_declares_secret_literal() {
 
 contains_credential_material() {
     local file="$1"
-    local pattern candidate value quoted scan
+    local pattern candidate value class name_pattern scan
 
     case "$file" in
         *.json | *.code-snippets)
@@ -409,25 +412,29 @@ contains_credential_material() {
         fi
     done
 
-    while IFS= read -r candidate; do
-        [[ -n "$candidate" ]] || continue
-        value="${candidate#*[:=]}"
-        # Trim surrounding whitespace, then a matched pair of quotes.
-        value="${value#"${value%%[![:space:]]*}"}"
-        value="${value%"${value##*[![:space:]]}"}"
-        quoted="bare"
-        if [[ ${#value} -ge 2 && "${value:0:1}" == "\"" && "${value: -1}" == "\"" ]]; then
-            value="${value:1:${#value}-2}"
-            quoted="quoted"
-        elif [[ ${#value} -ge 2 && "${value:0:1}" == "'" && "${value: -1}" == "'" ]]; then
-            value="${value:1:${#value}-2}"
-            quoted="quoted"
+    for class in strict generic; do
+        if [[ "$class" == "strict" ]]; then
+            name_pattern="$STRICT_SECRET_NAME"
+        else
+            name_pattern="$GENERIC_SECRET_NAME"
         fi
-        if value_is_secret_like "$value" "$quoted"; then
-            [[ "$scan" != "$file" ]] && rm -f "$scan"
-            return 0
-        fi
-    done < <(grep -oEi -- "${SECRET_NAME}\"?'?[[:space:]]*[:=][[:space:]]*(\"[^\"]{1,200}\"|'[^']{1,200}'|[^[:space:]\"',;][^\"',;]{0,200})" "$scan" || true)
+        while IFS= read -r candidate; do
+            [[ -n "$candidate" ]] || continue
+            value="${candidate#*[:=]}"
+            # Trim surrounding whitespace, then a matched pair of quotes.
+            value="${value#"${value%%[![:space:]]*}"}"
+            value="${value%"${value##*[![:space:]]}"}"
+            if [[ ${#value} -ge 2 && "${value:0:1}" == "\"" && "${value: -1}" == "\"" ]]; then
+                value="${value:1:${#value}-2}"
+            elif [[ ${#value} -ge 2 && "${value:0:1}" == "'" && "${value: -1}" == "'" ]]; then
+                value="${value:1:${#value}-2}"
+            fi
+            if value_is_secret_like "$value" "$class"; then
+                [[ "$scan" != "$file" ]] && rm -f "$scan"
+                return 0
+            fi
+        done < <(grep -oEi -- "${name_pattern}\"?'?[[:space:]]*[:=][[:space:]]*(\"[^\"]{1,200}\"|'[^']{1,200}'|[^[:space:]\"',;][^\"',;]{0,200})" "$scan" || true)
+    done
 
     if [[ "$scan" != "$file" ]]; then
         rm -f "$scan"
@@ -438,7 +445,7 @@ contains_credential_material() {
 # --- neutrality vocabulary ----------------------------------------------------
 
 # Private-network products, kept in one place so every scan shares it.
-NETWORK_PRODUCT_PATTERN='tailscale|headscale|zerotier|wireguard|wg-quick|ngrok|cloudflared|cloudflare tunnel|netbird|twingate|openvpn|nebula|zrok|localtunnel|pagekite|\.ts\.net'
+NETWORK_PRODUCT_PATTERN='tailscale|headscale|zerotier|wireguard|wg-quick|ngrok|cloudflared|cloudflare tunnel|netbird|twingate|openvpn|nebula|zrok|localtunnel|pagekite|boringproxy|\bfrps?\b|\bchisel\b|rathole|\bbore\b|teleport|netmaker|innernet|softether|pritunl|\btinc\b|\.ts\.net|\.tailnet'
 
 # Private endpoints and host identities that would tie managed data to one
 # machine or network.
@@ -446,22 +453,51 @@ PRIVATE_ENDPOINT_PATTERNS=(
     '([0-9]{1,3}\.){3}[0-9]{1,3}'
     '\.(local|internal|lan|intranet|corp|home\.arpa)([^A-Za-z0-9]|$)'
     '://[A-Za-z0-9._-]+:[0-9]{2,5}'
+    # A remote-access command carrying a destination names a specific machine,
+    # whether that destination is a bare host, user@host, or host:path.
+    '(^|[^A-Za-z0-9_-])(ssh|scp|sftp|rsync)[[:space:]]+(-[A-Za-z0-9]+[[:space:]]+)*[A-Za-z0-9_][A-Za-z0-9_.@-]*'
 )
 
 # Behavior that only works on one operating system. Shared managed data must
 # stay usable on both the macOS desktop target and Linux code-server.
 OS_SPECIFIC_PATTERNS=(
+    # macOS command families
     'open -a '
-    'osascript'
+    'osascript|automator'
     'pbcopy|pbpaste'
-    'defaults write'
+    'defaults write|defaults read'
+    '(^|[^A-Za-z0-9_-])(launchctl|diskutil|softwareupdate|sw_vers|plutil|mdfind|mdls|networksetup|scutil|codesign|xcrun|xcode-select|say)([^A-Za-z0-9_-]|$)'
+    '(^|[^A-Za-z0-9_-])(brew|port)[[:space:]]+(install|upgrade|list)'
+    'security find-generic-password|security add-generic-password'
     '/Applications/'
     '~/Library/|/Library/Application Support'
-    'xdg-open|wslview|gnome-open'
-    'powershell|cmd\.exe|explorer\.exe'
-    '%USERPROFILE%|%APPDATA%'
+    # Linux command families
+    '(^|[^A-Za-z0-9_-])(systemctl|journalctl|loginctl|udevadm|ldconfig|update-alternatives|dpkg|snap)([^A-Za-z0-9_-]|$)'
+    '(^|[^A-Za-z0-9_-])(apt|apt-get|dnf|yum|pacman|zypper)[[:space:]]+(install|update|upgrade|remove)'
+    'xdg-open|wslview|gnome-open|kde-open'
+    'xclip|xsel|wl-copy|wl-paste'
+    '/etc/systemd/|/proc/|/sys/devices/'
+    # Windows command families
+    'powershell|cmd\.exe|explorer\.exe|reg add|reg query'
+    '%USERPROFILE%|%APPDATA%|%LOCALAPPDATA%'
     '[A-Za-z]:\\\\'
 )
+
+# One scan combining every neutrality rule, so a single fixture-driven test can
+# prove the rules themselves rather than only their current absence.
+content_is_target_specific() {
+    local file="$1"
+    local pattern
+
+    for pattern in "${OS_SPECIFIC_PATTERNS[@]}"; do
+        grep -Eqi -- "$pattern" "$file" && return 0
+    done
+    for pattern in "${PRIVATE_ENDPOINT_PATTERNS[@]}"; do
+        grep -Eq -- "$pattern" "$file" && return 0
+    done
+    grep -Eqi -- "$NETWORK_PRODUCT_PATTERN" "$file" && return 0
+    return 1
+}
 
 # Everything the repository would own under vscode/, including sources that are
 # staged for a first commit but not yet tracked.
@@ -521,7 +557,11 @@ test_credential_detector_separates_real_material_from_security_vocabulary() {
         'headers.authorization = buildAuth(user);'
         'let accessToken = response.token;'
         '{"Doc":{"prefix":"d","body":["Authorization: Bearer <token>"]}}'
-        '{"Doc":{"prefix":"d","body":["// password: see the team handbook"]}}'
+        '{"token":"identifier"}'
+        '{"Parse":{"prefix":"tok","body":["const t = {\"token\":\"identifier\"};"]}}'
+        '{"Parse":{"prefix":"tok","body":["if (token == COMMA) next();"]}}'
+        'token: keyword'
+        'authorization: required'
     )
     local malicious=(
         'AUTH_TOKEN=abc123'
@@ -542,6 +582,11 @@ test_credential_detector_separates_real_material_from_security_vocabulary() {
         "db_password = 'p@ssw0rd!'"
         '{"Leak":{"prefix":"p","body":["password: \"correct horse battery staple\""]}}'
         '{"Leak":{"prefix":"p","body":["password: hunter two 99!"]}}'
+        'password: correct horse battery staple'
+        '{"Leak":{"prefix":"p","body":["password: correct horse battery staple"]}}'
+        'passwd: opensesame'
+        'credential: myplainvalue'
+        '{"Leak":{"prefix":"p","body":["token: ghp_0123456789abcdefghijABCDEFGHIJ"]}}'
     )
 
     # JSON-shaped fixtures are written with a JSON name so the structural
@@ -863,6 +908,162 @@ test_later_slice_artifacts_are_not_pre_authorized() {
         [[ "$authorized" != "vscode/capture.sh" ]] ||
             fail "Slice 004's capture command must not be pre-authorized by this slice"
     done
+}
+
+test_neutrality_scan_rejects_host_product_and_os_specific_content() {
+    local tmp
+    tmp="$(new_tmp)"
+
+    local target_specific=(
+        'ssh buildbox'
+        'ssh -p 2222 buildbox'
+        'ssh deploy@buildbox'
+        'scp file deploybox:/tmp'
+        'sftp releases.example.internal'
+        'rsync -av src backup-host:/srv'
+        'start boringproxy client'
+        'chisel client https://relay:9090 R:8080'
+        'frp -c frpc.ini'
+        'launchctl list'
+        'launchctl unload ~/Library/LaunchAgents/x.plist'
+        'systemctl --user status code-server'
+        'journalctl -u code-server'
+        'apt-get install code'
+        'brew install --cask visual-studio-code'
+        'pbcopy < file'
+        'xdg-open README.md'
+        'xclip -selection clipboard'
+        'osascript -e beep'
+        'diskutil list'
+        'security find-generic-password -s code'
+        'reg add HKCU\Software'
+        'curl https://10.42.0.7:8443/healthz'
+        'ping desk.local'
+    )
+    # Target-neutral content that must not be mistaken for machine coupling.
+    local neutral=(
+        '$CURRENT_YEAR-$CURRENT_MONTH-$CURRENT_DATE'
+        '$LINE_COMMENT TODO: $1'
+        'const value = compute(input);'
+        'def main() -> None:'
+        'git commit --amend'
+        'npm run build'
+        'print("hello world")'
+        '// open a new editor tab'
+        'SELECT * FROM users WHERE id = 1;'
+        'import { useState } from "react";'
+    )
+
+    local line
+    for line in "${target_specific[@]}"; do
+        printf '%s\n' "$line" >"$tmp/neutrality.txt"
+        if ! content_is_target_specific "$tmp/neutrality.txt"; then
+            fail "neutrality scan missed target-specific content: $line"
+        fi
+    done
+    for line in "${neutral[@]}"; do
+        printf '%s\n' "$line" >"$tmp/neutrality.txt"
+        if content_is_target_specific "$tmp/neutrality.txt"; then
+            fail "neutrality scan false-positives on target-neutral content: $line"
+        fi
+    done
+}
+
+# --- Snippet structure and approved content ----------------------------------
+
+# Problems reported by the VS Code snippet schema, one per line.
+snippet_schema_problems() {
+    jq -r '
+        def is_string_or_string_array:
+            type == "string" or (type == "array" and length > 0 and all(.[]; type == "string"));
+        if type != "object" then "root is \(type), expected an object"
+        else
+            to_entries[]
+            | .key as $name
+            | if (.value | type) != "object" then "\($name): definition is \(.value | type), expected an object"
+              elif (.value | has("body") | not) then "\($name): missing required body"
+              elif (.value.body | is_string_or_string_array | not) then "\($name): body must be a string or non-empty string array"
+              elif (.value | has("prefix")) and (.value.prefix | is_string_or_string_array | not) then "\($name): prefix must be a string or non-empty string array"
+              elif (.value | has("description")) and (.value.description | type != "string") then "\($name): description must be a string"
+              elif (.value | has("scope")) and (.value.scope | type != "string") then "\($name): scope must be a string"
+              else (.value | keys - ["prefix", "body", "description", "scope", "isFileTemplate"])
+                   | if length > 0 then "\($name): unsupported fields \(.)" else empty end
+              end
+        end' "$1" 2>/dev/null || printf 'unparseable snippet document\n'
+}
+
+test_snippet_definitions_satisfy_the_vscode_snippet_schema() {
+    local file problems
+    while IFS= read -r file; do
+        [[ -n "$file" ]] || continue
+        problems="$(snippet_schema_problems "$DOTFILES_DIR/$file")"
+        [[ -z "$problems" ]] || fail "invalid snippet definition in $file: $problems"
+    done < <(managed_tracked_files | grep '^vscode/snippets/' || true)
+}
+
+test_snippet_schema_rejects_malformed_definitions() {
+    local tmp
+    tmp="$(new_tmp)"
+
+    local invalid=(
+        '{"Broken":42}'
+        '{"Broken":"just a string"}'
+        '{"Broken":null}'
+        '{"Broken":["a","b"]}'
+        '{"NoBody":{"prefix":"x"}}'
+        '{"BadBody":{"prefix":"x","body":7}}'
+        '{"BadBody":{"prefix":"x","body":[]}}'
+        '{"BadBody":{"prefix":"x","body":["ok",5]}}'
+        '{"BadPrefix":{"prefix":9,"body":["ok"]}}'
+        '{"BadDesc":{"prefix":"x","body":["ok"],"description":5}}'
+        '{"BadScope":{"prefix":"x","body":["ok"],"scope":["js"]}}'
+        '{"Unknown":{"prefix":"x","body":["ok"],"language":"js"}}'
+        '["not","an","object"]'
+        '"scalar root"'
+    )
+    local valid=(
+        '{"Ok":{"prefix":"x","body":"one line"}}'
+        '{"Ok":{"prefix":"x","body":["a","b"]}}'
+        '{"Ok":{"prefix":["x","y"],"body":["a"],"description":"d","scope":"javascript"}}'
+        '{"Ok":{"body":["a"]}}'
+    )
+
+    local document
+    for document in "${invalid[@]}"; do
+        printf '%s\n' "$document" >"$tmp/snippet.code-snippets"
+        [[ -n "$(snippet_schema_problems "$tmp/snippet.code-snippets")" ]] ||
+            fail "snippet schema accepted an invalid definition: $document"
+    done
+    for document in "${valid[@]}"; do
+        printf '%s\n' "$document" >"$tmp/snippet.code-snippets"
+        [[ -z "$(snippet_schema_problems "$tmp/snippet.code-snippets")" ]] ||
+            fail "snippet schema rejected a valid definition: $document"
+    done
+}
+
+# The approved snippet unit, as name/prefix/body triples. Locking the content
+# makes neutrality a property of reviewed data rather than of pattern coverage.
+approved_snippet_contract() {
+    cat <<'EOF'
+global.code-snippets	Insert ISO 8601 date	isodate	$CURRENT_YEAR-$CURRENT_MONTH-$CURRENT_DATE
+global.code-snippets	Insert TODO marker	todo	$LINE_COMMENT TODO: $1
+EOF
+}
+
+actual_snippet_contract() {
+    local file
+    while IFS= read -r file; do
+        [[ -n "$file" ]] || continue
+        jq -r --arg f "${file##*/}" '
+            to_entries[]
+            | "\($f)\t\(.key)\t\(.value.prefix | if type == "array" then join(",") else . end)\t\(.value.body | if type == "array" then join("\\n") else . end)"' \
+            "$DOTFILES_DIR/$file"
+    done < <(managed_tracked_files | grep '^vscode/snippets/' || true)
+}
+
+test_snippets_match_the_approved_snippet_contract() {
+    assert_set_equal 'approved snippet contract' \
+        "$(actual_snippet_contract)" "$(approved_snippet_contract)"
 }
 
 # --- Test-harness hygiene ----------------------------------------------------
