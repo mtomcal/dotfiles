@@ -46,7 +46,13 @@ OS=""
 PACKAGE_MANAGER=""
 SELECTED_MODULES=()
 FAILED_MODULES=()
+# Modules whose install/configure function actually ran and succeeded.
+COMPLETED_MODULES=()
 CODEX_CONFIG_TEMPLATE_MODE="preserve"
+# Installation profile requested on the command line; expanded after OS detection.
+REQUESTED_PROFILE=""
+# Runtime-only code-server bind override; never written to a tracked file.
+CODE_SERVER_BIND=""
 
 # ===========================
 # Core Functions
@@ -1708,6 +1714,128 @@ install_copilot() {
 }
 
 # ===========================
+# Editor and Runtime Modules
+# ===========================
+#
+# These modules own the platform gate and failure reporting for the selectable
+# editor/runtime surface. Their provisioning internals are added by the
+# following implementation steps; until then they report an unimplemented
+# module failure instead of installing a substitute.
+
+install_python() {
+    print_header "Installing Python"
+    print_error "Python provisioning is not implemented yet"
+    return 1
+}
+
+install_vscode() {
+    print_header "Installing Visual Studio Code"
+
+    if [ "$OS" != "macos" ]; then
+        print_error "Visual Studio Code Desktop is supported on macOS only (detected: ${OS:-unknown})"
+        return 1
+    fi
+
+    print_error "Visual Studio Code Desktop installation is not implemented yet"
+    return 1
+}
+
+configure_vscode() {
+    print_header "Configuring Visual Studio Code"
+
+    if [ "$OS" != "macos" ]; then
+        print_error "The VS Code managed configuration is supported on macOS only (detected: ${OS:-unknown})"
+        return 1
+    fi
+
+    print_error "VS Code managed configuration is not implemented yet"
+    return 1
+}
+
+install_code_server() {
+    print_header "Installing code-server"
+
+    if [ "$OS" != "ubuntu" ]; then
+        print_error "code-server is supported on Ubuntu/Debian only (detected: ${OS:-unknown})"
+        return 1
+    fi
+
+    print_error "code-server provisioning is not implemented yet"
+    return 1
+}
+
+# ===========================
+# code-server Bind Value
+# ===========================
+
+# Split an `address:port` bind value into "host port" on stdout.
+# Accepts a hostname/IPv4 address, or a bracketed IPv6 address, plus a port in
+# 1..65535. Returns non-zero without output for any other shape.
+split_code_server_bind() {
+    local bind="$1"
+    local host
+    local port
+
+    if [[ "$bind" == \[* ]]; then
+        [[ "$bind" =~ ^\[([0-9A-Fa-f:.%]+)\]:([0-9]{1,5})$ ]] || return 1
+    else
+        [[ "$bind" =~ ^([A-Za-z0-9._-]+):([0-9]{1,5})$ ]] || return 1
+    fi
+
+    host="${BASH_REMATCH[1]}"
+    port="${BASH_REMATCH[2]}"
+
+    if [ "$port" -lt 1 ] || [ "$port" -gt 65535 ]; then
+        return 1
+    fi
+
+    printf '%s %s\n' "$host" "$port"
+}
+
+# ===========================
+# Installation Profiles
+# ===========================
+
+# Expand a standard installation profile into its module list.
+# Must run after detect_os: macOS-only editor modules are added here rather
+# than selected and skipped later. Standard profiles never include code_server.
+expand_profile() {
+    local profile="$1"
+    local common=()
+    local module
+
+    case "$profile" in
+        full)
+            common=(base_tools neovim nvim_config tmux_config herdr herdr_config zsh_ohmyzsh zsh_config python golang_full nodejs tui_tools codex codex_sandbox claude playwright pi pi_sandbox copilot herdr_integrations)
+            ;;
+        minimal)
+            common=(base_tools neovim nvim_config tmux_config herdr herdr_config herdr_integrations)
+            ;;
+        work)
+            common=(base_tools neovim nvim_config tmux_config herdr herdr_config python tui_tools copilot herdr_integrations)
+            ;;
+        *)
+            print_error "Unknown profile: $profile" >&2
+            return 1
+            ;;
+    esac
+
+    for module in "${common[@]}"; do
+        printf '%s\n' "$module"
+    done
+
+    # macOS-only additions; other platforms omit them rather than selecting
+    # and skipping them later.
+    if [ "$OS" == "macos" ]; then
+        case "$profile" in
+            full|work)
+                printf '%s\n' vscode vscode_config
+                ;;
+        esac
+    fi
+}
+
+# ===========================
 # Dependency Resolution
 # ===========================
 
@@ -1843,6 +1971,23 @@ resolve_dependencies() {
                 fi
                 resolved+=("copilot")
                 ;;
+            "vscode_config")
+                # The managed desktop layer needs the official editor CLI, which
+                # only exists on the supported desktop platform.
+                if [ "$OS" == "macos" ] && ! command -v code &> /dev/null; then
+                    print_warning "Adding Visual Studio Code (required by VS Code configuration)" >&2
+                    resolved+=("vscode")
+                fi
+                resolved+=("vscode_config")
+                ;;
+            "code_server")
+                # The official code-server installer needs curl.
+                if ! command -v curl &> /dev/null; then
+                    print_warning "Adding curl (required by code-server)" >&2
+                    resolved+=("base_tools")
+                fi
+                resolved+=("code_server")
+                ;;
             "playwright")
                 # Playwright CLI needs npm (Node.js)
                 if ! command -v npm &> /dev/null; then
@@ -1859,6 +2004,63 @@ resolve_dependencies() {
 
     # Remove duplicates while preserving order
     printf '%s\n' "${resolved[@]}" | awk '!seen[$0]++'
+}
+
+# ===========================
+# Module Catalog
+# ===========================
+
+# Single source of module identifiers and human-readable labels, emitted as
+# "name:label" lines. Indexed output keeps the menu Bash 3.2 compatible.
+module_catalog() {
+    cat << 'EOF'
+base_tools:Base Tools (git, curl, tmux, zsh, etc.)
+neovim:Neovim 0.12+
+nvim_config:Neovim Configuration (kickstart + custom)
+tmux_config:Tmux Configuration
+herdr:Herdr Terminal Workspace Manager
+herdr_config:Herdr Configuration
+herdr_integrations:Herdr Agent Integrations
+zsh_ohmyzsh:Zsh + Oh My Zsh
+zsh_config:Zsh Custom Configuration
+python:Python 3.10+ (native interpreter + venv)
+golang:Go 1.24+ Toolchain (basic)
+golang_full:Go Development (toolchain + LSP + tools + govulncheck)
+nodejs:Node.js LTS (fnm)
+codex:Codex CLI
+codex_sandbox:Codex Sandbox (Docker)
+claude:Claude Code CLI
+pi:Pi Coding Agent
+pi_sandbox:Pi Sandbox (Docker)
+tui_tools:TUI Tools (lazygit, yazi, zoxide)
+playwright:Playwright CLI (browser automation)
+copilot:GitHub Copilot CLI
+vscode:Visual Studio Code Desktop (macOS)
+vscode_config:VS Code Managed Configuration (macOS)
+code_server:code-server Browser Endpoint (Ubuntu/Debian)
+EOF
+}
+
+# Human-readable label for one module; unknown modules fall back to their name
+# so a new module can never be displayed as nothing.
+module_label() {
+    local key="$1"
+    local line
+
+    while IFS= read -r line; do
+        if [ "${line%%:*}" == "$key" ]; then
+            printf '%s\n' "${line#*:}"
+            return 0
+        fi
+    done < <(module_catalog)
+
+    printf '%s\n' "$key"
+}
+
+# Modules offered by the custom menu. `golang` is omitted because the menu
+# offers the full Go development module instead.
+custom_menu_options() {
+    module_catalog | grep -v '^golang:'
 }
 
 # ===========================
@@ -1889,13 +2091,13 @@ show_profile_menu() {
 
     case $choice in
         1)
-            SELECTED_MODULES=(base_tools neovim nvim_config tmux_config herdr herdr_config zsh_ohmyzsh zsh_config golang_full nodejs tui_tools codex codex_sandbox claude playwright pi pi_sandbox copilot herdr_integrations)
+            SELECTED_MODULES=($(expand_profile full))
             ;;
         2)
-            SELECTED_MODULES=(base_tools neovim nvim_config tmux_config herdr herdr_config herdr_integrations)
+            SELECTED_MODULES=($(expand_profile minimal))
             ;;
         3)
-            SELECTED_MODULES=(base_tools neovim nvim_config tmux_config herdr herdr_config tui_tools copilot herdr_integrations)
+            SELECTED_MODULES=($(expand_profile work))
             ;;
         4)
             show_custom_menu
@@ -1917,27 +2119,13 @@ show_custom_menu() {
     print_header "Custom Component Selection"
 
     # Parallel arrays instead of associative array (bash 3.2 compat)
-    local options=(
-        "base_tools:Base Tools (git, curl, tmux, zsh, etc.)"
-        "neovim:Neovim 0.12+"
-        "nvim_config:Neovim Configuration (kickstart + custom)"
-        "tmux_config:Tmux Configuration"
-        "herdr:Herdr Terminal Workspace Manager"
-        "herdr_config:Herdr Configuration"
-        "herdr_integrations:Herdr Agent Integrations"
-        "zsh_ohmyzsh:Zsh + Oh My Zsh"
-        "zsh_config:Zsh Custom Configuration"
-        "golang_full:Go Development (toolchain + LSP + tools)"
-        "nodejs:Node.js LTS (fnm)"
-        "codex:Codex CLI"
-        "codex_sandbox:Codex Sandbox (Docker)"
-        "claude:Claude Code CLI"
-        "pi:Pi Coding Agent"
-        "pi_sandbox:Pi Sandbox (Docker)"
-        "tui_tools:TUI Tools (lazygit, yazi, zoxide)"
-        "playwright:Playwright CLI (browser automation)"
-        "copilot:GitHub Copilot CLI"
-    )
+    local options=()
+    local option_line
+
+    while IFS= read -r option_line; do
+        options+=("$option_line")
+    done < <(custom_menu_options)
+
     local count=${#options[@]}
     local toggle_num=$((count + 1))
     local done_num=$((count + 2))
@@ -2025,28 +2213,7 @@ show_installation_summary() {
 
     echo "The following components will be installed:"
     for module in "${SELECTED_MODULES[@]}"; do
-        case "$module" in
-            "base_tools") echo "  • Base Tools (git, curl, tmux, zsh, etc.)" ;;
-            "neovim") echo "  • Neovim 0.12+" ;;
-            "nvim_config") echo "  • Neovim Configuration (kickstart + custom)" ;;
-            "tmux_config") echo "  • Tmux Configuration" ;;
-            "herdr") echo "  • Herdr Terminal Workspace Manager" ;;
-            "herdr_config") echo "  • Herdr Configuration" ;;
-            "herdr_integrations") echo "  • Herdr Agent Integrations" ;;
-            "zsh_ohmyzsh") echo "  • Zsh + Oh My Zsh" ;;
-            "zsh_config") echo "  • Zsh Custom Configuration" ;;
-            "golang") echo "  • Go 1.24+ Toolchain (basic)" ;;
-            "golang_full") echo "  • Go Development (toolchain + LSP + tools + govulncheck)" ;;
-            "nodejs") echo "  • Node.js LTS (fnm)" ;;
-            "codex") echo "  • Codex CLI" ;;
-            "codex_sandbox") echo "  • Codex Sandbox (Docker)" ;;
-            "claude") echo "  • Claude Code CLI" ;;
-            "pi") echo "  • Pi Coding Agent" ;;
-            "pi_sandbox") echo "  • Pi Sandbox (Docker)" ;;
-            "tui_tools") echo "  • TUI Tools (lazygit, yazi, zoxide)" ;;
-            "playwright") echo "  • Playwright CLI (browser automation)" ;;
-            "copilot") echo "  • GitHub Copilot CLI" ;;
-        esac
+        echo "  • $(module_label "$module")"
     done
 
     echo ""
@@ -2070,117 +2237,101 @@ show_installation_summary() {
 # Module Execution
 # ===========================
 
+# Run one module function, recording success or failure without halting the
+# remaining modules.
+run_module() {
+    local module="$1"
+    local module_function="$2"
+
+    if "$module_function"; then
+        COMPLETED_MODULES+=("$module")
+    else
+        FAILED_MODULES+=("$module")
+    fi
+}
+
 execute_modules() {
     local modules=("$@")
     local run_herdr_integrations=0
 
     for module in "${modules[@]}"; do
         case "$module" in
-            "base_tools")
-                if ! install_base_tools; then
-                    FAILED_MODULES+=("base_tools")
-                fi
-                ;;
-            "neovim")
-                if ! install_neovim; then
-                    FAILED_MODULES+=("neovim")
-                fi
-                ;;
-            "nvim_config")
-                if ! configure_neovim; then
-                    FAILED_MODULES+=("nvim_config")
-                fi
-                ;;
-            "tmux_config")
-                if ! configure_tmux; then
-                    FAILED_MODULES+=("tmux_config")
-                fi
-                ;;
-            "herdr")
-                if ! install_herdr; then
-                    FAILED_MODULES+=("herdr")
-                fi
-                ;;
-            "herdr_config")
-                if ! configure_herdr; then
-                    FAILED_MODULES+=("herdr_config")
-                fi
-                ;;
+            "base_tools") run_module base_tools install_base_tools ;;
+            "neovim") run_module neovim install_neovim ;;
+            "nvim_config") run_module nvim_config configure_neovim ;;
+            "tmux_config") run_module tmux_config configure_tmux ;;
+            "herdr") run_module herdr install_herdr ;;
+            "herdr_config") run_module herdr_config configure_herdr ;;
             "herdr_integrations")
+                # Deferred so agent configs exist before integrations deploy.
                 run_herdr_integrations=1
                 ;;
-            "zsh_ohmyzsh")
-                if ! install_zsh; then
-                    FAILED_MODULES+=("zsh_ohmyzsh")
-                fi
-                ;;
-            "zsh_config")
-                if ! configure_zsh; then
-                    FAILED_MODULES+=("zsh_config")
-                fi
-                ;;
-            "golang")
-                if ! install_golang; then
-                    FAILED_MODULES+=("golang")
-                fi
-                ;;
-            "golang_full")
-                if ! install_golang_full; then
-                    FAILED_MODULES+=("golang_full")
-                fi
-                ;;
-            "nodejs")
-                if ! install_nodejs; then
-                    FAILED_MODULES+=("nodejs")
-                fi
-                ;;
-            "codex")
-                if ! install_codex; then
-                    FAILED_MODULES+=("codex")
-                fi
-                ;;
-            "codex_sandbox")
-                if ! install_codex_sandbox; then
-                    FAILED_MODULES+=("codex_sandbox")
-                fi
-                ;;
-            "claude")
-                if ! install_claude; then
-                    FAILED_MODULES+=("claude")
-                fi
-                ;;
-            "pi")
-                if ! install_pi; then
-                    FAILED_MODULES+=("pi")
-                fi
-                ;;
-            "pi_sandbox")
-                if ! install_pi_sandbox; then
-                    FAILED_MODULES+=("pi_sandbox")
-                fi
-                ;;
-            "tui_tools")
-                if ! install_tui_tools; then
-                    FAILED_MODULES+=("tui_tools")
-                fi
-                ;;
-            "playwright")
-                if ! install_playwright; then
-                    FAILED_MODULES+=("playwright")
-                fi
-                ;;
-            "copilot")
-                if ! install_copilot; then
-                    FAILED_MODULES+=("copilot")
-                fi
+            "zsh_ohmyzsh") run_module zsh_ohmyzsh install_zsh ;;
+            "zsh_config") run_module zsh_config configure_zsh ;;
+            "python") run_module python install_python ;;
+            "golang") run_module golang install_golang ;;
+            "golang_full") run_module golang_full install_golang_full ;;
+            "nodejs") run_module nodejs install_nodejs ;;
+            "codex") run_module codex install_codex ;;
+            "codex_sandbox") run_module codex_sandbox install_codex_sandbox ;;
+            "claude") run_module claude install_claude ;;
+            "pi") run_module pi install_pi ;;
+            "pi_sandbox") run_module pi_sandbox install_pi_sandbox ;;
+            "tui_tools") run_module tui_tools install_tui_tools ;;
+            "playwright") run_module playwright install_playwright ;;
+            "copilot") run_module copilot install_copilot ;;
+            "vscode") run_module vscode install_vscode ;;
+            "vscode_config") run_module vscode_config configure_vscode ;;
+            "code_server") run_module code_server install_code_server ;;
+            *)
+                print_error "Unknown module: $module"
+                FAILED_MODULES+=("$module")
                 ;;
         esac
     done
 
     if [ "$run_herdr_integrations" -eq 1 ]; then
-        if ! configure_herdr_integrations; then
-            FAILED_MODULES+=("herdr_integrations")
+        run_module herdr_integrations configure_herdr_integrations
+    fi
+}
+
+# ===========================
+# Editor Completion Notices
+# ===========================
+
+module_completed() {
+    local wanted="$1"
+    local module
+
+    # Expansion guard keeps an empty list safe on the oldest supported shell.
+    for module in ${COMPLETED_MODULES[@]+"${COMPLETED_MODULES[@]}"}; do
+        if [ "$module" == "$wanted" ]; then
+            return 0
         fi
+    done
+
+    return 1
+}
+
+# Editor guidance that is only true once the corresponding module actually
+# succeeded. Never prints secrets held in local configuration.
+show_editor_completion_notices() {
+    if module_completed "vscode_config"; then
+        print_info "Visual Studio Code Desktop:"
+        echo "  • Settings Sync must be disabled manually for Settings and Extensions."
+        echo "    The installer cannot detect or enforce this state; the repository"
+        echo "    remains the authority for the managed Default Profile."
+    fi
+
+    if module_completed "code_server"; then
+        print_info "code-server browser endpoint:"
+        echo "  • Local configuration (bind address, generated secrets): ~/.config/code-server/config.yaml"
+        echo "  • The endpoint serves HTTPS with a locally generated certificate;"
+        echo "    browsers warn until that certificate is accepted or trusted."
+        echo "  • Password authentication stays enabled; read the generated value"
+        echo "    from the local configuration file rather than from this output."
+        echo "  • Reachability is yours to restrict: expose the listener to trusted"
+        echo "    private networks only. The installer changes no firewall rules."
     fi
 }
 
@@ -2197,20 +2348,24 @@ parse_arguments() {
                 ;;
             --profile)
                 case $2 in
-                    full)
-                        SELECTED_MODULES=(base_tools neovim nvim_config tmux_config herdr herdr_config zsh_ohmyzsh zsh_config golang_full nodejs tui_tools codex codex_sandbox claude playwright pi pi_sandbox copilot herdr_integrations)
-                        ;;
-                    minimal)
-                        SELECTED_MODULES=(base_tools neovim nvim_config tmux_config herdr herdr_config herdr_integrations)
-                        ;;
-                    work)
-                        SELECTED_MODULES=(base_tools neovim nvim_config tmux_config herdr herdr_config tui_tools copilot herdr_integrations)
+                    full|minimal|work)
+                        # Expansion is deferred until after platform detection.
+                        REQUESTED_PROFILE="$2"
                         ;;
                     *)
                         print_error "Unknown profile: $2"
                         exit 1
                         ;;
                 esac
+                shift 2
+                ;;
+            --code-server-bind)
+                # Runtime-only override; validated before any module runs.
+                if [ $# -lt 2 ] || ! split_code_server_bind "$2" >/dev/null; then
+                    print_error "Invalid --code-server-bind value: '${2-}' (expected address:port with port 1-65535, e.g. 0.0.0.0:8080 or [::1]:8080)"
+                    exit 1
+                fi
+                CODE_SERVER_BIND="$2"
                 shift 2
                 ;;
             --help)
@@ -2249,6 +2404,10 @@ Options:
   --modules MODULES    Comma-separated list of modules to install
   --codex-config-template MODE
                        Codex config behavior: preserve (default) or overwrite
+  --code-server-bind ADDRESS:PORT
+                       Override the local code-server bind value for this run
+                       (e.g. 0.0.0.0:8080 or [::1]:8080); stored only in local
+                       code-server configuration, never in tracked files
   --help              Show this help message
 
 Profiles:
@@ -2266,6 +2425,7 @@ Modules:
   herdr_integrations  Herdr agent integrations
   zsh_ohmyzsh         Zsh + Oh My Zsh
   zsh_config          Zsh custom configuration
+  python              Python 3.10+ native interpreter and venv support
   golang              Go 1.24+ toolchain only
   golang_full         Go development (toolchain + LSP + tools + govulncheck)
   nodejs              Node.js LTS (fnm)
@@ -2277,6 +2437,9 @@ Modules:
   pi_sandbox          Pi Sandbox (Docker image + pis script)
   copilot             GitHub Copilot CLI
   playwright          Playwright CLI (browser automation)
+  vscode              Visual Studio Code Desktop (macOS only)
+  vscode_config       VS Code managed configuration (macOS only)
+  code_server         code-server browser endpoint (Ubuntu/Debian, explicit only)
 
 Examples:
   $0                                       # Interactive menu
@@ -2287,6 +2450,7 @@ Examples:
   $0 --modules herdr,herdr_config,herdr_integrations  # Herdr only
   $0 --modules golang_full,neovim          # Go dev environment
   $0 --modules codex --codex-config-template overwrite  # Refresh ~/.codex/config.toml
+  $0 --modules code_server --code-server-bind 0.0.0.0:8080  # Browser endpoint
 
 EOF
 }
@@ -2304,6 +2468,12 @@ main() {
 
     # Core setup (always required)
     detect_os
+
+    # Expand a requested installation profile now that the platform is known.
+    if [ -n "$REQUESTED_PROFILE" ]; then
+        SELECTED_MODULES=($(expand_profile "$REQUESTED_PROFILE"))
+    fi
+
     setup_package_manager
 
     # If no modules selected, show interactive menu
@@ -2347,6 +2517,9 @@ main() {
             echo "  ✓ $module"
         fi
     done
+
+    echo ""
+    show_editor_completion_notices
 
     echo ""
     print_info "Next steps:"

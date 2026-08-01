@@ -13,25 +13,29 @@ test_configure_herdr_links_config() {
     assert_symlink_to "$home/.config/herdr/config.toml" "$DOTFILES_DIR/herdr/config.toml"
 }
 
+select_profile() {
+    local profile="$1"
+
+    parse_arguments --profile "$profile"
+    SELECTED_MODULES=($(expand_profile "$profile"))
+}
+
 test_profiles_include_herdr_modules() {
+    local os
+    local profile
+
     source_install
 
-    parse_arguments --profile minimal
-    [[ " ${SELECTED_MODULES[*]} " == *" herdr "* ]] || fail "minimal profile missing herdr"
-    [[ " ${SELECTED_MODULES[*]} " == *" herdr_config "* ]] || fail "minimal profile missing herdr_config"
-    [[ " ${SELECTED_MODULES[*]} " == *" herdr_integrations "* ]] || fail "minimal profile missing herdr_integrations"
-
-    SELECTED_MODULES=()
-    parse_arguments --profile work
-    [[ " ${SELECTED_MODULES[*]} " == *" herdr "* ]] || fail "work profile missing herdr"
-    [[ " ${SELECTED_MODULES[*]} " == *" herdr_config "* ]] || fail "work profile missing herdr_config"
-    [[ " ${SELECTED_MODULES[*]} " == *" herdr_integrations "* ]] || fail "work profile missing herdr_integrations"
-
-    SELECTED_MODULES=()
-    parse_arguments --profile full
-    [[ " ${SELECTED_MODULES[*]} " == *" herdr "* ]] || fail "full profile missing herdr"
-    [[ " ${SELECTED_MODULES[*]} " == *" herdr_config "* ]] || fail "full profile missing herdr_config"
-    [[ " ${SELECTED_MODULES[*]} " == *" herdr_integrations "* ]] || fail "full profile missing herdr_integrations"
+    for os in ubuntu macos; do
+        OS="$os"
+        for profile in minimal work full; do
+            SELECTED_MODULES=()
+            select_profile "$profile"
+            [[ " ${SELECTED_MODULES[*]} " == *" herdr "* ]] || fail "$os $profile profile missing herdr"
+            [[ " ${SELECTED_MODULES[*]} " == *" herdr_config "* ]] || fail "$os $profile profile missing herdr_config"
+            [[ " ${SELECTED_MODULES[*]} " == *" herdr_integrations "* ]] || fail "$os $profile profile missing herdr_integrations"
+        done
+    done
 }
 
 module_index() {
@@ -75,11 +79,12 @@ assert_claude_herdr_hook() {
 test_agent_profiles_configure_herdr_integrations_after_agents() {
     source_install
 
-    parse_arguments --profile work
+    OS="ubuntu"
+    select_profile work
     assert_module_after herdr_integrations copilot "${SELECTED_MODULES[@]}"
 
     SELECTED_MODULES=()
-    parse_arguments --profile full
+    select_profile full
     assert_module_after herdr_integrations codex "${SELECTED_MODULES[@]}"
     assert_module_after herdr_integrations claude "${SELECTED_MODULES[@]}"
     assert_module_after herdr_integrations pi "${SELECTED_MODULES[@]}"
