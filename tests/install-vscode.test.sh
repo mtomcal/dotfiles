@@ -842,6 +842,24 @@ test_a_pin_matches_an_installed_identity_by_case_but_not_by_prefix() {
 
     [[ "$OBSERVED_STATUS" -eq 0 ]] || fail "a pin the editor reports with other casing was rejected: $OBSERVED_OUTPUT"
 
+    # The identity is the editor's to spell; the version is the marketplace's
+    # own release label, so casing inside it distinguishes two releases.
+    cli_outcomes "" "VscodeVim.Vim@1.0.0-rc.1"
+    write_manifest "$work/identity-case.txt" 'vscodevim.vim@1.0.0-rc.1'
+
+    run_reconcile "$work/code" "$work/identity-case.txt"
+
+    [[ "$OBSERVED_STATUS" -eq 0 ]] || fail "a pin differing only in identity casing was rejected: $OBSERVED_OUTPUT"
+
+    cli_outcomes "" "vscodevim.vim@1.0.0-RC.1"
+    write_manifest "$work/version-case.txt" 'vscodevim.vim@1.0.0-rc.1'
+
+    run_reconcile "$work/code" "$work/version-case.txt"
+
+    [[ "$OBSERVED_STATUS" -ne 0 ]] || fail "a version the editor never installed was accepted on a difference of casing alone"
+    [[ "$(reported_failures)" == "vscodevim.vim@1.0.0-rc.1" ]] || fail "the unsatisfied pin was not reported alone:
+$OBSERVED_OUTPUT"
+
     cli_outcomes "" "vscodevim.vim@1.27.2"
     write_manifest "$work/prefix.txt" 'vscodevim.vim@1.27'
 

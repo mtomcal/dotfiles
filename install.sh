@@ -1972,14 +1972,26 @@ vscode_extension_identity_is_valid() {
 # An install request reports success even when the marketplace resolved a
 # different release, so a pin counts as satisfied only when the editor itself
 # lists that exact version as installed. Editors report identities with their
-# own casing, so the comparison ignores case.
+# own casing, so the identity is compared case-insensitively; a version is an
+# opaque release label, so it is compared byte for byte.
 vscode_extension_pin_is_active() {
     local cli="$1"
     local entry="$2"
+    local identity="${entry%@*}"
+    local version="${entry#*@}"
     local installed
+    local line
 
     installed="$("$cli" --list-extensions --show-versions < /dev/null)" || return 1
-    grep -q -i -x -F -- "$entry" <<< "$installed"
+    identity="$(printf '%s' "$identity" | tr '[:upper:]' '[:lower:]')"
+
+    while IFS= read -r line; do
+        [ "$(printf '%s' "${line%@*}" | tr '[:upper:]' '[:lower:]')" = "$identity" ] || continue
+        [ "${line#*@}" = "$version" ] || continue
+        return 0
+    done <<< "$installed"
+
+    return 1
 }
 
 # Bring one manifest entry to its declared state, reporting only whether the
