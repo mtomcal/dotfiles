@@ -65,6 +65,24 @@ exit 0
 EOF
 }
 
+# Shell state and protected files the module must never touch: the aliases and
+# rc files a user's shell loads, plus this repo's own shell configuration.
+snapshot_shell_state() {
+    local root
+    local path
+
+    alias -p 2>/dev/null | LC_ALL=C sort
+    for root in "$@"; do
+        while IFS= read -r path; do
+            if [ -f "$path" ]; then
+                printf '%s %s\n' "$path" "$(cksum < "$path")"
+            else
+                printf '%s\n' "$path"
+            fi
+        done < <(find "$root" -mindepth 1 | LC_ALL=C sort)
+    done
+}
+
 # Drive `install_python` under observation.
 #
 # Options are key=value pairs:
@@ -74,16 +92,20 @@ EOF
 #   version_status=<int>          exit status of `python3 --version`
 #   venv_create=<int>             exit status of `python3 -m venv DIR`
 #   venv_run=<int>                exit status of the created venv interpreter
+#   package_failure=<name>        package name the package seam refuses
 #   brew_formula=present|absent   whether `brew list python` succeeds
 #   brew_upgrade=<int>            exit status of `brew upgrade python`
-#   brew_python=<version text>    when set, Homebrew's prefix provides its own
-#                                 interpreter reporting this version
+#   brew_upgrade_output=<text>    what `brew upgrade python` prints
+#   brew_python=<version text>    version reported by Homebrew's own
+#                                 interpreter, or "missing" for a prefix that
+#                                 provides none (defaults to `version` on macOS)
 #
 # Sets in the caller's shell:
-#   OBSERVED_STATUS    exit status of install_python
-#   OBSERVED_COMMANDS  ordered log of package-seam and command invocations
-#   OBSERVED_OUTPUT    combined stdout/stderr of the module
-#   OBSERVED_LEAKS     temporary paths left behind ("" when nothing leaked)
+#   OBSERVED_STATUS      exit status of install_python
+#   OBSERVED_COMMANDS    ordered log of package-seam and command invocations
+#   OBSERVED_OUTPUT      combined stdout/stderr of the module
+#   OBSERVED_LEAKS       temporary paths left behind ("" when nothing leaked)
+#   OBSERVED_STATE_DIFF  change in aliases and protected files ("" when none)
 run_install_python() {
     local option
     local work
@@ -94,8 +116,10 @@ run_install_python() {
     local version_status=0
     local venv_create=0
     local venv_run=0
+    local package_failure=""
     local brew_formula="absent"
     local brew_upgrade=0
+    local brew_upgrade_output=""
     local brew_python=""
 
     for option in "$@"; do
@@ -106,15 +130,26 @@ run_install_python() {
             version_status=*) version_status="${option#*=}" ;;
             venv_create=*) venv_create="${option#*=}" ;;
             venv_run=*) venv_run="${option#*=}" ;;
+            package_failure=*) package_failure="${option#*=}" ;;
             brew_formula=*) brew_formula="${option#*=}" ;;
             brew_upgrade=*) brew_upgrade="${option#*=}" ;;
+            brew_upgrade_output=*) brew_upgrade_output="${option#*=}" ;;
             brew_python=*) brew_python="${option#*=}" ;;
             *) fail "unknown run_install_python option: $option" ;;
         esac
     done
 
+    # Homebrew provisioning is what macOS runs are about, so its prefix carries
+    # an interpreter unless a test says otherwise.
+    if [ "$os" == "macos" ] && [ -z "$brew_python" ]; then
+        brew_python="$version"
+    fi
+
     new_tmp_var work
-    mkdir -p "$work/bin" "$work/tmpdir" "$work/cwd" "$work/brew/opt/python/bin"
+    mkdir -p "$work/bin" "$work/tmpdir" "$work/cwd" "$work/brew/opt/python/bin" "$work/home"
+    printf 'export EDITOR=nvim\n' > "$work/home/.zshrc"
+    printf '# dotfiles customizations\n' > "$work/home/.zshrc.custom"
+    printf 'export EDITOR=nvim\n' > "$work/home/.bashrc"
     : > "$work/commands"
 
     for tool in $REAL_TOOLS; do
@@ -140,7 +175,7 @@ EOF
             "$venv_create" "$work/commands" "$work/venv-python"
     fi
 
-    if [ -n "$brew_python" ]; then
+    if [ -n "$brew_python" ] && [ "$brew_python" != "missing" ]; then
         write_python_stub "$work/brew/opt/python/bin/python3" "brew-python3" "$brew_python" 0 \
             "$venv_create" "$work/commands" "$work/venv-python"
     fi
@@ -153,6 +188,7 @@ case "\$1" in
         [ "$brew_formula" = present ] || exit 1
         ;;
     upgrade)
+        [ -z "$brew_upgrade_output" ] || printf '%s\n' "$brew_upgrade_output"
         exit $brew_upgrade
         ;;
     --prefix)
@@ -164,10 +200,17 @@ EOF
 
     OBSERVED_STATUS=0
     (
+        local host_path="$PATH"
+        local status=0
+
+        cd "$work/cwd" || exit 99
+        HOME="$work/home"
+        export HOME
+        snapshot_shell_state "$work/home" "$DOTFILES_DIR/zsh" > "$work/state.before"
+
         PATH="$work/bin"
         TMPDIR="$work/tmpdir"
         export PATH TMPDIR
-        cd "$work/cwd" || exit 99
 
         OS="$os"
         case "$os" in
@@ -177,19 +220,24 @@ EOF
         esac
 
         # The package seam is an integrated dependency; record the exact calls
-        # instead of running the real package manager.
+        # and report the injected failure instead of running a package manager.
         install_package() {
             printf '%s\n' "install_package $*" >> "$work/commands"
+            if [ -n "$package_failure" ] && [ "$1" == "$package_failure" ]; then
+                return 1
+            fi
+            return 0
         }
 
         # `run_module` invokes module functions in a condition context, which
         # suppresses errexit inside them. Call it the same way so the module
         # owns every failure return instead of leaning on `set -e`.
-        if install_python; then
-            exit 0
-        else
-            exit $?
-        fi
+        install_python || status=$?
+
+        PATH="$host_path"
+        snapshot_shell_state "$work/home" "$DOTFILES_DIR/zsh" > "$work/state.after"
+
+        exit $status
     ) > "$work/out" 2>&1 || OBSERVED_STATUS=$?
 
     # The temporary venv path is freshly allocated on every run; collapse it to
@@ -197,6 +245,7 @@ EOF
     OBSERVED_COMMANDS="$(sed "s|$work/tmpdir/[^ ]*|<tmp>|g" "$work/commands")"
     OBSERVED_OUTPUT="$(cat "$work/out")"
     OBSERVED_LEAKS="$(find "$work/tmpdir" "$work/cwd" -mindepth 1 | LC_ALL=C sort)"
+    OBSERVED_STATE_DIFF="$(diff "$work/state.before" "$work/state.after" || true)"
 }
 
 assert_commands() {
@@ -222,7 +271,7 @@ $OBSERVED_OUTPUT"
 }
 
 # No privileged, repository, global-package, editor, or system-link command may
-# ever appear, on any path.
+# ever appear, and no alias or protected shell file may change, on any path.
 assert_ownership_boundary() {
     local tool
 
@@ -231,6 +280,9 @@ assert_ownership_boundary() {
             fail "module reached for '$tool' outside its ownership:
 $OBSERVED_COMMANDS"
     done
+
+    [[ -z "$OBSERVED_STATE_DIFF" ]] || fail "module changed aliases or protected shell state:
+$OBSERVED_STATE_DIFF"
 }
 
 # ---------------------------------------------------------------------------
@@ -287,20 +339,90 @@ $OBSERVED_COMMANDS"
     assert_no_leaks
 }
 
-# Homebrew reports "already up to date" as a non-zero upgrade on some versions.
-# Verification, not the upgrade's status, decides whether the module succeeded.
-test_macos_refused_upgrade_does_not_decide_the_module_outcome() {
+# Homebrew refuses to upgrade an already-current formula on some versions. That
+# is the expected steady state, not a failure worth warning about.
+test_macos_already_current_formula_is_not_reported_as_a_failure() {
     source_install
 
-    run_install_python os=macos brew_formula=present brew_upgrade=1
+    run_install_python os=macos brew_formula=present brew_upgrade=1 \
+        brew_upgrade_output="Warning: python 3.12.3 already installed"
 
     [[ "$OBSERVED_STATUS" -eq 0 ]] ||
-        fail "expected a refused upgrade to fall through to verification, got $OBSERVED_STATUS: $OBSERVED_OUTPUT"
+        fail "expected an already-current formula to succeed, got $OBSERVED_STATUS: $OBSERVED_OUTPUT"
+    assert_output_contains "already current"
+    [[ "$OBSERVED_OUTPUT" != *"[WARNING]"* ]] ||
+        fail "expected no warning for an already-current formula:
+$OBSERVED_OUTPUT"
+    assert_ownership_boundary
+    assert_no_leaks
+}
+
+# A genuine upgrade error is reported, but the installed formula still decides
+# the outcome through verification rather than Homebrew's status.
+test_macos_genuine_upgrade_error_warns_and_still_verifies() {
+    source_install
+
+    run_install_python os=macos brew_formula=present brew_upgrade=1 \
+        brew_upgrade_output="Error: Failed to download resource python"
+
+    [[ "$OBSERVED_STATUS" -eq 0 ]] ||
+        fail "expected a failed upgrade to fall through to verification, got $OBSERVED_STATUS: $OBSERVED_OUTPUT"
     assert_output_contains "[WARNING]"
     assert_output_contains "brew upgrade python"
+    [[ "$OBSERVED_OUTPUT" != *"already current"* ]] ||
+        fail "expected a genuine error not to be reported as an already-current formula:
+$OBSERVED_OUTPUT"
     [[ "$OBSERVED_COMMANDS" == *"venv-interpreter "* ]] ||
-        fail "expected verification to still run after a refused upgrade:
+        fail "expected verification to still run after a failed upgrade:
 $OBSERVED_COMMANDS"
+    assert_ownership_boundary
+    assert_no_leaks
+}
+
+# ---------------------------------------------------------------------------
+# Package-seam failures
+# ---------------------------------------------------------------------------
+
+test_ubuntu_interpreter_package_failure_stops_before_the_venv_package() {
+    source_install
+
+    run_install_python os=ubuntu package_failure=python3
+
+    [[ "$OBSERVED_STATUS" -ne 0 ]] ||
+        fail "expected a failed python3 package install to fail the module: $OBSERVED_OUTPUT"
+    assert_commands "install_package python3"
+    assert_output_contains "python3 package"
+    assert_native_source_guidance
+    assert_ownership_boundary
+    assert_no_leaks
+}
+
+test_ubuntu_venv_package_failure_stops_before_verification() {
+    source_install
+
+    run_install_python os=ubuntu package_failure=python3-venv
+
+    [[ "$OBSERVED_STATUS" -ne 0 ]] ||
+        fail "expected a failed python3-venv package install to fail the module: $OBSERVED_OUTPUT"
+    assert_commands "install_package python3
+install_package python3-venv"
+    assert_output_contains "python3-venv package"
+    assert_native_source_guidance
+    assert_ownership_boundary
+    assert_no_leaks
+}
+
+test_macos_formula_install_failure_stops_before_verification() {
+    source_install
+
+    run_install_python os=macos brew_formula=absent package_failure=python
+
+    [[ "$OBSERVED_STATUS" -ne 0 ]] ||
+        fail "expected a failed formula install to fail the module: $OBSERVED_OUTPUT"
+    assert_commands "brew list python
+install_package python python"
+    assert_output_contains "Homebrew python formula"
+    assert_native_source_guidance
     assert_ownership_boundary
     assert_no_leaks
 }
@@ -458,6 +580,42 @@ test_missing_interpreter_is_rejected_with_native_source_guidance() {
     assert_no_leaks
 }
 
+# Fresh macOS: the formula must be installed first, and only Homebrew's own
+# prefix may supply the interpreter that is verified.
+test_macos_fresh_install_installs_the_formula_before_its_own_interpreter() {
+    source_install
+
+    run_install_python os=macos brew_formula=absent version="Python 3.9.6" brew_python="Python 3.12.3"
+
+    [[ "$OBSERVED_STATUS" -eq 0 ]] || fail "expected success, got $OBSERVED_STATUS: $OBSERVED_OUTPUT"
+    assert_commands "brew list python
+install_package python python
+brew --prefix python
+brew-python3 --version
+brew-python3 -m venv <tmp>
+venv-interpreter --version"
+    assert_ownership_boundary
+    assert_no_leaks
+}
+
+# Without an interpreter under Homebrew's prefix there is nothing this module
+# provisioned, so a python3 on PATH must not stand in for it.
+test_macos_without_a_homebrew_interpreter_does_not_use_path_python() {
+    source_install
+
+    run_install_python os=macos brew_formula=present brew_python=missing version="Python 3.12.3"
+
+    [[ "$OBSERVED_STATUS" -ne 0 ]] ||
+        fail "expected a missing Homebrew interpreter to fail the module: $OBSERVED_OUTPUT"
+    [[ "$OBSERVED_COMMANDS" != *"python3 --version"* ]] ||
+        fail "expected no PATH python3 to be consulted on macOS:
+$OBSERVED_COMMANDS"
+    assert_native_source_guidance
+    assert_no_venv_attempt
+    assert_ownership_boundary
+    assert_no_leaks
+}
+
 test_macos_verifies_the_homebrew_interpreter_rather_than_system_python() {
     source_install
 
@@ -531,6 +689,89 @@ test_venv_failures_report_repair_guidance_without_a_repository() {
         run_install_python os=ubuntu "$injection"
         assert_output_contains "$NO_REPOSITORY_GUIDANCE"
         assert_ownership_boundary
+    done
+}
+
+# Stub interpreters can only show that the module asked for a virtual
+# environment. This drives the real host python3 so a genuine venv is built,
+# its own interpreter runs from inside it, and the temporary tree is removed.
+test_verify_python_venv_builds_runs_and_removes_a_real_virtual_environment() {
+    local host_python
+    local tmp
+    local removed
+    local venv
+    local reported_prefix
+
+    source_install
+
+    host_python="$(builtin command -v python3)" ||
+        fail "the real virtual-environment contract requires a host python3"
+
+    new_tmp_var tmp
+    mkdir -p "$tmp/inspect" "$tmp/cleanup"
+
+    # Defer the module's own removal so the genuine environment can be
+    # inspected exactly as it was built; every other path still really deletes.
+    rm() {
+        local target="${!#}"
+
+        case "$target" in
+            "$tmp"/*)
+                printf '%s\n' "$target" >> "$tmp/removals"
+                return 0
+                ;;
+        esac
+
+        command rm "$@"
+    }
+
+    TMPDIR="$tmp/inspect" verify_python_venv "$host_python" ||
+        fail "expected the host interpreter to pass virtual-environment verification"
+
+    unset -f rm
+
+    removed="$(cat "$tmp/removals")"
+    [[ "$removed" == "$tmp/inspect/"* ]] ||
+        fail "expected the temporary directory to be removed, got: $removed"
+
+    venv="$removed/venv"
+    [[ -f "$venv/pyvenv.cfg" && -x "$venv/bin/python" ]] ||
+        fail "expected a genuine virtual environment at $venv"
+
+    reported_prefix="$("$venv/bin/python" -c 'import sys; print(sys.prefix)')"
+    [[ "$reported_prefix" == "$venv" ]] ||
+        fail "expected the venv interpreter to run from inside $venv, got $reported_prefix"
+    [[ "$("$venv/bin/python" -c 'import sys; print(sys.prefix != sys.base_prefix)')" == "True" ]] ||
+        fail "expected an isolated environment, not the base interpreter"
+
+    command rm -rf "$tmp/inspect"
+
+    # Now with removal left to the module itself: nothing may survive.
+    TMPDIR="$tmp/cleanup" verify_python_venv "$host_python" ||
+        fail "expected the host interpreter to pass verification again"
+    [[ -z "$(find "$tmp/cleanup" -mindepth 1)" ]] ||
+        fail "real verification left temporary state behind:
+$(find "$tmp/cleanup" -mindepth 1)"
+}
+
+# ---------------------------------------------------------------------------
+# Ownership boundary — shell state and protected files
+# ---------------------------------------------------------------------------
+
+# Provisioning an interpreter never edits shell configuration or defines an
+# alias, on the success path or any failure path.
+test_module_leaves_aliases_and_protected_shell_files_unchanged() {
+    local scenario
+
+    source_install
+
+    for scenario in "os=ubuntu" "os=macos brew_formula=present" "os=ubuntu venv_create=1" \
+        "os=ubuntu package_failure=python3" "os=ubuntu python=missing"; do
+        # shellcheck disable=SC2086
+        run_install_python $scenario
+        [[ -z "$OBSERVED_STATE_DIFF" ]] ||
+            fail "scenario '$scenario' changed aliases or protected shell files:
+$OBSERVED_STATE_DIFF"
     done
 }
 

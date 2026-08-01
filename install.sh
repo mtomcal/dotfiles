@@ -1736,8 +1736,19 @@ print_python_source_guidance() {
     print_python_native_policy
 }
 
-# Choose the interpreter this module provisioned. On macOS a stale system
-# python3 can shadow Homebrew's, so the formula's own interpreter wins.
+# A refused `brew upgrade` on an already-current formula is not an error; a
+# download, permission, or build failure is. Only the first is benign.
+python_upgrade_is_already_current() {
+    case "$1" in
+        *"already installed"*|*"up-to-date"*|*"up to date"*) return 0 ;;
+    esac
+
+    return 1
+}
+
+# Choose the interpreter this module provisioned. On macOS only the formula's
+# own interpreter counts, so a system python3 on PATH can never decide the
+# outcome of a Homebrew provisioning run.
 select_python_interpreter() {
     local prefix
     local interpreter
@@ -1748,6 +1759,7 @@ select_python_interpreter() {
             printf '%s' "$prefix/bin/python3"
             return 0
         fi
+        return 1
     fi
 
     if interpreter="$(command -v python3 2>/dev/null)"; then
@@ -1834,20 +1846,38 @@ install_python() {
 
     local interpreter
     local version
+    local upgrade_output
 
     if [ "$OS" == "ubuntu" ]; then
-        install_package "python3"
-        install_package "python3-venv"
+        if ! install_package "python3"; then
+            print_error "Installing the native python3 package failed"
+            print_python_source_guidance
+            return 1
+        fi
+        if ! install_package "python3-venv"; then
+            print_error "Installing the native python3-venv package failed"
+            print_python_source_guidance
+            return 1
+        fi
     elif [ "$OS" == "macos" ]; then
         if brew list python &> /dev/null; then
             print_info "Upgrading Homebrew Python..."
-            # An already-current formula can be reported as a refusal, so the
-            # verification below decides the outcome instead of this status.
-            if ! brew upgrade python; then
-                print_warning "brew upgrade python did not complete; verifying the installed formula instead"
+            if ! upgrade_output="$(brew upgrade python 2>&1)"; then
+                # An already-current formula is reported as a refusal on some
+                # Homebrew versions; anything else is a genuine failure that
+                # leaves the installed formula for verification to judge.
+                if python_upgrade_is_already_current "$upgrade_output"; then
+                    print_success "Homebrew Python is already current"
+                else
+                    print_warning "brew upgrade python failed; verifying the installed formula instead"
+                fi
             fi
         else
-            install_package "python" "python"
+            if ! install_package "python" "python"; then
+                print_error "Installing the Homebrew python formula failed"
+                print_python_source_guidance
+                return 1
+            fi
         fi
     else
         print_error "Native Python provisioning supports Ubuntu/Debian and macOS only (detected: ${OS:-unknown})"
