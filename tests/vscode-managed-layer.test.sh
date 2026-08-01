@@ -1126,16 +1126,61 @@ new_capture_sandbox() {
     printf '%s\n' '{"Desktop":{"prefix":"d","body":["captured"]}}' >"$__capture_user/snippets/global.code-snippets"
     printf '%s\n' '{"Py":{"prefix":"p","body":["captured"]}}' >"$__capture_user/snippets/python.json"
 
-    printf '%s\n' '#!/bin/sh' 'echo Darwin' >"$__capture_root/bin/uname"
     printf '%s\n' \
         '#!/bin/sh' \
+        "echo uname >>\"$__capture_root/commands.log\"" \
+        'echo Darwin' >"$__capture_root/bin/uname"
+    printf '%s\n' \
+        '#!/bin/sh' \
+        "echo code >>\"$__capture_root/commands.log\"" \
         'if [ "$1" != "--list-extensions" ]; then echo "unexpected: $*" >&2; exit 64; fi' \
         "cat <<'IDS'" \
         "$CAPTURE_STUB_EXTENSIONS" \
         'IDS' >"$__capture_root/bin/code"
     chmod +x "$__capture_root/bin/uname" "$__capture_root/bin/code"
 
+    # Staging reads the desktop through these two commands; logging them makes
+    # "no staging happened" an observation rather than an inference.
+    install_logging_command_stub "$__capture_root" cp
+    install_logging_command_stub "$__capture_root" mktemp
+
+    : >"$__capture_root/commands.log"
     printf -v "$__capture_sandbox_name" '%s' "$__capture_root"
+}
+
+# Replace a command on the sandbox PATH with one that records its own name and
+# then behaves normally, so the test can observe which operations a run
+# performed rather than trusting the order of the source.
+install_logging_command_stub() {
+    local root="$1"
+    local command_name="$2"
+    local real
+    real="$(command -v "$command_name")" || fail "cannot stub missing command: $command_name"
+
+    printf '%s\n' \
+        '#!/bin/sh' \
+        "echo $command_name >>\"$root/commands.log\"" \
+        "exec \"$real\" \"\$@\"" >"$root/bin/$command_name"
+    chmod +x "$root/bin/$command_name"
+}
+
+# The commands a run actually executed, deduplicated in first-use order.
+executed_commands() {
+    local root="$1"
+    awk '!seen[$0]++' "$root/commands.log"
+}
+
+assert_executed_commands() {
+    local root="$1"
+    local expected="$2"
+    local label="$3"
+    local actual
+
+    actual="$(executed_commands "$root")"
+    [[ "$actual" == "$expected" ]] ||
+        fail "$label: executed commands mismatch
+expected: $(printf '%s' "$expected" | tr '\n' ' ')
+actual:   $(printf '%s' "$actual" | tr '\n' ' ')"
 }
 
 # Run the command under test and record its status and combined output.
@@ -1290,6 +1335,45 @@ test_capture_refuses_any_existing_destination_without_force() {
         assert_module_unchanged "$root" "$before" "existing $destination"
         assert_no_temporary_state "$root" "existing $destination"
     done
+}
+
+# Refusal must happen before the desktop is read at all, and the checks must
+# run in order: options, then platform, then the editor CLI, then conflicts.
+# Observing the commands each run executed proves the ordering directly.
+test_refusal_performs_no_staging_or_source_operation() {
+    local root
+
+    # An unknown option is rejected before the platform is even identified.
+    new_capture_sandbox root
+    run_capture "$root" --deploy
+    assert_capture_failed 'option precedence'
+    assert_executed_commands "$root" '' 'option precedence'
+
+    # An unsupported platform is rejected before the editor CLI is consulted.
+    new_capture_sandbox root
+    printf '%s\n' '#!/bin/sh' "echo uname >>\"$root/commands.log\"" 'echo Linux' >"$root/bin/uname"
+    chmod +x "$root/bin/uname"
+    run_capture "$root" --force
+    assert_capture_failed 'platform precedence'
+    assert_executed_commands "$root" 'uname' 'platform precedence'
+
+    # A conflicting destination is refused before anything is staged: no
+    # temporary root is allocated, nothing is copied, no extension list is run.
+    new_capture_sandbox root
+    printf '%s\n' 'existing settings' >"$root/repo/vscode/settings.json"
+    run_capture "$root"
+    assert_capture_failed 'conflict precedence'
+    assert_executed_commands "$root" 'uname' 'conflict precedence'
+
+    # Positive control: a run that does stage records exactly those commands,
+    # so the assertions above cannot pass because logging is broken.
+    new_capture_sandbox root
+    run_capture "$root"
+    assert_capture_succeeded 'staging control'
+    assert_executed_commands "$root" 'uname
+mktemp
+cp
+code' 'staging control'
 }
 
 test_capture_reports_every_conflict_before_touching_any_destination() {
@@ -1527,6 +1611,50 @@ test_capture_restores_the_original_when_a_destination_cannot_be_filled() {
     assert_output_mentions 'publish' 'unfillable destination'
     assert_module_unchanged "$root" "$before" 'unfillable destination'
     assert_no_temporary_state "$root" 'unfillable destination'
+}
+
+# A first capture into a clean module has nothing to back up, so rollback must
+# undo creation rather than restoration: every destination the failed run made
+# has to be gone again.
+test_capture_leaves_a_clean_module_clean_when_publication_fails_midway() {
+    local root before
+    new_capture_sandbox root
+    install_failing_command_stub "$root" mv '*desktop.txt'
+    before="$(capture_module_state "$root/repo")"
+
+    run_capture "$root"
+    assert_capture_failed 'clean-module publication failure'
+    assert_module_unchanged "$root" "$before" 'clean-module publication failure'
+    assert_no_temporary_state "$root" 'clean-module publication failure'
+
+    local created
+    created="$(find "$root/repo/vscode" -mindepth 1 ! -name 'capture.sh' ! -name 'extensions' | LC_ALL=C sort)"
+    [[ -z "$created" ]] ||
+        fail "failed capture left newly created destinations behind:
+$created"
+}
+
+# The realistic case: some destinations exist and some do not. Rollback has to
+# restore the displaced originals and delete the newly created ones in the
+# same run.
+test_capture_restores_a_mixed_module_when_publication_fails_midway() {
+    local root before
+    new_capture_sandbox root
+    printf '%s\n' 'existing settings' >"$root/repo/vscode/settings.json"
+    mkdir -p "$root/repo/vscode/snippets"
+    printf '%s\n' 'existing snippet' >"$root/repo/vscode/snippets/existing.code-snippets"
+    install_failing_command_stub "$root" mv '*desktop.txt'
+    before="$(capture_module_state "$root/repo")"
+
+    run_capture "$root" --force
+    assert_capture_failed 'mixed-module publication failure'
+    assert_module_unchanged "$root" "$before" 'mixed-module publication failure'
+    assert_no_temporary_state "$root" 'mixed-module publication failure'
+
+    [[ ! -e "$root/repo/vscode/keybindings.json" ]] ||
+        fail "failed capture kept a destination it created from nothing"
+    [[ ! -e "$root/repo/vscode/extensions/desktop.txt" ]] ||
+        fail "failed capture kept the destination whose publication failed"
 }
 
 test_capture_warns_that_captured_data_needs_review_before_commit() {
