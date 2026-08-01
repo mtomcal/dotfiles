@@ -1262,6 +1262,15 @@ assert_output_mentions() {
 $CAPTURE_OUTPUT"
 }
 
+assert_output_lacks() {
+    local pattern="$1"
+    local label="$2"
+    if printf '%s\n' "$CAPTURE_OUTPUT" | grep -Eqi -- "$pattern"; then
+        fail "$label: output mentions /$pattern/ but must not; output:
+$CAPTURE_OUTPUT"
+    fi
+}
+
 # --- Cycle A: platform, CLI, option, and overwrite preflight ------------------
 
 test_capture_refuses_a_non_macos_host() {
@@ -1374,6 +1383,71 @@ test_refusal_performs_no_staging_or_source_operation() {
 mktemp
 cp
 code' 'staging control'
+}
+
+# The conflict text a run must not produce when an earlier validation already
+# refused it. The usage banner mentions --force, so absence is asserted against
+# the conflict report itself rather than against the word "force".
+CAPTURE_CONFLICT_REPORT='would replace existing managed sources|rerun with --force'
+
+# Populate a sandbox module with a destination that would itself be refused, so
+# that each validation case below is a genuine combination rather than a
+# validation failure in an otherwise clean module.
+seed_conflicting_destination() {
+    local root="$1"
+    printf '%s\n' 'existing settings' >"$root/repo/vscode/settings.json"
+}
+
+# Every validation refusal outranks a conflict, even when both are true at
+# once. Without the combination, an implementation that preflighted between two
+# validation steps would still look correct: each case here is a separate
+# ordering claim, and the conflict is present in all of them.
+test_validation_outranks_an_existing_destination_conflict() {
+    local root before
+
+    # An unknown option is rejected before any destination is inspected.
+    new_capture_sandbox root
+    seed_conflicting_destination "$root"
+    before="$(capture_module_state "$root/repo")"
+    run_capture "$root" --deploy
+    assert_capture_failed 'conflicting unknown option'
+    assert_output_mentions 'unknown argument: --deploy' 'conflicting unknown option'
+    assert_output_lacks "$CAPTURE_CONFLICT_REPORT" 'conflicting unknown option'
+    assert_executed_commands "$root" '' 'conflicting unknown option'
+    assert_module_unchanged "$root" "$before" 'conflicting unknown option'
+    assert_no_temporary_state "$root" 'conflicting unknown option'
+
+    # An unsupported platform is rejected before any destination is inspected.
+    new_capture_sandbox root
+    seed_conflicting_destination "$root"
+    printf '%s\n' '#!/bin/sh' "echo uname >>\"$root/commands.log\"" 'echo Linux' >"$root/bin/uname"
+    chmod +x "$root/bin/uname"
+    before="$(capture_module_state "$root/repo")"
+    run_capture "$root"
+    assert_capture_failed 'conflicting unsupported platform'
+    assert_output_mentions 'macos' 'conflicting unsupported platform'
+    assert_output_lacks "$CAPTURE_CONFLICT_REPORT" 'conflicting unsupported platform'
+    assert_executed_commands "$root" 'uname' 'conflicting unsupported platform'
+    assert_module_unchanged "$root" "$before" 'conflicting unsupported platform'
+    assert_no_temporary_state "$root" 'conflicting unsupported platform'
+
+    # A missing editor CLI is rejected before any destination is inspected.
+    new_capture_sandbox root
+    seed_conflicting_destination "$root"
+    rm -f "$root/bin/code"
+    before="$(capture_module_state "$root/repo")"
+
+    local restricted="$root/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+    PATH="$restricted" command -v code >/dev/null &&
+        fail "test precondition: a real 'code' command is visible on the restricted PATH"
+
+    CAPTURE_PATH_OVERRIDE="$restricted" run_capture "$root"
+    assert_capture_failed 'conflicting missing editor CLI'
+    assert_output_mentions "requires the 'code' command" 'conflicting missing editor CLI'
+    assert_output_lacks "$CAPTURE_CONFLICT_REPORT" 'conflicting missing editor CLI'
+    assert_executed_commands "$root" 'uname' 'conflicting missing editor CLI'
+    assert_module_unchanged "$root" "$before" 'conflicting missing editor CLI'
+    assert_no_temporary_state "$root" 'conflicting missing editor CLI'
 }
 
 test_capture_reports_every_conflict_before_touching_any_destination() {
