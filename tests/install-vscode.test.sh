@@ -935,14 +935,14 @@ case "$1 $2" in
         ;;
     "install --cask")
         [ "${STUB_BREW_FAIL:-}" != "install" ] || {
-            printf '%s\n' "${STUB_BREW_MESSAGE:-Error: Download failed}" >&2
+            printf '%s\n' "${STUB_BREW_MESSAGE-Error: Download failed}" >&2
             exit 1
         }
         exit 0
         ;;
     "upgrade --cask")
         [ "${STUB_BREW_FAIL:-}" != "upgrade" ] || {
-            printf '%s\n' "${STUB_BREW_MESSAGE:-Error: Download failed}"
+            printf '%s\n' "${STUB_BREW_MESSAGE-Error: Download failed}"
             exit 1
         }
         exit 0
@@ -954,10 +954,53 @@ STUB
     chmod +x "$path"
 }
 
-# A stub for a command that only has to exist and succeed.
+# A stub for a command that only has to exist and succeed. Every invocation
+# is logged, so a command that is merely meant to be discoverable — probed
+# with `command -v` — is distinguishable from one that was actually run.
 install_present_command() {
-    printf '#!/usr/bin/env bash\nexit 0\n' > "$1"
+    cat > "$1" <<'STUB'
+#!/usr/bin/env bash
+printf '%s\n' "${0##*/} $*" >> "$STUB_LOG"
+exit 0
+STUB
     chmod +x "$1"
+}
+
+# Operations the desktop target never owns: patching the installed
+# application bundle, installing global runtimes or tools, and mutating the
+# editor's own Settings Sync or runtime state. They are placed on PATH so an
+# attempt is recorded instead of failing silently as an unknown command.
+FORBIDDEN_COMMANDS="codesign xattr plutil installer sudo npm npx pip pip3 sqlite3 curl"
+
+install_forbidden_commands() {
+    local bin="$1"
+    local name
+
+    for name in $FORBIDDEN_COMMANDS; do
+        install_present_command "$bin/$name"
+    done
+}
+
+# Adjacent state the desktop target must leave exactly as it found it: the
+# installed application bundle, global tool locations, and the editor's
+# Settings Sync and runtime state beside the managed Default Profile.
+seed_protected_state() {
+    local home="$1"
+    local bundle="$home/Applications/Visual Studio Code.app"
+    local user_dir="$home/Library/Application Support/Code/User"
+
+    mkdir -p "$bundle/Contents/Resources/app" "$bundle/Contents/_CodeSignature"
+    printf '{"nameLong":"Visual Studio Code"}\n' > "$bundle/Contents/Resources/app/product.json"
+    printf 'signed\n' > "$bundle/Contents/_CodeSignature/CodeResources"
+
+    mkdir -p "$home/usr/local/bin"
+    printf 'system node\n' > "$home/usr/local/bin/node"
+    printf 'system python3\n' > "$home/usr/local/bin/python3"
+
+    mkdir -p "$user_dir/globalStorage" "$user_dir/sync/settings"
+    printf 'sync-enabled\n' > "$user_dir/globalStorage/state.vscdb"
+    printf '{"sync.store":"insiders"}\n' > "$user_dir/globalStorage/storage.json"
+    printf 'remote\n' > "$user_dir/sync/settings/lastSyncsettings.json"
 }
 
 # Declare Homebrew's outcomes for the next run. All three are always set so
@@ -978,6 +1021,7 @@ brew_outcomes() {
 run_install_vscode() {
     local platform="$1"
     local bin="$2"
+    local home="${3:-$bin}"
     local out
 
     source_install
@@ -992,6 +1036,7 @@ run_install_vscode() {
     OBSERVED_STATUS=0
     (
         export PATH="$bin"
+        export HOME="$home"
         install_vscode
     ) > "$out" 2>&1 || OBSERVED_STATUS=$?
     OBSERVED_OUTPUT="$(cat "$out")"
@@ -1009,6 +1054,7 @@ desktop_bin() {
     # is genuinely absent; the stubs' own interpreter has to be reachable too.
     ln -sf "$(command -v bash)" "$bin/bash"
     install_brew_stub "$bin/brew"
+    install_forbidden_commands "$bin"
     [ "$with_code" != "code" ] || install_present_command "$bin/code"
 }
 
@@ -1077,6 +1123,34 @@ $OBSERVED_CALLS"
     done
 }
 
+test_provisioning_touches_no_bundle_global_tool_or_editor_state() {
+    local work
+    local before
+    local verb
+
+    new_tmp_var work
+    desktop_bin "$work/bin"
+    seed_protected_state "$work/home"
+    before="$(tree_snapshot "$work/home")"
+
+    for verb in install upgrade; do
+        if [ "$verb" == "install" ]; then
+            brew_outcomes ""
+        else
+            brew_outcomes present
+        fi
+
+        run_install_vscode macos "$work/bin" "$work/home"
+
+        [[ "$OBSERVED_STATUS" -eq 0 ]] || fail "expected provisioning to succeed, got status $OBSERVED_STATUS: $OBSERVED_OUTPUT"
+        [[ "$OBSERVED_CALLS" == "list --cask visual-studio-code
+$verb --cask visual-studio-code" ]] || fail "provisioning ran a command outside the official Cask exchange:
+$OBSERVED_CALLS"
+        [[ "$(tree_snapshot "$work/home")" == "$before" ]] || fail "provisioning mutated an application bundle, a global tool, or editor state:
+$(diff <(printf '%s\n' "$before") <(tree_snapshot "$work/home") || true)"
+    done
+}
+
 test_a_missing_editor_command_after_provisioning_fails() {
     local work
 
@@ -1140,6 +1214,45 @@ test_an_already_current_cask_is_not_a_failure() {
     done
 }
 
+test_a_refusal_mixing_already_current_and_real_diagnostics_still_fails() {
+    local work
+    local message
+
+    new_tmp_var work
+    desktop_bin "$work/bin"
+
+    # Homebrew reports both kinds of line in one run, in either order. A
+    # recognized already-current line alongside a genuine failure describes a
+    # failed upgrade, not a current installation.
+    for message in \
+        "Warning: visual-studio-code 1.99.0 already installed
+Error: Failure while executing: /bin/cp -pR staged /Applications/Visual Studio Code.app" \
+        "Error: Failure while executing: /bin/cp -pR staged /Applications/Visual Studio Code.app
+Warning: visual-studio-code is up-to-date"
+    do
+        brew_outcomes present upgrade "$message"
+        run_install_vscode macos "$work/bin"
+
+        [[ "$OBSERVED_STATUS" -ne 0 ]] || fail "a failed upgrade was excused as already-current:
+$OBSERVED_OUTPUT"
+        [[ "$OBSERVED_OUTPUT" == *"Failure while executing"* ]] || fail "the genuine Homebrew diagnostics were swallowed:
+$OBSERVED_OUTPUT"
+    done
+}
+
+test_a_refusal_reporting_nothing_at_all_fails() {
+    local work
+
+    new_tmp_var work
+    desktop_bin "$work/bin"
+    brew_outcomes present upgrade ""
+
+    run_install_vscode macos "$work/bin"
+
+    [[ "$OBSERVED_STATUS" -ne 0 ]] || fail "a silent upgrade refusal was excused as already-current:
+$OBSERVED_OUTPUT"
+}
+
 # ---------------------------------------------------------------------------
 # Desktop configuration — Default Profile composition
 # ---------------------------------------------------------------------------
@@ -1161,6 +1274,7 @@ configure_bin() {
     ln -sf "$(command -v bash)" "$bin/bash"
     printf '#!/usr/bin/env bash\nprintf '"'"'%%s\\n'"'"' "defaults $*" >> "$STUB_LOG"\nexit "${STUB_DEFAULTS_STATUS:-0}"\n' > "$bin/defaults"
     chmod +x "$bin/defaults"
+    install_forbidden_commands "$bin"
 
     for name in "$@"; do
         install_present_command "$bin/$name"
@@ -1255,6 +1369,26 @@ test_configuration_deploys_the_managed_layer_then_reconciles_shared_before_deskt
 reconcile_vscode_extensions code $SHARED_MANIFEST $DESKTOP_MANIFEST
 defaults write com.microsoft.VSCode ApplePressAndHoldEnabled -bool false" ]] || fail "unexpected desktop configuration steps:
 $OBSERVED_CALLS"
+}
+
+test_configuration_touches_no_bundle_global_tool_or_editor_state() {
+    local work
+    local before
+
+    new_tmp_var work
+    configure_bin "$work/bin" code python3 node
+    seed_protected_state "$work/home"
+    before="$(tree_snapshot "$work/home")"
+
+    run_configure_vscode macos "$work/bin" "$work/home"
+
+    [[ "$OBSERVED_STATUS" -eq 0 ]] || fail "expected desktop configuration to succeed, got status $OBSERVED_STATUS: $OBSERVED_OUTPUT"
+    [[ "$OBSERVED_CALLS" == "deploy_vscode_managed_layer $work/home/Library/Application Support/Code/User
+reconcile_vscode_extensions code $SHARED_MANIFEST $DESKTOP_MANIFEST
+defaults write com.microsoft.VSCode ApplePressAndHoldEnabled -bool false" ]] || fail "configuration ran an operation outside its owned composition:
+$OBSERVED_CALLS"
+    [[ "$(tree_snapshot "$work/home")" == "$before" ]] || fail "configuration mutated an application bundle, a global tool, or Settings Sync and runtime state:
+$(diff <(printf '%s\n' "$before") <(tree_snapshot "$work/home") || true)"
 }
 
 test_a_failing_owned_operation_stops_the_configuration_and_propagates() {
@@ -1412,6 +1546,35 @@ run_desktop_module() {
 # Everything the operator was told about Settings Sync, in report order.
 settings_sync_guidance() {
     configuration_report | grep -i 'settings sync' || true
+}
+
+# The completion guidance the desktop module owns: its header through the end
+# of the report, with the log-level prefix removed. Asserting this whole
+# block — rather than the absence of chosen phrases — is what makes any added
+# detection or enforcement claim a failure.
+desktop_completion_guidance() {
+    configuration_report |
+        sed -n '/Visual Studio Code Desktop:/,$p' |
+        sed -e 's/^\[INFO\] //'
+}
+
+test_the_desktop_completion_guidance_is_exactly_the_manual_settings_sync_action() {
+    local work
+    local allowed
+
+    new_tmp_var work
+    configure_bin "$work/bin" code python3 node
+
+    run_desktop_module "$work/bin" "$work/home"
+
+    allowed="Visual Studio Code Desktop:
+  • Settings Sync must be disabled manually for Settings and Extensions.
+    The installer cannot detect or enforce this state; the repository
+    remains the authority for the managed Default Profile."
+
+    [[ "$OBSERVED_STATUS" -eq 0 ]] || fail "expected the desktop module to complete, got status $OBSERVED_STATUS: $OBSERVED_OUTPUT"
+    [[ "$(desktop_completion_guidance)" == "$allowed" ]] || fail "the desktop completion guidance is not exactly the allowed manual action:
+$(diff <(printf '%s\n' "$allowed") <(desktop_completion_guidance) || true)"
 }
 
 test_successful_desktop_configuration_reports_the_manual_settings_sync_action() {

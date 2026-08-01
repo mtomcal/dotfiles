@@ -1737,13 +1737,23 @@ print_python_source_guidance() {
 }
 
 # A refused `brew upgrade` on an already-current formula or Cask is not an
-# error; a download, permission, or build failure is. Only the first is benign.
+# error; a download, permission, or build failure is. Homebrew reports both
+# kinds in one run, so the refusal is benign only when every line it printed
+# is a recognized already-current diagnostic: one unrecognized line — or no
+# output at all — describes a failed upgrade.
 brew_upgrade_is_already_current() {
-    case "$1" in
-        *"already installed"*|*"up-to-date"*|*"up to date"*) return 0 ;;
-    esac
+    local line
+    local recognized=1
 
-    return 1
+    while IFS= read -r line; do
+        case "$line" in
+            "") continue ;;
+            *"already installed"*|*"up-to-date"*|*"up to date"*) recognized=0 ;;
+            *) return 1 ;;
+        esac
+    done <<< "$1"
+
+    return "$recognized"
 }
 
 # Choose the interpreter this module provisioned. On macOS only the formula's
