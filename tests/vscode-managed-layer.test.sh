@@ -2,6 +2,7 @@
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/harness.sh"
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/bash32.sh"
 
 VSCODE_DIR="$DOTFILES_DIR/vscode"
 SETTINGS="$VSCODE_DIR/settings.json"
@@ -814,9 +815,12 @@ test_settings_carry_no_host_or_remote_machine_identity() {
 # --- Target neutrality of shared managed data --------------------------------
 
 # Settings, keybindings, and snippets are consumed verbatim by both targets.
-# The extension manifests are deliberately target-scoped and excluded here.
+# The extension manifests are deliberately target-scoped, and the capture
+# command is a macOS-only operator tool rather than data either editor reads,
+# so both are excluded from the shared-data neutrality rule. Every other
+# security and content contract still applies to them.
 shared_managed_files() {
-    managed_tracked_files | grep -Ev '^vscode/extensions/' || true
+    managed_tracked_files | grep -Ev '^vscode/(extensions/|capture\.sh$)' || true
 }
 
 test_shared_managed_data_encodes_no_os_specific_behavior() {
@@ -845,15 +849,20 @@ test_tracked_managed_sources_declare_no_private_endpoint_or_host() {
 
 # --- Authorized managed path set ---------------------------------------------
 
-# Exactly the managed files this slice owns. Later slices extend this list
-# deliberately; nothing is pre-authorized on their behalf.
+# Exactly the managed files the repository owns. Each entry is admitted by the
+# slice that implements it; nothing is pre-authorized on a later slice's
+# behalf. `vscode/capture.sh` was admitted when the capture command landed.
 AUTHORIZED_MANAGED_FILES=(
     vscode/settings.json
     vscode/keybindings.json
     vscode/extensions/shared.txt
     vscode/extensions/desktop.txt
     vscode/extensions/code-server.txt
+    vscode/capture.sh
 )
+
+# The one managed source that is a program rather than editor data.
+AUTHORIZED_EXECUTABLE='vscode/capture.sh'
 AUTHORIZED_SNIPPET_PATTERN='^vscode/snippets/[A-Za-z0-9][A-Za-z0-9._-]*\.(code-snippets|json)$'
 
 test_tracked_managed_paths_are_exactly_the_authorized_set() {
@@ -902,12 +911,25 @@ test_managed_files_are_regular_repository_content() {
     [[ -z "$links" ]] || fail "managed layer contains symlinks: $links"
 }
 
-test_later_slice_artifacts_are_not_pre_authorized() {
-    local authorized
-    for authorized in "${AUTHORIZED_MANAGED_FILES[@]}"; do
-        [[ "$authorized" != "vscode/capture.sh" ]] ||
-            fail "Slice 004's capture command must not be pre-authorized by this slice"
-    done
+# The capture command is the single authorized program in the managed layer.
+# Everything else is editor data and must not be executable, so a new script
+# cannot enter the module without being reviewed into the authorized set.
+test_capture_command_is_the_only_executable_managed_source() {
+    local file mode
+
+    while IFS= read -r file; do
+        [[ -n "$file" ]] || continue
+        mode="$(git -C "$DOTFILES_DIR" ls-files --stage -- "$file" | awk '{print $1}')"
+        if [[ "$file" == "$AUTHORIZED_EXECUTABLE" ]]; then
+            [[ -x "$DOTFILES_DIR/$file" ]] || fail "capture command is not executable: $file"
+            [[ -z "$mode" || "$mode" == "100755" ]] ||
+                fail "capture command must be tracked with mode 100755, got $mode"
+        else
+            [[ ! -x "$DOTFILES_DIR/$file" ]] || fail "managed data must not be executable: $file"
+            [[ -z "$mode" || "$mode" == "100644" ]] ||
+                fail "managed data must be tracked with mode 100644, got $mode for $file"
+        fi
+    done < <(managed_tracked_files)
 }
 
 test_neutrality_scan_rejects_host_product_and_os_specific_content() {
@@ -1064,6 +1086,518 @@ actual_snippet_contract() {
 test_snippets_match_the_approved_snippet_contract() {
     assert_set_equal 'approved snippet contract' \
         "$(actual_snippet_contract)" "$(approved_snippet_contract)"
+}
+
+# --- Transactional desktop capture -------------------------------------------
+
+CAPTURE_SH="$VSCODE_DIR/capture.sh"
+
+# macOS Default Profile user-configuration location, relative to HOME.
+DESKTOP_USER_REL='Library/Application Support/Code/User'
+
+# What the desktop editor CLI reports, and the desktop-only identities the
+# managed manifest must end up holding.
+CAPTURE_STUB_EXTENSIONS='vscodevim.vim@1.27.2
+ms-python.python@2024.14.1
+esbenp.prettier-vscode'
+CAPTURE_EXPECTED_DESKTOP_IDS='vscodevim.vim
+ms-python.python
+esbenp.prettier-vscode'
+
+# An isolated world for the capture command: a temporary repository module, a
+# temporary desktop HOME holding the data to capture, a stub PATH, and a
+# private TMPDIR whose emptiness afterwards proves cleanup.
+new_capture_sandbox() {
+    local __capture_sandbox_name="$1"
+    local __capture_root __capture_user
+
+    [[ -f "$CAPTURE_SH" ]] || fail "missing capture command: $CAPTURE_SH"
+
+    new_tmp_var __capture_root
+    __capture_user="$__capture_root/home/$DESKTOP_USER_REL"
+    mkdir -p "$__capture_user/snippets" "$__capture_root/repo/vscode/extensions" \
+        "$__capture_root/bin" "$__capture_root/tmp"
+
+    cp "$CAPTURE_SH" "$__capture_root/repo/vscode/capture.sh"
+    chmod +x "$__capture_root/repo/vscode/capture.sh"
+
+    printf '%s\n' '{"editor.formatOnSave": true, "vim.leader": " "}' >"$__capture_user/settings.json"
+    printf '%s\n' '[{"key": "ctrl+f", "command": "actions.find"}]' >"$__capture_user/keybindings.json"
+    printf '%s\n' '{"Desktop":{"prefix":"d","body":["captured"]}}' >"$__capture_user/snippets/global.code-snippets"
+    printf '%s\n' '{"Py":{"prefix":"p","body":["captured"]}}' >"$__capture_user/snippets/python.json"
+
+    printf '%s\n' '#!/bin/sh' 'echo Darwin' >"$__capture_root/bin/uname"
+    printf '%s\n' \
+        '#!/bin/sh' \
+        'if [ "$1" != "--list-extensions" ]; then echo "unexpected: $*" >&2; exit 64; fi' \
+        "cat <<'IDS'" \
+        "$CAPTURE_STUB_EXTENSIONS" \
+        'IDS' >"$__capture_root/bin/code"
+    chmod +x "$__capture_root/bin/uname" "$__capture_root/bin/code"
+
+    printf -v "$__capture_sandbox_name" '%s' "$__capture_root"
+}
+
+# Run the command under test and record its status and combined output.
+run_capture() {
+    local root="$1"
+    shift
+    local search_path="${CAPTURE_PATH_OVERRIDE:-$root/bin:$PATH}"
+
+    set +e
+    CAPTURE_OUTPUT="$(HOME="$root/home" PATH="$search_path" TMPDIR="$root/tmp" \
+        "$root/repo/vscode/capture.sh" "$@" 2>&1)"
+    CAPTURE_STATUS=$?
+    set -e
+}
+
+# Everything observable about a directory tree: names, kinds, and content.
+directory_state() {
+    local root="$1"
+    local path
+
+    (
+        cd "$root" || exit 1
+        find . -mindepth 1 | LC_ALL=C sort | while IFS= read -r path; do
+            if [[ -L "$path" ]]; then
+                printf 'link %s -> %s\n' "$path" "$(readlink "$path")"
+            elif [[ -d "$path" ]]; then
+                printf 'dir  %s\n' "$path"
+            else
+                printf 'file %s %s\n' "$path" "$(cksum <"$path")"
+            fi
+        done
+    )
+}
+
+capture_module_state() {
+    directory_state "$1/vscode"
+}
+
+assert_module_unchanged() {
+    local root="$1"
+    local before="$2"
+    local label="$3"
+    local after
+
+    after="$(capture_module_state "$root/repo")"
+    [[ "$after" == "$before" ]] ||
+        fail "$label: managed destinations changed (< before, > after):
+$(diff <(printf '%s\n' "$before") <(printf '%s\n' "$after") || true)"
+}
+
+assert_no_temporary_state() {
+    local root="$1"
+    local label="$2"
+    local leftover
+
+    leftover="$(find "$root/tmp" -mindepth 1 2>/dev/null | wc -l | tr -d ' ')"
+    [[ "$leftover" -eq 0 ]] ||
+        fail "$label: capture leaked temporary state under TMPDIR:
+$(find "$root/tmp" -mindepth 1)"
+
+    leftover="$(find "$root/repo/vscode" -name '*capture*' ! -name 'capture.sh' 2>/dev/null | wc -l | tr -d ' ')"
+    [[ "$leftover" -eq 0 ]] ||
+        fail "$label: capture left working files inside the managed module:
+$(find "$root/repo/vscode" -name '*capture*' ! -name 'capture.sh')"
+}
+
+assert_capture_failed() {
+    local label="$1"
+    [[ "$CAPTURE_STATUS" -ne 0 ]] ||
+        fail "$label: capture succeeded but must have failed; output:
+$CAPTURE_OUTPUT"
+}
+
+assert_output_mentions() {
+    local pattern="$1"
+    local label="$2"
+    printf '%s\n' "$CAPTURE_OUTPUT" | grep -Eqi -- "$pattern" ||
+        fail "$label: output does not mention /$pattern/; output:
+$CAPTURE_OUTPUT"
+}
+
+# --- Cycle A: platform, CLI, option, and overwrite preflight ------------------
+
+test_capture_refuses_a_non_macos_host() {
+    local root before
+    new_capture_sandbox root
+    printf '%s\n' '#!/bin/sh' 'echo Linux' >"$root/bin/uname"
+    chmod +x "$root/bin/uname"
+    before="$(capture_module_state "$root/repo")"
+
+    run_capture "$root" --force
+    assert_capture_failed 'non-macOS capture'
+    assert_output_mentions 'macos' 'non-macOS capture'
+    assert_module_unchanged "$root" "$before" 'non-macOS capture'
+    assert_no_temporary_state "$root" 'non-macOS capture'
+}
+
+test_capture_requires_the_desktop_editor_command() {
+    local root before
+    new_capture_sandbox root
+    rm -f "$root/bin/code"
+    before="$(capture_module_state "$root/repo")"
+
+    local restricted="$root/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+    PATH="$restricted" command -v code >/dev/null &&
+        fail "test precondition: a real 'code' command is visible on the restricted PATH"
+
+    CAPTURE_PATH_OVERRIDE="$restricted" run_capture "$root" --force
+    assert_capture_failed 'missing editor CLI'
+    assert_output_mentions 'code' 'missing editor CLI'
+    assert_module_unchanged "$root" "$before" 'missing editor CLI'
+    assert_no_temporary_state "$root" 'missing editor CLI'
+}
+
+test_capture_rejects_unknown_options() {
+    local root before argument
+    new_capture_sandbox root
+    before="$(capture_module_state "$root/repo")"
+
+    for argument in --deploy --no-force -f 'extra-operand'; do
+        run_capture "$root" "$argument"
+        assert_capture_failed "unknown option $argument"
+        assert_module_unchanged "$root" "$before" "unknown option $argument"
+        assert_no_temporary_state "$root" "unknown option $argument"
+    done
+}
+
+test_capture_refuses_any_existing_destination_without_force() {
+    local root before destination
+    local destinations=(
+        vscode/settings.json
+        vscode/keybindings.json
+        vscode/snippets
+        vscode/extensions/desktop.txt
+    )
+
+    for destination in "${destinations[@]}"; do
+        new_capture_sandbox root
+        if [[ "$destination" == vscode/snippets ]]; then
+            mkdir -p "$root/repo/$destination"
+            printf '%s\n' '{"Existing":{"prefix":"e","body":["kept"]}}' \
+                >"$root/repo/$destination/existing.code-snippets"
+        else
+            printf '%s\n' 'existing managed content' >"$root/repo/$destination"
+        fi
+        before="$(capture_module_state "$root/repo")"
+
+        run_capture "$root"
+        assert_capture_failed "existing $destination"
+        assert_output_mentions "$(printf '%s' "$destination" | sed -e 's/\./\\./g')" "existing $destination"
+        assert_output_mentions 'force' "existing $destination"
+        assert_module_unchanged "$root" "$before" "existing $destination"
+        assert_no_temporary_state "$root" "existing $destination"
+    done
+}
+
+test_capture_reports_every_conflict_before_touching_any_destination() {
+    local root before
+    new_capture_sandbox root
+    printf '%s\n' 'existing settings' >"$root/repo/vscode/settings.json"
+    printf '%s\n' 'existing manifest' >"$root/repo/vscode/extensions/desktop.txt"
+    before="$(capture_module_state "$root/repo")"
+
+    run_capture "$root"
+    assert_capture_failed 'multiple conflicts'
+    assert_output_mentions 'vscode/settings\.json' 'multiple conflicts'
+    assert_output_mentions 'vscode/extensions/desktop\.txt' 'multiple conflicts'
+    assert_module_unchanged "$root" "$before" 'multiple conflicts'
+    assert_no_temporary_state "$root" 'multiple conflicts'
+}
+
+# --- Cycle B: staged complete capture and unversioned identities -------------
+
+assert_captured_file() {
+    local path="$1"
+    local expected="$2"
+    local label="$3"
+
+    [[ -f "$path" ]] || fail "$label: capture did not publish $path"
+    [[ ! -L "$path" ]] || fail "$label: capture published a symlink at $path"
+
+    local actual
+    actual="$(cat "$path")"
+    [[ "$actual" == "$expected" ]] ||
+        fail "$label: published content mismatch at $path
+expected: $expected
+actual:   $actual"
+}
+
+assert_capture_succeeded() {
+    local label="$1"
+    [[ "$CAPTURE_STATUS" -eq 0 ]] ||
+        fail "$label: capture failed with status $CAPTURE_STATUS; output:
+$CAPTURE_OUTPUT"
+}
+
+# The complete published capture unit, asserted as one set so a missing or
+# stale artifact cannot hide behind the others.
+assert_complete_capture_published() {
+    local root="$1"
+    local label="$2"
+    local repo="$root/repo"
+    local user="$root/home/$DESKTOP_USER_REL"
+
+    assert_captured_file "$repo/vscode/settings.json" "$(cat "$user/settings.json")" "$label"
+    assert_captured_file "$repo/vscode/keybindings.json" "$(cat "$user/keybindings.json")" "$label"
+    assert_captured_file "$repo/vscode/extensions/desktop.txt" "$CAPTURE_EXPECTED_DESKTOP_IDS" "$label"
+
+    [[ -d "$repo/vscode/snippets" ]] || fail "$label: capture did not publish the snippets directory"
+    [[ ! -L "$repo/vscode/snippets" ]] || fail "$label: published snippets must be a real directory"
+    assert_set_equal "$label snippet files" \
+        "$(cd "$repo/vscode/snippets" && find . -type f | sed -e 's|^\./||' | LC_ALL=C sort)" \
+        'global.code-snippets
+python.json'
+    assert_captured_file "$repo/vscode/snippets/global.code-snippets" \
+        "$(cat "$user/snippets/global.code-snippets")" "$label"
+    assert_captured_file "$repo/vscode/snippets/python.json" \
+        "$(cat "$user/snippets/python.json")" "$label"
+}
+
+test_capture_into_a_clean_module_publishes_the_complete_unit() {
+    local root
+    new_capture_sandbox root
+
+    run_capture "$root"
+    assert_capture_succeeded 'clean capture'
+    assert_complete_capture_published "$root" 'clean capture'
+    assert_no_temporary_state "$root" 'clean capture'
+}
+
+test_forced_capture_replaces_every_existing_destination() {
+    local root
+    new_capture_sandbox root
+    printf '%s\n' 'stale settings' >"$root/repo/vscode/settings.json"
+    printf '%s\n' 'stale keybindings' >"$root/repo/vscode/keybindings.json"
+    printf '%s\n' 'stale manifest' >"$root/repo/vscode/extensions/desktop.txt"
+    mkdir -p "$root/repo/vscode/snippets"
+    printf '%s\n' 'stale snippet' >"$root/repo/vscode/snippets/stale.code-snippets"
+
+    run_capture "$root" --force
+    assert_capture_succeeded 'forced capture'
+    assert_complete_capture_published "$root" 'forced capture'
+    [[ ! -e "$root/repo/vscode/snippets/stale.code-snippets" ]] ||
+        fail "forced capture merged into the old snippets directory instead of replacing it"
+    assert_no_temporary_state "$root" 'forced capture'
+}
+
+test_capture_writes_only_the_desktop_extension_manifest() {
+    local root shared_before server_before
+    new_capture_sandbox root
+    printf '%s\n' 'vscodevim.vim' >"$root/repo/vscode/extensions/shared.txt"
+    printf '%s\n' 'ms-python.python' >"$root/repo/vscode/extensions/code-server.txt"
+    shared_before="$(cksum <"$root/repo/vscode/extensions/shared.txt")"
+    server_before="$(cksum <"$root/repo/vscode/extensions/code-server.txt")"
+
+    run_capture "$root"
+    assert_capture_succeeded 'desktop-only capture'
+    [[ "$(cksum <"$root/repo/vscode/extensions/shared.txt")" == "$shared_before" ]] ||
+        fail "capture modified the shared extension manifest"
+    [[ "$(cksum <"$root/repo/vscode/extensions/code-server.txt")" == "$server_before" ]] ||
+        fail "capture modified the code-server extension manifest"
+}
+
+test_captured_extension_identities_omit_versions() {
+    local root entry
+    new_capture_sandbox root
+
+    run_capture "$root"
+    assert_capture_succeeded 'unversioned capture'
+    [[ -f "$root/repo/vscode/extensions/desktop.txt" ]] ||
+        fail "unversioned capture: capture published no desktop extension manifest"
+
+    while IFS= read -r entry; do
+        [[ -n "$entry" ]] || continue
+        [[ "$entry" != *@* ]] || fail "captured desktop identity pins a version: $entry"
+        [[ "$entry" =~ ^[A-Za-z0-9][A-Za-z0-9_-]*\.[A-Za-z0-9][A-Za-z0-9_-]*$ ]] ||
+            fail "captured desktop identity is not publisher.name form: $entry"
+    done <"$root/repo/vscode/extensions/desktop.txt"
+}
+
+test_capture_refuses_an_incomplete_desktop_configuration() {
+    local root before source
+    for source in settings.json keybindings.json snippets; do
+        new_capture_sandbox root
+        rm -rf "$root/home/$DESKTOP_USER_REL/$source"
+        before="$(capture_module_state "$root/repo")"
+
+        run_capture "$root" --force
+        assert_capture_failed "missing desktop $source"
+        assert_output_mentions "$(printf '%s' "$source" | sed -e 's/\./\\./g')" "missing desktop $source"
+        assert_module_unchanged "$root" "$before" "missing desktop $source"
+        assert_no_temporary_state "$root" "missing desktop $source"
+    done
+}
+
+# --- Cycle C: failure cleanup, warning, and install separation ---------------
+
+# Seed every managed destination with recognizable content, so a later
+# comparison proves that a refused or failed capture changed nothing.
+seed_all_destinations() {
+    local root="$1"
+    printf '%s\n' 'existing settings' >"$root/repo/vscode/settings.json"
+    printf '%s\n' 'existing keybindings' >"$root/repo/vscode/keybindings.json"
+    printf '%s\n' 'existing manifest' >"$root/repo/vscode/extensions/desktop.txt"
+    mkdir -p "$root/repo/vscode/snippets"
+    printf '%s\n' 'existing snippet' >"$root/repo/vscode/snippets/existing.code-snippets"
+}
+
+# Replace a command on the sandbox PATH with one that fails whenever any of its
+# arguments matches a pattern, and otherwise behaves normally.
+install_failing_command_stub() {
+    local root="$1"
+    local command_name="$2"
+    local pattern="$3"
+    local real
+    real="$(command -v "$command_name")" || fail "cannot stub missing command: $command_name"
+
+    cat >"$root/bin/$command_name" <<EOF
+#!/bin/sh
+for argument in "\$@"; do
+    case "\$argument" in
+        $pattern)
+            echo "$command_name: injected failure on \$argument" >&2
+            exit 1
+            ;;
+    esac
+done
+exec "$real" "\$@"
+EOF
+    chmod +x "$root/bin/$command_name"
+}
+
+test_capture_publishes_nothing_when_the_extension_listing_fails() {
+    local root before
+    new_capture_sandbox root
+    seed_all_destinations "$root"
+    printf '%s\n' '#!/bin/sh' 'echo "editor CLI unavailable" >&2' 'exit 1' >"$root/bin/code"
+    chmod +x "$root/bin/code"
+    before="$(capture_module_state "$root/repo")"
+
+    run_capture "$root" --force
+    assert_capture_failed 'extension listing failure'
+    assert_output_mentions 'list-extensions' 'extension listing failure'
+    assert_module_unchanged "$root" "$before" 'extension listing failure'
+    assert_no_temporary_state "$root" 'extension listing failure'
+}
+
+test_capture_publishes_nothing_when_staging_a_source_fails() {
+    local root before
+    new_capture_sandbox root
+    seed_all_destinations "$root"
+    install_failing_command_stub "$root" cp '*snippets*'
+    before="$(capture_module_state "$root/repo")"
+
+    run_capture "$root" --force
+    assert_capture_failed 'staging failure'
+    assert_output_mentions 'snippets' 'staging failure'
+    assert_module_unchanged "$root" "$before" 'staging failure'
+    assert_no_temporary_state "$root" 'staging failure'
+}
+
+test_capture_rolls_back_when_publication_fails_midway() {
+    local root before
+    new_capture_sandbox root
+    seed_all_destinations "$root"
+    # The desktop manifest is published last, so failing only on it proves that
+    # destinations replaced earlier in the same run are restored.
+    install_failing_command_stub "$root" mv '*desktop.txt'
+    before="$(capture_module_state "$root/repo")"
+
+    run_capture "$root" --force
+    assert_capture_failed 'publication failure'
+    assert_output_mentions 'vscode/extensions/desktop\.txt' 'publication failure'
+    assert_module_unchanged "$root" "$before" 'publication failure'
+    assert_no_temporary_state "$root" 'publication failure'
+}
+
+test_capture_restores_the_original_when_a_destination_cannot_be_filled() {
+    local root before
+    new_capture_sandbox root
+    seed_all_destinations "$root"
+    # Fail while moving a prepared artifact into place, after its original has
+    # already been displaced: the original must come back.
+    install_failing_command_stub "$root" mv '*capture-new*'
+    before="$(capture_module_state "$root/repo")"
+
+    run_capture "$root" --force
+    assert_capture_failed 'unfillable destination'
+    assert_output_mentions 'publish' 'unfillable destination'
+    assert_module_unchanged "$root" "$before" 'unfillable destination'
+    assert_no_temporary_state "$root" 'unfillable destination'
+}
+
+test_capture_warns_that_captured_data_needs_review_before_commit() {
+    local root
+    new_capture_sandbox root
+
+    run_capture "$root"
+    assert_capture_succeeded 'review warning'
+    assert_output_mentions 'review' 'review warning'
+    assert_output_mentions 'credential' 'review warning'
+    assert_output_mentions 'machine-specific' 'review warning'
+    assert_output_mentions 'commit' 'review warning'
+}
+
+test_capture_deploys_nothing_and_leaves_the_desktop_untouched() {
+    local root before after
+    new_capture_sandbox root
+    before="$(directory_state "$root/home")"
+
+    run_capture "$root"
+    assert_capture_succeeded 'no deployment'
+
+    after="$(directory_state "$root/home")"
+    [[ "$after" == "$before" ]] ||
+        fail "capture mutated the desktop configuration (< before, > after):
+$(diff <(printf '%s\n' "$before") <(printf '%s\n' "$after") || true)"
+
+    local links
+    links="$(find "$root/home" "$root/repo" -type l 2>/dev/null || true)"
+    [[ -z "$links" ]] || fail "capture created symlinks: $links"
+}
+
+test_capture_command_installs_and_deploys_nothing() {
+    local prohibited=(
+        'ln[[:space:]]+-s'
+        '--install-extension'
+        '(^|[^A-Za-z0-9_-])(brew|apt|apt-get|dnf|pacman|npm|pip|pip3|gem|cargo)[[:space:]]'
+        '(^|[^A-Za-z0-9_-])(curl|wget|systemctl|launchctl)([^A-Za-z0-9_-]|$)'
+        'defaults[[:space:]]+write'
+    )
+    local executable pattern hits
+    # Comments describe intent; only executable lines can act.
+    executable="$(grep -v '^[[:space:]]*#' "$CAPTURE_SH")"
+
+    for pattern in "${prohibited[@]}"; do
+        hits="$(printf '%s\n' "$executable" | grep -En -- "$pattern" || true)"
+        [[ -z "$hits" ]] ||
+            fail "capture must not deploy or install anything (matched /$pattern/):
+$hits"
+    done
+}
+
+test_install_never_routes_to_capture() {
+    local hits
+    hits="$(grep -n -i 'capture' "$DOTFILES_DIR/install.sh" || true)"
+    [[ -z "$hits" ]] ||
+        fail "install.sh must contain no path that invokes capture:
+$hits"
+}
+
+test_capture_command_is_valid_bash_32_source() {
+    bash -n "$CAPTURE_SH" || fail "capture command is not valid shell source"
+
+    local violations
+    violations="$(bash32_violations "$CAPTURE_SH" || true)"
+    [[ -z "$violations" ]] ||
+        fail "capture command uses post-Bash-3.2 constructs:
+$violations"
+
+    head -n 1 "$CAPTURE_SH" | grep -Eq '^#!.*bash' ||
+        fail "capture command must declare a bash interpreter"
 }
 
 # --- Test-harness hygiene ----------------------------------------------------
