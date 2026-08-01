@@ -912,7 +912,7 @@ test_later_slice_artifacts_are_not_pre_authorized() {
 
 test_neutrality_scan_rejects_host_product_and_os_specific_content() {
     local tmp
-    tmp="$(new_tmp)"
+    new_tmp_var tmp
 
     local target_specific=(
         'ssh buildbox'
@@ -1003,7 +1003,7 @@ test_snippet_definitions_satisfy_the_vscode_snippet_schema() {
 
 test_snippet_schema_rejects_malformed_definitions() {
     local tmp
-    tmp="$(new_tmp)"
+    new_tmp_var tmp
 
     local invalid=(
         '{"Broken":42}'
