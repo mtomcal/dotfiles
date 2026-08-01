@@ -280,6 +280,11 @@ $OBSERVED_CALLS"
     new_tmp_var work
     run_deploy_injecting_failure "$work/User" snippets
     [[ "$OBSERVED_STATUS" -ne 0 ]] || fail "expected failure when the snippets mapping fails"
+    [[ "$OBSERVED_CALLS" == "mkdir -p $work/User
+replace_symlink $MANAGED_SETTINGS -> $work/User/settings.json
+replace_symlink $MANAGED_KEYBINDINGS -> $work/User/keybindings.json
+replace_symlink $MANAGED_SNIPPETS -> $work/User/snippets" ]] || fail "a failed snippets mapping was retried or followed by more work:
+$OBSERVED_CALLS"
 }
 
 test_managed_mappings_hold_under_spaces_and_shell_metacharacters() {
