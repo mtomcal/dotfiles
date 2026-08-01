@@ -2369,6 +2369,216 @@ split_code_server_bind() {
 }
 
 # ===========================
+# code-server Local Configuration
+# ===========================
+
+# First-install bind value; an existing local value or an explicit override
+# takes precedence over it.
+CODE_SERVER_BIND_DEFAULT="0.0.0.0:8080"
+
+# Local entropy for generated secrets. Overridable so tests can supply a
+# deterministic source; production always reads the kernel pool.
+CODE_SERVER_ENTROPY_SOURCE="${CODE_SERVER_ENTROPY_SOURCE:-/dev/urandom}"
+
+# The local, machine-specific code-server configuration. It is never tracked
+# and never symlinked: it holds the bind value, the generated password, and
+# certificate state for this host only.
+code_server_config_path() {
+    printf '%s/.config/code-server/config.yaml\n' "$HOME"
+}
+
+# Build the reconciled configuration for $2 from the existing configuration at
+# $1 (which may be absent) and the selected bind value $3.
+#
+# Every protected value is read, chosen, and written inside this subshell with
+# tracing disabled, so no password or certificate material can reach an xtrace
+# stream, a command argument, or a caller variable.
+write_code_server_config() {
+    (
+        set +x
+
+        local source_path="$1"
+        local target_path="$2"
+        local bind="$3"
+        local password=""
+        local cert=""
+        local cert_key=""
+
+        if [ -f "$source_path" ]; then
+            password="$(read_code_server_setting "$source_path" password)"
+            cert="$(read_code_server_setting "$source_path" cert)"
+            cert_key="$(read_code_server_setting "$source_path" cert-key)"
+        fi
+
+        if [ -z "$password" ]; then
+            password="$(generate_code_server_password)"
+            [ -n "$password" ] || return 1
+        fi
+
+        # An explicit certificate path stays exactly as configured. Anything
+        # else — absent, disabled, or the generated-certificate marker —
+        # becomes the generated certificate, so HTTPS is always on.
+        case "$cert" in
+            ""|true|false) cert="true" ;;
+        esac
+
+        # A heredoc keeps the values out of command arguments and out of any
+        # trace of this write.
+        cat > "$target_path" <<EOF || return 1
+bind-addr: $bind
+auth: password
+password: $password
+cert: $cert
+EOF
+
+        if [ -n "$cert_key" ]; then
+            cat >> "$target_path" <<EOF || return 1
+cert-key: $cert_key
+EOF
+        fi
+
+        # Everything this installer does not own is machine-local state and is
+        # carried over verbatim, including comments and blank lines.
+        if [ -f "$source_path" ]; then
+            local status=0
+            grep -vE '^(bind-addr|auth|password|cert|cert-key):' "$source_path" >> "$target_path" || status=$?
+            # grep reports 1 when a configuration owns no unrelated settings;
+            # anything above that is a real read or write failure.
+            [ "$status" -le 1 ] || return 1
+        fi
+
+        return 0
+    )
+}
+
+# One top-level key's raw value from a flat code-server configuration, or the
+# empty string when the key is absent. The value is returned on stdout for a
+# command substitution inside an untraced region; callers never print it.
+read_code_server_setting() {
+    local path="$1"
+    local key="$2"
+    local line
+
+    line="$(grep "^$key:" "$path" 2>/dev/null | head -n 1)" || true
+    [ -n "$line" ] || return 0
+
+    line="${line#$key:}"
+    # Trim the separating whitespace; the remainder is preserved verbatim.
+    line="${line#"${line%%[![:space:]]*}"}"
+    printf '%s' "${line%"${line##*[![:space:]]}"}"
+}
+
+# A file's permission bits as octal digits, across GNU and BSD stat.
+file_mode_octal() {
+    stat -c '%a' "$1" 2>/dev/null || stat -f '%Lp' "$1" 2>/dev/null
+}
+
+# A strong local password drawn from the local entropy source.
+generate_code_server_password() {
+    LC_ALL=C tr -dc 'A-Za-z0-9' < "$CODE_SERVER_ENTROPY_SOURCE" 2>/dev/null | head -c 32
+}
+
+# The bind value to publish, in precedence order: an explicit run override,
+# then the value already configured on this machine, then the first-install
+# default. The chosen value is used literally, so a bracketed IPv6 address
+# reaches the configuration exactly as it was validated.
+select_code_server_bind() {
+    local config_path="$1"
+    local existing=""
+
+    if [ -n "$CODE_SERVER_BIND" ]; then
+        printf '%s' "$CODE_SERVER_BIND"
+        return 0
+    fi
+
+    if [ -f "$config_path" ]; then
+        existing="$(read_code_server_setting "$config_path" bind-addr)"
+    fi
+
+    if [ -n "$existing" ]; then
+        printf '%s' "$existing"
+        return 0
+    fi
+
+    printf '%s' "$CODE_SERVER_BIND_DEFAULT"
+}
+
+# Reconcile the local code-server configuration in place: enforce the values
+# this installer owns, preserve everything local to this machine, and publish
+# the result atomically as a mode-0600 regular file.
+reconcile_code_server_config() {
+    local config_path
+    local bind
+    local tmp
+    local backup=""
+    local timestamp
+
+    config_path="$(code_server_config_path)"
+
+    # The local configuration holds this machine's secrets, so it must be a
+    # regular file this host owns. A symlink is rejected before anything is
+    # read or written, so a planted link can never be followed or replaced.
+    if [ -L "$config_path" ] || { [ -e "$config_path" ] && [ ! -f "$config_path" ]; }; then
+        print_error "The code-server configuration must be a regular file: ~/.config/code-server/config.yaml"
+        return 1
+    fi
+
+    if ! mkdir -p "$(dirname "$config_path")"; then
+        print_error "Creating the code-server configuration directory failed"
+        return 1
+    fi
+
+    bind="$(select_code_server_bind "$config_path")"
+
+    tmp="$(mktemp "$config_path.tmp.XXXXXX")" || return 1
+    chmod 600 "$tmp"
+
+    if ! write_code_server_config "$config_path" "$tmp" "$bind"; then
+        rm -f "$tmp"
+        print_error "Writing the code-server configuration failed"
+        return 1
+    fi
+
+    # An unchanged configuration is left exactly as it is; only an overly
+    # permissive mode is corrected.
+    if [ -f "$config_path" ] && cmp -s "$tmp" "$config_path"; then
+        rm -f "$tmp"
+        if [ "$(file_mode_octal "$config_path")" != "600" ]; then
+            chmod 600 "$config_path"
+        fi
+        print_success "code-server local configuration is already reconciled"
+        return 0
+    fi
+
+    # Only a content-changing replacement earns a backup.
+    if [ -f "$config_path" ]; then
+        timestamp=$(date +%Y%m%d_%H%M%S)
+        backup="$config_path.backup.$timestamp"
+        if ! cp -p "$config_path" "$backup"; then
+            rm -f "$tmp" "$backup"
+            print_error "Backing up the code-server configuration failed"
+            return 1
+        fi
+        # The backup carries the same password, so it never inherits a
+        # permissive mode from the original.
+        chmod 600 "$backup"
+    fi
+
+    if ! mv "$tmp" "$config_path"; then
+        rm -f "$tmp"
+        [ -z "$backup" ] || rm -f "$backup"
+        print_error "Publishing the code-server configuration failed"
+        return 1
+    fi
+
+    if [ -n "$backup" ]; then
+        print_info "Previous code-server configuration backed up alongside it"
+    fi
+    print_success "code-server local configuration is reconciled"
+    return 0
+}
+
+# ===========================
 # Installation Profiles
 # ===========================
 
