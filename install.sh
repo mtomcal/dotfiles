@@ -2579,6 +2579,202 @@ reconcile_code_server_config() {
 }
 
 # ===========================
+# code-server Service Transition
+# ===========================
+
+# The per-user unit the official installer provides. Nothing else is ever
+# enabled, started, or stopped on the operator's behalf.
+code_server_service_unit() {
+    printf 'code-server@%s.service\n' "${USER:-$(id -un)}"
+}
+
+code_server_service_is_active() {
+    systemctl --user is-active --quiet "$(code_server_service_unit)" >/dev/null 2>&1
+}
+
+# Local listening sockets on port $1, one line each. Returns 2 — with no
+# output — when this host offers no standard listener-inspection utility, so a
+# port that cannot be inspected is never mistaken for a free one.
+code_server_port_listeners() {
+    local port="$1"
+
+    if command -v ss >/dev/null 2>&1; then
+        ss -H -l -n -t 2>/dev/null |
+            awk -v port="$port" '{ n = split($4, parts, ":"); if (parts[n] == port) print }'
+        return 0
+    fi
+
+    if command -v lsof >/dev/null 2>&1; then
+        lsof -nP -iTCP:"$port" -sTCP:LISTEN 2>/dev/null | awk 'NR > 1'
+        return 0
+    fi
+
+    return 2
+}
+
+# Whether the selected port is free to bind. Callers stop the known service
+# first when it must be restarted, so any listener still standing here belongs
+# to another process. No alternate port is ever proposed.
+code_server_port_available() {
+    local port="$1"
+    local listeners=""
+    local status=0
+
+    listeners="$(code_server_port_listeners "$port")" || status=$?
+
+    if [ "$status" -ne 0 ]; then
+        print_error "No listener-inspection utility (ss or lsof) is available to check port $port"
+        return 2
+    fi
+
+    [ -z "$listeners" ]
+}
+
+# Restore the state a failed migration was about to take away: the previous
+# local configuration, then the service if it had been running. Failures here
+# are reported rather than swallowed; the caller still fails.
+rollback_code_server_transition() {
+    local previous_config="$1"
+    local was_running="$2"
+    local config_path
+
+    if [ -n "$previous_config" ] && [ -f "$previous_config" ]; then
+        config_path="$(code_server_config_path)"
+        if cp -p "$previous_config" "$config_path"; then
+            chmod 600 "$config_path"
+            print_info "Restored the previous code-server local configuration"
+        else
+            print_error "Restoring the previous code-server local configuration failed"
+        fi
+    fi
+
+    if [ "$was_running" -eq 1 ]; then
+        if systemctl --user start "$(code_server_service_unit)"; then
+            print_info "Restarted the previously running code-server service"
+        else
+            print_error "Restarting the previously running code-server service failed"
+        fi
+    fi
+}
+
+# Move the per-user code-server service to its required state for the selected
+# bind $1. $2 is "yes" when a configuration or version change requires a
+# restart. $3, when given, is the previous configuration restored if the
+# migration fails before the service is running again.
+transition_code_server_service() {
+    local bind="$1"
+    local restart_required="$2"
+    local previous_config="${3-}"
+    local unit
+    local split
+    local port
+    local was_running=0
+    local needs_launch=0
+
+    unit="$(code_server_service_unit)"
+
+    if ! split="$(split_code_server_bind "$bind")"; then
+        print_error "The selected code-server bind value is not usable"
+        return 1
+    fi
+    port="${split##* }"
+
+    if code_server_service_is_active; then
+        was_running=1
+    fi
+
+    # A running service that needs no restart is already bound to its own port;
+    # it is neither stopped nor asked to compete with itself.
+    if [ "$restart_required" == "yes" ] || [ "$was_running" -eq 0 ]; then
+        needs_launch=1
+    fi
+
+    # Stop the known service before its own port is inspected, so its listener
+    # is never mistaken for someone else's.
+    if [ "$restart_required" == "yes" ] && [ "$was_running" -eq 1 ]; then
+        if ! systemctl --user stop "$unit"; then
+            print_error "Stopping $unit failed"
+            rollback_code_server_transition "$previous_config" "$was_running"
+            return 1
+        fi
+    fi
+
+    if [ "$needs_launch" -eq 1 ] && ! code_server_port_available "$port"; then
+        print_error "Port $port is already in use by another process; free it or select a different bind"
+        rollback_code_server_transition "$previous_config" "$was_running"
+        return 1
+    fi
+
+    if ! systemctl --user enable "$unit"; then
+        print_error "Enabling $unit at boot failed"
+        rollback_code_server_transition "$previous_config" "$was_running"
+        return 1
+    fi
+
+    if [ "$needs_launch" -eq 1 ]; then
+        if [ "$was_running" -eq 1 ]; then
+            if ! systemctl --user restart "$unit"; then
+                print_error "Restarting $unit failed"
+                rollback_code_server_transition "$previous_config" "$was_running"
+                return 1
+            fi
+        elif ! systemctl --user start "$unit"; then
+            print_error "Starting $unit failed"
+            rollback_code_server_transition "$previous_config" "$was_running"
+            return 1
+        fi
+    fi
+
+    if ! code_server_service_is_active; then
+        print_error "$unit did not become active; inspect its service logs"
+        rollback_code_server_transition "$previous_config" "$was_running"
+        return 1
+    fi
+
+    print_success "code-server service is enabled and active"
+    return 0
+}
+
+# The host to probe locally. A wildcard bind accepts connections on every
+# interface, so it is verified over loopback; every other configured address is
+# probed exactly as it was validated.
+code_server_probe_host() {
+    local host="$1"
+
+    case "$host" in
+        0.0.0.0) printf '127.0.0.1' ;;
+        ::|0:0:0:0:0:0:0:0) printf '[::1]' ;;
+        *:*) printf '[%s]' "$host" ;;
+        *) printf '%s' "$host" ;;
+    esac
+}
+
+# Health-check the local endpoint over HTTPS only, accepting the generated
+# certificate. Diagnostics name the port and the unit; they never name the
+# configured host, any secret, or a firewall action.
+verify_code_server_https() {
+    local bind="$1"
+    local split
+    local host
+    local port
+
+    if ! split="$(split_code_server_bind "$bind")"; then
+        print_error "The selected code-server bind value is not usable"
+        return 1
+    fi
+    host="${split%% *}"
+    port="${split##* }"
+
+    if ! curl -kfsS "https://$(code_server_probe_host "$host"):$port/" >/dev/null 2>&1; then
+        print_error "The local HTTPS endpoint on port $port did not respond; inspect $(code_server_service_unit) logs and certificate state"
+        return 1
+    fi
+
+    print_success "code-server answered over HTTPS on port $port"
+    return 0
+}
+
+# ===========================
 # Installation Profiles
 # ===========================
 
