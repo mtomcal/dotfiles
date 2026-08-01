@@ -1,9 +1,9 @@
 # Tool Provisioning
 
-> **Version**: 1.4.0
-> **Last Updated**: 2026-07-31
+> **Version**: 1.5.0
+> **Last Updated**: 2026-08-01
 > **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md), [Design Language](DESIGN_LANGUAGE.md), [Symlink Manager](symlink-manager.md)
-> **Depended By**: [VS Code Configuration](vscode-config.md), Install Orchestrator
+> **Depended By**: [VS Code Configuration](vscode-config.md), [Execution Coordination](execution-coordination.md), Install Orchestrator
 
 ---
 
@@ -16,12 +16,13 @@ The Tool Provisioning system is responsible for installing, upgrading, and verif
 3. **Mason packages** — LSP servers, formatters, and linters installed inside Neovim via headless Mason commands
 4. **Direct upstream installers** — official curl installers for selected user-local tools whose update path is owned by the tool itself
 5. **Editor distributions and runtimes** — platform-scoped Visual Studio Code, code-server, and baseline Python provisioning
+6. **Execution-coordination tools** — stable Beads CLI plus Dolt for concurrent command-repo storage
 
 The system is **idempotent**: every function either checks whether the tool is already present and at a satisfactory version before attempting installation, or delegates idempotent update behavior to the tool's official installer. Re-running the full install produces the same result without errors, warnings, or unnecessary side effects.
 
 For Pi, tool provisioning installs one shared Pi binary. Profile-specific behavior is provided by deployed runtime configs and wrapper commands, not separate binary installs per profile.
 
-The Python, Visual Studio Code Desktop, and code-server clauses introduced in version 1.4.0 are approved desired behavior and are not yet implemented.
+The Python, Visual Studio Code Desktop, code-server, Beads, Dolt, command-repo bootstrap, and legacy cleanup clauses introduced after the current implementation are approved desired behavior and are not yet implemented.
 
 ---
 
@@ -65,6 +66,10 @@ The Python, Visual Studio Code Desktop, and code-server clauses introduced in ve
 | `VSCODE_MACOS_CASK` | visual-studio-code | Homebrew Cask | Official stable desktop distribution on macOS |
 | `CODE_SERVER_INSTALL_SCRIPT` | https://code-server.dev/install.sh | URL | Official stable code-server installation and update path on Ubuntu/Debian |
 | `CODE_SERVER_BIND_DEFAULT` | 0.0.0.0:8080 | address:port | First-install private-network listener default |
+| `BEADS_INSTALL_SCRIPT` | https://raw.githubusercontent.com/gastownhall/beads/main/scripts/install.sh | URL | Official checksum-verifying stable Beads release channel for Linux and macOS |
+| `DOLT_INSTALL_SCRIPT_LINUX` | https://github.com/dolthub/dolt/releases/latest/download/install.sh | URL | Official stable Dolt installer for Ubuntu/Debian |
+| `DOLT_MACOS_PACKAGE` | dolt | Homebrew formula | Official stable Dolt package for macOS |
+| `BEADS_COMMAND_CONFIG_PATH` | ~/.config/beads-command/env | path | Local runtime record written only by explicit command-repo bootstrap |
 
 ---
 
@@ -118,6 +123,8 @@ Packages with different names across platforms MUST use the `install_package` fu
 | Claude Code | curl \| bash installer with `latest` target | same as Ubuntu | Official installer script resolves latest release; binary lands in ~/.local/bin |
 | Visual Studio Code Desktop | Unsupported | Homebrew Cask install/upgrade | Homebrew stable Cask release |
 | code-server | Official direct installer | Unsupported | Official installer stable release |
+| Beads | Official checksum-verifying direct installer | Same as Ubuntu | Official stable GitHub release |
+| Dolt | Official direct installer | Homebrew formula | Official stable release |
 
 ### Mason Package Set
 
@@ -158,6 +165,8 @@ Packages with different names across platforms MUST use the `install_package` fu
 | vscode | Homebrew | Official desktop Cask; macOS only |
 | vscode_config | vscode when desktop command is absent | Managed desktop files and extension CLI require Visual Studio Code |
 | code_server | curl, service manager | Official installer, persistent service, and HTTPS verification; Ubuntu/Debian only |
+| dolt | curl on Ubuntu/Debian; Homebrew on macOS | Required for Beads server mode and private-remote synchronization |
+| beads | dolt, curl | Beads CLI requires the Dolt command surface selected for execution coordination |
 
 ### Pi Command Surface
 
@@ -408,6 +417,30 @@ Herdr MUST use the official curl installer on both Linux and macOS. Homebrew, mi
 
 The Herdr install function MUST be idempotent: if `command -v herdr` succeeds, it MUST skip the installer. If Herdr is installed but not on PATH, the function MUST report a PATH warning rather than installing duplicate binaries blindly.
 
+### Beads and Dolt Installation
+
+```
+DOLT:
+    IF os = ubuntu
+        RUN the official stable DOLT_INSTALL_SCRIPT_LINUX
+    ELSE IF os = macos
+        INSTALL or UPGRADE the DOLT_MACOS_PACKAGE Homebrew formula
+    END IF
+    VERIFY dolt version succeeds
+
+BEADS:
+    RUN the official checksum-verifying BEADS_INSTALL_SCRIPT on every selected module execution
+    VERIFY bd version succeeds
+    VERIFY the installed binary is not the retired pre-Dolt local build
+    VERIFY bd can discover the installed dolt command
+```
+
+The Beads installer MUST request the current stable release rather than a prerelease or source checkout. The Dolt module MUST complete before Beads when both are selected. Re-running either module MUST use its supported update path and preserve all command-repo data.
+
+Normal installation MUST NOT initialize, clone, migrate, delete, or synchronize a command repo. A separate explicit idempotent bootstrap operation accepts one absolute local path and private remote URL, then creates or clones the command repo, initializes Beads server mode, configures its Dolt remote, writes `BEADS_COMMAND_CONFIG_PATH`, and verifies server health plus pull/checkpoint/push. Credentials remain local and MUST NOT appear in arguments retained by tracked files or logs.
+
+Legacy cleanup is a separate one-time explicit migration operation, never an install side effect. Before deletion it MUST archive and verify the untracked `~/code/beads/research/` contents outside that clone. It may then remove the approved retired Beads binary and alias symlink, global and project legacy databases, and `~/code/beads/`. Any archive failure blocks every deletion.
+
 ### Go Full Development Environment
 
 ```
@@ -615,6 +648,10 @@ Dependencies are resolved dynamically at runtime by checking whether prerequisit
 | Go below minimum version | `go version` returns version < 1.24 | UPGRADE via Homebrew (macOS); WARN (Ubuntu, binary path) | On macOS: brew upgrade; On Ubuntu: user must re-run install |
 | Go version fetch fails | Version endpoint returns empty result | EMIT error "Failed to fetch version" | RETURN failure from golang module; user may retry |
 | Herdr installer fails | Official installer exits non-zero or `herdr` is still unavailable after install | EMIT error "Herdr install failed" | RETURN failure from herdr module; user may retry after checking network and PATH |
+| Beads installer fails | Official installer exits non-zero or `bd version` fails | Fail `beads` without touching command-repo data | Repair network/PATH and rerun |
+| Dolt installer fails | Official installer/package update fails or `dolt version` fails | Fail `dolt`; do not initialize Beads server mode | Repair installer/package manager and rerun |
+| Command-repo bootstrap incomplete | Path, remote, server health, or synchronization validation fails | Leave no globally routed partial command repo; report exact state | Correct path/remote/credentials and rerun explicit bootstrap |
+| Legacy archive fails | Research archive cannot be verified | Delete none of the approved legacy paths | Correct archive destination and rerun explicit cleanup |
 
 ### Download Failures
 
@@ -705,6 +742,10 @@ Dependencies are resolved dynamically at runtime by checking whether prerequisit
 13. **Editor targets are asymmetric by design**. Official desktop Visual Studio Code is macOS-only; code-server is Ubuntu/Debian-only. Unsupported explicit selection fails rather than silently skipping.
 
 14. **code-server secrets are local state**. Stable updates and configuration reconciliation preserve password, certificate, and bind state unless the user explicitly overrides the bind.
+
+15. **Command-repo state is not install state**. Normal Beads/Dolt provisioning never initializes, syncs, or deletes the private command repo; bootstrap and legacy cleanup are explicit operations with separate authority.
+
+16. **Server mode requires Dolt**. The Beads execution workflow uses a Beads-managed Dolt server, so tool verification covers both binaries before command-repo bootstrap.
 
 ---
 
@@ -1007,12 +1048,40 @@ Input: Select unsupported editor module
 Expected Output: Selected module fails with supported-platform guidance and performs no substitute installation
 ```
 
+```
+TS-TOOL-034: Beads and Dolt official stable provisioning
+Category: Integration
+Priority: Critical
+Preconditions: Supported platform without bd or dolt
+Input: Select dolt and beads modules twice
+Expected Output: Official stable channels install and then idempotently update/verify both binaries; no command repo is created or mutated
+```
+
+```
+TS-TOOL-035: Explicit command-repo bootstrap
+Category: End-to-End
+Priority: Critical
+Preconditions: bd and dolt are installed; private remote and credentials are valid
+Input: Bootstrap with an absolute local path and private remote URL, then rerun
+Expected Output: One server-mode command repo is created or cloned, local runtime config is written, health and synchronization pass, and rerun preserves operational data
+```
+
+```
+TS-TOOL-036: Legacy cleanup archives before delete
+Category: Integration
+Priority: Critical
+Preconditions: Approved legacy paths and untracked research exist
+Input: Run normal install, then explicit legacy cleanup with valid and invalid archive destinations
+Expected Output: Normal install deletes nothing; invalid archive deletes nothing; valid archive is verified before every approved legacy path is removed
+```
+
 ---
 
 ## Changelog
 
 | Version | Date | Summary |
 |---------|------|---------|
+| 1.5.0 | 2026-08-01 | Added official Beads and Dolt provisioning, explicit private command-repo bootstrap, and archive-gated one-time legacy cleanup. |
 | 1.4.0 | 2026-07-31 | Added native Python 3.10+ provisioning, macOS official Visual Studio Code installation/update, and Ubuntu/Debian code-server installation, service, security-state preservation, and health verification. |
 | 1.3.0 | 2026-07-15 | Made Claude settings local runtime state, preserved them across installer runs, and defined legacy symlink migration. |
 | 1.2.1 | 2026-07-06 | Required Claude Code to run the official installer with the `latest` target on every Claude module execution, with user-local binary verification. |

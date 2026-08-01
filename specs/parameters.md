@@ -1,6 +1,6 @@
 # Parameters
 
-> **Spec Version**: 2.2.0
+> **Spec Version**: 2.3.0
 > **Last Updated**: 2026-08-01
 > **Depends On**: None (foundational spec)
 > **Depended By**: All other specs
@@ -66,6 +66,9 @@ Parameters serve three purposes:
 | `HERDR_CONFIG_SOURCE` | ~/dotfiles/herdr/config.toml | path | Single tracked Herdr config source in the dotfiles repository |
 | `HERDR_CONFIG_TARGET` | ~/.config/herdr/config.toml | path | Herdr's XDG TOML config location |
 | `HERDR_INSTALL_SCRIPT` | https://herdr.dev/install.sh | URL | Official direct installer; chosen over Homebrew on both Linux and macOS for one update model |
+| `BEADS_INSTALL_SCRIPT` | https://raw.githubusercontent.com/gastownhall/beads/main/scripts/install.sh | URL | Official checksum-verifying stable installer supports the same update channel on Linux and macOS |
+| `DOLT_INSTALL_SCRIPT_LINUX` | https://github.com/dolthub/dolt/releases/latest/download/install.sh | URL | Official Dolt release installer for Ubuntu/Debian server-mode support |
+| `DOLT_MACOS_PACKAGE` | dolt | Homebrew formula | Official macOS Dolt package and update channel |
 | `HERDR_UPDATE_COMMAND` | herdr update | command | Herdr's update path for direct-installer installs |
 | `HERDR_PREFIX` | ctrl+a | key | Matches existing tmux muscle memory and migration parity requirements |
 | `HERDR_PANE_HISTORY` | true | boolean | Pane history is acceptable as local runtime state as long as it remains out of git |
@@ -182,6 +185,22 @@ Parameters serve three purposes:
 | `SANDBOX_HOST_UID_ARG` | `HOST_UID` | string | Docker build arg name for the host user UID; defaults to `1000` in the Dockerfile, overridden by `pis` script at build time |
 | `SANDBOX_HOST_GID_ARG` | `HOST_GID` | string | Docker build arg name for the host user GID; defaults to `1000` in the Dockerfile, overridden by `pis` script at build time |
 
+## Execution Coordination
+
+| Parameter | Value | Unit | Rationale |
+|-----------|-------|------|-----------|
+| `BEADS_COMMAND_CONFIG_PATH` | ~/.config/beads-command/env | path | Machine-local bootstrap result selects an external command repo without tracking machine-specific paths in dotfiles |
+| `BEADS_COMMAND_ENV` | BEADS_DIR | environment variable | Native Beads discovery override routes ordinary `bd` commands to the command repo from every source checkout |
+| `BEADS_STORAGE_MODE` | server | enum | Concurrent coordinator, worker, and reviewer writes require Dolt server mode |
+| `BEADS_SYNC_POLICY` | semantic checkpoints | policy | Checkpointing recovery boundaries avoids both per-keystroke commits and end-of-session data loss |
+| `COORDINATOR_LEASE_EXPIRY` | none | duration policy | Long reviews and blocked workers make automatic timeout takeover unsafe |
+| `SLICE_CORRECTION_DEFAULT` | 2 | correction rounds | Preserves bounded retries while allowing approved risk-specific overrides |
+| `REVIEW_PRESET_LEAN` | repository gates, Scope fidelity | gate set | Minimum final safety floor plus mandatory per-slice Test Quality |
+| `REVIEW_PRESET_STANDARD` | Lean, integrated Test Quality, Standards, Premortem, Security | gate set | Default independent review breadth |
+| `REVIEW_PRESET_HIGH_ASSURANCE` | Standard, risk gates, approved redundant risk passes | gate set | Adds risk-driven depth rather than duplicating every gate indiscriminately |
+| `ATTEMPT_RETENTION` | permanent, compactable | policy | Distinct attempts support recovery and audit while allowing post-completion decay |
+| `ATTEMPT_PROGRESS_POLICY` | semantic transitions only | policy | Herdr owns live observation; Beads stores only durable control transitions |
+
 ## Skill Library
 
 | Parameter | Value | Unit | Rationale |
@@ -204,6 +223,7 @@ Parameters serve three purposes:
 
 | Version | Date | Summary |
 |---------|------|---------|
+| 2.3.0 | 2026-08-01 | Added official Beads/Dolt install channels and external command-repo execution, review, lease, correction, synchronization, and attempt-policy parameters. |
 | 2.2.0 | 2026-08-01 | Relabeled `AGENT_CONFIG_DIR_COPILOT` as the catalog exposure directory and added `AGENT_STATE_DIR_COPILOT` for Copilot's current runtime settings and Herdr hook directory. |
 | 2.1.0 | 2026-07-31 | Added Python 3.10+ runtime provisioning and macOS Visual Studio Code, Ubuntu/Debian code-server, managed-layer, extension, Vim, bind, authentication, and certificate parameters. |
 | 2.0.0 | 2026-07-15 | Removed parameters owned solely by retired catalog workflows. |

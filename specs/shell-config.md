@@ -1,8 +1,8 @@
 # Shell Configuration Specification
 
-> **Version**: 1.1.0
-> **Last Updated**: 2026-07-05
-> **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md), [Design Language](DESIGN_LANGUAGE.md), [Herdr Config](herdr-config.md)
+> **Version**: 2.0.0
+> **Last Updated**: 2026-08-01
+> **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md), [Design Language](DESIGN_LANGUAGE.md), [Herdr Config](herdr-config.md), [Execution Coordination](execution-coordination.md)
 > **Depended By**: Install Orchestrator
 
 ---
@@ -29,6 +29,7 @@ The design is deliberately additive: the custom shell config is sourced at the e
 | Go | 1.24+ | GOPATH/bin must appear on PATH | apt (Ubuntu binary) / brew (macOS) |
 | Herdr | stable | Default SSH multiplexer | Direct curl installer |
 | tmux | 3.2+ | Legacy SSH fallback multiplexer | apt / brew |
+| Beads | stable | Global command-repo routing when bootstrap exists | Official direct installer |
 
 ### Spec Dependencies
 
@@ -37,6 +38,7 @@ The design is deliberately additive: the custom shell config is sourced at the e
 | [Parameters](parameters.md) | Provides `ZSH_CUSTOM_FILE`, `ZSH_ALIAS_LAZYGIT`, `ZSH_ALIAS_YAZI`, `ZSH_ALIAS_ZOXIDE`, `SHELL_NAME` |
 | [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md) | Defines terms: custom shell config, deploy, backup, idempotent |
 | [Design Language](DESIGN_LANGUAGE.md) | Defines visual tokens for CLI output and naming conventions |
+| [Execution Coordination](execution-coordination.md) | Defines the external command repo and global Beads routing contract |
 
 ---
 
@@ -71,6 +73,8 @@ The design is deliberately additive: the custom shell config is sourced at the e
 | `TMUX_AUTO_SESSION` | 0 | session name string | Legacy SSH tmux fallback target; the value "0" is a session name string, not a boolean. Attaches to existing session "0" or creates one |
 | `SSH_MULTIPLEXER_DEFAULT` | herdr | enum | Default SSH multiplexer when no override is set |
 | `SSH_MULTIPLEXER_OVERRIDE_ENV` | DOTFILES_SSH_MULTIPLEXER | env var | Optional per-machine override: `herdr`, `tmux`, or `none` |
+| `BEADS_COMMAND_CONFIG_PATH` | ~/.config/beads-command/env | path | Local unversioned bootstrap result containing the selected external Beads path |
+| `BEADS_COMMAND_ENV` | BEADS_DIR | env var | Native discovery override globally routing ordinary `bd` commands to the command repo |
 
 ---
 
@@ -90,6 +94,7 @@ The custom shell config is a sourced file — not a standalone script. It MUST N
 | fnm_config | conditional{string} | Guarded by directory existence check | fnm environment initialization |
 | zoxide_config | conditional{string} | Guarded by command existence check | zoxide shell integration |
 | ssh_multiplexer_rule | conditional{string} | Guarded by SSH_CONNECTION, HERDR_ENV, TMUX, and DOTFILES_SSH_MULTIPLEXER checks | Auto-attach rule for SSH sessions |
+| command_repo_route | conditional{path} | Guarded by valid local runtime config | Globally exports the external command repo through `BEADS_DIR` |
 
 ### Oh My Zsh Installation Record
 
@@ -258,7 +263,19 @@ The `--use-on-cd` flag causes fnm to automatically switch to the Node version sp
 
 The second `~/.local/bin` PATH prepend after fnm initialization is critical: without it, fnm's managed Node binaries would shadow user-installed global npm tools (such as Codex CLI and Pi) installed via `npm install -g --prefix ~/.local`.
 
-### BR-SHELL-017: Dependency Resolution for Zsh Modules
+### BR-SHELL-017: Route Beads to the Command Repo
+
+On every shell session startup, the custom shell config MUST inspect `BEADS_COMMAND_CONFIG_PATH`:
+
+| Condition | Action |
+|-----------|--------|
+| Runtime config exists, is readable, and names an absolute existing `.beads/` directory | Load the local value and globally export `BEADS_DIR` |
+| Runtime config is absent | Leave `BEADS_DIR` unchanged and produce no shell-startup error |
+| Runtime config exists but is malformed or stale | Do not export the invalid path; make the condition inspectable without blocking ordinary shell use |
+
+The runtime config is machine-local mutable state and MUST NOT be symlinked into or captured by dotfiles. Once exported, ordinary `bd` commands from every source checkout use the external command repo rather than creating source-repository state. Execution workflows MUST stop with bootstrap guidance when no valid route exists.
+
+### BR-SHELL-018: Dependency Resolution for Zsh Modules
 
 The install script's dependency resolver MUST enforce the following before executing either Zsh module:
 
@@ -344,7 +361,16 @@ The install script's dependency resolver MUST enforce the following before execu
 | **Response** | Fallback: create a new tmux session named `$TMUX_AUTO_SESSION` |
 | **Recovery** | Automatic; no user intervention needed |
 
-### EH-SHELL-008: Package Manager Not Available
+### EH-SHELL-008: Command-Repo Runtime Config Invalid
+
+| Attribute | Value |
+|-----------|-------|
+| **Trigger** | Local command-repo config exists but is malformed, relative, unreadable, or points to a missing `.beads/` directory |
+| **Detection** | Shell route validation fails |
+| **Response** | Do not export the invalid `BEADS_DIR`; preserve ordinary shell startup |
+| **Recovery** | Rerun explicit command-repo bootstrap or repair the local runtime path |
+
+### EH-SHELL-009: Package Manager Not Available
 
 | Attribute | Value |
 |-----------|-------|
@@ -374,6 +400,8 @@ The install script's dependency resolver MUST enforce the following before execu
 8. **SSH multiplexer default**: SSH sessions default to Herdr. Tmux is a fallback selected explicitly with `DOTFILES_SSH_MULTIPLEXER=tmux`, and `DOTFILES_SSH_MULTIPLEXER=none` disables SSH auto-attach.
 
 9. **SSH tmux fallback target**: The session name `0` (`TMUX_AUTO_SESSION`) is a string, not a boolean. The value "0" is used as a tmux session name — it avoids ambiguity with named sessions and matches the default tmux session numbering.
+
+10. **Beads routing is local state**: The tracked custom shell config owns only conditional loading behavior. Bootstrap owns the unversioned absolute path, and missing bootstrap state must not make every shell noisy or unusable.
 
 ---
 
@@ -563,11 +591,28 @@ The install script's dependency resolver MUST enforce the following before execu
 **Input**: `echo $TERM`
 **Expected Output**: `xterm-256color`
 
+### TS-SHELL-022: Valid Command-Repo Route
+
+**Category**: Integration
+**Priority**: Critical
+**Preconditions**: Bootstrap wrote valid local runtime config naming an external `.beads/` directory
+**Input**: Start a fresh shell and run `bd` from an unrelated source checkout
+**Expected Output**: `BEADS_DIR` is globally exported to the external command repo and no source-repository `.beads/` directory is created
+
+### TS-SHELL-023: Missing or Stale Command-Repo Route
+
+**Category**: Unit
+**Priority**: High
+**Preconditions**: Runtime config is absent, then present with a stale path
+**Input**: Start a fresh shell in each state
+**Expected Output**: Shell startup succeeds without exporting an invalid path; execution workflows provide bootstrap guidance
+
 ---
 
 ## Changelog
 
 | Version | Date | Summary |
 |---------|------|---------|
+| 2.0.0 | 2026-08-01 | Added machine-local external command-repo routing and global guarded `BEADS_DIR` export. |
 | 1.1.0 | 2026-07-05 | Added Herdr aliases, changed SSH auto-attach default from tmux to Herdr, and specified tmux/none environment overrides. |
 | 1.0.0 | 2026-05-01 | Initial specification: Zsh/Oh My Zsh installation, custom shell config deployment, aliases, PATH configuration, SSH tmux auto-attach, Go environment, fnm/zoxide conditional init |

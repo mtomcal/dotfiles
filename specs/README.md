@@ -1,14 +1,14 @@
 # Personal Dotfiles Manager Specification Suite
 
-> **Version**: 0.12.0
+> **Version**: 0.13.0
 > **Last Updated**: 2026-08-01
-> **Purpose**: Complete specification for the personal dotfiles manager — automates setup of a Herdr/tmux + Neovim + platform-scoped VS Code + zsh dev environment across Linux and macOS. Primarily for personal use, serves as reference/inspiration for others.
+> **Purpose**: Complete specification for the personal dotfiles manager — automates setup of a Herdr/tmux + Beads/Dolt + Neovim + platform-scoped VS Code + zsh dev environment across Linux and macOS. Primarily for personal use, serves as reference/inspiration for others.
 
 ---
 
 ## Project Summary
 
-A personal dotfiles manager that automates the setup of a Herdr-first terminal workspace with tmux retained as a legacy fallback, Neovim, platform-scoped Visual Studio Code/code-server, baseline Python, and zsh across Linux (Ubuntu/Debian) and macOS. It uses a symlink-based architecture to maintain configurations in version control while deploying them to standard system locations. The primary user is the owner, but the repository serves as a reference for others seeking a reproducible, version-controlled development environment.
+A personal dotfiles manager that automates the setup of a Herdr-first terminal workspace with tmux retained as a legacy fallback, Beads/Dolt execution coordination, Neovim, platform-scoped Visual Studio Code/code-server, baseline Python, and zsh across Linux (Ubuntu/Debian) and macOS. It uses a symlink-based architecture to maintain configurations in version control while deploying them to standard system locations. The primary user is the owner, but the repository serves as a reference for others seeking a reproducible, version-controlled development environment.
 
 ---
 
@@ -32,6 +32,7 @@ A personal dotfiles manager that automates the setup of a Herdr-first terminal w
 | File manager | Yazi | latest | Terminal file manager |
 | Git UI | lazygit | latest | Terminal git interface |
 | Smart cd | Zoxide | latest | Directory jumping |
+| Execution graph | Beads + Dolt | stable | Private command-repo planning, orchestration state, and recovery |
 
 ---
 
@@ -52,17 +53,18 @@ For an extracting or implementing agent, read specs in this order:
 
 ### Phase 3: Supporting
 
-6. **[shell-config.md](shell-config.md)** — Zsh + Oh My Zsh configuration
-7. **[herdr-config.md](herdr-config.md)** — Herdr default multiplexer, config, SSH behavior, integrations
-8. **[tmux-config.md](tmux-config.md)** — Tmux keybindings, nested sessions, legacy fallback integration
-9. **[neovim-config.md](neovim-config.md)** — Kickstart base + custom plugin layer
-10. **[vscode-config.md](vscode-config.md)** — macOS desktop managed layer + explicit Ubuntu/Debian code-server
-11. **[skill-library.md](skill-library.md)** — Shared-skill catalog, authoring semantics, progressive disclosure, and composition
-12. **[ai-agent-config.md](ai-agent-config.md)** — AI agent installation, runtime configuration, catalog exposure, and symlink wiring
+6. **[herdr-config.md](herdr-config.md)** — Herdr default multiplexer, config, SSH behavior, integrations
+7. **[execution-coordination.md](execution-coordination.md)** — Private command repo, execution molecules, model/review policy, attempts, synchronization, and recovery
+8. **[shell-config.md](shell-config.md)** — Zsh + Oh My Zsh configuration and global command-repo routing
+9. **[tmux-config.md](tmux-config.md)** — Tmux keybindings, nested sessions, legacy fallback integration
+10. **[neovim-config.md](neovim-config.md)** — Kickstart base + custom plugin layer
+11. **[vscode-config.md](vscode-config.md)** — macOS desktop managed layer + explicit Ubuntu/Debian code-server
+12. **[skill-library.md](skill-library.md)** — Shared-skill catalog, authoring semantics, progressive disclosure, and execution-workflow composition
+13. **[ai-agent-config.md](ai-agent-config.md)** — AI agent installation, runtime configuration, catalog exposure, and symlink wiring
 
 ### Phase 4: Leaf
 
-13. **[install-orchestrator.md](install-orchestrator.md)** — Top-level orchestrator that calls everything
+14. **[install-orchestrator.md](install-orchestrator.md)** — Top-level orchestrator that calls everything
 
 ---
 
@@ -79,13 +81,19 @@ graph TD
     symlink --> ai[AI Agent Config]
     tool --> shell
     tool --> herdr
+    tool --> exec[Execution Coordination]
     tool --> nvim
     tool --> vscode
     tool --> ai
+    herdr --> exec
+    herdr --> shell
     herdr --> skill[Skill Library]
+    exec --> shell
+    exec --> skill
+    exec --> install[Install Orchestrator]
     skill --> ai
     herdr --> ai
-    shell --> install[Install Orchestrator]
+    shell --> install
     herdr --> install
     tmux --> install
     nvim --> install
@@ -102,13 +110,14 @@ graph TD
 | Spec | Depends On | Depended By |
 |------|------------|-------------|
 | symlink-manager.md | — | tool-provisioning, shell-config, herdr-config, tmux-config, neovim-config, vscode-config, ai-agent-config, install-orchestrator |
-| tool-provisioning.md | symlink-manager | shell-config, herdr-config, neovim-config, vscode-config, ai-agent-config, install-orchestrator |
-| shell-config.md | symlink-manager, tool-provisioning | install-orchestrator |
-| herdr-config.md | symlink-manager, tool-provisioning | shell-config, skill-library, ai-agent-config, install-orchestrator |
+| tool-provisioning.md | symlink-manager | shell-config, herdr-config, execution-coordination, neovim-config, vscode-config, ai-agent-config, install-orchestrator |
+| shell-config.md | symlink-manager, tool-provisioning, execution-coordination | install-orchestrator |
+| herdr-config.md | symlink-manager, tool-provisioning | shell-config, execution-coordination, skill-library, ai-agent-config, install-orchestrator |
+| execution-coordination.md | parameters, ubiquitous language, tool-provisioning, herdr-config | shell-config, skill-library, install-orchestrator |
 | tmux-config.md | symlink-manager | install-orchestrator |
 | neovim-config.md | symlink-manager, tool-provisioning | install-orchestrator |
 | vscode-config.md | parameters, ubiquitous language, design language, symlink-manager, tool-provisioning | install-orchestrator |
-| skill-library.md | parameters, ubiquitous language, herdr-config | ai-agent-config |
+| skill-library.md | parameters, ubiquitous language, herdr-config, execution-coordination | ai-agent-config |
 | ai-agent-config.md | symlink-manager, tool-provisioning, herdr-config, skill-library | install-orchestrator |
 | install-orchestrator.md | all other specs | — |
 
@@ -118,17 +127,18 @@ graph TD
 
 | Spec | Description | Version |
 |------|-------------|---------|
-| [parameters.md](parameters.md) | All tuning values with rationale | 2.2.0 |
+| [parameters.md](parameters.md) | All tuning values with rationale | 2.3.0 |
 | [symlink-manager.md](symlink-manager.md) | Symlink creation, backup, and verification | 2.0.0 |
-| [tool-provisioning.md](tool-provisioning.md) | Dependency and tool installation | 1.4.0 |
-| [shell-config.md](shell-config.md) | Zsh + Oh My Zsh configuration | 1.1.0 |
+| [tool-provisioning.md](tool-provisioning.md) | Dependency and tool installation | 1.5.0 |
+| [shell-config.md](shell-config.md) | Zsh + Oh My Zsh configuration | 2.0.0 |
 | [herdr-config.md](herdr-config.md) | Herdr default multiplexer and migration contract | 0.3.0 |
 | [tmux-config.md](tmux-config.md) | Tmux keybindings and nested sessions | 1.1.0 |
 | [neovim-config.md](neovim-config.md) | Kickstart + custom plugin layer | 1.0.0 |
 | [vscode-config.md](vscode-config.md) | Managed VS Code/code-server configuration and extensions | 1.0.0 |
-| [skill-library.md](skill-library.md) | Shared-skill catalog and authoring contracts | 5.0.0 |
+| [execution-coordination.md](execution-coordination.md) | Beads command-repo execution and recovery contract | 1.0.0 |
+| [skill-library.md](skill-library.md) | Shared-skill catalog and authoring contracts | 6.0.0 |
 | [ai-agent-config.md](ai-agent-config.md) | AI agent runtime configs and catalog exposure | 4.1.0 |
-| [install-orchestrator.md](install-orchestrator.md) | Top-level idempotent setup orchestrator | 1.6.0 |
+| [install-orchestrator.md](install-orchestrator.md) | Top-level idempotent setup orchestrator | 2.0.0 |
 
 ---
 
@@ -148,6 +158,7 @@ graph TD
 
 - [x] Extract shell-config spec from zsh/.zshrc.custom
 - [x] Extract herdr-config spec from herdr/config.toml
+- [ ] Implement and validate execution-coordination against the approved command-repo, molecule, assignment, attempt, and recovery contracts
 - [x] Extract tmux-config spec from tmux/.tmux.conf
 - [x] Extract neovim-config spec from nvim/custom/ plugin files
 - [ ] Implement and validate vscode-config against the approved managed-layer, extension, service, and capture contracts
@@ -164,6 +175,7 @@ graph TD
 
 | Version | Date | Change |
 |---------|------|--------|
+| 0.13.0 | 2026-08-01 | Registered Execution Coordination, Beads/Dolt tooling, command-repo shell routing, updated dependency order, and current spec versions. |
 | 0.12.0 | 2026-08-01 | Synced the Copilot catalog-exposure vs runtime-state parameter split into parameters.md, added the `catalog exposure` glossary term, and corrected the implementation checklist to reflect extracted specs. |
 | 0.11.0 | 2026-08-01 | Synchronized Herdr 0.7.5 agent coordination, current repo-owned integration targets, and affected spec versions. |
 | 0.10.0 | 2026-07-31 | Registered VS Code Configuration, baseline Python provisioning, platform-scoped editor targets, dependency graph edges, and current spec versions. |
