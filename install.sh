@@ -113,7 +113,7 @@ modules_require_package_manager_update() {
 
     for module in "$@"; do
         case "$module" in
-            "base_tools")
+            "base_tools"|"python")
                 return 0
                 ;;
         esac
@@ -1722,10 +1722,166 @@ install_copilot() {
 # following implementation steps; until then they report an unimplemented
 # module failure instead of installing a substitute.
 
+# Oldest interpreter accepted from a native package source.
+PYTHON_REQUIRED_VERSION="3.10"
+
+# The module owns a native interpreter and virtual environments only; it never
+# widens package sources or takes over the system interpreter to succeed.
+print_python_native_policy() {
+    print_info "This module never adds a third-party repository or replaces the system interpreter."
+}
+
+print_python_source_guidance() {
+    print_info "Use a supported OS release or native package source that provides Python $PYTHON_REQUIRED_VERSION or newer."
+    print_python_native_policy
+}
+
+# Choose the interpreter this module provisioned. On macOS a stale system
+# python3 can shadow Homebrew's, so the formula's own interpreter wins.
+select_python_interpreter() {
+    local prefix
+    local interpreter
+
+    if [ "$OS" == "macos" ]; then
+        if prefix="$(brew --prefix python 2>/dev/null)" &&
+            [ -n "$prefix" ] && [ -x "$prefix/bin/python3" ]; then
+            printf '%s' "$prefix/bin/python3"
+            return 0
+        fi
+    fi
+
+    if interpreter="$(command -v python3 2>/dev/null)"; then
+        printf '%s' "$interpreter"
+        return 0
+    fi
+
+    return 1
+}
+
+# Version token from the interpreter's own report, e.g. "Python 3.12.3" -> "3.12.3".
+python_reported_version() {
+    local interpreter="$1"
+    local output
+
+    if ! output="$("$interpreter" --version 2>&1)"; then
+        return 1
+    fi
+
+    output="${output%%$'\n'*}"
+    printf '%s' "${output##* }"
+}
+
+# True only for a numeric major.minor at or above the required baseline.
+# Compared as numbers, so 3.9 stays below 3.10.
+python_version_meets_requirement() {
+    local version="$1"
+    local major
+    local minor
+    local rest
+    local required_major="${PYTHON_REQUIRED_VERSION%%.*}"
+    local required_minor="${PYTHON_REQUIRED_VERSION#*.}"
+
+    case "$version" in
+        *.*) ;;
+        *) return 1 ;;
+    esac
+
+    major="${version%%.*}"
+    rest="${version#*.}"
+    minor="${rest%%.*}"
+
+    case "$major" in ''|*[!0-9]*) return 1 ;; esac
+    case "$minor" in ''|*[!0-9]*) return 1 ;; esac
+
+    if [ "$major" -gt "$required_major" ]; then
+        return 0
+    fi
+    if [ "$major" -eq "$required_major" ] && [ "$minor" -ge "$required_minor" ]; then
+        return 0
+    fi
+
+    return 1
+}
+
+# Prove virtual environments work by building a throwaway one and running its
+# own interpreter. The temporary directory is removed before returning on every
+# path, so no verification state survives success or failure.
+verify_python_venv() {
+    local interpreter="$1"
+    local tmp_dir
+    local status=0
+
+    if ! tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/dotfiles-python-venv.XXXXXX")"; then
+        print_error "Could not allocate a temporary directory for virtual-environment verification"
+        return 1
+    fi
+
+    if ! "$interpreter" -m venv "$tmp_dir/venv" > /dev/null 2>&1; then
+        print_error "$interpreter could not create a temporary virtual environment"
+        status=1
+    elif ! "$tmp_dir/venv/bin/python" --version > /dev/null 2>&1; then
+        print_error "The temporary virtual environment's own interpreter did not run"
+        status=1
+    fi
+
+    rm -rf "$tmp_dir"
+
+    return $status
+}
+
 install_python() {
     print_header "Installing Python"
-    print_error "Python provisioning is not implemented yet"
-    return 1
+
+    local interpreter
+    local version
+
+    if [ "$OS" == "ubuntu" ]; then
+        install_package "python3"
+        install_package "python3-venv"
+    elif [ "$OS" == "macos" ]; then
+        if brew list python &> /dev/null; then
+            print_info "Upgrading Homebrew Python..."
+            # An already-current formula can be reported as a refusal, so the
+            # verification below decides the outcome instead of this status.
+            if ! brew upgrade python; then
+                print_warning "brew upgrade python did not complete; verifying the installed formula instead"
+            fi
+        else
+            install_package "python" "python"
+        fi
+    else
+        print_error "Native Python provisioning supports Ubuntu/Debian and macOS only (detected: ${OS:-unknown})"
+        return 1
+    fi
+
+    if ! interpreter="$(select_python_interpreter)"; then
+        print_error "No native python3 interpreter is available after package installation"
+        print_python_source_guidance
+        return 1
+    fi
+
+    version="$(python_reported_version "$interpreter" || true)"
+    if [ -z "$version" ]; then
+        print_error "Could not read a Python version from $interpreter"
+        print_python_source_guidance
+        return 1
+    fi
+
+    if ! python_version_meets_requirement "$version"; then
+        print_error "Native Python at $interpreter reports '$version' (required: $PYTHON_REQUIRED_VERSION or newer)"
+        print_python_source_guidance
+        return 1
+    fi
+
+    print_success "Native Python $version verified at $interpreter"
+
+    if ! verify_python_venv "$interpreter"; then
+        print_info "Repair the native packages that provide Python virtual environments and rerun the python module."
+        print_python_native_policy
+        return 1
+    fi
+
+    print_success "Python $version with working virtual environments is ready"
 }
 
 install_vscode() {
