@@ -1937,11 +1937,14 @@ deploy_vscode_managed_layer() {
         return 1
     fi
 
-    mkdir -p "$user_dir"
+    if ! mkdir -p "$user_dir"; then
+        print_error "Could not create editor User directory: $user_dir"
+        return 1
+    fi
 
-    replace_symlink "$DOTFILES_DIR/vscode/settings.json" "$user_dir/settings.json"
-    replace_symlink "$DOTFILES_DIR/vscode/keybindings.json" "$user_dir/keybindings.json"
-    replace_symlink "$DOTFILES_DIR/vscode/snippets" "$user_dir/snippets"
+    replace_symlink "$DOTFILES_DIR/vscode/settings.json" "$user_dir/settings.json" || return 1
+    replace_symlink "$DOTFILES_DIR/vscode/keybindings.json" "$user_dir/keybindings.json" || return 1
+    replace_symlink "$DOTFILES_DIR/vscode/snippets" "$user_dir/snippets" || return 1
 }
 
 configure_vscode() {
