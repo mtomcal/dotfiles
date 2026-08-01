@@ -1,7 +1,7 @@
 # Personal Dotfiles Manager Specification Suite
 
-> **Version**: 0.10.0
-> **Last Updated**: 2026-07-31
+> **Version**: 0.12.0
+> **Last Updated**: 2026-08-01
 > **Purpose**: Complete specification for the personal dotfiles manager — automates setup of a Herdr/tmux + Neovim + platform-scoped VS Code + zsh dev environment across Linux and macOS. Primarily for personal use, serves as reference/inspiration for others.
 
 ---
@@ -118,16 +118,16 @@ graph TD
 
 | Spec | Description | Version |
 |------|-------------|---------|
-| [parameters.md](parameters.md) | All tuning values with rationale | 2.1.0 |
-| [symlink-manager.md](symlink-manager.md) | Symlink creation, backup, and verification | 1.6.0 |
+| [parameters.md](parameters.md) | All tuning values with rationale | 2.2.0 |
+| [symlink-manager.md](symlink-manager.md) | Symlink creation, backup, and verification | 2.0.0 |
 | [tool-provisioning.md](tool-provisioning.md) | Dependency and tool installation | 1.4.0 |
 | [shell-config.md](shell-config.md) | Zsh + Oh My Zsh configuration | 1.1.0 |
-| [herdr-config.md](herdr-config.md) | Herdr default multiplexer and migration contract | 0.2.0 |
+| [herdr-config.md](herdr-config.md) | Herdr default multiplexer and migration contract | 0.3.0 |
 | [tmux-config.md](tmux-config.md) | Tmux keybindings and nested sessions | 1.1.0 |
 | [neovim-config.md](neovim-config.md) | Kickstart + custom plugin layer | 1.0.0 |
 | [vscode-config.md](vscode-config.md) | Managed VS Code/code-server configuration and extensions | 1.0.0 |
-| [skill-library.md](skill-library.md) | Shared-skill catalog and authoring contracts | 4.0.0 |
-| [ai-agent-config.md](ai-agent-config.md) | AI agent runtime configs and catalog exposure | 3.0.0 |
+| [skill-library.md](skill-library.md) | Shared-skill catalog and authoring contracts | 5.0.0 |
+| [ai-agent-config.md](ai-agent-config.md) | AI agent runtime configs and catalog exposure | 4.1.0 |
 | [install-orchestrator.md](install-orchestrator.md) | Top-level idempotent setup orchestrator | 1.6.0 |
 
 ---
@@ -136,27 +136,27 @@ graph TD
 
 ### Phase 1: Foundation
 
-- [ ] Extract all parameters with values and rationale from install.sh and config files
-- [ ] Review ubiquitous language for term consistency across all specs
+- [x] Extract all parameters with values and rationale from install.sh and config files
+- [x] Review ubiquitous language for term consistency across all specs
 
 ### Phase 2: Core
 
-- [ ] Extract symlink-manager spec from install.sh symlink functions
-- [ ] Extract tool-provisioning spec from install.sh dependency installation logic
+- [x] Extract symlink-manager spec from install.sh symlink functions
+- [x] Extract tool-provisioning spec from install.sh dependency installation logic
 
 ### Phase 3: Supporting
 
-- [ ] Extract shell-config spec from zsh/.zshrc.custom
-- [ ] Extract herdr-config spec from herdr/config.toml
-- [ ] Extract tmux-config spec from tmux/.tmux.conf
-- [ ] Extract neovim-config spec from nvim/custom/ plugin files
+- [x] Extract shell-config spec from zsh/.zshrc.custom
+- [x] Extract herdr-config spec from herdr/config.toml
+- [x] Extract tmux-config spec from tmux/.tmux.conf
+- [x] Extract neovim-config spec from nvim/custom/ plugin files
 - [ ] Implement and validate vscode-config against the approved managed-layer, extension, service, and capture contracts
-- [ ] Validate skill-library spec against `shared/skills/` and its authoring workflows
-- [ ] Extract ai-agent-config spec from codex/, claude/, pi/, copilot/ directories
+- [x] Validate skill-library spec against `shared/skills/` and its authoring workflows
+- [x] Extract ai-agent-config spec from codex/, claude/, pi/, copilot/ directories
 
 ### Phase 4: Leaf
 
-- [ ] Extract install-orchestrator spec from install.sh main flow and OS detection
+- [x] Extract install-orchestrator spec from install.sh main flow and OS detection
 
 ---
 
@@ -164,4 +164,6 @@ graph TD
 
 | Version | Date | Change |
 |---------|------|--------|
+| 0.12.0 | 2026-08-01 | Synced the Copilot catalog-exposure vs runtime-state parameter split into parameters.md, added the `catalog exposure` glossary term, and corrected the implementation checklist to reflect extracted specs. |
+| 0.11.0 | 2026-08-01 | Synchronized Herdr 0.7.5 agent coordination, current repo-owned integration targets, and affected spec versions. |
 | 0.10.0 | 2026-07-31 | Registered VS Code Configuration, baseline Python provisioning, platform-scoped editor targets, dependency graph edges, and current spec versions. |

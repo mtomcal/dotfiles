@@ -46,9 +46,9 @@ SOFTWARE.
 
 ## Herdr
 
-`shared/skills/herdr/SKILL.md` is adapted from the root [`SKILL.md`](https://github.com/ogulcancelik/herdr/blob/6cbdba434fd15fc3818302a5843593da47db2eb4/SKILL.md) in [`ogulcancelik/herdr`](https://github.com/ogulcancelik/herdr) at commit `6cbdba434fd15fc3818302a5843593da47db2eb4`. It was introduced locally at commit `1007795a0e3608f271797dfc6f6c1ab2b72d5284` with repository frontmatter adaptations. It is a locally maintained adaptation and is not automatically synchronized with upstream.
+`shared/skills/herdr/SKILL.md` was originally adapted from the root [`SKILL.md`](https://github.com/herdrdev/herdr/blob/6cbdba434fd15fc3818302a5843593da47db2eb4/SKILL.md) in [`herdrdev/herdr`](https://github.com/herdrdev/herdr) at commit `6cbdba434fd15fc3818302a5843593da47db2eb4`, then refreshed for Herdr 0.7.5 from commit [`ef4c23f5775bb8cfec05f05d0844226ff959a07a`](https://github.com/herdrdev/herdr/blob/ef4c23f5775bb8cfec05f05d0844226ff959a07a/SKILL.md). It was introduced locally at commit `1007795a0e3608f271797dfc6f6c1ab2b72d5284` with repository frontmatter adaptations. It is a locally maintained adaptation and is not automatically synchronized with upstream.
 
-`shared/skills/herdr-claude-code/SKILL.md` is a repository-authored specialization that composes the adapted base skill without copying its generic CLI recipes. It is not represented as upstream Herdr material; the base skill's source, revision, local-fork status, and license attribution remain unchanged.
+`shared/skills/herdr-claude-code/SKILL.md` is a repository-authored specialization that composes the adapted base skill without copying its generic CLI recipes. It is not represented as upstream Herdr material; the base skill's recorded source revisions, local-fork status, and license attribution continue to govern the adapted material.
 
 The upstream package declares `AGPL-3.0-or-later`. The exact-revision [`LICENSE`](https://github.com/ogulcancelik/herdr/blob/6cbdba434fd15fc3818302a5843593da47db2eb4/LICENSE) is reproduced below.
 

@@ -1,7 +1,7 @@
 # Ubiquitous Language
 
-> **Version**: 1.3.0
-> **Last Updated**: 2026-07-31
+> **Version**: 1.5.0
+> **Last Updated**: 2026-08-01
 > **Purpose**: Shared vocabulary for all specs. Every term used in multiple specs MUST be defined here. Read this before any other spec.
 
 > **Usage note**: Throughout all specs, the bare term "install" should be disambiguated using one of the three defined terms: **install** (the complete install.sh run), **install (dependency)** (a single package), or **install (Mason)** (a Neovim package). Use the specific term wherever context is ambiguous.
@@ -81,6 +81,7 @@
 | **core instruction** | A compact, universally required behavior kept directly in the skill body | "mandatory reference", "support rule" | Core instructions remain local rather than being displaced into universally loaded companion files |
 | **shared skills directory** | The canonical cross-agent skills directory at `~/dotfiles/shared/skills/` | — | Non-Pi agent skill paths point here directly. Pi-visible skill entries point here through `pi/skills/` symlinks. |
 | **agent config** | An agent-specific configuration directory managed from the dotfiles repo | — | Each supported agent has one repo-owned config surface. Pi's config deploys to `~/.pi/agent`. |
+| **catalog exposure** | An agent config directory's role of exposing the shared skill catalog and repo-managed commands and agents to a runtime | "catalog directory", "skills folder" | Copilot separates catalog exposure (`~/.config/copilot`) from its runtime settings and Herdr hook directory (`~/.copilot`); other agents combine both in one config directory. |
 | **unshipping** | Removing a feature, tool, config surface, or workflow entirely from the repo's tracked and deployed contract | "disable", "hide" | Includes implementation, tests, docs, specs, generated artifacts, and installer surfaces unless explicitly scoped otherwise. |
 
 ## Agent Workflow Domain
@@ -142,7 +143,7 @@
 - **Herdr config** is deployed by the **dotfiles** repo, while **Herdr runtime state** remains local-only and out of git
 - A **repo-owned Herdr integration** is generated or copied into **agent configs** before deployment, rather than installed directly into live runtime paths
 - The **Herdr skill** and **Claude Code Herdr skill** live in the **shared skills directory** and are visible to supported agents through their skills deployment paths
-- The **Claude Code Herdr skill** composes the **Herdr skill**, which retains generic terminal transport and concurrent agent-status waiting
+- The **Claude Code Herdr skill** composes the **Herdr skill**, which retains generic terminal transport and server-owned settled-state waiting
 - An **implementation plan** may be divided into an **execution ledger**, while remaining immutable and independently addressable by path and SHA-256
 - An **implementation plan** carries at least one **proposed execution trace** per ordered step and defines binding **review gates**, while recording no review results or execution state
 - A **review gate** defines a required final check; the **execution ledger** and direct execution report its results, never the immutable **implementation plan**
@@ -190,6 +191,8 @@
 
 | Version | Date | Change |
 |---------|------|--------|
+| 1.5.0 | 2026-08-01 | Added `catalog exposure` to name the agent config role that exposes the shared skill catalog, distinguishing Copilot's catalog exposure directory from its runtime settings directory. |
+| 1.4.0 | 2026-08-01 | Updated the Herdr skill relationship from client-owned concurrent status races to server-owned settled-state waiting. |
 | 1.3.0 | 2026-07-31 | Added Visual Studio Code Desktop, code-server, Default Profile, VS Code managed layer, VS Code extension manifest, capture, and private-network browser endpoint terminology and distinctions. |
 | 1.2.0 | 2026-07-15 | Added `review gate` and `proposed execution trace`; redefined the immutable implementation plan to define binding final review gates while still excluding review results, reviewer/model configuration, and execution state. |
 | 1.1.0 | 2026-07-15 | Distinguished the generic Herdr skill from its composing Claude Code orchestration specialization. |
@@ -220,7 +223,7 @@
 > **Domain Expert**: "Keep it as a compact **core instruction** in the skill body; **semantic YAGNI** removes unnecessary detail instead of creating **hill climbing**."
 > **Dev**: "Does `create-plan` open an **execution ledger**?"
 > **Domain Expert**: "No. It writes one immutable **implementation plan**. A **coordinator** later uses `divide-plan` to create the active **execution ledger** and its **slices**."
-> **Dev**: "Should `divide-plan` teach the **Claude Code Herdr skill** how to split panes or race statuses?"
-> **Domain Expert**: "No. It composes the **Herdr skill** for generic transport and keeps only Claude launch, readiness, prompt submission, and steering behavior."
+> **Dev**: "Should `divide-plan` teach the **Claude Code Herdr skill** how to split panes or wait on agent states?"
+> **Domain Expert**: "No. It composes the **Herdr skill** for generic transport and server-owned settled-state waiting, while keeping only Claude-specific launch arguments, task interpretation, and steering behavior."
 > **Dev**: "Is a **proposed execution trace** a real stack trace I captured at runtime?"
 > **Domain Expert**: "No. It is an evidence-grounded call tree of intended order and depth per ordered step. `divide-plan` retains it verbatim in each **slice** and adds the slice-scope frame mapping."

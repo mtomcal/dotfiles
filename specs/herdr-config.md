@@ -1,7 +1,7 @@
 # Herdr Configuration Specification
 
-> **Version**: 0.2.0
-> **Last Updated**: 2026-07-14
+> **Version**: 0.3.0
+> **Last Updated**: 2026-08-01
 > **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md), [Design Language](DESIGN_LANGUAGE.md), [Symlink Manager](symlink-manager.md), [Tool Provisioning](tool-provisioning.md)
 > **Depended By**: Shell Config, Skill Library, AI Agent Config, Install Orchestrator
 > **Prefix**: HERDR
@@ -136,6 +136,10 @@ Herdr integrations for agents managed by this repo MUST be repo-owned. The imple
 
 The generic Herdr skill MUST live under `shared/skills/herdr/`, and the Claude Code specialization MUST live under `shared/skills/herdr-claude-code/`. Non-Pi agents receive both through their shared skills symlink. Pi receives both through `pi/skills/`. The specialization MUST compose the generic skill rather than copy its CLI mechanics.
 
+### HERDR-CONFIG-009: Use the Current Agent Facade
+
+The shared Herdr skill MUST use the installed stable CLI's agent facade for validated agent startup, atomic prompt submission, logical agent keys, output inspection, and server-owned settled-state waiting. Ordinary terminal commands MUST use the pane facade and its output wait. Removed top-level wait commands and client-owned status races MUST NOT remain in executable skill guidance.
+
 ---
 
 ## Error Handling
@@ -146,7 +150,8 @@ The generic Herdr skill MUST live under `shared/skills/herdr/`, and the Claude C
 | Herdr config conflict | `~/.config/herdr/config.toml` exists as a regular file | File exists and is not a symlink | Back up with timestamp and deploy symlink | Inspect backup if local settings are needed |
 | Herdr runtime state in repo | Runtime files appear under tracked paths | Git status or ignore audit detects state/history files | Fail review or warn before commit | Move state out of repo and update ignore rules |
 | Nested Herdr attempted | User launches Herdr from inside Herdr | Herdr detects existing Herdr session | Block launch according to upstream nested-launch behavior | Use tmux manually if nested multiplexer behavior is required |
-| Direct integration mutation | `herdr integration install` writes to live config paths during install | Generated files appear directly under `~/.codex`, `~/.claude`, `~/.pi`, or `~/.config/copilot` outside dotfiles deploy flow | Treat as implementation violation; do not rely on mutated files | Capture desired generated files into repo-owned sources and redeploy |
+| Direct integration mutation | `herdr integration install` writes to live config paths during install | Generated files appear directly under `~/.codex`, `~/.claude`, `~/.pi`, or `~/.copilot` outside dotfiles deploy flow | Treat as implementation violation; do not rely on mutated files | Capture desired generated files into repo-owned sources and redeploy |
+| Removed Herdr command in a shared skill | Skill guidance references a command absent from installed stable help | Static skill check or command-group discovery finds the removed surface | Stop before delegation and update the shared skill to the current facade | Rerun skill tests and inspect installed help |
 
 ---
 
@@ -158,9 +163,9 @@ The generic Herdr skill MUST live under `shared/skills/herdr/`, and the Claude C
 
 3. **Direct installer consistency**: Herdr MUST be installed through the official curl installer on both Linux and macOS. Homebrew is intentionally not used for this tool so `herdr update` remains the consistent update path.
 
-4. **Integration ownership boundary**: Herdr integrations cross into agent config ownership. For Codex, Claude, Copilot, and Pi, implementation must add tracked source files and deploy them through existing agent config paths.
+4. **Integration ownership boundary**: Herdr integrations cross into agent config ownership. For Codex, Claude, Copilot, and Pi, implementation must add tracked source files and deploy them through existing agent config paths. Copilot's Herdr hook and hook-bearing settings use `~/.copilot`, independently of the repository's existing catalog exposure under `~/.config/copilot`.
 
-5. **Pi layer boundary**: Herdr's Pi integration MUST target `pi/extensions/herdr-agent-state/` and deploy through the Pi agent config. It MUST NOT be installed by mutating live runtime files directly.
+5. **Pi layer boundary**: Herdr's Pi integration MUST be the tracked file `pi/extensions/herdr-agent-state.ts`, deployed to `~/.pi/agent/extensions/herdr-agent-state.ts` through the Pi agent config. It MUST NOT be installed by mutating live runtime files directly.
 
 ---
 
@@ -222,6 +227,13 @@ Priority: High
 Preconditions: shared/skills/herdr/SKILL.md and shared/skills/herdr-claude-code/SKILL.md exist
 Input: Inspect non-Pi skills symlinks and Pi skills
 Expected Output: Non-Pi agents resolve both skills through shared/skills; Pi includes herdr and herdr-claude-code through pi/skills; the specialization composes the base skill
+
+TS-HERDR-009: Shared skills use the current agent facade
+Category: Integration
+Priority: Critical
+Preconditions: Stable Herdr is installed and the shared Herdr skills exist
+Input: Compare executable skill commands with installed agent and pane command groups
+Expected Output: Agent startup, prompts, keys, reads, and settled-state waits use the agent facade; ordinary output waits use the pane facade; no removed top-level wait command remains
 ```
 
 ---
@@ -230,6 +242,7 @@ Expected Output: Non-Pi agents resolve both skills through shared/skills; Pi inc
 
 | Version | Date | Summary |
 |---------|------|---------|
+| 0.3.0 | 2026-08-01 | Migrated shared skills to Herdr 0.7.5's agent facade and current Pi and Copilot integration targets. |
 | 0.2.0 | 2026-07-15 | Added cross-agent distribution of the composing Claude Code Herdr specialization beside the generic base skill. |
 | 0.1.1 | 2026-07-14 | Registered the Skill Library as a consumer of Herdr delegation and runtime-identity contracts. |
 | 0.1.0 | 2026-07-05 | Initial Herdr migration spec: Herdr default replacement path, Ctrl-a parity, SSH default, runtime-state hygiene, repo-owned integrations, and shared Herdr skill distribution. |
