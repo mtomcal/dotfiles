@@ -1,8 +1,8 @@
 # Skill Library Specification
 
-> **Version**: 4.0.0
-> **Last Updated**: 2026-07-15
-> **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md), [Herdr Config](herdr-config.md)
+> **Version**: 5.0.0
+> **Last Updated**: 2026-08-01
+> **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md), [Herdr Config](herdr-config.md), [Execution Coordination](execution-coordination.md)
 > **Depended By**: AI Agent Configuration (AIAGT)
 > **Prefix**: SKILL
 
@@ -30,6 +30,7 @@ The system MUST ensure that:
 | [Parameters](parameters.md) | Catalog paths, naming, discovery limits, Reference depth, and canonical section order |
 | [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md) | Canonical Skill Library, Reference, workflow-artifact, and ownership terminology |
 | [Herdr Config](herdr-config.md) | Herdr delegation terminology, runtime identity, and integration boundaries |
+| [Execution Coordination](execution-coordination.md) | Command-repo execution molecules, Beads ownership, model/review policy, attempts, synchronization, and recovery |
 | Repository provenance notice | Source, revision, license, and attribution for imported skill material |
 
 The Skill Library supplies canonical skill definitions to [AI Agent Configuration](ai-agent-config.md), which exposes them to supported agents. [Symlink Manager](symlink-manager.md) owns the deployment mechanism.
@@ -101,26 +102,19 @@ All Skill Library parameters are authoritative in [Parameters > Skill Library](p
 | retained owner | location | Required unless replacement approved | Resulting source of truth |
 | replacement approval | evidence | Required when ownership changes | Human-approved replacement owner |
 
-### Implementation Plan
+### Execution Workflow Skill Contract
 
 | Field | Type | Constraints | Description |
 |-------|------|-------------|-------------|
-| path | absolute path | `/tmp/agent-plans/<repo-id>/plans/<plan-id>/PLAN.md` | Sole artifact produced by `create-plan` |
-| source comparison | fixed Git comparison | Two full commit hashes | Changed specs establish scope; desired behavior and current code/tests are read at the fixed head |
-| contents | technical plan | Immutable; sequential; single-agent | Objective, sources, gaps, vertical steps, dependencies, criteria, test seams, files, commands, risks, assumptions, exclusions, per-step proposed execution traces, and final review gates |
-| review gates | binding final checks | Defined for every non-empty plan; results never recorded | Mandatory gates plus risk-triggered gates, each with order, criteria, blocking behavior, and evidence but no reviewer/model configuration |
-| proposed execution trace | evidence-grounded call tree | At least one per ordered step | Intended runtime order and depth; not a captured runtime trace or exhaustive call graph |
-| source digest | SHA-256 | Required | Pins the exact immutable artifact for execution |
-
-### Execution Ledger
-
-| Field | Type | Constraints | Description |
-|-------|------|-------------|-------------|
-| path | absolute directory | `/tmp/agent-plans/<repo-id>/ledgers/<ledger-id>/` | Recoverable execution state owned by `divide-plan` |
-| source | implementation-plan identity | Absolute path, SHA-256, repository identity, and full Git points | Blocks execution when any identity check fails |
-| contents | file set | `PLAN.md`, `slices/`, `verifications/` | State, dependencies, attempts, commits, integration, decisions, and recovery evidence |
-| writer | actor | Exactly one coordinator | Agents return commits, findings, or evidence without mutating ledger state |
-| active pointer | repository-local text file | `.plan` contains one absolute ledger path | Incomplete active state is not replaced without explicit approval |
+| creation entry | skill | `create-plan` | Creates one execution-ready Beads molecule directly from approved scope |
+| execution entry | skill | `execute-molecule` | Coordinates one explicit molecule through Herdr and Beads |
+| durable authority | bounded context | Execution Coordination | Owns command-repo graph, assignments, attempts, evidence, synchronization, and recovery |
+| source | repository identity | Normalized remote or explicit key plus full fixed commit | Reproducible source baseline without a mandatory spec diff |
+| scope | scope snapshot | Explicit human approval | Objective, acceptance, failure, and exclusions are frozen after creation |
+| work | Beads graph | Context-sized slices and review/remediation beads | Blocking dependencies derive the frontier |
+| traces | evidence-grounded call trees | Applicable trace lives on each slice bead | Intended order, not captured runtime evidence |
+| live transport | composed skill | Herdr required for agent operations | Herdr state is ephemeral and never durable authority |
+| compatibility | existing legacy execution ledger only | No new filesystem artifacts | Grandfathered work may reach a terminal state before retired support is removed |
 
 ---
 
@@ -215,7 +209,7 @@ A revision is complete only when:
 
 ### Workflow Artifact and State Ownership
 
-Implementation plans, execution-ledger slices, spec-extraction plans, teaching state, and generated artifacts are non-interchangeable. Each workflow MUST use qualified artifact names and preserve its own writer, lifecycle, approval gates, and state transitions.
+Execution molecules, slice beads, worker attempts, spec-extraction plans, teaching state, and generated artifacts are non-interchangeable. Each workflow MUST use qualified artifact names and preserve its own writer, lifecycle, approval gates, and state transitions.
 
 Reciprocal routing MAY compose workflows but MUST NOT transfer state or artifact ownership implicitly.
 
@@ -232,38 +226,36 @@ Reciprocal routing MAY compose workflows but MUST NOT transfer state or artifact
 | `improve-codebase-architecture` | Produces a temporary visual HTML report with before-and-after diagrams and candidate comparison |
 | `herdr` | Owns generic Herdr CLI mechanics, including a safe executable race that prechecks and concurrently observes `done`, `idle`, and `blocked`, cancels remaining waits, and inspects output |
 | `herdr-claude-code` | Composes `herdr` and owns exact Claude launch, readiness, explicit prompt submission, completion observation, and blocked-agent steering without duplicating generic transport |
-| `create-plan` | Pins a fixed spec diff and writes one immutable single-agent implementation plan containing remaining current-state gaps, a proposed execution trace per ordered step, and binding final review gates, but no review results, reviewer/model configuration, or execution state |
-| `divide-plan` | Requires an explicit implementation-plan path and Herdr, then owns coordinator-controlled execution ledgers, context-sized TDD slices that retain source traces, isolated implementation, evidence-gated integration, per-slice and final integrated review, and recovery |
+| `create-plan` | Pins a source fixed point, obtains a human-approved scope snapshot, proposes review/model policy, and creates one execution-ready command-repo molecule with context-sized TDD slices and traces |
+| `execute-molecule` | Requires one explicit execution-molecule id and Herdr, then coordinates Beads-backed leases, write-ahead attempts, isolated implementation, evidence-gated integration, configured reviews, synchronization, and crash recovery |
 | `teach` | Requires an approved teaching workspace and preserves mission, resources, learning records, lessons, references, assets, and notes |
 | `grill-me` | Grounds terminology and evidence, probes consequential branches one question at a time, and defers durable edits until shared understanding |
 
 ### Specialized State Contracts
 
-`create-plan` MUST require one fixed two-endpoint spec comparison. “Last X commits” MUST mean `HEAD~X..HEAD`, and both endpoints MUST be resolved to full hashes. Changed specs establish scope; specs at the fixed head define desired behavior; code and tests at that same head establish current-state gaps. Already-satisfied requirements MUST be retained as evidence and excluded from implementation work. Ambiguity or contradiction MUST stop planning.
+`create-plan` MUST resolve one normalized repository identity and full source fixed point, but MUST NOT require a specification diff. It reads available specs, code, tests, documentation, and risks as evidence, then obtains explicit human approval of objective, acceptance criteria, failure criteria, and exclusions. That scope snapshot becomes frozen; later changes require an approved decision bead.
 
-Its only artifact MUST be `/tmp/agent-plans/<repo-id>/plans/<plan-id>/PLAN.md`. The implementation plan MUST be immutable and sequentially executable by one agent. It MUST include objective, sources, current-state gaps, ordered vertical steps, dependencies, acceptance and failure criteria, public test seams, likely files, commands, risks, assumptions, exclusions, at least one proposed execution trace per ordered step, and binding final review gates. It MUST NOT contain RED/GREEN/REFACTOR instructions, `.plan`, review results, reviewer or model configuration, Herdr commands, worktrees, branches, slices, verification artifacts, or mutable execution state.
+The caller's current exact model configuration is planner provenance. Before activation, `create-plan` MUST propose and obtain human approval for one review preset with overrides, exact role defaults and per-bead overrides, reviewer independence, exact coordinator assignment, escalation ladders, correction allowances, and critical-invariant triggers. Initial model assignments are exact and unavailable assignments block rather than silently substitute.
 
-Each ordered step's proposed execution trace MUST be an evidence-grounded call tree with sequence numbers, `path:symbol` where known, and markers distinguishing existing, changed, new, and uncertain frames plus binding required order versus proposed internal structure; existing frames require fixed-head evidence and consequential architectural or observable-order uncertainty MUST stop planning. Distinct entry points or asynchronous roots get separate traces; non-runtime work MAY use an explicitly justified ordered operational flow. A proposed execution trace MUST NOT be an actual captured runtime stack trace or an exhaustive control-flow diagram.
+Its only durable result is one execution-ready molecule in the external command repo. It directly creates context-sized vertical slices with explicit RED/GREEN/REFACTOR cycles, genuine dependency edges, public test seams, acceptance/failure criteria, focused commands, and applicable proposed execution traces. A trace remains an evidence-grounded intended call tree with binding order distinguished from permitted internal variance; it is not captured runtime evidence or an exhaustive graph.
 
-Every non-empty implementation plan MUST define final review gates: repository tests/lint/type/build, Test Quality via `test-quality-verifier`, Standards and Spec via `code-review`, Premortem, and Security are mandatory, and concrete risk MAY add gates such as Visual, Performance, Migration, or Compatibility. Each gate MUST define order, criteria, blocking behavior, and evidence plus candidate preparation and a remediation policy of at most two batches. Review execution MUST be mode-neutral, so the plan MUST NOT name reviewers, models, or Herdr commands or record any review result or mutable state.
+Creation MUST leave a partial graph draft/blocked, validate complete scope coverage, acyclicity, assignments, traces, and review topology before exposing ready work, then commit and push a semantic checkpoint. It MUST NOT write `PLAN.md`, `.plan`, slice files, verification files, or any `.beads/` state into a source repository.
 
 The generic `herdr` skill MUST precheck current agent state before waiting. When no terminal state is already present, it MUST start `done`, `idle`, and `blocked` waits concurrently, continue after the first successful wait, cancel and reap the remaining waiters, and read current output. `done` and `idle` are completion states; `blocked` is an immediate steering state. If every wait fails or times out, current state and output MUST be inspected before retry or failure reporting.
 
 `herdr-claude-code` MUST compose `herdr`, launch exactly `claude --dangerously-skip-permissions`, and verify Claude readiness before task submission. Prompt delivery MUST distinguish pasted text from submission: `[Pasted text #1]` is not sufficient evidence, an explicit Enter and output/state inspection are required, and blind prompt resends or repeated Enter presses are prohibited. Completion and blocking MUST use the base concurrent status Activity; blocked Claude agents MUST be inspected and steered before observation resumes.
 
-`divide-plan` MUST require an explicit implementation-plan path and `HERDR_ENV=1`; no non-Herdr fallback is required or permitted. It MUST validate repository identity, source path and SHA-256, full Git points, a proposed execution trace on every ordered step, and defined final review gates on every non-empty plan before creating or resuming state. It MUST compose the shared Herdr skill for terminal mechanics while retaining all task, checkout, ledger, evidence, transition, and acceptance ownership. When an implementation or oversight configuration selects Claude Code, it MUST route that role through `herdr-claude-code`; non-Claude roles MUST continue through the generic Herdr skill.
+`execute-molecule` MUST require one explicit execution-molecule id, valid global command-repo routing, and `HERDR_ENV=1`; there is no non-Herdr execution fallback. It validates repository identity, source fixed point, scope approval, review/model policy, graph integrity, and synchronization before mutation. The exact assigned coordinator model must acquire the non-expiring coordinator lease; conflicting authority stops unless evidence inspection and human-approved takeover create a new coordinator-session bead.
 
-An execution ledger MUST be stored beneath `/tmp/agent-plans/<repo-id>/ledgers/<ledger-id>/` with `PLAN.md`, `slices/`, and `verifications/`. Repository-local `.plan` MUST point only to the active execution ledger and be locally excluded from Git. A stale target MUST NOT be guessed or reconstructed, and an incomplete active ledger MUST NOT be replaced without explicit approval. The source implementation plan and all plans, ledgers, branches, and worktrees MUST NOT be automatically mutated, deleted, or cleaned.
+The skill composes shared `herdr` for every launch, message, observation, and steering action while Beads remains durable authority. Claude Code assignments route through `herdr-claude-code`; other assignments use generic Herdr transport. Every consequential side effect first creates/checkpoints a unique planned worker attempt and durable instruction. Workers and reviewers write fixed-point evidence to that attempt before Herdr completion notification. Attempts are permanent non-blocking operational nodes and never pollute `bd ready`.
 
-Before writing a new ledger, `divide-plan` MUST inspect source-plan risk and ask only relevant orchestration questions one at a time. It MUST record exact implementation and oversight model ids and thinking levels plus one observation timeout. Exceptional final passes MAY be proposed only for concrete risk and MUST require user approval. No stalled-worker threshold is part of the timing policy.
+The coordinator MAY run mechanical commands but MUST NOT implement or independently review. Editable slices and remediation use isolated worktrees and branches. A slice closes only after an implementation commit, independent `test-quality-verifier` audit, coordinator mechanical gates, mechanical integration, and post-integration checks. Correction behavior and automatic model escalation follow the slice's approved allowance, critical trigger, and molecule-specific exact escalation ladder; unavailable initial assignments and exhausted ladders block.
 
-The coordinator MUST be the sole ledger writer and state owner. It MAY run mechanical commands but MUST NOT implement or review. Every editable slice and final remediation batch MUST use an isolated worktree and branch before Herdr transport. Each slice MUST fit one fresh context, own explicit RED/GREEN/REFACTOR guidance, and become ready only after all blockers are integrated. Each slice MUST retain every relevant source proposed execution trace verbatim and add a separate slice-scope mapping of owned frames, dependency frames, required ordering, and proposed frames allowed to vary; every binding frame and required order MUST map to at least one slice. Recoverability, full fixed-point evidence, integration-gated dependencies, append-preserved failed attempts, and stale-state reconciliation MUST be maintained.
+Final work follows the approved Lean, Standard, or High-assurance review graph. Repository gates and independent Scope fidelity are always final requirements; integrated Test Quality, Standards, Premortem, Security, risk gates, redundant passes, exact reviewer models, and provider diversity follow the approved policy. Reviewers report findings without editing. Consolidated remediation uses its exact role assignment and ladder; affected gates rerun after changes and unaffected passing gates retain rationale.
 
-For each slice, implementation MUST produce a commit and required evidence. An independent oversight agent MUST compose `test-quality-verifier` in audit-only mode at that fixed point. Findings MUST return to the same implementer, and verification MUST rerun at every new fixed point. The coordinator MUST run mechanical evidence gates before integration. At most two correction attempts are allowed; unresolved work then blocks the ledger. Standards, Spec, Premortem, Security, Visual, and general code review MUST NOT be default per-slice passes.
+A fresh coordinator MUST recover from Beads without conversation or Herdr history, then use Herdr to rediscover sessions by durable attempt token. Unmatched uncertain attempts become lost and replacement work receives a new attempt id. Remote outages permit only leased-host work with `sync:pending`; takeover and completion wait for successful synchronization. Neither command-repo records, branches, worktrees, nor attempts are cleaned automatically.
 
-After all slices integrate, repository gates and independent final Test Quality, Standards, Spec, Premortem, and Security passes MUST run against one held integrated fixed point, concurrently where supported and sequentially otherwise. The final integrated Test Quality pass MUST compose `test-quality-verifier` and is additional to, not a replacement for, the independent per-slice test-quality checks. Standards and Spec MUST compose `code-review`. Every risk-triggered gate the source plan defines and any separately approved exceptional pass MUST run beside the mandatory passes; the plan's final review gates are the minimum contract that `divide-plan` MAY strengthen but MUST NOT skip. Reviewers MUST report findings without editing during passes. Findings MUST be consolidated, then batch-remediated by an editable agent using the oversight configuration rather than original slice workers. After any remediation the coordinator MUST rerun repository gates, rerun every failed review, and rerun each passing review the remediation's impact invalidates, recording rationale for any review not rerun; it MUST NOT automatically rerun reviews the change cannot affect. At most two remediation batches are allowed; unresolved findings then block the ledger.
-
-A Herdr observation timeout MUST lead to immediate state and output inspection. Blocked, premature-idle, error, missing-evidence, or input-needed evidence MUST be steered immediately; idle or missing panes MUST NOT establish success. Recovery MUST reconcile source SHA-256, Git topology and commits, recompute the frontier from integrated blockers, and rediscover live Herdr resources without persisting pane identity.
+The retired `divide-plan` contract MAY remain temporarily available only to finish the single legacy execution ledger already active at adoption. It MUST create no new filesystem plan or ledger, and it is removed after that ledger becomes terminal.
 
 The teaching workflow MUST obtain approval for a dedicated workspace before scaffolding. It MUST ground lessons in an agreed mission, use primary-source research, maintain durable resources and demonstrated-learning records, prefer reusable lesson assets, and distinguish knowledge acquisition, skill practice, and wisdom from real-world interaction. Interactive codebase lessons SHOULD compose `create-explainer` without weakening teaching-workspace ownership or citation requirements.
 
@@ -288,10 +280,11 @@ Imported skill material MUST be treated as a locally maintained fork. Before imp
 | Behavior loss | Material revision lacks retained or approved replacement ownership | Behavior-preservation review | Stop the restructure | Restore behavior or obtain replacement-owner approval |
 | Provenance gap | Imported material lacks source, revision, license, or attribution | Provenance review | Stop movement or rewriting | Complete the repository provenance record |
 | Composition ownership leak | Callee implicitly takes caller state, gates, or acceptance | Contract review | Reject the composition | Restore caller ownership or approve an explicit replacement contract |
-| Invalid implementation-plan source | Source path, repository id, SHA-256, or fixed Git point does not match | Divide-plan preflight | Stop before ledger mutation or agent launch | Supply the exact immutable plan or restore the missing Git evidence |
-| Active-ledger conflict | `.plan` is stale, incompatible, or points to an incomplete ledger that would be replaced | Active-state inspection | Stop and report the exact active state | Obtain explicit replacement approval or resume/reconcile the existing ledger |
-| Correction limit reached | A slice still fails verification or mechanical gates after two correction attempts | Ledger attempt count | Set ledger status to blocked | Preserve evidence and request an explicit new decision |
-| Remediation limit reached | Final findings remain after two remediation batches and full review reruns | Ledger remediation count | Set ledger status to blocked | Preserve every fixed point and finding for explicit recovery |
+| Invalid molecule source | Repository identity, fixed point, approved scope, graph, or assignment map does not match | Execution preflight | Stop before lease mutation or agent launch | Reconcile the explicit molecule and source checkout |
+| Coordinator-lease conflict | A nonterminal coordinator session owns the lease | Beads lease inspection | Stop and preserve current authority | Resume it or perform evidence-based human-approved takeover |
+| Correction or escalation exhausted | Slice exceeds its approved allowance or has no higher available ladder rung | Attempt graph inspection | Block the owning work bead | Approve a decision changing policy or assignment |
+| Remote synchronization pending | Private remote cannot reconcile/push | Semantic checkpoint | Permit leased-host local work but block takeover and completion | Restore remote, reconcile, and push |
+| Missing durable worker evidence | Herdr reports completion but attempt evidence is incomplete | Attempt validation | Do not verify, integrate, or close | Request evidence through a write-ahead instruction or mark attempt failed |
 | Agent status race exhausted | All concurrent `done`, `idle`, and `blocked` waits fail or time out | Base Herdr wait results | Inspect current pane state and output; do not infer completion or failure | Retry only from inspected evidence or report the limitation |
 | Claude prompt not submitted | Claude displays `[Pasted text #1]` or remains idle after prompt delivery | Claude composer plus pane state/output inspection | Send an explicit Enter and inspect once; do not resend the prompt blindly | Report exact composer/state evidence if processing still does not begin |
 
@@ -382,29 +375,29 @@ Preconditions: A new or revised skill and all auxiliary files are available.
 Input: Review each instruction for behavioral value, duplication, sediment, speculation, and unnecessary navigation.
 Expected Output: Required behavior remains concise; unnecessary content is removed rather than displaced; no fixed line limit substitutes for semantic review.
 
-### TS-SKILL-010: Immutable Implementation Plan
+### TS-SKILL-010: Execution-Molecule Creation
 
 Category: Integration
 Priority: Critical
-Preconditions: A fixed comparison changes authoritative specs.
-Input: Run `create-plan` against the comparison and inspect the resulting artifact.
-Expected Output: Exactly one immutable implementation-plan file records full Git points, all requirement dispositions, only remaining sequential work, a proposed execution trace on every ordered step, and the mandatory plus any risk-triggered final review gates; no `.plan`, slice, worker, review result, reviewer/model configuration, or execution state is created.
+Preconditions: A source fixed point exists and command-repo routing is valid.
+Input: Run `create-plan`, approve scope, review preset/overrides, exact assignments, and escalation ladders.
+Expected Output: One ready Beads molecule contains context-sized TDD slices, dependencies, traces, review/remediation topology, and exact per-bead assignments; no spec diff or durable Markdown workflow artifact is required.
 
-### TS-SKILL-011: Recoverable Herdr Execution Ledger
+### TS-SKILL-011: Recoverable Herdr Molecule Execution
 
 Category: End-to-End
 Priority: Critical
-Preconditions: A valid implementation plan exists and execution runs inside Herdr.
-Input: Run `divide-plan`, interrupt after at least one verification attempt, and resume through `.plan`.
-Expected Output: Repository and source identities plus per-step traces and defined final review gates validate; slices retain source traces with their slice-scope mapping; isolated slices resume from integration-gated state; failed attempts remain; per-slice test-quality and mechanical gates precede integration; final integrated Test Quality, Standards, Spec, Premortem, Security, and any risk-triggered passes share one held fixed point.
+Preconditions: A valid molecule exists and execution runs inside Herdr.
+Input: Run `execute-molecule`, kill the coordinator after a write-ahead attempt, destroy Herdr state, start fresh Herdr, and boot the assigned coordinator.
+Expected Output: The coordinator reconstructs the safe next transition from Beads, reconciles the lost attempt, creates a new attempt id, and resumes through integration and configured reviews without a persisted pane id.
 
-### TS-SKILL-012: Execution Limits and Hard Preconditions
+### TS-SKILL-012: Lease, Model, and Synchronization Gates
 
 Category: Integration
 Priority: Critical
-Preconditions: Divide-plan preflight or verification can be exercised.
-Input: Attempt execution outside Herdr, replace an incomplete active ledger without approval, exceed slice corrections, and exceed final remediation batches.
-Expected Output: Non-Herdr execution and unapproved replacement stop; the third required slice correction and third final remediation batch are not launched; ledger state is blocked with preserved evidence.
+Preconditions: Molecule execution and failure paths can be exercised.
+Input: Attempt execution outside Herdr, use an unassigned coordinator model, take over without approval, exhaust a ladder, and complete with `sync:pending`.
+Expected Output: Every attempt stops at its owning gate; no model is silently substituted, no lease expires automatically, and evidence remains in Beads.
 
 ### TS-SKILL-013: Concurrent Herdr Terminal-State Wait
 
@@ -422,13 +415,13 @@ Preconditions: Claude Code and Herdr are available and an authorized checkout is
 Input: Launch the Claude Code Herdr workflow, submit a prompt that renders as `[Pasted text #1]`, and exercise completion and blocked states.
 Expected Output: Claude launches with `--dangerously-skip-permissions`; readiness is inspected; explicit Enter produces submission evidence without prompt duplication; base concurrent waiting observes completion or blocking; blocked output is inspected and steered.
 
-### TS-SKILL-015: Proposed Execution Traces and Final Review Gates
+### TS-SKILL-015: Slice Traces and Configurable Review Graph
 
 Category: Integration
 Priority: Critical
-Preconditions: A non-empty implementation plan is available.
-Input: Inspect each ordered step's proposed execution trace and the plan's final review gates, then divide the plan and inspect the resulting slices.
-Expected Output: Every ordered step has at least one evidence-grounded trace with sequence numbers, frame markers, and binding versus proposed ordering, and none is a captured runtime trace or exhaustive call graph; the plan defines mandatory Test Quality, Standards, Spec, Premortem, Security, and repository gates plus any risk-triggered gates with order, criteria, blocking, and evidence but no reviewer/model configuration or results; each derived slice retains its relevant traces verbatim with a slice-scope frame mapping; and every binding frame and order maps to at least one slice.
+Preconditions: A non-empty execution molecule is available.
+Input: Inspect slice traces and create Lean, Standard, and High-assurance review policies with an override.
+Expected Output: Every applicable slice carries an evidence-grounded intended trace that distinguishes binding order and permitted variance; Lean preserves the mandatory floor, Standard adds the full standard set, High assurance adds approved risk gates/redundant passes, and exact independent assignments are materialized on review beads.
 
 ---
 
@@ -436,6 +429,7 @@ Expected Output: Every ordered step has at least one evidence-grounded trace wit
 
 | Version | Date | Change |
 |---------|------|--------|
+| 5.0.0 | 2026-08-01 | Replaced filesystem create/divide execution with command-repo execution molecules, exact per-bead model and review policy, `execute-molecule`, write-ahead attempts, coordinator leases, and Beads-first crash recovery. |
 | 4.0.0 | 2026-07-15 | Required a proposed execution trace per ordered step and binding final review gates in every non-empty implementation plan (mode-neutral, results excluded); required slices to retain source traces with a slice-scope frame mapping; added a final integrated Test Quality pass, risk-triggered gates, and impact-scoped review reruns to divide-plan. |
 | 3.1.0 | 2026-07-15 | Added executable concurrent Herdr terminal-state waiting and a composing Claude Code orchestration specialization with divide-plan routing. |
 | 3.0.0 | 2026-07-15 | Split immutable single-agent implementation planning from Herdr-only execution ledgers, established coordinator ownership, test-quality integration gates, and bounded final review remediation. |

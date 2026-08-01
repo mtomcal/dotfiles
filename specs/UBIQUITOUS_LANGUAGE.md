@@ -1,7 +1,7 @@
 # Ubiquitous Language
 
-> **Version**: 1.3.0
-> **Last Updated**: 2026-07-31
+> **Version**: 2.0.0
+> **Last Updated**: 2026-08-01
 > **Purpose**: Shared vocabulary for all specs. Every term used in multiple specs MUST be defined here. Read this before any other spec.
 
 > **Usage note**: Throughout all specs, the bare term "install" should be disambiguated using one of the three defined terms: **install** (the complete install.sh run), **install (dependency)** (a single package), or **install (Mason)** (a Neovim package). Use the specific term wherever context is ambiguous.
@@ -98,17 +98,28 @@
 | **semantic YAGNI** | Retaining skill content only when it changes execution behavior, safety, ownership, outputs, or completion evidence | "line limit", "make it shorter" | Unnecessary content is removed rather than relocated to a Reference file |
 | **hill climbing** | Avoidable repository navigation required to reconstruct an executable contract that should be locally available | "code exploration" | Universally loaded companion files create hill climbing without progressive-disclosure benefit |
 | **behavior-preservation ledger** | An audit record mapping each required behavior to its retained location or replacement owner | "change summary", "checklist" | Covers triggers, branches, gates, failures, guardrails, outputs, ownership, and completion conditions |
-| **implementation plan** | The immutable single-agent technical `PLAN.md` produced from a fixed spec diff and limited to desired behavior not yet satisfied at the fixed head | "plan workspace", "execution ledger" | Created by `create-plan`; it defines binding final review gates but contains no reviewer or model configuration, worker, slice, worktree, verification artifact, review result, or mutable execution state. |
-| **review gate** | A binding final quality check an implementation plan requires after ordered implementation, defined by gate order, criteria, blocking behavior, and evidence but free of reviewer or model configuration | "review pass", "review step" | Mandatory gates are repository tests/lint/type/build, Test Quality, Standards, Spec, Premortem, and Security; concrete risk MAY add gates such as Visual, Performance, Migration, or Compatibility. A review gate defines the check, never its results or execution state. |
-| **proposed execution trace** | An evidence-grounded, debugger-style representation of intended runtime call order and depth for an ordered implementation step, rendered as a nested call tree with sequence numbers, `path:symbol` where known, and frame markers | "call graph", "stack trace", "sequence diagram" | Every ordered implementation step has at least one; distinct entry points or asynchronous roots get separate traces. It is neither an actual captured runtime stack trace nor an exhaustive control-flow diagram. Non-runtime work MAY use an explicitly justified ordered operational flow instead. |
-| **execution ledger** | The coordinator-owned recoverable directory containing divided slices, dependency and state records, commits, verification attempts, integration records, decisions, and recovery data | "plan workspace", "control plane" | Created and operated by `divide-plan`; repository-local `.plan` points only to the active execution ledger. |
-| **coordinator** | The sole writer and state owner of an execution ledger, responsible for division, isolated worktrees, agent control, evidence gates, integration, transitions, and recovery without implementing or reviewing | "parent owner", "parent agent" | Herdr transports the coordinator's tasks but does not acquire execution-ledger ownership. |
-| **spec-extraction plan** | The brownfield Bootstrap Specs artifact that directs extraction of specifications from implementation evidence | "implementation plan", "execution ledger", "slice graph" | It does not direct code implementation or execution orchestration. |
-| **teaching workspace** | The dedicated durable directory containing one learner's mission, resources, lessons, references, assets, and evidence | "execution ledger", "Herdr workspace" | Teaching state has its own owner and lifecycle. |
-| **frontier** | The derived set of currently actionable execution slices whose blockers are integrated | "queue", "backlog" | Slice blockers must be integrated. |
-| **slice** | A fresh-context execution packet that delivers one vertical behavior through ordered red, green, and refactor cycles | "task", "ticket" | Editable slices receive isolated worktrees and branches under coordinator control. |
-| **verification artifact** | A durable Markdown record of one review axis or evidence gate, fixed point, criteria, attempts, evidence, and verdict | "review output", "review note" | Owned by the coordinator; failed attempts are appended rather than overwritten. |
-| **active-plan pointer** | The repository-local text file `.plan` whose single absolute path identifies the active execution ledger | "plan state", "plan link" | It is locally excluded from Git; a missing or incompatible target is stale state and must not be guessed. |
+| **command repo** | The private external repository whose Beads database is authoritative for execution coordination across multiple source repositories | "planning repo", "central beads folder" | It stores operational state rather than source code or dotfiles configuration, and source repositories contain no `.beads/` state. |
+| **scope snapshot** | The frozen human-approved objective, acceptance criteria, failure criteria, and exclusions that authorize one execution molecule | "spec diff", "mutable brief" | A specification diff is optional evidence rather than a creation precondition; changing scope requires an approved decision bead. |
+| **execution molecule** | A Beads molecule whose root scope and dependency-ordered work beads form one execution-ready implementation and review graph | "implementation plan", "execution ledger", "plan file" | Created directly by `create-plan`; it combines planning and execution state without durable workflow Markdown. |
+| **legacy execution ledger** | The single grandfathered filesystem execution record allowed to reach a terminal state during Beads adoption | "current plan", "new ledger" | No new legacy execution ledger may be created, and support is removed after it becomes terminal. |
+| **work bead** | A dependency-aware executable or decision record within an execution molecule | "task file", "slice file" | Work beads include slices, review beads, remediation beads, mechanical gates, and decision beads. |
+| **review policy** | The human-approved review breadth, depth, and independence requirements selected when an execution molecule is created | "review budget", "review configuration" | Lean, Standard, and High-assurance presets provide defaults with explicit overrides. |
+| **review gate** | A required acceptance condition in a review policy, satisfied by mechanical evidence or one or more independent review beads | "review pass", "review step" | Repository gates and Scope fidelity form the minimum final floor; other gates and redundant passes are creation-time choices. |
+| **review bead** | A work bead representing one independent pass for a review gate against a fixed candidate | "verification artifact", "review file" | A gate may have multiple review beads when its approved depth exceeds one. |
+| **proposed execution trace** | An evidence-grounded representation of intended runtime call order and depth for a slice, with binding order distinguished from permitted internal variance | "call graph", "stack trace", "sequence diagram" | It lives on the slice bead and is neither a captured runtime trace nor an exhaustive control-flow diagram. |
+| **coordinator** | The actor with exclusive authority over an execution molecule's structure, scope, acceptance, integration, and recovery without implementing or reviewing | "parent owner", "parent agent" | Beads stores durable authority while Herdr provides live transport and communication. |
+| **coordinator lease** | The non-expiring exclusive authority granted to one coordinator session on one host for one execution molecule | "timeout lock", "pane ownership" | Takeover requires evidence inspection, human approval, and an auditable decision. |
+| **coordinator session** | A permanent bead representing one coordinator incarnation, including its exact model, host, lease events, checkpoints, and terminal outcome | "coordinator pane", "current coordinator" | The molecule root points to one active session while preserving prior sessions. |
+| **model assignment** | The exact command, provider, model id, thinking level, role, and applicable independence rule approved for an executable bead or coordinator | "model hint", "strong model" | An unavailable initial assignment blocks until approved reassignment. |
+| **escalation ladder** | The human-approved ordered list of exact model assignments permitted for automatic escalation within one execution molecule | "stronger model ranking", "fallback guess" | Runtime escalation moves only to an available higher approved rung. |
+| **worker attempt** | A permanent non-blocking bead recording one agent launch, its exact model, durable instructions, semantic transitions, evidence, and outcome | "worker pane", "attempt comment" | Attempts link to their owning work bead but never determine the executable frontier directly. |
+| **write-ahead attempt** | A worker attempt durably created and checkpointed before its corresponding Herdr launch or consequential message | "launch record", "post-hoc attempt" | It makes coordinator death between intent and side effect recoverable. |
+| **worker-attempt graph** | The non-blocking operational graph of coordinator sessions and worker attempts linked to executable work beads | "Herdr topology", "terminal graph" | Beads owns durable attempt history while Herdr owns live sessions, communication, and observation. |
+| **spec-extraction plan** | The brownfield Bootstrap Specs artifact that directs extraction of specifications from implementation evidence | "execution molecule", "slice graph" | It does not direct code implementation or execution orchestration. |
+| **teaching workspace** | The dedicated durable directory containing one learner's mission, resources, lessons, references, assets, and evidence | "command repo", "Herdr workspace" | Teaching state has its own owner and lifecycle. |
+| **frontier** | The derived set of currently actionable work beads whose blocking dependencies are closed after integration | "queue", "backlog" | Worker attempts are non-blocking and never appear in the frontier. |
+| **slice** | A context-sized work bead that delivers one vertical behavior through ordered red, green, and refactor cycles | "task", "ticket", "slice file" | Editable slices receive isolated worktrees and close only after verification and integration. |
+| **decision bead** | A durable approval record authorizing a change to frozen scope, review policy, model assignment, escalation, or coordinator lease | "decision comment", "silent override" | The prior contract and approved replacement remain auditable. |
 
 ## Tooling Domain
 
@@ -117,6 +128,8 @@
 | **TUI tool** | A terminal user interface tool installed by the script (lazygit, yazi, zoxide) | "CLI tool" | Distinct from shell utilities — these have interactive interfaces |
 | **LSP server** | A Language Server Protocol server providing code intelligence in Neovim | "language server" | Installed via Mason, not via system packages |
 | **formatter** | A code formatting tool configured for Neovim's on-save formatting | — | Managed via conform.nvim in the custom layer |
+| **Beads** | The graph issue tracker whose CLI and database represent durable execution-coordination state in the command repo | "Markdown plan tracker", "filesystem ledger" | `bd` is globally routed to the external command repo after bootstrap. |
+| **Dolt server** | The locally managed versioned SQL service backing concurrent Beads writers and private-remote synchronization | "Beads daemon", "Git database" | Beads owns on-demand lifecycle for the command repo; Herdr does not. |
 
 ---
 
@@ -143,19 +156,22 @@
 - A **repo-owned Herdr integration** is generated or copied into **agent configs** before deployment, rather than installed directly into live runtime paths
 - The **Herdr skill** and **Claude Code Herdr skill** live in the **shared skills directory** and are visible to supported agents through their skills deployment paths
 - The **Claude Code Herdr skill** composes the **Herdr skill**, which retains generic terminal transport and concurrent agent-status waiting
-- An **implementation plan** may be divided into an **execution ledger**, while remaining immutable and independently addressable by path and SHA-256
-- An **implementation plan** carries at least one **proposed execution trace** per ordered step and defines binding **review gates**, while recording no review results or execution state
-- A **review gate** defines a required final check; the **execution ledger** and direct execution report its results, never the immutable **implementation plan**
-- A **proposed execution trace** in an **implementation plan** is retained verbatim in each derived **slice**, which then adds a slice-scope mapping of owned, dependency, required-order, and proposed-variable frames
-- An **active-plan pointer** identifies one **execution ledger**, which contains multiple **slices** and their **verification artifacts**
-- A **coordinator** solely owns execution-ledger state, while Herdr supplies terminal transport and agents return commits or findings
-- An execution **frontier** contains ready **slices** only after every blocking slice is integrated
+- One **command repo** contains one **Beads** database backed by one managed **Dolt server** and zero or more **execution molecules** for multiple source repositories, while each source repository contains no Beads workspace
+- One **execution molecule** contains one frozen **scope snapshot**, multiple dependency-ordered **work beads**, one approved **review policy**, and one non-blocking **worker-attempt graph**
+- A **slice** carries its TDD contract and applicable **proposed execution traces** directly as Beads content rather than a Markdown packet
+- A **review policy** contains one or more **review gates**, and a review gate may require multiple independent **review beads**
+- A **model assignment** is materialized onto every executable bead, while an **escalation ladder** constrains automatic runtime escalation
+- A **coordinator lease** points to one active **coordinator session** and never expires automatically
+- A **write-ahead attempt** precedes every Herdr agent side effect, while the owning **worker attempt** stores instructions and evidence
+- The **worker-attempt graph** is durable in Beads, while Herdr provides ephemeral agent transport, communication, and observation
+- An execution **frontier** contains ready **work beads** only after every blocker closes following integration; worker attempts never enter it
 - The **Skill Library** owns each canonical **skill** in the **shared skills directory**, while **agent configs** expose that catalog to supported runtimes
 - A **skill body** uses the **Language Definitions section** and only the optional sections earned by its behavior
 - A **core instruction** remains in the **skill body**, while a **Reference pointer** loads a **Reference file** only after its **branch outcome** occurs
 - **Semantic YAGNI** removes unnecessary content instead of moving it into a Reference file, reducing avoidable **hill climbing**
 - A **behavior-preservation ledger** is required before a material skill-body restructure
-- An **implementation plan**, **execution ledger**, **spec-extraction plan**, **teaching workspace**, and **Herdr workspace** have distinct owners and lifecycles
+- One **legacy execution ledger** may finish during migration, but every new execution uses an **execution molecule**
+- An **execution molecule**, **spec-extraction plan**, **teaching workspace**, **command repo**, and **Herdr workspace** have distinct owners and lifecycles
 
 ---
 
@@ -172,11 +188,12 @@
 - **"strong model"** or **"weak model"** are informal terms that should be avoided in specs. Prefer specific model/provider names and rationale.
 - **"profile"** refers to install profiles (Full, Minimal, Work, Custom). Pi profiles are no longer a supported concept in this repo.
 - **"integration"** is overloaded between Herdr integrations, shell integrations, and editor integrations. Use **Herdr integration** when referring to Herdr agent lifecycle/session hooks.
-- **"workspace"** is overloaded between a project workspace, **teaching workspace**, and **Herdr workspace**. An **execution ledger** is not a workspace; use the qualified term for each durable or terminal context.
-- **"plan"** is overloaded between an **implementation plan** and **spec-extraction plan**. These artifacts and an **execution ledger** are non-interchangeable and MUST use their qualified names.
-- **"review"** in an **implementation plan** means a defined **review gate** (order, criteria, blocking, evidence), never a recorded review result or reviewer/model configuration. Review results live in the **execution ledger** or the direct-execution final response.
-- **"trace"** is ambiguous between a **proposed execution trace** (evidence-grounded intended call order and depth) and an actual captured runtime stack trace. Implementation plans use the proposed form; they never contain captured runtime traces or exhaustive call graphs.
-- **"parent"** or **"parent owner"** formerly named the actor controlling implementation state. Use **coordinator** for the sole execution-ledger writer and state owner.
+- **"workspace"** is overloaded between a project workspace, **teaching workspace**, **command repo**, and **Herdr workspace**. Use the qualified term for each durable or terminal context.
+- **"plan"** is overloaded between an **execution molecule**, a **spec-extraction plan**, and an informal proposed approach. Use the qualified artifact or process name.
+- **"review"** may mean a **review policy**, **review gate**, or **review bead**. Use policy for topology, gate for an acceptance condition, and bead for one executable pass.
+- **"trace"** is ambiguous between a **proposed execution trace** and an actual captured runtime stack trace. Slice beads use the proposed form; they never claim captured runtime evidence.
+- **"stronger model"** has no runtime meaning outside an approved **escalation ladder**; use the exact higher rung rather than reputation-based labels.
+- **"parent"** or **"parent owner"** formerly named the actor controlling implementation state. Use **coordinator** for the execution-molecule authority.
 - **"current pane"** can mean the **caller pane** or **focused pane**. Discover the caller from runtime context rather than inferring it from focus.
 - Skill-local definitions belong in the owning **skill body**; terms shared by specs or multiple workflows belong in this project glossary.
 - Bare **"Reference"** can mean the section, pointer, or target file. Use **Reference section**, **Reference pointer**, or **Reference file**; a universally required companion file is not a Reference file.
@@ -190,6 +207,7 @@
 
 | Version | Date | Change |
 |---------|------|--------|
+| 2.0.0 | 2026-08-01 | Replaced filesystem plans and ledgers with command-repo execution molecules, exact model and review policy, coordinator leases/sessions, and write-ahead worker-attempt graphs. |
 | 1.3.0 | 2026-07-31 | Added Visual Studio Code Desktop, code-server, Default Profile, VS Code managed layer, VS Code extension manifest, capture, and private-network browser endpoint terminology and distinctions. |
 | 1.2.0 | 2026-07-15 | Added `review gate` and `proposed execution trace`; redefined the immutable implementation plan to define binding final review gates while still excluding review results, reviewer/model configuration, and execution state. |
 | 1.1.0 | 2026-07-15 | Distinguished the generic Herdr skill from its composing Claude Code orchestration specialization. |
@@ -209,8 +227,8 @@
 >
 > **Dev**: "Does AI Agent Configuration own how a shared skill is written?"
 > **Domain Expert**: "No. The **Skill Library** owns skill semantics; the **agent config** only exposes canonical skills to a runtime."
-> **Dev**: "Does an **implementation plan** record who ran a **review gate**?"
-> **Domain Expert**: "No. It defines the required check, while reviewer identity and results belong to the **execution ledger** or direct-execution report."
+> **Dev**: "Does a **review gate** identify its exact reviewer?"
+> **Domain Expert**: "The gate defines the acceptance condition; each generated **review bead** carries its own exact **model assignment** and result."
 
 ### Additional Agent Workflow Examples
 
@@ -218,9 +236,11 @@
 > **Domain Expert**: "No. That is sequencing. A valid **Reference pointer** requires a **branch outcome** and at least one successful no-load route."
 > **Dev**: "Where does universally required behavior go?"
 > **Domain Expert**: "Keep it as a compact **core instruction** in the skill body; **semantic YAGNI** removes unnecessary detail instead of creating **hill climbing**."
-> **Dev**: "Does `create-plan` open an **execution ledger**?"
-> **Domain Expert**: "No. It writes one immutable **implementation plan**. A **coordinator** later uses `divide-plan` to create the active **execution ledger** and its **slices**."
-> **Dev**: "Should `divide-plan` teach the **Claude Code Herdr skill** how to split panes or race statuses?"
-> **Domain Expert**: "No. It composes the **Herdr skill** for generic transport and keeps only Claude launch, readiness, prompt submission, and steering behavior."
-> **Dev**: "Is a **proposed execution trace** a real stack trace I captured at runtime?"
-> **Domain Expert**: "No. It is an evidence-grounded call tree of intended order and depth per ordered step. `divide-plan` retains it verbatim in each **slice** and adds the slice-scope frame mapping."
+> **Dev**: "Does `create-plan` write a `PLAN.md` before execution?"
+> **Domain Expert**: "No. It creates one execution-ready **execution molecule** whose **slices**, review policy, and model assignments are already explicit."
+> **Dev**: "If Herdr disappears, is the execution lost?"
+> **Domain Expert**: "No. The **worker-attempt graph** retains intent, instructions, evidence, and pending transitions; fresh Herdr only recreates live communication sessions."
+> **Dev**: "Can a replacement coordinator take over after a timeout?"
+> **Domain Expert**: "No. A **coordinator lease** never expires automatically; takeover requires inspection, human approval, and a **decision bead**."
+> **Dev**: "May a failed worker choose a stronger model?"
+> **Domain Expert**: "Only by moving to an exact higher assignment in the approved **escalation ladder**."

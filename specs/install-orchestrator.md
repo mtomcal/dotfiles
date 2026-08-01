@@ -1,8 +1,8 @@
 # Install Orchestrator
 
-> **Spec Version**: 1.6.0
-> **Last Updated**: 2026-07-31
-> **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md), [Design Language](DESIGN_LANGUAGE.md), [Tool Provisioning](tool-provisioning.md), [Symlink Manager](symlink-manager.md), [Herdr Config](herdr-config.md), [VS Code Configuration](vscode-config.md)
+> **Spec Version**: 2.0.0
+> **Last Updated**: 2026-08-01
+> **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md), [Design Language](DESIGN_LANGUAGE.md), [Tool Provisioning](tool-provisioning.md), [Symlink Manager](symlink-manager.md), [Herdr Config](herdr-config.md), [VS Code Configuration](vscode-config.md), [Execution Coordination](execution-coordination.md)
 > **Depended By**: None (this is the top-level orchestrator)
 
 ---
@@ -41,6 +41,7 @@ The orchestrator does NOT implement any module's internal logic (package install
 | [Tool Provisioning](tool-provisioning.md) | Per-module install/configure function specifications |
 | [Symlink Manager](symlink-manager.md) | Cross-cutting symlink deployment and backup rules |
 | [VS Code Configuration](vscode-config.md) | Platform-scoped managed layer, extension, capture, Vim, and code-server lifecycle contracts |
+| [Execution Coordination](execution-coordination.md) | Beads/Dolt profile inclusion and command-repo bootstrap separation |
 
 ---
 
@@ -73,7 +74,7 @@ The orchestrator does NOT implement any module's internal logic (package install
 | `name` | string | One of the valid module identifiers | Unique identifier for a selectable install unit |
 | `label` | string | Human-readable description | Displayed in menus and summaries |
 
-**Valid module identifiers**: `base_tools`, `neovim`, `nvim_config`, `vscode`, `vscode_config`, `code_server`, `tmux_config`, `herdr`, `herdr_config`, `herdr_integrations`, `zsh_ohmyzsh`, `zsh_config`, `python`, `golang` (toolchain only), `golang_full` (toolchain + LSP + tools), `nodejs`, `tui_tools`, `codex`, `codex_sandbox`, `claude`, `pi`, `pi_sandbox`, `copilot`, `playwright`
+**Valid module identifiers**: `base_tools`, `neovim`, `nvim_config`, `vscode`, `vscode_config`, `code_server`, `tmux_config`, `herdr`, `herdr_config`, `herdr_integrations`, `zsh_ohmyzsh`, `zsh_config`, `python`, `golang` (toolchain only), `golang_full` (toolchain + LSP + tools), `nodejs`, `tui_tools`, `dolt`, `beads`, `codex`, `codex_sandbox`, `claude`, `pi`, `pi_sandbox`, `copilot`, `playwright`
 
 ### Pi Module Deployment Contract
 
@@ -99,9 +100,9 @@ When the `pi` module is selected, the orchestrator MUST:
 
 | Profile | Common Modules Included | macOS-only Additions |
 |---------|-------------------------|----------------------|
-| `full` | base_tools, neovim, nvim_config, tmux_config, herdr, herdr_config, herdr_integrations, zsh_ohmyzsh, zsh_config, python, golang_full, nodejs, tui_tools, codex, codex_sandbox, claude, playwright, pi, pi_sandbox, copilot | vscode, vscode_config |
+| `full` | base_tools, neovim, nvim_config, tmux_config, herdr, herdr_config, herdr_integrations, zsh_ohmyzsh, zsh_config, python, golang_full, nodejs, tui_tools, dolt, beads, codex, codex_sandbox, claude, playwright, pi, pi_sandbox, copilot | vscode, vscode_config |
 | `minimal` | base_tools, neovim, nvim_config, tmux_config, herdr, herdr_config, herdr_integrations | none |
-| `work` | base_tools, neovim, nvim_config, tmux_config, herdr, herdr_config, herdr_integrations, python, tui_tools, copilot | vscode, vscode_config |
+| `work` | base_tools, neovim, nvim_config, tmux_config, herdr, herdr_config, herdr_integrations, python, tui_tools, dolt, beads, copilot | vscode, vscode_config |
 
 On Ubuntu/Debian, standard profiles MUST omit the macOS-only additions rather than selecting and skipping them.
 
@@ -130,6 +131,8 @@ Modules declare implicit prerequisites via the dependency resolver. The resolver
 | `vscode_config` | `vscode` | Only on macOS and only if the desktop editor command is not found |
 | `code_server` | `base_tools` | Only if curl is not found; service manager is a platform prerequisite |
 | `python` | none | Native package manager is initialized during platform setup |
+| `dolt` | `base_tools` | Only if the platform-specific official installer prerequisite is missing |
+| `beads` | `dolt`, `base_tools` | `dolt` only if the Dolt command is missing; `base_tools` only if curl is missing |
 
 **Deduplication rule**: After dependency resolution, duplicate modules MUST be removed while preserving insertion order.
 
@@ -233,6 +236,9 @@ Phase 7: COMPLETION REPORT
 - Explicit selection of `vscode` or `vscode_config` outside macOS fails the selected module
 - Explicit selection of `code_server` outside Ubuntu/Debian fails the selected module
 - `code_server` is never inferred from another module or standard profile
+- `dolt` and `beads` are included in Full and Work and omitted from Minimal
+- normal module execution installs tools only; it MUST NOT bootstrap, synchronize, migrate, clean, or delete a command repo or legacy Beads data
+- command-repo bootstrap and legacy cleanup are explicit operations outside profile expansion
 - Each module function returns 0 on success, non-zero on failure
 - On failure: the module name is appended to `FAILED_MODULES`, execution continues to the next module
 - The script runs in strict failure mode (errors halt execution by default), but module functions catch their own errors and report them to the failure tracker, allowing execution to continue to the next module
@@ -298,6 +304,9 @@ When Neovim's Lazy plugin sync reports local changes in cached plugins:
 | code-server port conflict | Selected local port is occupied | Module preflight/startup | Append module to failures; do not choose alternate | Stop conflict or pass explicit bind |
 | Required VS Code extension failure | One or more manifest entries fail after all are attempted | Extension reconciliation | Append owning module to failures and list every failed extension | Correct manifest/marketplace or rerun |
 | Python below required version | Native interpreter reports less than 3.10 | `python` module verification | Append `python` to failures; add no third-party repository | Upgrade supported OS/package source |
+| Dolt provisioning failure | Official installer/update or version verification fails | `dolt` module | Append `dolt`; dependent Beads execution cannot proceed | Repair network/package manager and rerun |
+| Beads provisioning failure | Stable installer or `bd version` verification fails | `beads` module | Append `beads`; preserve every command-repo path | Repair network/PATH and rerun |
+| Bootstrap selected implicitly | Profile or normal module execution would create command-repo state | Orchestrator boundary check | Refuse implicit bootstrap and complete tool installation only | Run the explicit bootstrap operation with path and remote URL |
 
 ---
 
@@ -335,6 +344,8 @@ When Neovim's Lazy plugin sync reports local changes in cached plugins:
 14. **Manual Settings Sync action**: The desktop completion report MUST state that Settings Sync must be disabled manually. It MUST NOT claim unsupported enforcement.
 
 15. **Private network neutrality**: Argument parsing and completion output MAY identify a generic bind value and local config path but MUST NOT name or configure a private-network product.
+
+16. **Execution tools are not execution state**: Full and Work provision Beads and Dolt, but profile execution never creates the private command repo, writes its runtime path, synchronizes its remote, or removes legacy data.
 
 ---
 
@@ -599,12 +610,34 @@ Preconditions: macOS vscode_config succeeds
 Input: Completion report
 Expected Output: Report requires manual Settings Sync disablement and does not claim persistent installer enforcement
 
+### TS-INSTL-038: Execution Coordination Tools By Profile
+Category: Integration
+Priority: Critical
+Preconditions: Supported platform without bd or dolt
+Input: Expand Full, Work, and Minimal profiles
+Expected Output: Full and Work include dolt before beads; Minimal includes neither
+
+### TS-INSTL-039: Explicit Beads Module Resolves Dolt
+Category: Integration
+Priority: High
+Preconditions: bd and dolt are absent
+Input: `--modules beads`
+Expected Output: Dependency resolution adds required installer prerequisites and dolt before beads
+
+### TS-INSTL-040: Normal Install Preserves Operational State
+Category: Integration
+Priority: Critical
+Preconditions: Legacy Beads data and an existing private command repo are present
+Input: Run Full and Work profiles
+Expected Output: Tools install/update successfully while no command-repo bootstrap, sync, migration, legacy deletion, or runtime-path rewrite occurs
+
 ---
 
 ## Changelog
 
 | Version | Date | Summary |
 |---------|------|---------|
+| 2.0.0 | 2026-08-01 | Added Beads and Dolt modules to Full and Work, preserved Minimal, and separated tool installation from command-repo bootstrap and legacy cleanup. |
 | 1.6.0 | 2026-07-31 | Added platform-aware macOS Visual Studio Code modules, explicit Ubuntu/Debian code-server, Python 3.10+ provisioning, bind override semantics, extension failure handling, and manual Settings Sync action. |
 | 1.5.0 | 2026-07-15 | Made Claude settings local runtime state and added jq-backed status-line configuration. |
 | 1.4.0 | 2026-07-15 | Made Pi settings local runtime state and required content-preserving migration from the former repo-managed symlink. |
