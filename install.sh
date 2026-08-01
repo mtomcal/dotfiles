@@ -1862,9 +1862,11 @@ is_ipv6_address() {
         *%*)
             zone="${address#*%}"
             address="${address%%%*}"
-            case "$zone" in
-                ""|*%*) return 1 ;;
-            esac
+            # A zone identifier names a local interface or interface index.
+            # Restrict it to a portable safe character set so an empty zone,
+            # whitespace, path separators, and shell metacharacters can never
+            # reach service configuration.
+            [[ "$zone" =~ ^[A-Za-z0-9]([A-Za-z0-9._-]*[A-Za-z0-9])?$ ]] || return 1
             ;;
     esac
 
@@ -1894,7 +1896,9 @@ is_ipv6_address() {
 }
 
 # One hostname or IPv4 address usable as a bind host: dot-separated labels of
-# letters, digits, and inner hyphens.
+# letters, digits, and inner hyphens. A host made only of digits and dots is
+# an attempted IPv4 address and MUST satisfy IPv4 rules rather than falling
+# back to the more permissive hostname form.
 is_bind_host() {
     local host="$1"
     local rest="$host"
@@ -1905,6 +1909,11 @@ is_bind_host() {
 
     case "$host" in
         .*|*.|*..*) return 1 ;;
+    esac
+
+    case "$host" in
+        *[!0-9.]*) ;;
+        *) is_ipv4_address "$host"; return $? ;;
     esac
 
     while : ; do

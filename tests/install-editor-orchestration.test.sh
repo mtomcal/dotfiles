@@ -326,13 +326,20 @@ run_parse_observed() {
 
 VALID_BINDS="0.0.0.0:8080
 127.0.0.1:1
+255.255.255.255:8080
+10.0.0.5:8443
 localhost:65535
 code.internal.example:443
 a-b.example.com:80
+1.example.com:80
 [::1]:8080
 [::]:8080
 [fe80::1]:8443
 [fe80::1%eth0]:8443
+[fe80::1%eth0.100]:8443
+[fe80::1%en0]:8443
+[fe80::1%wlan-1]:8443
+[fe80::1%2]:8443
 [2001:db8:85a3:0:0:8a2e:370:7334]:443
 [::ffff:192.168.1.1]:8080"
 
@@ -366,7 +373,17 @@ localhost: 80
 ..:8080
 .localhost:8080
 localhost-:8080
--localhost:8080"
+-localhost:8080
+256.1.1.1:8080
+01.2.3.4:8080
+999.999.999.999:8080
+1.2.3:8080
+1.2.3.4.5:8080
+[fe80::1%bad zone]:8443
+[fe80::1%../../escape]:8443
+[fe80::1%\$()]:8443
+[fe80::1%;reboot]:8443
+[fe80::1%.]:8443"
 
 test_code_server_bind_accepts_valid_addresses_and_ports() {
     local value
