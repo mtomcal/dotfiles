@@ -1,0 +1,61 @@
+{
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
+  "files.insertFinalNewline": true,
+  "files.trimTrailingWhitespace": true,
+
+  "python.analysis.typeCheckingMode": "basic",
+  "python.analysis.diagnosticMode": "openFilesOnly",
+  "basedpyright.analysis.typeCheckingMode": "basic",
+  "basedpyright.analysis.diagnosticMode": "openFilesOnly",
+
+  "prettier.requireConfig": true,
+  "eslint.format.enable": false,
+
+  "editor.lineNumbers": "relative",
+  "vim.leader": " ",
+  "vim.useSystemClipboard": true,
+  "vim.incsearch": true,
+  "vim.hlsearch": true,
+  "vim.surround": true,
+  "vim.easymotion": true,
+  "vim.vimrc.enable": false,
+  "vim.handleKeys": {
+    "<C-f>": false
+  },
+  "vim.normalModeKeyBindingsNonRecursive": [
+    { "before": [" ", "f"], "commands": ["editor.action.formatDocument"] },
+    { "before": [" ", "d", "n"], "commands": ["editor.action.marker.next"] },
+    { "before": [" ", "d", "p"], "commands": ["editor.action.marker.prev"] },
+    { "before": [" ", "d", "l"], "commands": ["workbench.actions.view.problems"] },
+    { "before": [" ", "e"], "commands": ["workbench.view.explorer"] },
+    { "before": [" ", "o"], "commands": ["workbench.action.quickOpen"] },
+    { "before": [" ", "g", "g"], "commands": ["workbench.view.scm"] },
+    { "before": [" ", "t", "t"], "commands": ["testing.runAtCursor"] },
+    { "before": [" ", "t", "f"], "commands": ["testing.runCurrentFile"] },
+    { "before": [" ", "b", "b"], "commands": ["editor.debug.action.toggleBreakpoint"] },
+    { "before": [" ", "b", "s"], "commands": ["workbench.action.debug.start"] },
+    { "before": [" ", "b", "c"], "commands": ["workbench.action.debug.continue"] }
+  ],
+
+  "[python]": {
+    "editor.defaultFormatter": "charliermarsh.ruff",
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.fixAll.ruff": "explicit",
+      "source.organizeImports.ruff": "explicit"
+    }
+  },
+  "[javascript]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+  "[javascriptreact]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+  "[typescript]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+  "[typescriptreact]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+  "[json]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+  "[jsonc]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+  "[css]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+  "[html]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+  "[markdown]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+  "[yaml]": { "editor.defaultFormatter": "esbenp.prettier-vscode" }
+}

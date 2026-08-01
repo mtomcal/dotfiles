@@ -1,0 +1,10 @@
+# Extensions reconciled only on the macOS desktop target.
+
+# Python language support and code intelligence
+ms-python.python
+ms-python.vscode-pylance
+ms-python.debugpy
+ms-python.vscode-python-envs
+
+# Remote development
+ms-vscode-remote.remote-ssh

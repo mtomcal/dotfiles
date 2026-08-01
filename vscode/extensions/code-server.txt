@@ -1,0 +1,7 @@
+# Extensions reconciled only on the code-server target, where code
+# intelligence must come from a marketplace-compatible language server.
+
+# Python language support and code intelligence
+ms-python.python
+detachhead.basedpyright
+ms-python.debugpy

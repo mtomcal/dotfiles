@@ -3,11 +3,15 @@
 HARNESS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TEST_DIR="$(cd "$HARNESS_DIR/.." && pwd)"
 DOTFILES_DIR="$(cd "$TEST_DIR/.." && pwd)"
-TMP_DIRS=()
+
+# One disposable root per test process. Every temporary artifact lives under
+# it, so cleanup never depends on a caller registering individual paths.
+SUITE_TMP_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/dotfiles-tests.XXXXXX")"
+SUITE_TMP_SEQUENCE=0
 
 cleanup() {
-    if [[ ${#TMP_DIRS[@]} -gt 0 ]]; then
-        rm -rf "${TMP_DIRS[@]}"
+    if [[ -n "${SUITE_TMP_ROOT:-}" && -d "$SUITE_TMP_ROOT" ]]; then
+        rm -rf "$SUITE_TMP_ROOT"
     fi
 }
 trap cleanup EXIT
@@ -17,11 +21,27 @@ fail() {
     exit 1
 }
 
-new_tmp() {
-    local tmp
-    tmp="$(mktemp -d)"
-    TMP_DIRS+=("$tmp")
-    printf '%s\n' "$tmp"
+# Allocate a disposable directory and assign it to the caller's variable:
+#
+#     local home
+#     new_tmp_var home
+#
+# Assignment happens in the calling shell instead of through command
+# substitution, so allocation and cleanup ownership stay in one process.
+new_tmp_var() {
+    local __new_tmp_var_name="$1"
+    local __new_tmp_var_dir
+
+    SUITE_TMP_SEQUENCE=$((SUITE_TMP_SEQUENCE + 1))
+    __new_tmp_var_dir="$SUITE_TMP_ROOT/dir-$SUITE_TMP_SEQUENCE"
+    mkdir -p "$__new_tmp_var_dir"
+    printf -v "$__new_tmp_var_name" '%s' "$__new_tmp_var_dir"
+}
+
+# Path for a named scratch artifact (captured output, logs) under the suite
+# root. Tests use this instead of a fixed /tmp path.
+tmp_artifact() {
+    printf '%s/%s' "$SUITE_TMP_ROOT" "$1"
 }
 
 assert_symlink_to() {
