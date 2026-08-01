@@ -1768,22 +1768,185 @@ install_code_server() {
 # code-server Bind Value
 # ===========================
 
+# One dotted-decimal IPv4 address; each octet is 0..255 without padding.
+is_ipv4_address() {
+    local address="$1"
+    local rest="$address"
+    local octet
+    local count=0
+
+    case "$address" in
+        .*|*.|*..*) return 1 ;;
+    esac
+
+    while : ; do
+        case "$rest" in
+            *.*)
+                octet="${rest%%.*}"
+                rest="${rest#*.}"
+                ;;
+            *)
+                octet="$rest"
+                rest=""
+                ;;
+        esac
+
+        [[ "$octet" =~ ^(0|[1-9][0-9]{0,2})$ ]] || return 1
+        [ "$octet" -le 255 ] || return 1
+        count=$((count + 1))
+
+        [ -n "$rest" ] || break
+    done
+
+    [ "$count" -eq 4 ]
+}
+
+# Count the 16-bit groups on one side of an IPv6 address. Echoes the count and
+# returns non-zero when any group is malformed. A trailing IPv4 form counts as
+# two groups and is accepted only where the address may end.
+ipv6_group_count() {
+    local half="$1"
+    local allow_trailing_ipv4="$2"
+    local rest="$half"
+    local group
+    local count=0
+
+    if [ -z "$half" ]; then
+        printf '0\n'
+        return 0
+    fi
+
+    # A leading or trailing single colon is never valid here; the "::"
+    # compression marker has already been split off by the caller.
+    case "$half" in
+        :*|*:) return 1 ;;
+    esac
+
+    while : ; do
+        case "$rest" in
+            *:*)
+                group="${rest%%:*}"
+                rest="${rest#*:}"
+                ;;
+            *)
+                group="$rest"
+                rest=""
+                ;;
+        esac
+
+        if [ -z "$rest" ] && [ "$allow_trailing_ipv4" == "1" ] && is_ipv4_address "$group"; then
+            count=$((count + 2))
+        elif [[ "$group" =~ ^[0-9A-Fa-f]{1,4}$ ]]; then
+            count=$((count + 1))
+        else
+            return 1
+        fi
+
+        [ -n "$rest" ] || break
+    done
+
+    printf '%s\n' "$count"
+}
+
+# One IPv6 address, optionally with a zone identifier, validated as an address
+# rather than as a character class. Bash 3.2 constructs only.
+is_ipv6_address() {
+    local address="$1"
+    local zone=""
+    local head
+    local tail
+    local head_count
+    local tail_count
+
+    case "$address" in
+        *%*)
+            zone="${address#*%}"
+            address="${address%%%*}"
+            case "$zone" in
+                ""|*%*) return 1 ;;
+            esac
+            ;;
+    esac
+
+    case "$address" in
+        *:::*) return 1 ;;
+        *:*) ;;
+        *) return 1 ;;
+    esac
+
+    case "$address" in
+        *::*)
+            head="${address%%::*}"
+            tail="${address#*::}"
+            case "$tail" in
+                *::*) return 1 ;;
+            esac
+            head_count="$(ipv6_group_count "$head" 0)" || return 1
+            tail_count="$(ipv6_group_count "$tail" 1)" || return 1
+            # "::" must compress at least one group.
+            [ $((head_count + tail_count)) -le 7 ]
+            ;;
+        *)
+            head_count="$(ipv6_group_count "$address" 1)" || return 1
+            [ "$head_count" -eq 8 ]
+            ;;
+    esac
+}
+
+# One hostname or IPv4 address usable as a bind host: dot-separated labels of
+# letters, digits, and inner hyphens.
+is_bind_host() {
+    local host="$1"
+    local rest="$host"
+    local label
+
+    [ -n "$host" ] || return 1
+    [ ${#host} -le 253 ] || return 1
+
+    case "$host" in
+        .*|*.|*..*) return 1 ;;
+    esac
+
+    while : ; do
+        case "$rest" in
+            *.*)
+                label="${rest%%.*}"
+                rest="${rest#*.}"
+                ;;
+            *)
+                label="$rest"
+                rest=""
+                ;;
+        esac
+
+        [[ "$label" =~ ^[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?$ ]] || return 1
+        [ ${#label} -le 63 ] || return 1
+
+        [ -n "$rest" ] || break
+    done
+
+    return 0
+}
+
 # Split an `address:port` bind value into "host port" on stdout.
 # Accepts a hostname/IPv4 address, or a bracketed IPv6 address, plus a port in
-# 1..65535. Returns non-zero without output for any other shape.
+# 1..65535. Returns non-zero without output for any other value.
 split_code_server_bind() {
     local bind="$1"
     local host
     local port
 
-    if [[ "$bind" == \[* ]]; then
-        [[ "$bind" =~ ^\[([0-9A-Fa-f:.%]+)\]:([0-9]{1,5})$ ]] || return 1
+    if [[ "$bind" =~ ^\[(.+)\]:([0-9]{1,5})$ ]]; then
+        host="${BASH_REMATCH[1]}"
+        port="${BASH_REMATCH[2]}"
+        is_ipv6_address "$host" || return 1
+    elif [[ "$bind" =~ ^([^:]+):([0-9]{1,5})$ ]]; then
+        host="${BASH_REMATCH[1]}"
+        port="${BASH_REMATCH[2]}"
+        is_bind_host "$host" || return 1
     else
-        [[ "$bind" =~ ^([A-Za-z0-9._-]+):([0-9]{1,5})$ ]] || return 1
+        return 1
     fi
-
-    host="${BASH_REMATCH[1]}"
-    port="${BASH_REMATCH[2]}"
 
     if [ "$port" -lt 1 ] || [ "$port" -gt 65535 ]; then
         return 1

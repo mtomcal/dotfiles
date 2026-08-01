@@ -5,10 +5,10 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/harness.sh"
 
 test_configure_herdr_links_config() {
     local home
-    home="$(new_tmp)"
+    new_tmp_var home
     source_install
 
-    HOME="$home" DOTFILES_DIR="$DOTFILES_DIR" configure_herdr >/tmp/install-herdr.out
+    HOME="$home" DOTFILES_DIR="$DOTFILES_DIR" configure_herdr >"$(tmp_artifact install-herdr.out)"
 
     assert_symlink_to "$home/.config/herdr/config.toml" "$DOTFILES_DIR/herdr/config.toml"
 }
@@ -92,7 +92,7 @@ test_agent_profiles_configure_herdr_integrations_after_agents() {
 }
 
 test_dependency_resolution_keeps_warnings_out_of_modules() {
-    local warning_log="/tmp/install-herdr-dependencies.err"
+    local warning_log="$(tmp_artifact install-herdr-dependencies.err)"
     source_install
 
     command() {
@@ -121,7 +121,7 @@ test_configure_herdr_integrations_preserves_claude_settings_symlink() {
     local managed_settings
     local hook_path
 
-    home="$(new_tmp)"
+    new_tmp_var home
     managed_settings="$home/managed/claude-settings.json"
     hook_path="$home/.claude/hooks/herdr-agent-state.sh"
     mkdir -p "$home/.claude" "$home/managed"
@@ -130,7 +130,7 @@ test_configure_herdr_integrations_preserves_claude_settings_symlink() {
 
     source_install
 
-    HOME="$home" DOTFILES_DIR="$DOTFILES_DIR" configure_herdr_integrations >/tmp/install-herdr-integrations.out
+    HOME="$home" DOTFILES_DIR="$DOTFILES_DIR" configure_herdr_integrations >"$(tmp_artifact install-herdr-integrations.out)"
 
     assert_symlink_to "$home/.claude/settings.json" "$managed_settings"
     assert_symlink_to "$hook_path" "$DOTFILES_DIR/herdr/integrations/claude/herdr-agent-state.sh"
@@ -143,8 +143,8 @@ test_configure_herdr_integrations_migrates_managed_claude_settings() {
     local dotfiles
     local tracked_settings
 
-    home="$(new_tmp)"
-    dotfiles="$(new_tmp)"
+    new_tmp_var home
+    new_tmp_var dotfiles
     tracked_settings="$dotfiles/claude/settings.json"
     mkdir -p "$home/.claude" "$dotfiles/claude" "$dotfiles/herdr/integrations/claude"
     printf '{"env":{"KEEP_ME":"1"}}\n' > "$tracked_settings"
@@ -155,11 +155,11 @@ test_configure_herdr_integrations_migrates_managed_claude_settings() {
 
     source_install
 
-    HOME="$home" DOTFILES_DIR="$dotfiles" configure_herdr_integrations >/tmp/install-herdr-managed-settings.out
+    HOME="$home" DOTFILES_DIR="$dotfiles" configure_herdr_integrations >"$(tmp_artifact install-herdr-managed-settings.out)"
 
     [[ ! -L "$home/.claude/settings.json" ]] || fail "expected managed Claude settings to migrate to local state"
-    git -C "$dotfiles" diff --exit-code -- claude/settings.json >/tmp/install-herdr-managed-settings.diff || {
-        cat /tmp/install-herdr-managed-settings.diff >&2
+    git -C "$dotfiles" diff --exit-code -- claude/settings.json >"$(tmp_artifact install-herdr-managed-settings.diff)" || {
+        cat "$(tmp_artifact install-herdr-managed-settings.diff)" >&2
         fail "configure_herdr_integrations changed legacy Claude settings source"
     }
     ! grep -F "$home" "$tracked_settings" >/dev/null || fail "legacy Claude settings source contains HOME-specific path"
@@ -169,7 +169,7 @@ test_configure_herdr_integrations_migrates_managed_claude_settings() {
 test_install_claude_preserves_local_settings_file() {
     local home
 
-    home="$(new_tmp)"
+    new_tmp_var home
     mkdir -p "$home/.claude"
     printf '{"local":true}\n' > "$home/.claude/settings.json"
 
@@ -185,7 +185,7 @@ test_install_claude_preserves_local_settings_file() {
         printf '%s\n' 'chmod +x "$HOME/.local/bin/claude"'
     }
 
-    HOME="$home" DOTFILES_DIR="$DOTFILES_DIR" install_claude >/tmp/install-herdr-claude-install.out
+    HOME="$home" DOTFILES_DIR="$DOTFILES_DIR" install_claude >"$(tmp_artifact install-herdr-claude-install.out)"
     unset -f claude curl
 
     [[ ! -L "$home/.claude/settings.json" ]] || fail "expected Claude settings to remain local state"
@@ -194,7 +194,9 @@ test_install_claude_preserves_local_settings_file() {
 
 test_execute_modules_runs_herdr_integrations_after_agent_modules() {
     local log
-    log="$(new_tmp)/execute.log"
+    local log_dir
+    new_tmp_var log_dir
+    log="$log_dir/execute.log"
     source_install
 
     install_claude() {

@@ -16,7 +16,7 @@ test_claude_module_resolves_jq_dependency() {
         builtin command "$@"
     }
 
-    SELECTED_MODULES=($(resolve_dependencies claude 2>/tmp/install-claude-dependencies.err))
+    SELECTED_MODULES=($(resolve_dependencies claude 2>"$(tmp_artifact install-claude-dependencies.err)"))
     unset -f command
 
     [[ "${SELECTED_MODULES[*]}" == "base_tools claude" ]] || fail "expected Claude module to resolve jq via base_tools, got: ${SELECTED_MODULES[*]}"
@@ -26,7 +26,7 @@ test_install_claude_runs_latest_installer_when_claude_already_exists() {
     local home
     local installer_log
 
-    home="$(new_tmp)"
+    new_tmp_var home
     installer_log="$home/installer.log"
 
     source_install
@@ -42,7 +42,7 @@ test_install_claude_runs_latest_installer_when_claude_already_exists() {
         printf '%s\n' 'chmod +x "$HOME/.local/bin/claude"'
     }
 
-    HOME="$home" DOTFILES_DIR="$DOTFILES_DIR" install_claude >/tmp/install-claude.out
+    HOME="$home" DOTFILES_DIR="$DOTFILES_DIR" install_claude >"$(tmp_artifact install-claude.out)"
     unset -f claude curl
 
     [[ "$(cat "$installer_log")" == "latest" ]] || fail "expected Claude installer target latest"
@@ -55,7 +55,7 @@ test_install_claude_runs_latest_installer_when_claude_already_exists() {
 test_install_claude_fails_when_latest_installer_does_not_create_binary() {
     local home
 
-    home="$(new_tmp)"
+    new_tmp_var home
 
     source_install
 
@@ -67,7 +67,7 @@ test_install_claude_fails_when_latest_installer_does_not_create_binary() {
         printf '%s\n' 'exit 0'
     }
 
-    if HOME="$home" DOTFILES_DIR="$DOTFILES_DIR" install_claude >/tmp/install-claude-missing-bin.out 2>&1; then
+    if HOME="$home" DOTFILES_DIR="$DOTFILES_DIR" install_claude >"$(tmp_artifact install-claude-missing-bin.out)" 2>&1; then
         unset -f claude curl
         fail "expected install_claude to fail when ~/.local/bin/claude is missing"
     fi
@@ -79,8 +79,8 @@ test_install_claude_migrates_managed_settings_to_preserved_local_state() {
     local dotfiles
     local tracked_settings
 
-    home="$(new_tmp)"
-    dotfiles="$(new_tmp)"
+    new_tmp_var home
+    new_tmp_var dotfiles
     tracked_settings="$dotfiles/claude/settings.json"
     mkdir -p "$home/.claude" "$dotfiles/claude"
     printf '{"managed":true}\n' > "$tracked_settings"
@@ -99,7 +99,7 @@ test_install_claude_migrates_managed_settings_to_preserved_local_state() {
         printf '%s\n' 'chmod +x "$HOME/.local/bin/claude"'
     }
 
-    HOME="$home" DOTFILES_DIR="$dotfiles" install_claude >/tmp/install-claude-protect-settings.out
+    HOME="$home" DOTFILES_DIR="$dotfiles" install_claude >"$(tmp_artifact install-claude-protect-settings.out)"
     unset -f claude curl
 
     [[ "$(cat "$tracked_settings")" == '{"managed":true}' ]] || fail "expected legacy settings source to remain unchanged"
@@ -110,7 +110,7 @@ test_install_claude_migrates_managed_settings_to_preserved_local_state() {
 test_install_claude_preserves_existing_local_settings() {
     local home
 
-    home="$(new_tmp)"
+    new_tmp_var home
     mkdir -p "$home/.claude"
     printf '{"local":true}\n' > "$home/.claude/settings.json"
 
@@ -127,7 +127,7 @@ test_install_claude_preserves_existing_local_settings() {
         printf '%s\n' 'chmod +x "$HOME/.local/bin/claude"'
     }
 
-    HOME="$home" DOTFILES_DIR="$DOTFILES_DIR" install_claude >/tmp/install-claude-local-settings.out
+    HOME="$home" DOTFILES_DIR="$DOTFILES_DIR" install_claude >"$(tmp_artifact install-claude-local-settings.out)"
     unset -f claude curl
 
     [[ ! -L "$home/.claude/settings.json" ]] || fail "expected Claude settings to remain local state"
@@ -139,7 +139,7 @@ test_install_claude_keeps_installer_generated_settings_as_local_state() {
     local home
     local backup
 
-    home="$(new_tmp)"
+    new_tmp_var home
 
     source_install
 
@@ -154,7 +154,7 @@ test_install_claude_keeps_installer_generated_settings_as_local_state() {
         printf '%s\n' 'chmod +x "$HOME/.local/bin/claude"'
     }
 
-    HOME="$home" DOTFILES_DIR="$DOTFILES_DIR" install_claude >/tmp/install-claude-fresh-settings.out
+    HOME="$home" DOTFILES_DIR="$DOTFILES_DIR" install_claude >"$(tmp_artifact install-claude-fresh-settings.out)"
     unset -f claude curl
 
     [[ ! -L "$home/.claude/settings.json" ]] || fail "expected generated Claude settings to remain local state"

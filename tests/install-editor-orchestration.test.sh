@@ -88,7 +88,7 @@ test_interactive_profile_menu_uses_shared_expansion() {
     local profile
 
     source_install
-    tmp="$(new_tmp)"
+    new_tmp_var tmp
 
     for choice in 1:full 2:minimal 3:work; do
         profile="${choice#*:}"
@@ -228,31 +228,158 @@ snapshot_tree() {
     )
 }
 
-# Parse arguments in a subshell so a rejected value cannot leak state, and
-# report the exit status plus any filesystem change under HOME.
-parse_bind_argument() {
-    local home="$1"
-    shift
-    local status=0
+# Drive a public entry point (`main` or `parse_arguments`) with a disposable
+# HOME, working directory, and TMPDIR, plus a code-server service stub that
+# records the bind value it actually received.
+#
+# Sets in the caller's shell:
+#   OBSERVED_STATUS     exit status of the entry point
+#   OBSERVED_CALLS      path to the ordered orchestration call log
+#   OBSERVED_BIND_FILE  path written only when the service stub ran
+#   OBSERVED_PERSISTED  names of any root that changed ("" when nothing did)
+run_under_observation() {
+    local work="$1"
+    local entry="$2"
+    shift 2
+    local before_home before_cwd before_tmp before_repo
+    local after_home after_cwd after_tmp after_repo
+
+    mkdir -p "$work/home" "$work/cwd" "$work/tmpdir" "$work/evidence"
+    : > "$work/calls"
+
+    OBSERVED_CALLS="$work/calls"
+    OBSERVED_BIND_FILE="$work/evidence/bind"
+    OBSERVED_STATUS=0
+    OBSERVED_PERSISTED=""
+
+    before_home="$(snapshot_tree "$work/home")"
+    before_cwd="$(snapshot_tree "$work/cwd")"
+    before_tmp="$(snapshot_tree "$work/tmpdir")"
+    before_repo="$(git -C "$DOTFILES_DIR" status --porcelain)"
 
     (
-        HOME="$home" parse_arguments "$@"
-    ) >/dev/null 2>&1 || status=$?
+        OBSERVED="$work"
+        cd "$work/cwd" || exit 99
+        HOME="$work/home"
+        TMPDIR="$work/tmpdir"
+        export HOME TMPDIR
 
-    printf '%s' "$status"
+        detect_os() {
+            printf 'detect_os\n' >> "$OBSERVED/calls"
+            OS="ubuntu"
+            PACKAGE_MANAGER="apt"
+        }
+        setup_package_manager() { printf 'setup_package_manager\n' >> "$OBSERVED/calls"; }
+        update_package_manager() { printf 'update_package_manager\n' >> "$OBSERVED/calls"; }
+        show_installation_summary() {
+            printf 'show_installation_summary:%s\n' "${SELECTED_MODULES[*]}" >> "$OBSERVED/calls"
+            return 0
+        }
+        install_base_tools() { printf 'install_base_tools\n' >> "$OBSERVED/calls"; }
+        install_code_server() {
+            printf 'install_code_server\n' >> "$OBSERVED/calls"
+            printf '%s' "$CODE_SERVER_BIND" > "$OBSERVED/evidence/bind"
+        }
+        show_editor_completion_notices() {
+            printf 'show_editor_completion_notices\n' >> "$OBSERVED/calls"
+        }
+
+        if [ "$1" == "--parse-only" ]; then
+            shift
+            parse_arguments "$@"
+            printf '%s' "$CODE_SERVER_BIND" > "$OBSERVED/evidence/bind"
+        else
+            main "$@"
+        fi
+    ) > "$work/entry.out" 2>&1 || OBSERVED_STATUS=$?
+
+    after_home="$(snapshot_tree "$work/home")"
+    after_cwd="$(snapshot_tree "$work/cwd")"
+    after_tmp="$(snapshot_tree "$work/tmpdir")"
+    after_repo="$(git -C "$DOTFILES_DIR" status --porcelain)"
+
+    [[ "$before_home" == "$after_home" ]] || OBSERVED_PERSISTED="$OBSERVED_PERSISTED HOME"
+    [[ "$before_cwd" == "$after_cwd" ]] || OBSERVED_PERSISTED="$OBSERVED_PERSISTED CWD"
+    [[ "$before_tmp" == "$after_tmp" ]] || OBSERVED_PERSISTED="$OBSERVED_PERSISTED TMPDIR"
+    [[ "$before_repo" == "$after_repo" ]] || OBSERVED_PERSISTED="$OBSERVED_PERSISTED WORKTREE"
+
+    if [ "$entry" == "parse" ]; then
+        return 0
+    fi
+
+    return 0
 }
+
+run_main_observed() {
+    local work="$1"
+    shift
+
+    run_under_observation "$work" main "$@"
+}
+
+run_parse_observed() {
+    local work="$1"
+    shift
+
+    run_under_observation "$work" parse --parse-only "$@"
+}
+
+VALID_BINDS="0.0.0.0:8080
+127.0.0.1:1
+localhost:65535
+code.internal.example:443
+a-b.example.com:80
+[::1]:8080
+[::]:8080
+[fe80::1]:8443
+[fe80::1%eth0]:8443
+[2001:db8:85a3:0:0:8a2e:370:7334]:443
+[::ffff:192.168.1.1]:8080"
+
+# Every one of these must be rejected. The bracketed entries are the shapes
+# that a shape-only pattern accepts but that are not addresses at all.
+MALFORMED_BINDS="
+:8080
+localhost
+localhost:
+localhost:https
+localhost:0
+localhost:65536
+localhost:080808
+localhost:80:80
+localhost: 80
+::1:8080
+[::1:8080
+::1]:8080
+[]:8080
+[:::]:8080
+[.]:8080
+[%]:8080
+[192.168.1.1]:8080
+[localhost]:8080
+[gg::1]:8080
+[1:2:3:4:5:6:7:8:9]:8080
+[1::2::3]:8080
+[fe80::1%]:8443
+[::1]:0
+-:8080
+..:8080
+.localhost:8080
+localhost-:8080
+-localhost:8080"
 
 test_code_server_bind_accepts_valid_addresses_and_ports() {
     local value
 
     source_install
 
-    for value in "0.0.0.0:8080" "127.0.0.1:1" "localhost:65535" "code.internal.example:443" "[::1]:8080" "[fe80::1]:8443"; do
+    while IFS= read -r value; do
+        [ -n "$value" ] || continue
         CODE_SERVER_BIND=""
         parse_arguments --code-server-bind "$value"
         [[ "$CODE_SERVER_BIND" == "$value" ]] ||
             fail "expected bind '$value' to be retained exactly, got: '$CODE_SERVER_BIND'"
-    done
+    done <<< "$VALID_BINDS"
 }
 
 test_code_server_bind_splits_host_and_port() {
@@ -262,88 +389,91 @@ test_code_server_bind_splits_host_and_port() {
         fail "expected IPv4 bind split, got: $(split_code_server_bind "0.0.0.0:8080")"
     [[ "$(split_code_server_bind "[::1]:8443")" == "::1 8443" ]] ||
         fail "expected bracketed IPv6 bind split without brackets, got: $(split_code_server_bind "[::1]:8443")"
+    [[ "$(split_code_server_bind "[fe80::1%eth0]:8443")" == "fe80::1%eth0 8443" ]] ||
+        fail "expected zone identifier to be retained, got: $(split_code_server_bind "[fe80::1%eth0]:8443")"
 }
 
-test_code_server_bind_rejects_malformed_values() {
-    local home
+test_malformed_bind_values_are_rejected_before_any_orchestration() {
+    local root
     local value
-    local status
+    local index=0
+    local work
 
     source_install
-    home="$(new_tmp)"
+    new_tmp_var root
 
-    for value in "" ":8080" "localhost" "localhost:" "localhost:https" "localhost:0" "localhost:65536" "localhost:080808" "::1:8080" "[::1:8080" "::1]:8080" "localhost:80:80" "localhost: 80" "[]:8080"; do
-        status="$(parse_bind_argument "$home" --code-server-bind "$value")"
-        [[ "$status" -ne 0 ]] || fail "expected bind '$value' to be rejected"
-    done
+    while IFS= read -r value; do
+        index=$((index + 1))
+        work="$root/case-$index"
+        mkdir -p "$work"
 
-    status="$(parse_bind_argument "$home" --code-server-bind)"
-    [[ "$status" -ne 0 ]] || fail "expected missing bind argument to be rejected"
+        run_main_observed "$work" --modules code_server --code-server-bind "$value"
+
+        [[ "$OBSERVED_STATUS" -ne 0 ]] || fail "expected bind '$value' to be rejected"
+        [[ ! -s "$OBSERVED_CALLS" ]] ||
+            fail "bind '$value' reached orchestration: $(tr '\n' ' ' < "$OBSERVED_CALLS")"
+        [[ ! -e "$OBSERVED_BIND_FILE" ]] || fail "bind '$value' reached the code-server service"
+        [[ -z "$OBSERVED_PERSISTED" ]] || fail "bind '$value' persisted state to:$OBSERVED_PERSISTED"
+    done <<< "$MALFORMED_BINDS"
+
+    work="$root/missing-argument"
+    mkdir -p "$work"
+    run_main_observed "$work" --modules code_server --code-server-bind
+    [[ "$OBSERVED_STATUS" -ne 0 ]] || fail "expected a missing bind argument to be rejected"
+    [[ ! -s "$OBSERVED_CALLS" ]] || fail "missing bind argument reached orchestration"
+    [[ -z "$OBSERVED_PERSISTED" ]] || fail "missing bind argument persisted state to:$OBSERVED_PERSISTED"
 }
 
-test_valid_code_server_bind_writes_nothing_to_disk() {
-    local home
-    local before
-    local after
+test_valid_bind_reaches_the_code_server_service_unchanged() {
+    local work
+    local value="[2001:db8::1]:9443"
 
     source_install
-    home="$(new_tmp)"
-    mkdir -p "$home/.config"
-    before="$(snapshot_tree "$home")"
+    new_tmp_var work
 
-    HOME="$home" parse_arguments --code-server-bind "10.0.0.5:8443"
-    after="$(snapshot_tree "$home")"
+    run_main_observed "$work" --modules code_server --code-server-bind "$value"
 
-    [[ "$CODE_SERVER_BIND" == "10.0.0.5:8443" ]] || fail "expected runtime bind state to be retained"
-    [[ "$before" == "$after" ]] || fail "expected bind parsing to persist nothing; HOME changed"
+    [[ "$OBSERVED_STATUS" -eq 0 ]] ||
+        fail "expected a valid bind run to succeed: $(cat "$work/entry.out")"
+    [[ -e "$OBSERVED_BIND_FILE" ]] || fail "the code-server service was never dispatched"
+    [[ "$(cat "$OBSERVED_BIND_FILE")" == "$value" ]] ||
+        fail "service received bind '$(cat "$OBSERVED_BIND_FILE")' instead of '$value'"
+    [[ "$(tr '\n' ' ' < "$OBSERVED_CALLS")" == *"install_code_server show_editor_completion_notices "* ]] ||
+        fail "unexpected orchestration: $(tr '\n' ' ' < "$OBSERVED_CALLS")"
+    [[ -z "$OBSERVED_PERSISTED" ]] || fail "a valid bind persisted state to:$OBSERVED_PERSISTED"
 }
 
-# Run main with every side-effecting seam replaced by sentinels that record
-# that they ran, so a bind value that escapes validation is observable.
-run_main_with_dispatch_sentinels() {
-    local sentinel_dir="$1"
-    shift
-    local status=0
-
-    (
-        SENTINEL_DIR="$sentinel_dir"
-        HOME="$sentinel_dir/home"
-
-        detect_os() {
-            OS="ubuntu"
-            PACKAGE_MANAGER="apt"
-            printf 'detect_os\n' >> "$SENTINEL_DIR/calls"
-        }
-        setup_package_manager() { :; }
-        update_package_manager() { printf 'update_package_manager\n' >> "$SENTINEL_DIR/calls"; }
-        show_installation_summary() { printf 'show_installation_summary\n' >> "$SENTINEL_DIR/calls"; return 0; }
-        install_code_server() { printf 'install_code_server\n' >> "$SENTINEL_DIR/calls"; return 0; }
-        install_base_tools() { printf 'install_base_tools\n' >> "$SENTINEL_DIR/calls"; return 0; }
-
-        main "$@"
-    ) >"$sentinel_dir/main.out" 2>&1 || status=$?
-
-    printf '%s' "$status"
-}
-
-test_invalid_bind_never_reaches_code_server_dispatch() {
-    local tmp
-    local status
-    local before
-    local after
+test_default_run_leaves_the_bind_unset_for_local_configuration() {
+    local work
 
     source_install
-    tmp="$(new_tmp)"
-    mkdir -p "$tmp/home"
-    : > "$tmp/calls"
-    before="$(snapshot_tree "$tmp/home")"
+    new_tmp_var work
 
-    status="$(run_main_with_dispatch_sentinels "$tmp" --modules code_server --code-server-bind "localhost:0")"
-    after="$(snapshot_tree "$tmp/home")"
+    run_main_observed "$work" --modules code_server
 
-    [[ "$status" -ne 0 ]] || fail "expected invalid bind to fail the run"
-    [[ ! -s "$tmp/calls" ]] || fail "expected no orchestration after invalid bind, got: $(cat "$tmp/calls" | tr '\n' ' ')"
-    [[ "$before" == "$after" ]] || fail "expected no filesystem changes after invalid bind"
+    [[ "$OBSERVED_STATUS" -eq 0 ]] || fail "expected a bindless run to succeed"
+    [[ -e "$OBSERVED_BIND_FILE" ]] || fail "the code-server service was never dispatched"
+    [[ -z "$(cat "$OBSERVED_BIND_FILE")" ]] ||
+        fail "expected no bind override, got: $(cat "$OBSERVED_BIND_FILE")"
+    [[ -z "$OBSERVED_PERSISTED" ]] || fail "a bindless run persisted state to:$OBSERVED_PERSISTED"
+}
+
+test_bind_parsing_persists_nothing_anywhere() {
+    local work
+
+    source_install
+    new_tmp_var work
+
+    run_parse_observed "$work/valid" --code-server-bind "10.0.0.5:8443"
+    [[ "$OBSERVED_STATUS" -eq 0 ]] || fail "expected a valid bind to parse"
+    [[ "$(cat "$OBSERVED_BIND_FILE")" == "10.0.0.5:8443" ]] ||
+        fail "expected the parsed bind to be retained in runtime state"
+    [[ -z "$OBSERVED_PERSISTED" ]] || fail "valid bind parsing persisted state to:$OBSERVED_PERSISTED"
+
+    run_parse_observed "$work/invalid" --code-server-bind "10.0.0.5:99999"
+    [[ "$OBSERVED_STATUS" -ne 0 ]] || fail "expected an invalid bind to fail parsing"
+    [[ ! -e "$OBSERVED_BIND_FILE" ]] || fail "invalid bind parsing stored runtime state"
+    [[ -z "$OBSERVED_PERSISTED" ]] || fail "invalid bind parsing persisted state to:$OBSERVED_PERSISTED"
 }
 
 # ---------------------------------------------------------------------------
@@ -352,26 +482,65 @@ test_invalid_bind_never_reaches_code_server_dispatch() {
 
 EDITOR_MODULES="python vscode vscode_config code_server"
 
-test_custom_menu_offers_every_module_including_editor_modules() {
-    local tmp
-    local line
-    local keys=()
-    local labels=()
-    local count
-    local module
-    local index
+# Independent expectations. These are declared by the test, not derived from
+# the implementation, so a label or module-list change must be made here too.
+EXPECTED_MENU_MODULES="base_tools neovim nvim_config tmux_config herdr herdr_config herdr_integrations zsh_ohmyzsh zsh_config python golang_full nodejs codex codex_sandbox claude pi pi_sandbox tui_tools playwright copilot vscode vscode_config code_server"
 
-    source_install
-    tmp="$(new_tmp)"
+EXPECTED_MODULE_LABELS="base_tools=Base Tools (git, curl, tmux, zsh, etc.)
+neovim=Neovim 0.12+
+nvim_config=Neovim Configuration (kickstart + custom)
+tmux_config=Tmux Configuration
+herdr=Herdr Terminal Workspace Manager
+herdr_config=Herdr Configuration
+herdr_integrations=Herdr Agent Integrations
+zsh_ohmyzsh=Zsh + Oh My Zsh
+zsh_config=Zsh Custom Configuration
+python=Python 3.10+ (native interpreter + venv)
+golang=Go 1.24+ Toolchain (basic)
+golang_full=Go Development (toolchain + LSP + tools + govulncheck)
+nodejs=Node.js LTS (fnm)
+codex=Codex CLI
+codex_sandbox=Codex Sandbox (Docker)
+claude=Claude Code CLI
+pi=Pi Coding Agent
+pi_sandbox=Pi Sandbox (Docker)
+tui_tools=TUI Tools (lazygit, yazi, zoxide)
+playwright=Playwright CLI (browser automation)
+copilot=GitHub Copilot CLI
+vscode=Visual Studio Code Desktop (macOS)
+vscode_config=VS Code Managed Configuration (macOS)
+code_server=code-server Browser Endpoint (Ubuntu/Debian)"
+
+EXPECTED_HELP_LINES="  python              Python 3.10+ native interpreter and venv support
+  vscode              Visual Studio Code Desktop (macOS only)
+  vscode_config       VS Code managed configuration (macOS only)
+  code_server         code-server browser endpoint (Ubuntu/Debian, explicit only)"
+
+expected_label() {
+    local module="$1"
+    local line
 
     while IFS= read -r line; do
-        keys+=("${line%%:*}")
-        labels+=("${line#*:}")
-    done < <(custom_menu_options)
-    count=${#keys[@]}
+        if [ "${line%%=*}" == "$module" ]; then
+            printf '%s' "${line#*=}"
+            return 0
+        fi
+    done <<< "$EXPECTED_MODULE_LABELS"
 
-    for module in $EDITOR_MODULES; do
-        [[ " ${keys[*]} " == *" $module "* ]] || fail "custom menu is missing module: $module"
+    fail "no expected label declared for module: $module"
+}
+
+test_custom_menu_offers_every_module_with_its_expected_label() {
+    local tmp
+    local count
+    local module
+
+    source_install
+    new_tmp_var tmp
+
+    count=0
+    for module in $EXPECTED_MENU_MODULES; do
+        count=$((count + 1))
     done
 
     clear() { :; }
@@ -382,50 +551,54 @@ $((count + 2))
 EOF
     unset -f clear
 
-    [[ "${SELECTED_MODULES[*]}" == "${keys[*]}" ]] ||
-        fail "custom menu selected: ${SELECTED_MODULES[*]} (expected: ${keys[*]})"
+    [[ "${SELECTED_MODULES[*]}" == "$EXPECTED_MENU_MODULES" ]] ||
+        fail "custom menu selected: ${SELECTED_MODULES[*]}
+expected: $EXPECTED_MENU_MODULES"
 
-    index=0
-    while [ "$index" -lt "$count" ]; do
-        grep -Fq "${labels[$index]}" "$tmp/menu.out" ||
-            fail "custom menu output is missing label: ${labels[$index]}"
-        index=$((index + 1))
+    for module in $EXPECTED_MENU_MODULES; do
+        grep -Fxq "  [X] $(expected_label "$module")" "$tmp/menu.out" ||
+            fail "custom menu is missing the selected entry for $module: '  [X] $(expected_label "$module")'"
     done
+
+    grep -Fxq "  $((count + 1))) Toggle All" "$tmp/menu.out" || fail "custom menu is missing Toggle All"
+    grep -Fxq "  $((count + 2))) Done" "$tmp/menu.out" || fail "custom menu is missing Done"
 }
 
 test_help_documents_editor_modules_and_bind_flag() {
     local tmp
-    local module
+    local line
 
     source_install
-    tmp="$(new_tmp)"
+    new_tmp_var tmp
     show_help > "$tmp/help.out"
 
-    for module in $EDITOR_MODULES; do
-        grep -Eq "^  $module +[A-Za-z]" "$tmp/help.out" ||
-            fail "help output is missing a module line for: $module"
-    done
+    while IFS= read -r line; do
+        grep -Fxq "$line" "$tmp/help.out" || fail "help output is missing the exact line: '$line'"
+    done <<< "$EXPECTED_HELP_LINES"
 
-    grep -Eq -- "^  --code-server-bind +[A-Za-z]" "$tmp/help.out" ||
-        fail "help output is missing the --code-server-bind flag"
+    grep -Fxq "  --code-server-bind ADDRESS:PORT" "$tmp/help.out" ||
+        fail "help output is missing the --code-server-bind flag line"
 }
 
-test_installation_summary_labels_every_editor_module() {
+test_installation_summary_labels_every_module() {
     local tmp
+    local module
     local bullets
-    local distinct
 
     source_install
-    tmp="$(new_tmp)"
+    new_tmp_var tmp
 
-    SELECTED_MODULES=($EDITOR_MODULES)
+    SELECTED_MODULES=($EXPECTED_MENU_MODULES golang)
     show_installation_summary < /dev/null > "$tmp/summary.out"
 
-    bullets="$(grep -c '•' "$tmp/summary.out" || true)"
-    distinct="$(grep '•' "$tmp/summary.out" | LC_ALL=C sort -u | wc -l | tr -d ' ')"
+    for module in $EXPECTED_MENU_MODULES golang; do
+        grep -Fxq "  • $(expected_label "$module")" "$tmp/summary.out" ||
+            fail "installation summary is missing the exact line for $module: '  • $(expected_label "$module")'"
+    done
 
-    [[ "$bullets" -eq 4 ]] || fail "expected one summary label per editor module, got $bullets"
-    [[ "$distinct" -eq 4 ]] || fail "expected distinct summary labels, got $distinct"
+    bullets="$(grep -c '•' "$tmp/summary.out" || true)"
+    [[ "$bullets" -eq "$((1 + $(printf '%s\n' $EXPECTED_MENU_MODULES | wc -l)))" ]] ||
+        fail "expected exactly one summary label per selected module, got $bullets"
 }
 
 test_execute_modules_dispatches_every_editor_module() {
@@ -433,7 +606,7 @@ test_execute_modules_dispatches_every_editor_module() {
     local log
 
     source_install
-    tmp="$(new_tmp)"
+    new_tmp_var tmp
     log="$tmp/dispatch.log"
 
     install_python() { printf 'install_python\n' >> "$log"; }
@@ -457,7 +630,7 @@ test_unknown_module_fails_loudly_instead_of_being_skipped() {
     local log
 
     source_install
-    tmp="$(new_tmp)"
+    new_tmp_var tmp
     log="$tmp/unrelated.log"
 
     configure_tmux() { printf 'configure_tmux\n' >> "$log"; }
@@ -478,7 +651,7 @@ test_unsupported_desktop_modules_fail_only_themselves_on_linux() {
     local log
 
     source_install
-    tmp="$(new_tmp)"
+    new_tmp_var tmp
     log="$tmp/unrelated.log"
     OS="ubuntu"
 
@@ -504,7 +677,7 @@ test_unsupported_code_server_fails_only_itself_on_macos() {
     local log
 
     source_install
-    tmp="$(new_tmp)"
+    new_tmp_var tmp
     log="$tmp/unrelated.log"
     OS="macos"
 
@@ -540,7 +713,7 @@ test_settings_sync_notice_requires_successful_desktop_configuration() {
     local tmp
 
     source_install
-    tmp="$(new_tmp)"
+    new_tmp_var tmp
     OS="macos"
 
     notices_output "$tmp/success.out" vscode_config
@@ -561,16 +734,56 @@ test_settings_sync_notice_requires_successful_desktop_configuration() {
     return 0
 }
 
+# Distinct sentinels for every secret-shaped value a local code-server config
+# can hold. None of them may ever appear in installer output.
+SECRET_SENTINELS="sentinel-plain-password
+sentinel-hashed-password
+sentinel-certificate-key
+sentinel-session-token"
+
+# Any credential assignment, in either YAML (`key: value`) or environment
+# (`KEY=value`) form, in any case, is a disclosure.
+CREDENTIAL_ASSIGNMENT_PATTERN='(password|passwd|secret|token|api[_-]?key|cert-key|private[_-]?key)[[:space:]]*[:=][[:space:]]*[^[:space:]]'
+
+assert_no_credentials_in() {
+    local out="$1"
+    local sentinel
+
+    while IFS= read -r sentinel; do
+        [ -n "$sentinel" ] || continue
+        if grep -Fq "$sentinel" "$out"; then
+            fail "installer output disclosed the secret sentinel '$sentinel'"
+        fi
+    done <<< "$SECRET_SENTINELS"
+
+    if grep -qiE "$CREDENTIAL_ASSIGNMENT_PATTERN" "$out"; then
+        fail "installer output contains a credential assignment: $(grep -iE "$CREDENTIAL_ASSIGNMENT_PATTERN" "$out")"
+    fi
+}
+
+seed_code_server_secrets() {
+    local home="$1"
+
+    mkdir -p "$home/.config/code-server"
+    cat > "$home/.config/code-server/config.yaml" << 'EOF'
+bind-addr: 0.0.0.0:8080
+auth: password
+password: sentinel-plain-password
+hashed-password: sentinel-hashed-password
+cert: true
+cert-key: sentinel-certificate-key
+SESSION_TOKEN=sentinel-session-token
+EOF
+}
+
 test_code_server_notice_requires_successful_service_and_hides_secrets() {
     local tmp
     local home
 
     source_install
-    tmp="$(new_tmp)"
+    new_tmp_var tmp
     home="$tmp/home"
-    mkdir -p "$home/.config/code-server"
-    printf 'bind-addr: 0.0.0.0:8080\npassword: sentinel-not-for-logs\ncert: true\n' \
-        > "$home/.config/code-server/config.yaml"
+    seed_code_server_secrets "$home"
 
     OS="ubuntu"
     CODE_SERVER_BIND="10.0.0.5:8443"
@@ -578,20 +791,52 @@ test_code_server_notice_requires_successful_service_and_hides_secrets() {
     FAILED_MODULES=()
 
     HOME="$home" notices_output "$tmp/success.out" code_server
+
     grep -Fq '~/.config/code-server/config.yaml' "$tmp/success.out" ||
         fail "expected the local code-server config path in the notice"
-    grep -qi "https" "$tmp/success.out" || fail "expected HTTPS guidance"
-    grep -qi "password authentication" "$tmp/success.out" || fail "expected password authentication guidance"
-    grep -qi "certificate" "$tmp/success.out" || fail "expected generated certificate guidance"
-    grep -qi "trusted" "$tmp/success.out" || fail "expected trusted-network guidance"
-    grep -Fq "sentinel-not-for-logs" "$tmp/success.out" && fail "notice exposed the local code-server password"
-    grep -qE 'password: *[^ ]' "$tmp/success.out" && fail "notice printed a password value"
+    grep -q 'HTTPS' "$tmp/success.out" || fail "expected HTTPS guidance"
+    grep -Fq 'Password authentication stays enabled' "$tmp/success.out" ||
+        fail "expected password authentication guidance"
+    grep -Fq 'locally generated certificate' "$tmp/success.out" ||
+        fail "expected generated certificate guidance"
+    grep -Fq 'trusted' "$tmp/success.out" || fail "expected trusted-network guidance"
+    assert_no_credentials_in "$tmp/success.out"
 
     FAILED_MODULES=(code_server)
     notices_output "$tmp/failed.out"
     grep -Fq 'code-server' "$tmp/failed.out" && fail "no code-server notice after a failed module"
 
     return 0
+}
+
+test_full_completion_report_never_prints_local_credentials() {
+    local work
+
+    source_install
+    new_tmp_var work
+    mkdir -p "$work/home"
+    seed_code_server_secrets "$work/home"
+
+    # The service stub succeeds, so the real notice runs inside the real
+    # completion report rather than through a stub.
+    (
+        OBSERVED="$work"
+        cd "$work" || exit 99
+        HOME="$work/home"
+        export HOME
+
+        detect_os() { OS="ubuntu"; PACKAGE_MANAGER="apt"; }
+        setup_package_manager() { :; }
+        update_package_manager() { :; }
+        show_installation_summary() { return 0; }
+        install_code_server() { return 0; }
+
+        main --modules code_server --code-server-bind 10.0.0.5:8443
+    ) > "$work/main.out" 2>&1 || fail "expected the code-server run to succeed"
+
+    grep -Fq '~/.config/code-server/config.yaml' "$work/main.out" ||
+        fail "expected the completion report to include the code-server notice"
+    assert_no_credentials_in "$work/main.out"
 }
 
 test_main_binds_orchestration_phases_in_required_order() {
@@ -601,7 +846,7 @@ test_main_binds_orchestration_phases_in_required_order() {
     local expected
 
     source_install
-    tmp="$(new_tmp)"
+    new_tmp_var tmp
     log="$tmp/calls"
 
     (
