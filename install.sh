@@ -1117,6 +1117,32 @@ ensure_codex_hooks_feature() {
     }
 }
 
+migrate_legacy_copilot_herdr_integration() {
+    # Remove the dotfiles-managed legacy ~/.config/copilot Herdr hook symlink
+    # and its exact-matching SessionStart entry, preserving unrelated settings
+    # and hooks. Only the recognized symlink and exact command are touched.
+    local legacy_root="$HOME/.config/copilot"
+    local legacy_hook="$legacy_root/hooks/herdr-agent-state.sh"
+    local legacy_settings="$legacy_root/settings.json"
+    local tracked_source="$DOTFILES_DIR/herdr/integrations/copilot/herdr-agent-state.sh"
+
+    if [ -L "$legacy_hook" ] && [ "$(readlink "$legacy_hook")" = "$tracked_source" ]; then
+        rm "$legacy_hook"
+    fi
+
+    if [ -f "$legacy_settings" ] && jq -e 'type == "object"' "$legacy_settings" >/dev/null 2>&1; then
+        local legacy_command
+        legacy_command="$(herdr_hook_command "$legacy_hook")"
+        jq_update_file "$legacy_settings" --arg cmd "$legacy_command" '
+            if ((.hooks.SessionStart // []) | any(.bash == $cmd)) then
+                .hooks.SessionStart = (.hooks.SessionStart | map(select(.bash != $cmd)))
+                | if (.hooks.SessionStart | length) == 0 then del(.hooks.SessionStart) else . end
+                | if ((.hooks // {}) | length) == 0 then del(.hooks) else . end
+            else . end
+        ' || return 1
+    fi
+}
+
 configure_herdr_integrations() {
     print_header "Configuring Herdr Integrations"
 
@@ -1160,16 +1186,17 @@ configure_herdr_integrations() {
         print_info "Skipping Codex Herdr integration; ~/.codex not found"
     fi
 
-    if [ -d "$HOME/.config/copilot" ]; then
-        local copilot_hook="$HOME/.config/copilot/hooks/herdr-agent-state.sh"
-        mkdir -p "$HOME/.config/copilot/hooks"
+    if [ -d "$HOME/.copilot" ] || [ -d "$HOME/.config/copilot" ]; then
+        local copilot_hook="$HOME/.copilot/hooks/herdr-agent-state.sh"
+        mkdir -p "$HOME/.copilot/hooks"
         replace_symlink "$DOTFILES_DIR/herdr/integrations/copilot/herdr-agent-state.sh" "$copilot_hook"
-        ensure_json_object_file "$HOME/.config/copilot/settings.json" || return 1
-        add_direct_session_hook "$HOME/.config/copilot/settings.json" "$(herdr_hook_command "$copilot_hook")" || return 1
+        ensure_json_object_file "$HOME/.copilot/settings.json" || return 1
+        add_direct_session_hook "$HOME/.copilot/settings.json" "$(herdr_hook_command "$copilot_hook")" || return 1
+        migrate_legacy_copilot_herdr_integration || return 1
         print_success "Copilot Herdr integration configured"
         configured=$((configured + 1))
     else
-        print_info "Skipping Copilot Herdr integration; ~/.config/copilot not found"
+        print_info "Skipping Copilot Herdr integration; ~/.copilot not found"
     fi
 
     if [ -d "$HOME/.pi" ]; then
@@ -1449,7 +1476,7 @@ prepare_pi_agent_auth() {
 deploy_pi_config() {
     local agent="$HOME/.pi/agent"
     local source_extensions="$DOTFILES_DIR/pi/extensions"
-    local enabled_extensions="herdr-agent-state inherit-last-model web-search"
+    local enabled_extensions="herdr-agent-state.ts inherit-last-model web-search"
     local extension
 
     mkdir -p "$agent/extensions" "$agent/sessions"

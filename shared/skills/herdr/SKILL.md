@@ -45,7 +45,7 @@ herdr --help
 herdr workspace --help
 herdr tab --help
 herdr pane --help
-herdr wait --help
+herdr agent --help
 ```
 
 Use the injected caller context, not UI focus:
@@ -102,11 +102,22 @@ TARGET_PANE=$(
     python3 -c 'import sys,json; print(json.load(sys.stdin)["result"]["root_pane"]["pane_id"])'
 )
 herdr pane run "$TARGET_PANE" "${COMMAND:?set COMMAND}"
-herdr wait output "$TARGET_PANE" --match "${EXPECTED_OUTPUT:?set EXPECTED_OUTPUT}" --timeout "${TIMEOUT_MS:-30000}"
+herdr pane wait-output "$TARGET_PANE" --match "${EXPECTED_OUTPUT:?set EXPECTED_OUTPUT}" --timeout "${TIMEOUT_MS:-30000}"
 herdr pane read "$TARGET_PANE" --source recent-unwrapped --lines 50
 ```
 
-Use task-specific substitutions for servers, tests, and ordinary commands; do not copy the topology into separate recipes. For an interactive agent, run its normal executable first, inspect `pane get`, wait for `idle` when agent detection is available, then submit the task with `pane run`. If status is `unknown` or the pane is a plain shell, fall back to an expected prompt/output wait and transcript inspection. The caller chooses the executable, task, readiness signal, timeout, and acceptance evidence.
+Use task-specific substitutions for servers, tests, and ordinary commands; do not copy the topology into separate recipes. For an interactive agent, start the supported agent through Herdr's validated facade, then submit the task atomically and wait for its first settled state:
+
+```bash
+AGENT_NAME=${AGENT_NAME:?set a unique lowercase task name}
+AGENT_KIND=${AGENT_KIND:?set a supported agent kind}
+herdr agent start "$AGENT_NAME" --kind "$AGENT_KIND" --pane "$TARGET_PANE"
+herdr agent prompt "$AGENT_NAME" "${TASK_PROMPT:?set the agent task}" --wait --timeout "${TIMEOUT_MS:-120000}"
+herdr agent get "$AGENT_NAME"
+herdr agent read "$AGENT_NAME" --source recent-unwrapped --lines 100
+```
+
+Pass native agent arguments after `--` on `agent start`. Agent targets are unique live names or current hosting pane IDs, never bare agent-kind labels. If detection reports `unknown`, inspect `agent get` and `agent read` rather than treating it as completion. The caller chooses the kind, name, task, timeout, and acceptance evidence.
 
 A task-owned tab MAY be split for additional processes only after the named tab exists. Split from a pane ID returned by that tab's create response or a later fresh list; never use `pane split --current` for background work because UI focus and caller context can diverge. Keep every resulting pane inside the task-owned tab.
 
@@ -116,9 +127,11 @@ Input commands remain distinct. Send input to an existing pane only when the cal
 herdr pane send-text "$TARGET_PANE" "${TEXT:?set TEXT}"
 herdr pane send-keys "$TARGET_PANE" Enter
 herdr pane run "$TARGET_PANE" "${COMMAND:?set COMMAND}"
+herdr agent prompt "$AGENT_NAME" "${TASK_PROMPT:?set the agent task}"
+herdr agent send-keys "$AGENT_NAME" esc
 ```
 
-`send-text` does not press Enter. `send-keys` sends the named keys. `pane run` sends text and then a real Enter in one request. These three commands print nothing on success.
+`send-text` does not press Enter. `send-keys` sends named keys. `pane run` atomically sends shell command text and Enter. `agent prompt` atomically submits agent text and encoded Enter while honoring live bracketed-paste mode; use it instead of raw pane input for normal agent tasks. `agent send-keys` is for logical interactive controls such as `esc` or `ctrl+c`.
 
 Herdr supplies terminal transport only. The caller retains the task brief, workflow state, returned-evidence contract, and acceptance decision. A named tab is not checkout isolation; choose a shared read-only checkout or isolated editable worktree before selecting Herdr transport.
 
@@ -126,83 +139,39 @@ Completion: a task-specific named tab was created without focus, the tab and roo
 
 ### Wait, diagnose, and coordinate
 
-Read existing output first, then wait only for the next output or status expected:
+Read existing output first, then use the pane or agent wait that matches the target:
 
 ```bash
 herdr pane read "$TARGET_PANE" --source recent --lines 40
-herdr wait output "$TARGET_PANE" --match "${EXPECTED_OUTPUT:?set EXPECTED_OUTPUT}" --timeout "${TIMEOUT_MS:-30000}"
+herdr pane wait-output "$TARGET_PANE" --match "${EXPECTED_OUTPUT:?set EXPECTED_OUTPUT}" --timeout "${TIMEOUT_MS:-30000}"
 herdr pane read "$TARGET_PANE" --source recent-unwrapped --lines 40
 ```
 
-Use `--regex` for a regular-expression match. For `--source recent`, matching uses unwrapped recent text even though `pane read --source recent` remains rendered; inspect the matching form with `recent-unwrapped`. An output-wait timeout exits with status `1`.
+Use `--regex` for a regular-expression match. `pane wait-output` searches the selected snapshot immediately, so existing output can match; inspect logs with `recent-unwrapped`. An output-wait timeout exits with status `1`.
 
-For detected agents, precheck current state, then race `done`, `idle`, and `blocked` instead of waiting for one status sequentially:
+For a prompt submitted now, prefer the atomic prompt-and-wait operation shown above. For an already-running detected agent, use Herdr's server-owned settled-state wait rather than racing statuses in the shell:
 
 ```bash
-wait_agent_terminal_state() (
-  TARGET_PANE=${TARGET_PANE:?set TARGET_PANE from current Herdr data}
-  TIMEOUT_MS=${TIMEOUT_MS:-60000}
-  WAIT_DIR=
-  WAIT_PIDS=()
-
-  cleanup_waiters() {
-    local pid
-    for pid in "${WAIT_PIDS[@]}"; do [ -z "$pid" ] || kill "$pid" 2>/dev/null || true; done
-    for pid in "${WAIT_PIDS[@]}"; do [ -z "$pid" ] || wait "$pid" 2>/dev/null || true; done
-    [ -z "$WAIT_DIR" ] || rm -rf "$WAIT_DIR"
-  }
-  trap cleanup_waiters EXIT
-
-  CURRENT_STATUS=$(
-    herdr pane get "$TARGET_PANE" |
-      python3 -c 'import json,sys; print(json.load(sys.stdin)["result"]["pane"].get("agent_status", "unknown"))'
-  ) || exit 1
-  case "$CURRENT_STATUS" in
-    done|idle|blocked) printf '%s\n' "$CURRENT_STATUS"; exit 0 ;;
-    unknown) exit 1 ;;
-  esac
-
-  WAIT_DIR=$(mktemp -d)
-  WAIT_STATUSES=(done idle blocked)
-  for status in "${WAIT_STATUSES[@]}"; do
-    herdr wait agent-status "$TARGET_PANE" --status "$status" --timeout "$TIMEOUT_MS" \
-      >"$WAIT_DIR/$status.json" 2>"$WAIT_DIR/$status.err" &
-    WAIT_PIDS+=("$!")
-  done
-
-  REMAINING=${#WAIT_PIDS[@]}
-  while [ "$REMAINING" -gt 0 ]; do
-    for i in "${!WAIT_PIDS[@]}"; do
-      pid=${WAIT_PIDS[$i]}
-      [ -n "$pid" ] || continue
-      if ! kill -0 "$pid" 2>/dev/null; then
-        WAIT_PIDS[$i]=
-        REMAINING=$((REMAINING - 1))
-        if wait "$pid"; then printf '%s\n' "${WAIT_STATUSES[$i]}"; exit 0; fi
-      fi
-    done
-    [ "$REMAINING" -eq 0 ] || sleep 0.05
-  done
-  exit 1
-)
-
-if TERMINAL_STATUS=$(wait_agent_terminal_state); then
-  herdr pane read "$TARGET_PANE" --source recent-unwrapped --lines 100
+TARGET_AGENT=${TARGET_AGENT:?set a unique agent name or hosting pane ID}
+if WAIT_RESULT=$(herdr agent wait "$TARGET_AGENT" --timeout "${TIMEOUT_MS:-120000}"); then
+  TERMINAL_STATUS=$(
+    printf '%s' "$WAIT_RESULT" |
+      python3 -c 'import json,sys; print(json.load(sys.stdin)["result"]["agent"]["agent_status"])'
+  )
+  herdr agent read "$TARGET_AGENT" --source recent-unwrapped --lines 100
   case "$TERMINAL_STATUS" in
     done|idle) printf 'agent completion observed: %s\n' "$TERMINAL_STATUS" ;;
     blocked) printf 'agent blocked: inspect the transcript and steer now\n' >&2 ;;
   esac
 else
-  herdr pane get "$TARGET_PANE"
-  herdr pane read "$TARGET_PANE" --source recent-unwrapped --lines 100
+  herdr agent get "$TARGET_AGENT"
+  herdr agent read "$TARGET_AGENT" --source recent-unwrapped --lines 100
 fi
 ```
 
-The function handles already-reported terminal states before creating waiters, starts all three waits concurrently, continues after the first success, and cancels/reaps the rest through its exit trap. Both `done` and `idle` mean completion; `blocked` requires immediate steering based on the transcript. Do not wait for only `done`, because observing the result can move the agent to `idle`.
+Without `--until`, `agent wait` matches `idle`, `done`, or `blocked`, including an already-reported settled state. Use repeated `--until` only when a workflow intentionally selects other exact states. Both `done` and `idle` mean completion; `blocked` requires immediate steering based on the transcript. `unknown` does not prove completion, so inspect current agent state and output after a failed wait rather than waiting blindly or resubmitting the prompt.
 
-`unknown` may be a plain shell or an agent not yet detected, so inspect output instead of waiting blindly on status. If all three waits fail or time out, the failure branch inspects current state and output before retrying, steering, or reporting failure.
-
-Output and agent-status waits print JSON on success. Completion: the expected future event was observed, or timeout/current evidence was returned with the applicable limitation.
+Pane-output and agent waits print JSON on success. Completion: the expected state or output was observed, or timeout/current evidence was returned with the applicable limitation.
 
 ### Manage explicitly requested resources
 
@@ -242,12 +211,12 @@ herdr pane close "$TARGET_PANE"
 
 Close resources created for the current task when its cleanup contract requires it. Do not close a workspace, tab, pane, or session you did not create unless the user explicitly asks or approves it. Do not stop the active Herdr server unless the user explicitly intends to stop it and its pane processes.
 
-Parse every mutation response before continuing. Workspace create returns `result.workspace`, `result.tab`, and `result.root_pane`; tab create returns `result.tab` and `result.root_pane`; pane split returns the new ID at `result.pane.pane_id`. Workspace/tab management, pane list/get/split, and waits return JSON on success. `pane read` returns text; `pane send-text`, `pane send-keys`, and `pane run` are silent on success.
+Parse every mutation response before continuing. Workspace create returns `result.workspace`, `result.tab`, and `result.root_pane`; tab create returns `result.tab` and `result.root_pane`; pane split returns the new ID at `result.pane.pane_id`. Workspace/tab management, pane list/get/split, agent operations, and waits return JSON on success. `pane read` and `agent read` return text; `pane send-text`, `pane send-keys`, and `pane run` are silent on success.
 
 Completion: the explicitly requested topology change is confirmed from its response, fresh IDs replace stale ones, user context moved only when requested, and cleanup respects resource ownership.
 
 ## Reference
 
-- When changing or auditing this adapted skill, load the [repository Herdr notice](../../../THIRD_PARTY_NOTICES.md#herdr) and the [exact imported upstream skill](https://github.com/ogulcancelik/herdr/blob/6cbdba434fd15fc3818302a5843593da47db2eb4/SKILL.md) to verify source revision, local-fork status, and AGPL-3.0-or-later attribution before editing.
-- When installed help and remembered behavior differ, consult the [current upstream skill revision inspected for this migration](https://github.com/ogulcancelik/herdr/blob/b0d46fb9bc2a3e7fb58864939e2580b8a9a2f1bc/SKILL.md) to understand newer operating guidance, then keep the installed binary authoritative for executable syntax.
+- When changing or auditing this adapted skill, load the [repository Herdr notice](../../../THIRD_PARTY_NOTICES.md#herdr) and the [upstream skill revision used for the Herdr 0.7.5 migration](https://github.com/herdrdev/herdr/blob/ef4c23f5775bb8cfec05f05d0844226ff959a07a/SKILL.md) to verify source revision, local-fork status, and AGPL-3.0-or-later attribution before editing.
+- When installed help and remembered behavior differ, inspect the relevant command-group help first, then consult the current upstream skill to understand newer operating guidance while keeping the installed binary authoritative for executable syntax.
 - When implementing a raw protocol client, direct request/response control, or a long-lived event subscriber, load the [socket API documentation](https://herdr.dev/docs/socket-api/); ordinary operation should stay on the CLI Activities above.

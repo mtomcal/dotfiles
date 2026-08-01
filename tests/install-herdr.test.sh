@@ -76,6 +76,15 @@ assert_claude_herdr_hook() {
     ' "$settings_path" >/dev/null || fail "expected Claude Herdr SessionStart hook in $settings_path"
 }
 
+assert_copilot_herdr_hook() {
+    local settings_path="$1"
+    local expected_command="$2"
+
+    jq -e --arg command "$expected_command" '
+        any(.hooks.SessionStart[]?; .type == "command" and .bash == $command)
+    ' "$settings_path" >/dev/null || fail "expected Copilot Herdr SessionStart hook in $settings_path"
+}
+
 test_agent_profiles_configure_herdr_integrations_after_agents() {
     source_install
 
@@ -136,6 +145,60 @@ test_configure_herdr_integrations_preserves_claude_settings_symlink() {
     assert_symlink_to "$hook_path" "$DOTFILES_DIR/herdr/integrations/claude/herdr-agent-state.sh"
     jq -e '.env.KEEP_ME == "1"' "$managed_settings" >/dev/null || fail "expected existing Claude settings to be preserved"
     assert_claude_herdr_hook "$managed_settings" "$(herdr_hook_command "$hook_path" session)"
+}
+
+test_configure_herdr_integrations_uses_current_copilot_config_root() {
+    local home
+    local hook_path
+    local legacy_hook
+    local legacy_settings
+    local legacy_command
+
+    new_tmp_var home
+    hook_path="$home/.copilot/hooks/herdr-agent-state.sh"
+    mkdir -p "$home/.copilot"
+    printf '{"keep":true}\n' > "$home/.copilot/settings.json"
+
+    # Seed the legacy ~/.config/copilot integration: a dotfiles-managed hook
+    # symlink and a matching SessionStart entry, alongside unrelated settings
+    # and an unrelated hook entry that must survive migration.
+    legacy_hook="$home/.config/copilot/hooks/herdr-agent-state.sh"
+    legacy_settings="$home/.config/copilot/settings.json"
+    mkdir -p "$(dirname "$legacy_hook")"
+    ln -s "$DOTFILES_DIR/herdr/integrations/copilot/herdr-agent-state.sh" "$legacy_hook"
+    legacy_command="$(herdr_hook_command "$legacy_hook")"
+    jq -n --arg cmd "$legacy_command" '{
+        unrelated: true,
+        hooks: {
+            SessionStart: [{ type: "command", bash: $cmd, timeoutSec: 10 }],
+            Stop: [{ type: "command", bash: "echo unrelated-stop", timeoutSec: 5 }]
+        }
+    }' > "$legacy_settings"
+
+    source_install
+
+    HOME="$home" DOTFILES_DIR="$DOTFILES_DIR" configure_herdr_integrations >"$(tmp_artifact install-herdr-copilot.out)"
+
+    # Current ~/.copilot integration is deployed and unrelated settings survive.
+    assert_symlink_to "$hook_path" "$DOTFILES_DIR/herdr/integrations/copilot/herdr-agent-state.sh"
+    jq -e '.keep == true' "$home/.copilot/settings.json" >/dev/null || fail "expected existing Copilot settings to be preserved"
+    assert_copilot_herdr_hook "$home/.copilot/settings.json" "$(herdr_hook_command "$hook_path")"
+
+    # The dotfiles-managed legacy hook symlink is removed.
+    [[ ! -e "$legacy_hook" ]] || fail "expected legacy Copilot hook symlink to be removed by migration"
+
+    # Legacy settings file survives with unrelated data intact.
+    [[ -f "$legacy_settings" ]] || fail "expected legacy Copilot settings file to be preserved"
+    jq -e '.unrelated == true' "$legacy_settings" >/dev/null || fail "expected unrelated legacy setting to be preserved"
+    jq -e --arg cmd "echo unrelated-stop" 'any(.hooks.Stop[]?; .bash == $cmd)' "$legacy_settings" >/dev/null \
+        || fail "expected unrelated legacy hook entry to be preserved"
+    jq -e 'has("hooks")' "$legacy_settings" >/dev/null || fail "expected legacy hooks container to remain for unrelated entries"
+
+    # Only the matching legacy Herdr entry is removed and its emptied container pruned.
+    jq -e --arg cmd "$legacy_command" 'any(.hooks.SessionStart[]?; .bash == $cmd) | not' "$legacy_settings" >/dev/null \
+        || fail "expected legacy Herdr hook entry to be removed from legacy settings"
+    jq -e 'has("SessionStart") | not' "$legacy_settings" >/dev/null \
+        || fail "expected empty legacy SessionStart array to be pruned"
 }
 
 test_configure_herdr_integrations_migrates_managed_claude_settings() {
