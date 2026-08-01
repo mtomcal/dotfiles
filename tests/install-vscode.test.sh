@@ -405,6 +405,7 @@ $(backup_entries "$work/User")"
 # Outcomes are controlled through the environment by cli_outcomes:
 #   STUB_FAIL       whitespace-separated identities whose install fails
 #   STUB_INSTALLED  "id@version" lines reported by --list-extensions
+#   STUB_LIST_FAIL  non-empty when the listing fails after printing its lines
 install_cli_stub() {
     local path="$1"
 
@@ -422,6 +423,9 @@ case "$1" in
     --list-extensions)
         [ "$2" = "--show-versions" ] || exit 9
         [ -z "${STUB_INSTALLED:-}" ] || printf '%s\n' "$STUB_INSTALLED"
+        # A listing that fails still emits what it managed to produce, so a
+        # reader that ignores the status can be fooled by its own output.
+        [ -z "${STUB_LIST_FAIL:-}" ] || exit 1
         exit 0
         ;;
 esac
@@ -431,11 +435,12 @@ STUB
     chmod +x "$path"
 }
 
-# Declare the editor's outcomes for the next run. Both are always set so no
-# test inherits another test's stub state.
+# Declare the editor's outcomes for the next run. All three are always set so
+# no test inherits another test's stub state.
 cli_outcomes() {
     export STUB_FAIL="$1"
     export STUB_INSTALLED="$2"
+    export STUB_LIST_FAIL="${3:-}"
 }
 
 # Write a manifest whose lines are given as arguments, so fixtures show their
@@ -445,6 +450,20 @@ write_manifest() {
     shift
 
     printf '%s\n' "$@" > "$path"
+}
+
+# The same fixture, but with no newline after the final entry — the shape a
+# hand-edited catalog often has.
+write_manifest_without_final_newline() {
+    local path="$1"
+    shift
+
+    : > "$path"
+    while [ "$#" -gt 1 ]; do
+        printf '%s\n' "$1" >> "$path"
+        shift
+    done
+    printf '%s' "$1" >> "$path"
 }
 
 # Run the public reconciler against a stub CLI and caller-ordered manifests.
@@ -472,11 +491,20 @@ run_reconcile() {
     OBSERVED_CALLS="$(cat "$STUB_LOG")"
 }
 
-# Lines of the aggregate report that name the given identity.
+# The identities listed in the aggregate report, in report order, stripped of
+# the report's own decoration. Comparing whole identities keeps two entries
+# that share a prefix from being counted as one.
+reported_failures() {
+    printf '%s\n' "$OBSERVED_OUTPUT" |
+        sed -e 's/'$'\033''\[[0-9;]*m//g' -e 's/^\[ERROR\] //' |
+        sed -n 's/^  //p'
+}
+
+# How many report lines are exactly the given identity.
 report_lines_naming() {
     local identity="$1"
 
-    printf '%s\n' "$OBSERVED_OUTPUT" | grep -c -F -- "$identity" || true
+    reported_failures | grep -c -x -F -- "$identity" || true
 }
 
 # ---------------------------------------------------------------------------
@@ -669,6 +697,198 @@ $OBSERVED_CALLS"
 $OBSERVED_CALLS"
     [[ "$last_shared" -lt "$first_target_only" ]] || fail "the target catalog was reconciled before the shared catalog:
 $OBSERVED_CALLS"
+}
+
+# The identities the reconciler asked the editor to install, in order.
+requested_installs() {
+    printf '%s\n' "$OBSERVED_CALLS" | sed -n 's/^--install-extension \(.*\) --force$/\1/p'
+}
+
+test_the_identity_grammar_accepts_publisher_name_with_an_optional_version() {
+    local work
+
+    new_tmp_var work
+    install_cli_stub "$work/code"
+    cli_outcomes "" "vscodevim.vim@1.27.2
+esbenp.prettier-vscode@11.0.0-rc.1
+ms-toolsai.jupyter@2025.1.0+build.5
+ms-python.python@1"
+    write_manifest "$work/accepted.txt" \
+        'EditorConfig.EditorConfig' \
+        '4ops.terraform' \
+        'pub-lisher.na-me' \
+        'a.b' \
+        'vscodevim.vim@1.27.2' \
+        'esbenp.prettier-vscode@11.0.0-rc.1' \
+        'ms-toolsai.jupyter@2025.1.0+build.5' \
+        'ms-python.python@1'
+
+    run_reconcile "$work/code" "$work/accepted.txt"
+
+    [[ "$OBSERVED_STATUS" -eq 0 ]] || fail "a valid identity was rejected: $OBSERVED_OUTPUT"
+    [[ "$(requested_installs)" == "EditorConfig.EditorConfig
+4ops.terraform
+pub-lisher.na-me
+a.b
+vscodevim.vim@1.27.2
+esbenp.prettier-vscode@11.0.0-rc.1
+ms-toolsai.jupyter@2025.1.0+build.5
+ms-python.python@1" ]] || fail "not every accepted identity was requested:
+$OBSERVED_CALLS"
+}
+
+test_the_identity_grammar_rejects_everything_outside_publisher_name_at_version() {
+    local work
+    local rejected
+
+    new_tmp_var work
+    install_cli_stub "$work/code"
+    cli_outcomes "" ""
+    write_manifest "$work/rejected.txt" \
+        'nopublisher' \
+        'pub_lisher.name' \
+        'publisher.na_me' \
+        'a.b.c' \
+        '.name' \
+        'publisher.' \
+        '-pub.name' \
+        'pub.name@' \
+        'pub.name@.1' \
+        'pub.name@-1' \
+        'pub.name@+1' \
+        'pub.name@1@2' \
+        'pub.name 1'
+    # Every line of the fixture is malformed, so the file is also the report
+    # the reconciler owes back.
+    rejected="$(cat "$work/rejected.txt")"
+
+    run_reconcile "$work/code" "$work/rejected.txt"
+
+    [[ "$OBSERVED_STATUS" -ne 0 ]] || fail "malformed identities were accepted"
+    [[ -z "$OBSERVED_CALLS" ]] || fail "a malformed identity reached the editor:
+$OBSERVED_CALLS"
+    [[ "$(reported_failures)" == "$rejected" ]] || fail "the rejected identities were not reported verbatim:
+$(reported_failures)"
+}
+
+test_a_final_entry_without_a_trailing_newline_is_still_reconciled() {
+    local work
+
+    new_tmp_var work
+    install_cli_stub "$work/code"
+    cli_outcomes "" ""
+    write_manifest_without_final_newline "$work/shared.txt" \
+        'EditorConfig.EditorConfig' \
+        'charliermarsh.ruff'
+
+    run_reconcile "$work/code" "$work/shared.txt"
+
+    [[ "$OBSERVED_STATUS" -eq 0 ]] || fail "expected reconciliation to succeed, got status $OBSERVED_STATUS: $OBSERVED_OUTPUT"
+    [[ "$(requested_installs)" == "EditorConfig.EditorConfig
+charliermarsh.ruff" ]] || fail "the entry without a trailing newline was dropped:
+$OBSERVED_CALLS"
+}
+
+test_a_failed_pinned_install_is_never_verified_against_the_editor() {
+    local work
+
+    new_tmp_var work
+    install_cli_stub "$work/code"
+    cli_outcomes "vscodevim.vim@1.27.2" "vscodevim.vim@1.27.2"
+    write_manifest "$work/shared.txt" \
+        'vscodevim.vim@1.27.2' \
+        'charliermarsh.ruff'
+
+    run_reconcile "$work/code" "$work/shared.txt"
+
+    [[ "$OBSERVED_STATUS" -ne 0 ]] || fail "a failed install was treated as success"
+    [[ "$OBSERVED_CALLS" == "--install-extension vscodevim.vim@1.27.2 --force
+--install-extension charliermarsh.ruff --force" ]] || fail "a failed install was verified as if it had run:
+$OBSERVED_CALLS"
+    [[ "$(reported_failures)" == "vscodevim.vim@1.27.2" ]] || fail "the failed install was not reported alone:
+$OBSERVED_OUTPUT"
+}
+
+test_a_failing_listing_fails_the_pinned_entry_and_the_catalog_continues() {
+    local work
+
+    new_tmp_var work
+    install_cli_stub "$work/code"
+    cli_outcomes "" "vscodevim.vim@1.27.2" fail
+    write_manifest "$work/shared.txt" \
+        'vscodevim.vim@1.27.2' \
+        'charliermarsh.ruff'
+
+    run_reconcile "$work/code" "$work/shared.txt"
+
+    [[ "$OBSERVED_STATUS" -ne 0 ]] || fail "an unusable listing was treated as a satisfied pin"
+    [[ "$OBSERVED_CALLS" == "--install-extension vscodevim.vim@1.27.2 --force
+--list-extensions --show-versions
+--install-extension charliermarsh.ruff --force" ]] || fail "the catalog did not continue past a failed listing:
+$OBSERVED_CALLS"
+    [[ "$(reported_failures)" == "vscodevim.vim@1.27.2" ]] || fail "the unverifiable pin was not reported alone:
+$OBSERVED_OUTPUT"
+}
+
+test_a_pin_matches_an_installed_identity_by_case_but_not_by_prefix() {
+    local work
+
+    new_tmp_var work
+    install_cli_stub "$work/code"
+    cli_outcomes "" "VscodeVim.Vim@1.27.2"
+    write_manifest "$work/shared.txt" 'vscodevim.vim@1.27.2'
+
+    run_reconcile "$work/code" "$work/shared.txt"
+
+    [[ "$OBSERVED_STATUS" -eq 0 ]] || fail "a pin the editor reports with other casing was rejected: $OBSERVED_OUTPUT"
+
+    cli_outcomes "" "vscodevim.vim@1.27.2"
+    write_manifest "$work/prefix.txt" 'vscodevim.vim@1.27'
+
+    run_reconcile "$work/code" "$work/prefix.txt"
+
+    [[ "$OBSERVED_STATUS" -ne 0 ]] || fail "a version the editor never installed was accepted as a prefix of one it did"
+    [[ "$(reported_failures)" == "vscodevim.vim@1.27" ]] || fail "the unsatisfied pin was not reported alone:
+$OBSERVED_OUTPUT"
+}
+
+test_identities_sharing_a_prefix_are_each_reported_in_full() {
+    local work
+
+    new_tmp_var work
+    install_cli_stub "$work/code"
+    cli_outcomes "ms-python.python ms-python.python-envs" ""
+    write_manifest "$work/shared.txt" \
+        'ms-python.python' \
+        'ms-python.python-envs' \
+        'ms-python.debugpy'
+
+    run_reconcile "$work/code" "$work/shared.txt"
+
+    [[ "$OBSERVED_STATUS" -ne 0 ]] || fail "expected the failed installs to fail reconciliation"
+    [[ "$(reported_failures)" == "ms-python.python
+ms-python.python-envs" ]] || fail "identities sharing a prefix were collapsed in the report:
+$(reported_failures)"
+}
+
+test_an_unreadable_manifest_is_reported_and_the_remaining_manifests_run() {
+    local work
+
+    new_tmp_var work
+    install_cli_stub "$work/code"
+    cli_outcomes "" ""
+    write_manifest "$work/shared.txt" 'EditorConfig.EditorConfig'
+    chmod 000 "$work/shared.txt"
+    write_manifest "$work/target.txt" 'ms-python.debugpy'
+
+    run_reconcile "$work/code" "$work/shared.txt" "$work/target.txt"
+    chmod 644 "$work/shared.txt"
+
+    [[ "$OBSERVED_STATUS" -ne 0 ]] || fail "an unreadable manifest was treated as reconciled"
+    [[ "$OBSERVED_CALLS" == "--install-extension ms-python.debugpy --force" ]] || fail "an unreadable manifest stopped the manifests behind it:
+$OBSERVED_CALLS"
+    [[ "$(reported_failures)" == "$work/shared.txt" ]] || fail "the unreadable manifest was not reported:
+$OBSERVED_OUTPUT"
 }
 
 run_tests "install vscode managed layer and extension reconciliation"

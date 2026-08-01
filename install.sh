@@ -2029,7 +2029,10 @@ reconcile_vscode_extensions() {
     shift
 
     for manifest in "$@"; do
-        if [ ! -f "$manifest" ]; then
+        # A manifest that cannot be read is indistinguishable from one whose
+        # entries were never reconciled, so it is reported like any other
+        # failure and the manifests behind it still run.
+        if [ ! -f "$manifest" ] || [ ! -r "$manifest" ]; then
             vscode_record_extension_failure "$manifest"
             continue
         fi
