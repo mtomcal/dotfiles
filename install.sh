@@ -2164,8 +2164,151 @@ install_code_server() {
         return 1
     fi
 
-    print_error "code-server provisioning is not implemented yet"
-    return 1
+    if ! command -v curl &> /dev/null; then
+        print_error "curl is required for code-server installation"
+        return 1
+    fi
+
+    if ! command -v systemctl &> /dev/null; then
+        print_error "systemctl is required for code-server service management"
+        return 1
+    fi
+
+    # Probe the per-user service manager with a real verb so an unreachable
+    # user manager is reported instead of mistaken for availability.
+    if ! systemctl --user list-units --quiet >/dev/null 2>&1; then
+        print_error "systemctl --user is not available; a per-user service manager is required"
+        return 1
+    fi
+
+    # Download the official stable installer into memory first, so a download
+    # failure is observed before any of its output is executed. The script is
+    # then run every selected run to request a stable install or update.
+    local installer_script
+    print_info "Running the official code-server installer from https://code-server.dev/install.sh..."
+    if ! installer_script="$(curl -fsSL https://code-server.dev/install.sh)"; then
+        print_error "Downloading the official code-server installer failed"
+        return 1
+    fi
+    if ! printf '%s\n' "$installer_script" | sh 2>&1; then
+        print_error "The official code-server installer failed"
+        return 1
+    fi
+
+    if ! command -v code-server &> /dev/null; then
+        print_error "code-server CLI is not available after the official installer"
+        return 1
+    fi
+
+    local unit
+    unit="$(code_server_service_unit)"
+    if [ ! -f "$HOME/.config/systemd/user/$unit" ] && [ ! -f "/usr/lib/systemd/user/$unit" ]; then
+        print_error "The expected per-user unit $unit was not created by the official installer"
+        return 1
+    fi
+
+    # Snapshot the pre-reconcile configuration and the previously installed
+    # version before reconcile may replace either, so the restart decision
+    # and the rollback input reflect the true prior state rather than the
+    # reconciled result.
+    local config_path
+    local version_file="$HOME/.local/share/code-server/installed-version"
+    local previous_config=""
+    local saved_version=""
+    local code_server_version=""
+    local restart_required="no"
+
+    config_path="$(code_server_config_path)"
+
+    if [ -f "$version_file" ]; then
+        saved_version="$(cat "$version_file" 2>/dev/null || true)"
+    fi
+
+    # The snapshot carries this host's password, so it is a mode-0600 regular
+    # file that is removed on every exit path once the service is up.
+    if [ -f "$config_path" ]; then
+        previous_config="$(mktemp "${TMPDIR:-/tmp}/code-server-prev.XXXXXX")" || {
+            print_error "Capturing the prior code-server configuration for rollback failed"
+            return 1
+        }
+        chmod 600 "$previous_config"
+        if ! cp -p "$config_path" "$previous_config" 2>/dev/null; then
+            rm -f "$previous_config"
+            print_error "Capturing the prior code-server configuration for rollback failed"
+            return 1
+        fi
+    fi
+
+    # Reconcile the local configuration before deploying the managed layer,
+    # so the editor reads the correct bind, auth, and certificate state.
+    if ! reconcile_code_server_config; then
+        rm -f "$previous_config"
+        return 1
+    fi
+
+    # Deploy the shared managed layer into the code-server User directory.
+    local user_dir="$HOME/.local/share/code-server/User"
+    if ! deploy_vscode_managed_layer "$user_dir"; then
+        rm -f "$previous_config"
+        return 1
+    fi
+
+    # Reconcile the shared extension catalog first, then the code-server-
+    # specific catalog, both through the code-server CLI.
+    if ! reconcile_vscode_extensions code-server \
+        "$DOTFILES_DIR/vscode/extensions/shared.txt" \
+        "$DOTFILES_DIR/vscode/extensions/code-server.txt"; then
+        rm -f "$previous_config"
+        return 1
+    fi
+
+    warn_for_missing_editor_runtimes
+
+    # A version change or a configuration change requires a restart. The
+    # version is read after install; the configuration change is detected by
+    # comparing the pre-reconcile snapshot with the reconciled file.
+    code_server_version="$(code-server --version 2>/dev/null | head -n 1 || true)"
+
+    if [ -z "$saved_version" ]; then
+        restart_required="yes"
+    elif [ "$saved_version" != "$code_server_version" ]; then
+        restart_required="yes"
+    fi
+
+    if [ -n "$previous_config" ] && [ -f "$config_path" ] && ! cmp -s "$previous_config" "$config_path"; then
+        restart_required="yes"
+    fi
+
+    # Transition the service: stop if restarting, enable, start/restart, and
+    # verify active state. On failure, rollback restores the previous config
+    # and service state.
+    if ! transition_code_server_service "$(select_code_server_bind "$config_path")" "$restart_required" "$previous_config"; then
+        rm -f "$previous_config"
+        return 1
+    fi
+
+    # Verify the local HTTPS endpoint responds while accepting the generated
+    # certificate. This must succeed before the module reports success.
+    if ! verify_code_server_https "$(select_code_server_bind "$config_path")"; then
+        rm -f "$previous_config"
+        return 1
+    fi
+
+    # Persist the installed version so a future rerun can detect a change.
+    if [ -n "$code_server_version" ]; then
+        mkdir -p "$(dirname "$version_file")"
+        printf '%s\n' "$code_server_version" > "$version_file"
+    fi
+
+    # The temporary rollback snapshot is no longer needed once the service is
+    # active and HTTPS is verified.
+    rm -f "$previous_config"
+
+    print_success "code-server is installed, configured, and serving HTTPS"
+    print_info "Configuration lives at ~/.config/code-server/config.yaml as a mode-0600 regular file (never symlinked)"
+    print_info "The endpoint uses a locally generated certificate; trust it by accepting or installing that certificate in the browser"
+    print_info "Reachability from other hosts is the operator's responsibility on a trusted network; no network filtering or tunneling is configured here"
+    return 0
 }
 
 # ===========================

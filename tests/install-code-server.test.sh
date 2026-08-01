@@ -1104,4 +1104,421 @@ test_failed_https_probe_fails_with_secret_safe_diagnostics() {
     return 0
 }
 
+# ===========================================================================
+# install_code_server composition
+# ===========================================================================
+
+# Drive the public install_code_server function against stubbed external
+# dependencies. Every test sets OS=ubuntu and provides stubs for curl,
+# systemctl, and code-server so the composition can be verified without
+# reaching a real network or service manager.
+#
+# Caller-set inputs, all optional and reset by this function:
+#   OS                  ubuntu | macos              (default ubuntu)
+#   STUB_CURL_FAIL      1 causes the curl installer to fail
+#   STUB_CLI_MISSING    1 causes code-server CLI to be absent after install
+#   STUB_UNIT_MISSING   1 causes the expected unit file to be absent
+#   STUB_RECONCILE_FAIL 1 causes reconcile_code_server_config to fail
+#   STUB_DEPLOY_FAIL    1 causes deploy_vscode_managed_layer to fail
+#   STUB_EXTENSIONS_FAIL 1 causes reconcile_vscode_extensions to fail
+#   STUB_TRANSITION_FAIL 1 causes transition_code_server_service to fail
+#   STUB_HTTPS_FAIL     1 causes verify_code_server_https to fail
+#   STUB_SYSTEMCTL_USER_FAIL 1 causes systemctl --user to be unavailable
+#
+# Sets in the caller's shell:
+#   OBSERVED_STATUS   exit status of install_code_server
+#   OBSERVED_OUTPUT   combined stdout/stderr
+#   OBSERVED_CALLS    newline-separated log of stubbed external calls
+run_install_code_server() {
+    local home="$1"
+    local out
+    local calls
+    local requested_os="${OS:-ubuntu}"
+
+    source_install
+
+    out="$(tmp_artifact "install-cs.out")"
+    calls="$(tmp_artifact "install-cs.calls")"
+    : > "$calls"
+
+    OBSERVED_STATUS=0
+    (
+        HOME="$home"
+        OS="$requested_os"
+        CODE_SERVER_BIND=""
+        CODE_SERVER_ENTROPY_SOURCE="$ENTROPY_FILE"
+        PATH="$home/.local/bin:$PATH"
+
+        # Stub curl: capture the URL and optionally fail.
+        # The output is piped to | sh, so it must emit a valid installer
+        # script that creates the code-server binary and systemd unit.
+        curl() {
+            printf 'curl %s\n' "$*" >> "$calls"
+            if [ "${STUB_CURL_FAIL:-0}" == "1" ]; then
+                return 1
+            fi
+            local cs_unit
+            cs_unit="code-server@${USER:-$(id -un)}.service"
+            cat <<INSTALLEREOF
+#!/bin/sh
+mkdir -p "$home/.local/bin" "$home/.config/systemd/user"
+cat > "$home/.local/bin/code-server" <<'BINEOF'
+#!/bin/bash
+echo code-server ${CODE_SERVER_STUB_VERSION:-4.99.0}
+BINEOF
+chmod +x "$home/.local/bin/code-server"
+cat > "$home/.config/systemd/user/$cs_unit" <<'UNITEOF'
+[Unit]
+Description=code-server
+[Service]
+ExecStart=%h/.local/bin/code-server
+UNITEOF
+INSTALLEREOF
+            return 0
+        }
+
+        # Stub systemctl: capture calls and simulate --user availability.
+        # Use ${2-} so "systemctl --user" with no second arg does not
+        # trigger set -u.
+        systemctl() {
+            printf 'systemctl %s\n' "$*" >> "$calls"
+            if [ "${STUB_SYSTEMCTL_USER_FAIL:-0}" == "1" ]; then
+                return 1
+            fi
+            case "${1-}" in
+                --user)
+                    case "${2-}" in
+                        is-active) return 0 ;;
+                        enable|start|restart|stop) return 0 ;;
+                        *) return 0 ;;
+                    esac
+                    ;;
+                *) return 0 ;;
+            esac
+        }
+
+        # Stub code-server CLI for extension reconciliation.
+        code-server() {
+            printf 'code-server %s\n' "$*" >> "$calls"
+            case "$1" in
+                --version) printf '%s\n' "${CODE_SERVER_STUB_VERSION:-4.99.0}" ;;
+                --install-extension) return 0 ;;
+                --list-extensions) return 0 ;;
+                *) return 0 ;;
+            esac
+        }
+
+        # Stub ss so port checks pass.
+        ss() {
+            printf 'ss %s\n' "$*" >> "$calls"
+            return 0
+        }
+
+        # Stub date for deterministic timestamps.
+        date() {
+            printf '20260801_120000\n'
+        }
+
+        # Stub the integrated composition helpers so they log calls and
+        # return success/failure without reaching real filesystem or
+        # service state. This keeps the test focused on composition order
+        # and failure propagation rather than on deep helper behavior.
+        reconcile_code_server_config() {
+            printf 'reconcile_code_server_config\n' >> "$calls"
+            if [ "${STUB_RECONCILE_FAIL:-0}" == "1" ]; then
+                return 1
+            fi
+            return 0
+        }
+
+        deploy_vscode_managed_layer() {
+            printf 'deploy_vscode_managed_layer %s\n' "$*" >> "$calls"
+            if [ "${STUB_DEPLOY_FAIL:-0}" == "1" ]; then
+                return 1
+            fi
+            return 0
+        }
+
+        reconcile_vscode_extensions() {
+            printf 'reconcile_vscode_extensions %s\n' "$*" >> "$calls"
+            if [ "${STUB_EXTENSIONS_FAIL:-0}" == "1" ]; then
+                return 1
+            fi
+            return 0
+        }
+
+        transition_code_server_service() {
+            printf 'transition_code_server_service %s %s %s\n' "$1" "$2" "${3-}" >> "$calls"
+            if [ "${STUB_TRANSITION_FAIL:-0}" == "1" ]; then
+                return 1
+            fi
+            return 0
+        }
+
+        verify_code_server_https() {
+            printf 'verify_code_server_https %s\n' "$1" >> "$calls"
+            if [ "${STUB_HTTPS_FAIL:-0}" == "1" ]; then
+                return 1
+            fi
+            return 0
+        }
+
+        install_code_server
+    ) > "$out" 2>&1 || OBSERVED_STATUS=$?
+
+    OBSERVED_OUTPUT="$(cat "$out")"
+    OBSERVED_CALLS="$(cat "$calls")"
+
+    unset OS STUB_CURL_FAIL STUB_CLI_MISSING STUB_UNIT_MISSING
+    unset STUB_RECONCILE_FAIL STUB_DEPLOY_FAIL STUB_EXTENSIONS_FAIL
+    unset STUB_TRANSITION_FAIL STUB_HTTPS_FAIL STUB_SYSTEMCTL_USER_FAIL
+    unset CODE_SERVER_STUB_VERSION
+}
+
+test_install_code_server_fails_on_macos() {
+    local home
+
+    new_tmp_var home
+    OS=macos
+    run_install_code_server "$home"
+
+    [ "$OBSERVED_STATUS" -ne 0 ] || fail "code-server must fail on macOS"
+    case "$OBSERVED_OUTPUT" in
+        *"Ubuntu/Debian only"*) ;;
+        *) fail "macOS failure must name the supported platform: $OBSERVED_OUTPUT" ;;
+    esac
+}
+
+test_install_code_server_fails_without_curl() {
+    local home
+    local out
+    local rc=0
+
+    new_tmp_var home
+    # An empty PATH makes curl unavailable. Keep the producer isolated in a
+    # subshell so the outer assertion still has a real PATH to run grep.
+    out="$(
+        (
+            HOME="$home"
+            PATH=""
+            CODE_SERVER_ENTROPY_SOURCE="$ENTROPY_FILE"
+            source_install
+            OS=ubuntu
+            install_code_server
+        ) 2>&1
+    )" || rc=$?
+    [ "$rc" -ne 0 ] || fail "missing curl must fail the module"
+    printf '%s\n' "$out" | grep -q "curl is required" || fail "missing curl must be detected"
+}
+
+test_install_code_server_fails_without_systemctl_user() {
+    local home
+
+    new_tmp_var home
+    STUB_SYSTEMCTL_USER_FAIL=1
+    run_install_code_server "$home"
+
+    [ "$OBSERVED_STATUS" -ne 0 ] || fail "missing systemctl --user must fail"
+    case "$OBSERVED_OUTPUT" in
+        *"systemctl --user"*) ;;
+        *) fail "failure must name systemctl --user: $OBSERVED_OUTPUT" ;;
+    esac
+}
+
+test_install_code_server_invokes_official_installer() {
+    local home
+
+    new_tmp_var home
+    run_install_code_server "$home"
+
+    [ "$OBSERVED_STATUS" -eq 0 ] || fail "install_code_server failed: $OBSERVED_OUTPUT"
+    case "$OBSERVED_CALLS" in
+        *"curl -fsSL https://code-server.dev/install.sh"*) ;;
+        *) fail "the official installer URL must be invoked: $OBSERVED_CALLS" ;;
+    esac
+}
+
+test_install_code_server_fails_when_installer_fails() {
+    local home
+
+    new_tmp_var home
+    STUB_CURL_FAIL=1
+    run_install_code_server "$home"
+
+    [ "$OBSERVED_STATUS" -ne 0 ] || fail "a failed installer must fail the module"
+    case "$OBSERVED_OUTPUT" in
+        *"installer failed"*) ;;
+        *) fail "failure must name the installer: $OBSERVED_OUTPUT" ;;
+    esac
+}
+
+test_install_code_server_fails_when_cli_missing_after_install() {
+    local home
+    local out
+    local rc=0
+
+    new_tmp_var home
+    # Run with a curl stub that emits an installer that does NOT create
+    # the code-server binary. Capture the completed output so the live
+    # producer pipe cannot be killed by pipefail while grep runs.
+    out="$(
+        (
+            HOME="$home"
+            CODE_SERVER_ENTROPY_SOURCE="$ENTROPY_FILE"
+            PATH="$home/.local/bin:$PATH"
+            source_install
+            OS=ubuntu
+
+            curl() {
+                # Emit an installer that creates nothing.
+                cat <<'EMPTYEOF'
+#!/bin/sh
+exit 0
+EMPTYEOF
+                return 0
+            }
+            systemctl() { return 0; }
+            ss() { return 0; }
+            date() { printf '20260801_120000\n'; }
+            reconcile_code_server_config() { return 0; }
+            deploy_vscode_managed_layer() { return 0; }
+            reconcile_vscode_extensions() { return 0; }
+            transition_code_server_service() { return 0; }
+            verify_code_server_https() { return 0; }
+
+            install_code_server
+        ) 2>&1
+    )" || rc=$?
+    [ "$rc" -ne 0 ] || fail "a missing post-install CLI must fail the module"
+    printf '%s\n' "$out" | grep -q "CLI is not available" || fail "missing CLI after installer must be detected"
+}
+
+test_install_code_server_composition_order() {
+    local home
+    local calls
+    local log
+    local prev=0
+    local line
+    local pattern
+
+    new_tmp_var home
+    run_install_code_server "$home"
+
+    [ "$OBSERVED_STATUS" -eq 0 ] || fail "install_code_server failed: $OBSERVED_OUTPUT"
+
+    calls="$OBSERVED_CALLS"
+    log="$(tmp_artifact cs-composition-order.log)"
+    printf '%s\n' "$calls" > "$log"
+
+    # The official installer must be invoked with the fixed HTTPS origin.
+    case "$calls" in
+        *"curl -fsSL https://code-server.dev/install.sh"*) ;;
+        *) fail "official installer must be invoked: $calls" ;;
+    esac
+
+    # The integrated helpers are deliberately stubbed, so assert the public
+    # stub call log and the exact binding order rather than the deep
+    # CLI/systemctl calls those helpers would make. Each step must appear
+    # after the previous one in the call log.
+    local steps=(
+        "curl -fsSL https://code-server.dev/install.sh"
+        "reconcile_code_server_config"
+        "deploy_vscode_managed_layer"
+        "reconcile_vscode_extensions"
+        "code-server --version"
+        "transition_code_server_service"
+        "verify_code_server_https"
+    )
+
+    prev=0
+    for pattern in "${steps[@]}"; do
+        line="$(awk -v p="$pattern" 'index($0,p){print NR; exit}' "$log")"
+        [ -n "$line" ] || fail "missing public composition call: $pattern in $calls"
+        [ "$line" -gt "$prev" ] || fail "public composition call out of order: '$pattern' at line $line (prev $prev): $calls"
+        prev="$line"
+    done
+}
+
+test_install_code_server_rerun_invokes_installer_again() {
+    local home
+    local count
+
+    new_tmp_var home
+    CODE_SERVER_STUB_VERSION=4.98.0
+    run_install_code_server "$home"
+    [ "$OBSERVED_STATUS" -eq 0 ] || fail "first run failed: $OBSERVED_OUTPUT"
+
+    # Second run with a different version to force a restart.
+    CODE_SERVER_STUB_VERSION=4.99.0
+    run_install_code_server "$home"
+    [ "$OBSERVED_STATUS" -eq 0 ] || fail "rerun failed: $OBSERVED_OUTPUT"
+
+    # Both runs must invoke the official installer.
+    count="$(printf '%s\n' "$OBSERVED_CALLS" | grep -c 'curl -fsSL https://code-server.dev/install.sh' || true)"
+    [ "$count" -ge 1 ] || fail "rerun must invoke the official installer again: $OBSERVED_CALLS"
+}
+
+test_install_code_server_failure_stops_later_calls() {
+    local home
+
+    new_tmp_var home
+    STUB_RECONCILE_FAIL=1
+    run_install_code_server "$home"
+
+    [ "$OBSERVED_STATUS" -ne 0 ] || fail "a reconciler failure must fail the module"
+
+    # The public composition helpers after reconcile must not have been
+    # attempted when the config reconciler failed.
+    case "$OBSERVED_CALLS" in
+        *"deploy_vscode_managed_layer"*) fail "managed layer must not be deployed after config failure" ;;
+    esac
+    case "$OBSERVED_CALLS" in
+        *"reconcile_vscode_extensions"*) fail "extensions must not be reconciled after config failure" ;;
+    esac
+    case "$OBSERVED_CALLS" in
+        *"transition_code_server_service"*) fail "service must not be transitioned after config failure" ;;
+    esac
+    case "$OBSERVED_CALLS" in
+        *"verify_code_server_https"*) fail "HTTPS must not be verified after config failure" ;;
+    esac
+}
+
+test_install_code_server_success_output_is_redacted() {
+    local home
+    local plain
+
+    new_tmp_var home
+    run_install_code_server "$home"
+
+    [ "$OBSERVED_STATUS" -eq 0 ] || fail "install_code_server failed: $OBSERVED_OUTPUT"
+
+    plain="$(printf '%s' "$OBSERVED_OUTPUT" | sed 's/\x1b\[[0-9;]*m//g')"
+
+    # Success must name the local config path.
+    case "$plain" in
+        *"config.yaml"*) ;;
+        *) fail "success output must name the local config path: $plain" ;;
+    esac
+
+    # Success must mention certificate trust.
+    case "$plain" in
+        *"certificate"*) ;;
+        *) fail "success output must mention certificate trust: $plain" ;;
+    esac
+
+    # No secrets, private hostnames, or firewall actions.
+    case "$plain" in
+        *"$SEEDED_PASSWORD"*) fail "output disclosed the seeded password" ;;
+    esac
+    case "$plain" in
+        *"$PRIVATE_BIND_HOST"*) fail "output disclosed a private host identity" ;;
+    esac
+    case "$plain" in
+        *ufw*|*iptables*|*firewall*) fail "output proposed a firewall change: $plain" ;;
+    esac
+    case "$plain" in
+        *tailscale*|*zerotier*|*wireguard*|*cloudflare*|*ngrok*) fail "output named a private-network product: $plain" ;;
+    esac
+}
+
 run_tests "code-server configuration"
