@@ -1,0 +1,12 @@
+{
+  "Insert ISO 8601 date": {
+    "prefix": "isodate",
+    "body": ["$CURRENT_YEAR-$CURRENT_MONTH-$CURRENT_DATE"],
+    "description": "Insert today's date in ISO 8601 form"
+  },
+  "Insert TODO marker": {
+    "prefix": "todo",
+    "body": ["$LINE_COMMENT TODO: $1"],
+    "description": "Insert a TODO marker using the current language's comment syntax"
+  }
+}

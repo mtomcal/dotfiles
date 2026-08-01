@@ -1,0 +1,16 @@
+# Extensions reconciled on every editor target.
+# One `publisher.name` identity per line; `publisher.name@version` pins are
+# exceptional. Blank lines and full-line comments are organizational only.
+
+# Editor conventions
+EditorConfig.EditorConfig
+
+# Python linting and formatting
+charliermarsh.ruff
+
+# JavaScript and TypeScript
+dbaeumer.vscode-eslint
+esbenp.prettier-vscode
+
+# Modal editing
+vscodevim.vim
