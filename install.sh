@@ -46,7 +46,13 @@ OS=""
 PACKAGE_MANAGER=""
 SELECTED_MODULES=()
 FAILED_MODULES=()
+# Modules whose install/configure function actually ran and succeeded.
+COMPLETED_MODULES=()
 CODEX_CONFIG_TEMPLATE_MODE="preserve"
+# Installation profile requested on the command line; expanded after OS detection.
+REQUESTED_PROFILE=""
+# Runtime-only code-server bind override; never written to a tracked file.
+CODE_SERVER_BIND=""
 
 # ===========================
 # Core Functions
@@ -107,7 +113,7 @@ modules_require_package_manager_update() {
 
     for module in "$@"; do
         case "$module" in
-            "base_tools")
+            "base_tools"|"python")
                 return 0
                 ;;
         esac
@@ -1708,6 +1714,1253 @@ install_copilot() {
 }
 
 # ===========================
+# Editor and Runtime Modules
+# ===========================
+#
+# These modules own the platform gate and failure reporting for the selectable
+# editor/runtime surface. Their provisioning internals are added by the
+# following implementation steps; until then they report an unimplemented
+# module failure instead of installing a substitute.
+
+# Oldest interpreter accepted from a native package source.
+PYTHON_REQUIRED_VERSION="3.10"
+
+# The module owns a native interpreter and virtual environments only; it never
+# widens package sources or takes over the system interpreter to succeed.
+print_python_native_policy() {
+    print_info "This module never adds a third-party repository or replaces the system interpreter."
+}
+
+print_python_source_guidance() {
+    print_info "Use a supported OS release or native package source that provides Python $PYTHON_REQUIRED_VERSION or newer."
+    print_python_native_policy
+}
+
+# A refused `brew upgrade` on an already-current formula or Cask is not an
+# error; a download, permission, or build failure is. Homebrew reports both
+# kinds in one run, so the refusal is benign only when every line it printed
+# is a recognized already-current diagnostic: one unrecognized line — or no
+# output at all — describes a failed upgrade.
+brew_upgrade_is_already_current() {
+    local line
+    local recognized=1
+
+    while IFS= read -r line; do
+        case "$line" in
+            "") continue ;;
+            *"already installed"*|*"up-to-date"*|*"up to date"*) recognized=0 ;;
+            *) return 1 ;;
+        esac
+    done <<< "$1"
+
+    return "$recognized"
+}
+
+# Choose the interpreter this module provisioned. On macOS only the formula's
+# own interpreter counts, so a system python3 on PATH can never decide the
+# outcome of a Homebrew provisioning run.
+select_python_interpreter() {
+    local prefix
+    local interpreter
+
+    if [ "$OS" == "macos" ]; then
+        if prefix="$(brew --prefix python 2>/dev/null)" &&
+            [ -n "$prefix" ] && [ -x "$prefix/bin/python3" ]; then
+            printf '%s' "$prefix/bin/python3"
+            return 0
+        fi
+        return 1
+    fi
+
+    if interpreter="$(command -v python3 2>/dev/null)"; then
+        printf '%s' "$interpreter"
+        return 0
+    fi
+
+    return 1
+}
+
+# Version token from the interpreter's own report, e.g. "Python 3.12.3" -> "3.12.3".
+python_reported_version() {
+    local interpreter="$1"
+    local output
+
+    if ! output="$("$interpreter" --version 2>&1)"; then
+        return 1
+    fi
+
+    output="${output%%$'\n'*}"
+    printf '%s' "${output##* }"
+}
+
+# True only for a numeric major.minor at or above the required baseline.
+# Compared as numbers, so 3.9 stays below 3.10.
+python_version_meets_requirement() {
+    local version="$1"
+    local major
+    local minor
+    local rest
+    local required_major="${PYTHON_REQUIRED_VERSION%%.*}"
+    local required_minor="${PYTHON_REQUIRED_VERSION#*.}"
+
+    case "$version" in
+        *.*) ;;
+        *) return 1 ;;
+    esac
+
+    major="${version%%.*}"
+    rest="${version#*.}"
+    minor="${rest%%.*}"
+
+    case "$major" in ''|*[!0-9]*) return 1 ;; esac
+    case "$minor" in ''|*[!0-9]*) return 1 ;; esac
+
+    if [ "$major" -gt "$required_major" ]; then
+        return 0
+    fi
+    if [ "$major" -eq "$required_major" ] && [ "$minor" -ge "$required_minor" ]; then
+        return 0
+    fi
+
+    return 1
+}
+
+# Prove virtual environments work by building a throwaway one and running its
+# own interpreter. The temporary directory is removed before returning on every
+# path, so no verification state survives success or failure.
+verify_python_venv() {
+    local interpreter="$1"
+    local tmp_dir
+    local status=0
+
+    if ! tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/dotfiles-python-venv.XXXXXX")"; then
+        print_error "Could not allocate a temporary directory for virtual-environment verification"
+        return 1
+    fi
+
+    if ! "$interpreter" -m venv "$tmp_dir/venv" > /dev/null 2>&1; then
+        print_error "$interpreter could not create a temporary virtual environment"
+        status=1
+    elif ! "$tmp_dir/venv/bin/python" --version > /dev/null 2>&1; then
+        print_error "The temporary virtual environment's own interpreter did not run"
+        status=1
+    fi
+
+    rm -rf "$tmp_dir"
+
+    return $status
+}
+
+install_python() {
+    print_header "Installing Python"
+
+    local interpreter
+    local version
+    local upgrade_output
+
+    if [ "$OS" == "ubuntu" ]; then
+        if ! install_package "python3"; then
+            print_error "Installing the native python3 package failed"
+            print_python_source_guidance
+            return 1
+        fi
+        if ! install_package "python3-venv"; then
+            print_error "Installing the native python3-venv package failed"
+            print_python_source_guidance
+            return 1
+        fi
+    elif [ "$OS" == "macos" ]; then
+        if brew list python &> /dev/null; then
+            print_info "Upgrading Homebrew Python..."
+            if ! upgrade_output="$(brew upgrade python 2>&1)"; then
+                # An already-current formula is reported as a refusal on some
+                # Homebrew versions; anything else is a genuine failure that
+                # leaves the installed formula for verification to judge.
+                if brew_upgrade_is_already_current "$upgrade_output"; then
+                    print_success "Homebrew Python is already current"
+                else
+                    print_warning "brew upgrade python failed; verifying the installed formula instead"
+                fi
+            fi
+        else
+            if ! install_package "python" "python"; then
+                print_error "Installing the Homebrew python formula failed"
+                print_python_source_guidance
+                return 1
+            fi
+        fi
+    else
+        print_error "Native Python provisioning supports Ubuntu/Debian and macOS only (detected: ${OS:-unknown})"
+        return 1
+    fi
+
+    if ! interpreter="$(select_python_interpreter)"; then
+        print_error "No native python3 interpreter is available after package installation"
+        print_python_source_guidance
+        return 1
+    fi
+
+    version="$(python_reported_version "$interpreter" || true)"
+    if [ -z "$version" ]; then
+        print_error "Could not read a Python version from $interpreter"
+        print_python_source_guidance
+        return 1
+    fi
+
+    if ! python_version_meets_requirement "$version"; then
+        print_error "Native Python at $interpreter reports '$version' (required: $PYTHON_REQUIRED_VERSION or newer)"
+        print_python_source_guidance
+        return 1
+    fi
+
+    print_success "Native Python $version verified at $interpreter"
+
+    if ! verify_python_venv "$interpreter"; then
+        print_info "Repair the native packages that provide Python virtual environments and rerun the python module."
+        print_python_native_policy
+        return 1
+    fi
+
+    print_success "Python $version with working virtual environments is ready"
+}
+
+# Official stable Visual Studio Code. A substitute distribution would lose the
+# Microsoft Marketplace and Remote SSH, so this identity is not configurable.
+VSCODE_MACOS_CASK="visual-studio-code"
+
+install_vscode() {
+    print_header "Installing Visual Studio Code"
+
+    local upgrade_output
+
+    if [ "$OS" != "macos" ]; then
+        print_error "Visual Studio Code Desktop is supported on macOS only (detected: ${OS:-unknown})"
+        return 1
+    fi
+
+    if brew list --cask "$VSCODE_MACOS_CASK" &> /dev/null; then
+        print_info "Requesting an upgrade of official Visual Studio Code..."
+        if ! upgrade_output="$(brew upgrade --cask "$VSCODE_MACOS_CASK" 2>&1)"; then
+            if brew_upgrade_is_already_current "$upgrade_output"; then
+                print_success "Official Visual Studio Code is already current"
+            else
+                print_error "Upgrading the $VSCODE_MACOS_CASK Cask failed:"
+                printf '%s\n' "$upgrade_output"
+                return 1
+            fi
+        fi
+    else
+        print_info "Installing official Visual Studio Code..."
+        if ! brew install --cask "$VSCODE_MACOS_CASK"; then
+            print_error "Installing the $VSCODE_MACOS_CASK Cask failed"
+            return 1
+        fi
+    fi
+
+    # The managed configuration drives the editor through its own CLI, so a
+    # Cask that leaves no `code` command is an incomplete installation.
+    if ! command -v code &> /dev/null; then
+        print_error "The 'code' command is unavailable after installing $VSCODE_MACOS_CASK"
+        print_info "Run 'Shell Command: Install \"code\" command in PATH' from the editor's command palette, then rerun."
+        return 1
+    fi
+
+    print_success "Official Visual Studio Code Desktop is installed and 'code' is available"
+}
+
+# Deploy the repository-managed editor layer into one editor User directory.
+# Only the managed children are owned; the User directory itself must stay a
+# regular directory so mutable editor state keeps living beside them.
+deploy_vscode_managed_layer() {
+    local user_dir="$1"
+
+    if [ -L "$user_dir" ]; then
+        print_error "Editor User directory is a symlink; refusing to deploy into it: $user_dir"
+        return 1
+    fi
+
+    if ! mkdir -p "$user_dir"; then
+        print_error "Could not create editor User directory: $user_dir"
+        return 1
+    fi
+
+    replace_symlink "$DOTFILES_DIR/vscode/settings.json" "$user_dir/settings.json" || return 1
+    replace_symlink "$DOTFILES_DIR/vscode/keybindings.json" "$user_dir/keybindings.json" || return 1
+    replace_symlink "$DOTFILES_DIR/vscode/snippets" "$user_dir/snippets" || return 1
+}
+
+# The organizational content of a manifest line: surrounding whitespace is
+# removed and blanks and full-line comments collapse to nothing, so callers
+# can treat an empty result as "no entry here".
+vscode_manifest_entry() {
+    local entry="$1"
+
+    entry="${entry#"${entry%%[![:space:]]*}"}"
+    entry="${entry%"${entry##*[![:space:]]}"}"
+
+    case "$entry" in
+        '#'*) entry="" ;;
+    esac
+
+    printf '%s' "$entry"
+}
+
+# A marketplace identity is `publisher.name`, optionally pinned with
+# `@version`.
+vscode_extension_identity_is_valid() {
+    [[ "$1" =~ ^[A-Za-z0-9][A-Za-z0-9-]*\.[A-Za-z0-9][A-Za-z0-9-]*(@[A-Za-z0-9][A-Za-z0-9.+-]*)?$ ]]
+}
+
+# An install request reports success even when the marketplace resolved a
+# different release, so a pin counts as satisfied only when the editor itself
+# lists that exact version as installed. Editors report identities with their
+# own casing, so the identity is compared case-insensitively; a version is an
+# opaque release label, so it is compared byte for byte.
+vscode_extension_pin_is_active() {
+    local cli="$1"
+    local entry="$2"
+    local identity="${entry%@*}"
+    local version="${entry#*@}"
+    local installed
+    local line
+
+    installed="$("$cli" --list-extensions --show-versions < /dev/null)" || return 1
+    identity="$(printf '%s' "$identity" | tr '[:upper:]' '[:lower:]')"
+
+    while IFS= read -r line; do
+        [ "$(printf '%s' "${line%@*}" | tr '[:upper:]' '[:lower:]')" = "$identity" ] || continue
+        [ "${line#*@}" = "$version" ] || continue
+        return 0
+    done <<< "$installed"
+
+    return 1
+}
+
+# Bring one manifest entry to its declared state, reporting only whether the
+# entry is now satisfied. Unpinned entries install or update to whatever the
+# marketplace currently considers compatible; pinned entries request their
+# exact version and are only satisfied once the editor confirms it is active.
+vscode_extension_is_reconciled() {
+    local cli="$1"
+    local entry="$2"
+
+    vscode_extension_identity_is_valid "$entry" || return 1
+    "$cli" --install-extension "$entry" --force < /dev/null || return 1
+
+    case "$entry" in
+        *@*) vscode_extension_pin_is_active "$cli" "$entry" || return 1 ;;
+    esac
+}
+
+# Record one failed identity in the caller's accumulator, at most once, so a
+# name that fails in both the shared and the target manifest still appears a
+# single time in the aggregate report.
+vscode_record_extension_failure() {
+    case "
+$VSCODE_EXTENSION_FAILURES" in
+        *"
+$1
+"*) return 0 ;;
+    esac
+
+    VSCODE_EXTENSION_FAILURES="$VSCODE_EXTENSION_FAILURES$1
+"
+}
+
+# Reconcile an editor's extension catalog through that editor's own CLI.
+# Manifests are processed in the order supplied (shared before target) and
+# entries in file order. The catalog is a required-presence declaration, not
+# an inventory: nothing is ever listed for removal or pruned, and a failing
+# entry never stops the ones behind it. Every failure is reported together
+# once the whole catalog has been attempted.
+reconcile_vscode_extensions() {
+    local cli="$1"
+    local manifest
+    local line
+    local entry
+    # Dynamically scoped: vscode_record_extension_failure appends here.
+    local VSCODE_EXTENSION_FAILURES=""
+    shift
+
+    for manifest in "$@"; do
+        # A manifest that cannot be read is indistinguishable from one whose
+        # entries were never reconciled, so it is reported like any other
+        # failure and the manifests behind it still run.
+        if [ ! -f "$manifest" ] || [ ! -r "$manifest" ]; then
+            vscode_record_extension_failure "$manifest"
+            continue
+        fi
+
+        while IFS= read -r line || [ -n "$line" ]; do
+            entry="$(vscode_manifest_entry "$line")"
+            [ -n "$entry" ] || continue
+
+            vscode_extension_is_reconciled "$cli" "$entry" ||
+                vscode_record_extension_failure "$entry"
+        done < "$manifest"
+    done
+
+    if [ -n "$VSCODE_EXTENSION_FAILURES" ]; then
+        print_error "Extension reconciliation failed for:"
+        while IFS= read -r entry; do
+            print_error "  $entry"
+        done <<< "${VSCODE_EXTENSION_FAILURES%
+}"
+        return 1
+    fi
+
+    print_success "Extension catalog reconciled"
+}
+
+# Language runtimes are provisioned by their own modules, so an editor target
+# reports their absence without owning it: the extensions are configured
+# either way and only stay idle until a runtime exists.
+warn_for_missing_editor_runtimes() {
+    if ! command -v python3 &> /dev/null; then
+        print_warning "No Python interpreter found; Python editor support stays idle until one is available (select the 'python' module or a project runtime)"
+    fi
+
+    if ! command -v node &> /dev/null; then
+        print_warning "No Node.js runtime found; JavaScript and TypeScript editor support stays idle until one is available (select the 'nodejs' module or a project runtime)"
+    fi
+
+    return 0
+}
+
+configure_vscode() {
+    print_header "Configuring Visual Studio Code"
+
+    if [ "$OS" != "macos" ]; then
+        print_error "The VS Code managed configuration is supported on macOS only (detected: ${OS:-unknown})"
+        return 1
+    fi
+
+    local user_dir="$HOME/Library/Application Support/Code/User"
+
+    deploy_vscode_managed_layer "$user_dir" || return 1
+
+    # The shared catalog first, then the desktop-only entries, both through
+    # the editor's own CLI.
+    reconcile_vscode_extensions code \
+        "$DOTFILES_DIR/vscode/extensions/shared.txt" \
+        "$DOTFILES_DIR/vscode/extensions/desktop.txt" || return 1
+
+    # Held movement keys must repeat instead of opening the accent picker.
+    if ! defaults write com.microsoft.VSCode ApplePressAndHoldEnabled -bool false; then
+        print_error "Disabling press-and-hold for Visual Studio Code failed"
+        return 1
+    fi
+
+    warn_for_missing_editor_runtimes
+
+    print_success "Visual Studio Code Default Profile is configured"
+}
+
+install_code_server() {
+    print_header "Installing code-server"
+
+    if [ "$OS" != "ubuntu" ]; then
+        print_error "code-server is supported on Ubuntu/Debian only (detected: ${OS:-unknown})"
+        return 1
+    fi
+
+    if ! command -v curl &> /dev/null; then
+        print_error "curl is required for code-server installation"
+        return 1
+    fi
+
+    if ! command -v systemctl &> /dev/null; then
+        print_error "systemctl is required for code-server service management"
+        return 1
+    fi
+
+    # Probe the per-user service manager with a real verb so an unreachable
+    # user manager is reported instead of mistaken for availability.
+    if ! systemctl --user list-units --quiet >/dev/null 2>&1; then
+        print_error "systemctl --user is not available; a per-user service manager is required"
+        return 1
+    fi
+
+    # Download the official stable installer into memory first, so a download
+    # failure is observed before any of its output is executed. The script is
+    # then run every selected run to request a stable install or update.
+    local installer_script
+    print_info "Running the official code-server installer from https://code-server.dev/install.sh..."
+    if ! installer_script="$(curl -fsSL https://code-server.dev/install.sh)"; then
+        print_error "Downloading the official code-server installer failed"
+        return 1
+    fi
+    if ! printf '%s\n' "$installer_script" | sh 2>&1; then
+        print_error "The official code-server installer failed"
+        return 1
+    fi
+
+    if ! command -v code-server &> /dev/null; then
+        print_error "code-server CLI is not available after the official installer"
+        return 1
+    fi
+
+    local unit
+    unit="$(code_server_service_unit)"
+    if [ ! -f "$HOME/.config/systemd/user/$unit" ] && [ ! -f "/usr/lib/systemd/user/$unit" ]; then
+        print_error "The expected per-user unit $unit was not created by the official installer"
+        return 1
+    fi
+
+    # Snapshot the pre-reconcile configuration and the previously installed
+    # version before reconcile may replace either, so the restart decision
+    # and the rollback input reflect the true prior state rather than the
+    # reconciled result.
+    local config_path
+    local version_file="$HOME/.local/share/code-server/installed-version"
+    local previous_config=""
+    local saved_version=""
+    local code_server_version=""
+    local restart_required="no"
+
+    config_path="$(code_server_config_path)"
+
+    if [ -f "$version_file" ]; then
+        saved_version="$(cat "$version_file" 2>/dev/null || true)"
+    fi
+
+    # The snapshot carries this host's password, so it is a mode-0600 regular
+    # file that is removed on every exit path once the service is up.
+    if [ -f "$config_path" ]; then
+        previous_config="$(mktemp "${TMPDIR:-/tmp}/code-server-prev.XXXXXX")" || {
+            print_error "Capturing the prior code-server configuration for rollback failed"
+            return 1
+        }
+        chmod 600 "$previous_config"
+        if ! cp -p "$config_path" "$previous_config" 2>/dev/null; then
+            rm -f "$previous_config"
+            print_error "Capturing the prior code-server configuration for rollback failed"
+            return 1
+        fi
+    fi
+
+    # Reconcile the local configuration before deploying the managed layer,
+    # so the editor reads the correct bind, auth, and certificate state.
+    if ! reconcile_code_server_config; then
+        rm -f "$previous_config"
+        return 1
+    fi
+
+    # Deploy the shared managed layer into the code-server User directory.
+    local user_dir="$HOME/.local/share/code-server/User"
+    if ! deploy_vscode_managed_layer "$user_dir"; then
+        rm -f "$previous_config"
+        return 1
+    fi
+
+    # Reconcile the shared extension catalog first, then the code-server-
+    # specific catalog, both through the code-server CLI.
+    if ! reconcile_vscode_extensions code-server \
+        "$DOTFILES_DIR/vscode/extensions/shared.txt" \
+        "$DOTFILES_DIR/vscode/extensions/code-server.txt"; then
+        rm -f "$previous_config"
+        return 1
+    fi
+
+    warn_for_missing_editor_runtimes
+
+    # A version change or a configuration change requires a restart. The
+    # version is read after install; the configuration change is detected by
+    # comparing the pre-reconcile snapshot with the reconciled file.
+    code_server_version="$(code-server --version 2>/dev/null | head -n 1 || true)"
+
+    if [ -z "$saved_version" ]; then
+        restart_required="yes"
+    elif [ "$saved_version" != "$code_server_version" ]; then
+        restart_required="yes"
+    fi
+
+    if [ -n "$previous_config" ] && [ -f "$config_path" ] && ! cmp -s "$previous_config" "$config_path"; then
+        restart_required="yes"
+    fi
+
+    # Transition the service: stop if restarting, enable, start/restart, and
+    # verify active state. On failure, rollback restores the previous config
+    # and service state.
+    if ! transition_code_server_service "$(select_code_server_bind "$config_path")" "$restart_required" "$previous_config"; then
+        rm -f "$previous_config"
+        return 1
+    fi
+
+    # Verify the local HTTPS endpoint responds while accepting the generated
+    # certificate. This must succeed before the module reports success.
+    if ! verify_code_server_https "$(select_code_server_bind "$config_path")"; then
+        rm -f "$previous_config"
+        return 1
+    fi
+
+    # Persist the installed version so a future rerun can detect a change.
+    if [ -n "$code_server_version" ]; then
+        mkdir -p "$(dirname "$version_file")"
+        printf '%s\n' "$code_server_version" > "$version_file"
+    fi
+
+    # The temporary rollback snapshot is no longer needed once the service is
+    # active and HTTPS is verified.
+    rm -f "$previous_config"
+
+    print_success "code-server is installed, configured, and serving HTTPS"
+    print_info "Configuration lives at ~/.config/code-server/config.yaml as a mode-0600 regular file (never symlinked)"
+    print_info "The endpoint uses a locally generated certificate; trust it by accepting or installing that certificate in the browser"
+    print_info "Reachability from other hosts is the operator's responsibility on a trusted network; no network filtering or tunneling is configured here"
+    return 0
+}
+
+# ===========================
+# code-server Bind Value
+# ===========================
+
+# One dotted-decimal IPv4 address; each octet is 0..255 without padding.
+is_ipv4_address() {
+    local address="$1"
+    local rest="$address"
+    local octet
+    local count=0
+
+    case "$address" in
+        .*|*.|*..*) return 1 ;;
+    esac
+
+    while : ; do
+        case "$rest" in
+            *.*)
+                octet="${rest%%.*}"
+                rest="${rest#*.}"
+                ;;
+            *)
+                octet="$rest"
+                rest=""
+                ;;
+        esac
+
+        [[ "$octet" =~ ^(0|[1-9][0-9]{0,2})$ ]] || return 1
+        [ "$octet" -le 255 ] || return 1
+        count=$((count + 1))
+
+        [ -n "$rest" ] || break
+    done
+
+    [ "$count" -eq 4 ]
+}
+
+# Count the 16-bit groups on one side of an IPv6 address. Echoes the count and
+# returns non-zero when any group is malformed. A trailing IPv4 form counts as
+# two groups and is accepted only where the address may end.
+ipv6_group_count() {
+    local half="$1"
+    local allow_trailing_ipv4="$2"
+    local rest="$half"
+    local group
+    local count=0
+
+    if [ -z "$half" ]; then
+        printf '0\n'
+        return 0
+    fi
+
+    # A leading or trailing single colon is never valid here; the "::"
+    # compression marker has already been split off by the caller.
+    case "$half" in
+        :*|*:) return 1 ;;
+    esac
+
+    while : ; do
+        case "$rest" in
+            *:*)
+                group="${rest%%:*}"
+                rest="${rest#*:}"
+                ;;
+            *)
+                group="$rest"
+                rest=""
+                ;;
+        esac
+
+        if [ -z "$rest" ] && [ "$allow_trailing_ipv4" == "1" ] && is_ipv4_address "$group"; then
+            count=$((count + 2))
+        elif [[ "$group" =~ ^[0-9A-Fa-f]{1,4}$ ]]; then
+            count=$((count + 1))
+        else
+            return 1
+        fi
+
+        [ -n "$rest" ] || break
+    done
+
+    printf '%s\n' "$count"
+}
+
+# One IPv6 address, optionally with a zone identifier, validated as an address
+# rather than as a character class. Bash 3.2 constructs only.
+is_ipv6_address() {
+    local address="$1"
+    local zone=""
+    local head
+    local tail
+    local head_count
+    local tail_count
+
+    case "$address" in
+        *%*)
+            zone="${address#*%}"
+            address="${address%%%*}"
+            # A zone identifier names a local interface or interface index.
+            # Restrict it to a portable safe character set so an empty zone,
+            # whitespace, path separators, and shell metacharacters can never
+            # reach service configuration.
+            [[ "$zone" =~ ^[A-Za-z0-9]([A-Za-z0-9._-]*[A-Za-z0-9])?$ ]] || return 1
+            ;;
+    esac
+
+    case "$address" in
+        *:::*) return 1 ;;
+        *:*) ;;
+        *) return 1 ;;
+    esac
+
+    case "$address" in
+        *::*)
+            head="${address%%::*}"
+            tail="${address#*::}"
+            case "$tail" in
+                *::*) return 1 ;;
+            esac
+            head_count="$(ipv6_group_count "$head" 0)" || return 1
+            tail_count="$(ipv6_group_count "$tail" 1)" || return 1
+            # "::" must compress at least one group.
+            [ $((head_count + tail_count)) -le 7 ]
+            ;;
+        *)
+            head_count="$(ipv6_group_count "$address" 1)" || return 1
+            [ "$head_count" -eq 8 ]
+            ;;
+    esac
+}
+
+# One hostname or IPv4 address usable as a bind host: dot-separated labels of
+# letters, digits, and inner hyphens. A host made only of digits and dots is
+# an attempted IPv4 address and MUST satisfy IPv4 rules rather than falling
+# back to the more permissive hostname form.
+is_bind_host() {
+    local host="$1"
+    local rest="$host"
+    local label
+
+    [ -n "$host" ] || return 1
+    [ ${#host} -le 253 ] || return 1
+
+    case "$host" in
+        .*|*.|*..*) return 1 ;;
+    esac
+
+    case "$host" in
+        *[!0-9.]*) ;;
+        *) is_ipv4_address "$host"; return $? ;;
+    esac
+
+    while : ; do
+        case "$rest" in
+            *.*)
+                label="${rest%%.*}"
+                rest="${rest#*.}"
+                ;;
+            *)
+                label="$rest"
+                rest=""
+                ;;
+        esac
+
+        [[ "$label" =~ ^[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?$ ]] || return 1
+        [ ${#label} -le 63 ] || return 1
+
+        [ -n "$rest" ] || break
+    done
+
+    return 0
+}
+
+# Split an `address:port` bind value into "host port" on stdout.
+# Accepts a hostname/IPv4 address, or a bracketed IPv6 address, plus a port in
+# 1..65535. Returns non-zero without output for any other value.
+split_code_server_bind() {
+    local bind="$1"
+    local host
+    local port
+
+    if [[ "$bind" =~ ^\[(.+)\]:([0-9]{1,5})$ ]]; then
+        host="${BASH_REMATCH[1]}"
+        port="${BASH_REMATCH[2]}"
+        is_ipv6_address "$host" || return 1
+    elif [[ "$bind" =~ ^([^:]+):([0-9]{1,5})$ ]]; then
+        host="${BASH_REMATCH[1]}"
+        port="${BASH_REMATCH[2]}"
+        is_bind_host "$host" || return 1
+    else
+        return 1
+    fi
+
+    if [ "$port" -lt 1 ] || [ "$port" -gt 65535 ]; then
+        return 1
+    fi
+
+    printf '%s %s\n' "$host" "$port"
+}
+
+# ===========================
+# code-server Local Configuration
+# ===========================
+
+# First-install bind value; an existing local value or an explicit override
+# takes precedence over it.
+CODE_SERVER_BIND_DEFAULT="0.0.0.0:8080"
+
+# Local entropy for generated secrets. Overridable so tests can supply a
+# deterministic source; production always reads the kernel pool.
+CODE_SERVER_ENTROPY_SOURCE="${CODE_SERVER_ENTROPY_SOURCE:-/dev/urandom}"
+
+# The local, machine-specific code-server configuration. It is never tracked
+# and never symlinked: it holds the bind value, the generated password, and
+# certificate state for this host only.
+code_server_config_path() {
+    printf '%s/.config/code-server/config.yaml\n' "$HOME"
+}
+
+# Build the reconciled configuration for $2 from the existing configuration at
+# $1 (which may be absent) and the selected bind value $3.
+#
+# Every protected value is read, chosen, and written inside this subshell with
+# tracing disabled, so no password or certificate material can reach an xtrace
+# stream, a command argument, or a caller variable.
+write_code_server_config() {
+    (
+        set +x
+
+        local source_path="$1"
+        local target_path="$2"
+        local bind="$3"
+        local password=""
+        local cert=""
+        local cert_key=""
+
+        if [ -f "$source_path" ]; then
+            password="$(read_code_server_setting "$source_path" password)"
+            cert="$(read_code_server_setting "$source_path" cert)"
+            cert_key="$(read_code_server_setting "$source_path" cert-key)"
+        fi
+
+        if [ -z "$password" ]; then
+            password="$(generate_code_server_password)"
+            [ -n "$password" ] || return 1
+        fi
+
+        # An explicit certificate path stays exactly as configured. Anything
+        # else — absent, disabled, or the generated-certificate marker —
+        # becomes the generated certificate, so HTTPS is always on.
+        case "$cert" in
+            ""|true|false) cert="true" ;;
+        esac
+
+        # A heredoc keeps the values out of command arguments and out of any
+        # trace of this write.
+        cat > "$target_path" <<EOF || return 1
+bind-addr: $bind
+auth: password
+password: $password
+cert: $cert
+EOF
+
+        if [ -n "$cert_key" ]; then
+            cat >> "$target_path" <<EOF || return 1
+cert-key: $cert_key
+EOF
+        fi
+
+        # Everything this installer does not own is machine-local state and is
+        # carried over verbatim, including comments and blank lines.
+        if [ -f "$source_path" ]; then
+            local status=0
+            grep -vE '^(bind-addr|auth|password|cert|cert-key):' "$source_path" >> "$target_path" || status=$?
+            # grep reports 1 when a configuration owns no unrelated settings;
+            # anything above that is a real read or write failure.
+            [ "$status" -le 1 ] || return 1
+        fi
+
+        return 0
+    )
+}
+
+# One top-level key's raw value from a flat code-server configuration, or the
+# empty string when the key is absent. The value is returned on stdout for a
+# command substitution inside an untraced region; callers never print it.
+read_code_server_setting() {
+    local path="$1"
+    local key="$2"
+    local line
+
+    line="$(grep "^$key:" "$path" 2>/dev/null | head -n 1)" || true
+    [ -n "$line" ] || return 0
+
+    line="${line#$key:}"
+    # Trim the separating whitespace; the remainder is preserved verbatim.
+    line="${line#"${line%%[![:space:]]*}"}"
+    printf '%s' "${line%"${line##*[![:space:]]}"}"
+}
+
+# A file's permission bits as octal digits, across GNU and BSD stat.
+file_mode_octal() {
+    stat -c '%a' "$1" 2>/dev/null || stat -f '%Lp' "$1" 2>/dev/null
+}
+
+# A strong local password drawn from the local entropy source.
+generate_code_server_password() {
+    LC_ALL=C tr -dc 'A-Za-z0-9' < "$CODE_SERVER_ENTROPY_SOURCE" 2>/dev/null | head -c 32
+}
+
+# The bind value to publish, in precedence order: an explicit run override,
+# then the value already configured on this machine, then the first-install
+# default. The chosen value is used literally, so a bracketed IPv6 address
+# reaches the configuration exactly as it was validated.
+select_code_server_bind() {
+    local config_path="$1"
+    local existing=""
+
+    if [ -n "$CODE_SERVER_BIND" ]; then
+        printf '%s' "$CODE_SERVER_BIND"
+        return 0
+    fi
+
+    if [ -f "$config_path" ]; then
+        existing="$(read_code_server_setting "$config_path" bind-addr)"
+    fi
+
+    if [ -n "$existing" ]; then
+        printf '%s' "$existing"
+        return 0
+    fi
+
+    printf '%s' "$CODE_SERVER_BIND_DEFAULT"
+}
+
+# Reconcile the local code-server configuration in place: enforce the values
+# this installer owns, preserve everything local to this machine, and publish
+# the result atomically as a mode-0600 regular file.
+reconcile_code_server_config() {
+    local config_path
+    local bind
+    local tmp
+    local backup=""
+    local timestamp
+
+    config_path="$(code_server_config_path)"
+
+    # The local configuration holds this machine's secrets, so it must be a
+    # regular file this host owns. A symlink is rejected before anything is
+    # read or written, so a planted link can never be followed or replaced.
+    if [ -L "$config_path" ] || { [ -e "$config_path" ] && [ ! -f "$config_path" ]; }; then
+        print_error "The code-server configuration must be a regular file: ~/.config/code-server/config.yaml"
+        return 1
+    fi
+
+    if ! mkdir -p "$(dirname "$config_path")"; then
+        print_error "Creating the code-server configuration directory failed"
+        return 1
+    fi
+
+    bind="$(select_code_server_bind "$config_path")"
+
+    tmp="$(mktemp "$config_path.tmp.XXXXXX")" || return 1
+    chmod 600 "$tmp"
+
+    if ! write_code_server_config "$config_path" "$tmp" "$bind"; then
+        rm -f "$tmp"
+        print_error "Writing the code-server configuration failed"
+        return 1
+    fi
+
+    # An unchanged configuration is left exactly as it is; only an overly
+    # permissive mode is corrected.
+    if [ -f "$config_path" ] && cmp -s "$tmp" "$config_path"; then
+        rm -f "$tmp"
+        if [ "$(file_mode_octal "$config_path")" != "600" ]; then
+            chmod 600 "$config_path"
+        fi
+        print_success "code-server local configuration is already reconciled"
+        return 0
+    fi
+
+    # Only a content-changing replacement earns a backup.
+    if [ -f "$config_path" ]; then
+        timestamp=$(date +%Y%m%d_%H%M%S)
+        backup="$config_path.backup.$timestamp"
+        if ! cp -p "$config_path" "$backup"; then
+            rm -f "$tmp" "$backup"
+            print_error "Backing up the code-server configuration failed"
+            return 1
+        fi
+        # The backup carries the same password, so it never inherits a
+        # permissive mode from the original.
+        chmod 600 "$backup"
+    fi
+
+    if ! mv "$tmp" "$config_path"; then
+        rm -f "$tmp"
+        [ -z "$backup" ] || rm -f "$backup"
+        print_error "Publishing the code-server configuration failed"
+        return 1
+    fi
+
+    if [ -n "$backup" ]; then
+        print_info "Previous code-server configuration backed up alongside it"
+    fi
+    print_success "code-server local configuration is reconciled"
+    return 0
+}
+
+# ===========================
+# code-server Service Transition
+# ===========================
+
+# The per-user unit the official installer provides. Nothing else is ever
+# enabled, started, or stopped on the operator's behalf.
+code_server_service_unit() {
+    printf 'code-server@%s.service\n' "${USER:-$(id -un)}"
+}
+
+code_server_service_is_active() {
+    systemctl --user is-active --quiet "$(code_server_service_unit)" >/dev/null 2>&1
+}
+
+# Local listening sockets on port $1, one line each. Returns 2 — with no
+# output — when this host offers no standard listener-inspection utility, so a
+# port that cannot be inspected is never mistaken for a free one.
+code_server_port_listeners() {
+    local port="$1"
+
+    if command -v ss >/dev/null 2>&1; then
+        ss -H -l -n -t 2>/dev/null |
+            awk -v port="$port" '{ n = split($4, parts, ":"); if (parts[n] == port) print }'
+        return 0
+    fi
+
+    if command -v lsof >/dev/null 2>&1; then
+        lsof -nP -iTCP:"$port" -sTCP:LISTEN 2>/dev/null | awk 'NR > 1'
+        return 0
+    fi
+
+    return 2
+}
+
+# Whether the selected port is free to bind. Callers stop the known service
+# first when it must be restarted, so any listener still standing here belongs
+# to another process. No alternate port is ever proposed.
+code_server_port_available() {
+    local port="$1"
+    local listeners=""
+    local status=0
+
+    listeners="$(code_server_port_listeners "$port")" || status=$?
+
+    if [ "$status" -ne 0 ]; then
+        print_error "No listener-inspection utility (ss or lsof) is available to check port $port"
+        return 2
+    fi
+
+    [ -z "$listeners" ]
+}
+
+# Restore the state a failed migration was about to take away: the previous
+# local configuration, then the service if it had been running. Failures here
+# are reported rather than swallowed; the caller still fails.
+rollback_code_server_transition() {
+    local previous_config="$1"
+    local was_running="$2"
+    local config_path
+
+    if [ -n "$previous_config" ] && [ -f "$previous_config" ]; then
+        config_path="$(code_server_config_path)"
+        if cp -p "$previous_config" "$config_path"; then
+            chmod 600 "$config_path"
+            print_info "Restored the previous code-server local configuration"
+        else
+            print_error "Restoring the previous code-server local configuration failed"
+        fi
+    fi
+
+    if [ "$was_running" -eq 1 ]; then
+        if systemctl --user start "$(code_server_service_unit)"; then
+            print_info "Restarted the previously running code-server service"
+        else
+            print_error "Restarting the previously running code-server service failed"
+        fi
+    fi
+}
+
+# Move the per-user code-server service to its required state for the selected
+# bind $1. $2 is "yes" when a configuration or version change requires a
+# restart. $3, when given, is the previous configuration restored if the
+# migration fails before the service is running again.
+transition_code_server_service() {
+    local bind="$1"
+    local restart_required="$2"
+    local previous_config="${3-}"
+    local unit
+    local split
+    local port
+    local was_running=0
+    local needs_launch=0
+
+    unit="$(code_server_service_unit)"
+
+    if ! split="$(split_code_server_bind "$bind")"; then
+        print_error "The selected code-server bind value is not usable"
+        return 1
+    fi
+    port="${split##* }"
+
+    if code_server_service_is_active; then
+        was_running=1
+    fi
+
+    # A running service that needs no restart is already bound to its own port;
+    # it is neither stopped nor asked to compete with itself.
+    if [ "$restart_required" == "yes" ] || [ "$was_running" -eq 0 ]; then
+        needs_launch=1
+    fi
+
+    # Stop the known service before its own port is inspected, so its listener
+    # is never mistaken for someone else's.
+    if [ "$restart_required" == "yes" ] && [ "$was_running" -eq 1 ]; then
+        if ! systemctl --user stop "$unit"; then
+            print_error "Stopping $unit failed"
+            rollback_code_server_transition "$previous_config" "$was_running"
+            return 1
+        fi
+    fi
+
+    if [ "$needs_launch" -eq 1 ] && ! code_server_port_available "$port"; then
+        print_error "Port $port is already in use by another process; free it or select a different bind"
+        rollback_code_server_transition "$previous_config" "$was_running"
+        return 1
+    fi
+
+    if ! systemctl --user enable "$unit"; then
+        print_error "Enabling $unit at boot failed"
+        rollback_code_server_transition "$previous_config" "$was_running"
+        return 1
+    fi
+
+    if [ "$needs_launch" -eq 1 ]; then
+        if [ "$was_running" -eq 1 ]; then
+            if ! systemctl --user restart "$unit"; then
+                print_error "Restarting $unit failed"
+                rollback_code_server_transition "$previous_config" "$was_running"
+                return 1
+            fi
+        elif ! systemctl --user start "$unit"; then
+            print_error "Starting $unit failed"
+            rollback_code_server_transition "$previous_config" "$was_running"
+            return 1
+        fi
+    fi
+
+    if ! code_server_service_is_active; then
+        print_error "$unit did not become active; inspect its service logs"
+        rollback_code_server_transition "$previous_config" "$was_running"
+        return 1
+    fi
+
+    print_success "code-server service is enabled and active"
+    return 0
+}
+
+# The host to probe locally. A wildcard bind accepts connections on every
+# interface, so it is verified over loopback; every other configured address is
+# probed exactly as it was validated.
+code_server_probe_host() {
+    local host="$1"
+
+    case "$host" in
+        0.0.0.0) printf '127.0.0.1' ;;
+        ::|0:0:0:0:0:0:0:0) printf '[::1]' ;;
+        *:*) printf '[%s]' "$host" ;;
+        *) printf '%s' "$host" ;;
+    esac
+}
+
+# Health-check the local endpoint over HTTPS only, accepting the generated
+# certificate. Diagnostics name the port and the unit; they never name the
+# configured host, any secret, or a firewall action.
+verify_code_server_https() {
+    local bind="$1"
+    local split
+    local host
+    local port
+
+    if ! split="$(split_code_server_bind "$bind")"; then
+        print_error "The selected code-server bind value is not usable"
+        return 1
+    fi
+    host="${split%% *}"
+    port="${split##* }"
+
+    if ! curl -kfsS "https://$(code_server_probe_host "$host"):$port/" >/dev/null 2>&1; then
+        print_error "The local HTTPS endpoint on port $port did not respond; inspect $(code_server_service_unit) logs and certificate state"
+        return 1
+    fi
+
+    print_success "code-server answered over HTTPS on port $port"
+    return 0
+}
+
+# ===========================
+# Installation Profiles
+# ===========================
+
+# Expand a standard installation profile into its module list.
+# Must run after detect_os: macOS-only editor modules are added here rather
+# than selected and skipped later. Standard profiles never include code_server.
+expand_profile() {
+    local profile="$1"
+    local common=()
+    local module
+
+    case "$profile" in
+        full)
+            common=(base_tools neovim nvim_config tmux_config herdr herdr_config zsh_ohmyzsh zsh_config python golang_full nodejs tui_tools codex codex_sandbox claude playwright pi pi_sandbox copilot herdr_integrations)
+            ;;
+        minimal)
+            common=(base_tools neovim nvim_config tmux_config herdr herdr_config herdr_integrations)
+            ;;
+        work)
+            common=(base_tools neovim nvim_config tmux_config herdr herdr_config python tui_tools copilot herdr_integrations)
+            ;;
+        *)
+            print_error "Unknown profile: $profile" >&2
+            return 1
+            ;;
+    esac
+
+    for module in "${common[@]}"; do
+        printf '%s\n' "$module"
+    done
+
+    # macOS-only additions; other platforms omit them rather than selecting
+    # and skipping them later.
+    if [ "$OS" == "macos" ]; then
+        case "$profile" in
+            full|work)
+                printf '%s\n' vscode vscode_config
+                ;;
+        esac
+    fi
+}
+
+# ===========================
 # Dependency Resolution
 # ===========================
 
@@ -1843,6 +3096,23 @@ resolve_dependencies() {
                 fi
                 resolved+=("copilot")
                 ;;
+            "vscode_config")
+                # The managed desktop layer needs the official editor CLI, which
+                # only exists on the supported desktop platform.
+                if [ "$OS" == "macos" ] && ! command -v code &> /dev/null; then
+                    print_warning "Adding Visual Studio Code (required by VS Code configuration)" >&2
+                    resolved+=("vscode")
+                fi
+                resolved+=("vscode_config")
+                ;;
+            "code_server")
+                # The official code-server installer needs curl.
+                if ! command -v curl &> /dev/null; then
+                    print_warning "Adding curl (required by code-server)" >&2
+                    resolved+=("base_tools")
+                fi
+                resolved+=("code_server")
+                ;;
             "playwright")
                 # Playwright CLI needs npm (Node.js)
                 if ! command -v npm &> /dev/null; then
@@ -1859,6 +3129,63 @@ resolve_dependencies() {
 
     # Remove duplicates while preserving order
     printf '%s\n' "${resolved[@]}" | awk '!seen[$0]++'
+}
+
+# ===========================
+# Module Catalog
+# ===========================
+
+# Single source of module identifiers and human-readable labels, emitted as
+# "name:label" lines. Indexed output keeps the menu Bash 3.2 compatible.
+module_catalog() {
+    cat << 'EOF'
+base_tools:Base Tools (git, curl, tmux, zsh, etc.)
+neovim:Neovim 0.12+
+nvim_config:Neovim Configuration (kickstart + custom)
+tmux_config:Tmux Configuration
+herdr:Herdr Terminal Workspace Manager
+herdr_config:Herdr Configuration
+herdr_integrations:Herdr Agent Integrations
+zsh_ohmyzsh:Zsh + Oh My Zsh
+zsh_config:Zsh Custom Configuration
+python:Python 3.10+ (native interpreter + venv)
+golang:Go 1.24+ Toolchain (basic)
+golang_full:Go Development (toolchain + LSP + tools + govulncheck)
+nodejs:Node.js LTS (fnm)
+codex:Codex CLI
+codex_sandbox:Codex Sandbox (Docker)
+claude:Claude Code CLI
+pi:Pi Coding Agent
+pi_sandbox:Pi Sandbox (Docker)
+tui_tools:TUI Tools (lazygit, yazi, zoxide)
+playwright:Playwright CLI (browser automation)
+copilot:GitHub Copilot CLI
+vscode:Visual Studio Code Desktop (macOS)
+vscode_config:VS Code Managed Configuration (macOS)
+code_server:code-server Browser Endpoint (Ubuntu/Debian)
+EOF
+}
+
+# Human-readable label for one module; unknown modules fall back to their name
+# so a new module can never be displayed as nothing.
+module_label() {
+    local key="$1"
+    local line
+
+    while IFS= read -r line; do
+        if [ "${line%%:*}" == "$key" ]; then
+            printf '%s\n' "${line#*:}"
+            return 0
+        fi
+    done < <(module_catalog)
+
+    printf '%s\n' "$key"
+}
+
+# Modules offered by the custom menu. `golang` is omitted because the menu
+# offers the full Go development module instead.
+custom_menu_options() {
+    module_catalog | grep -v '^golang:'
 }
 
 # ===========================
@@ -1889,13 +3216,13 @@ show_profile_menu() {
 
     case $choice in
         1)
-            SELECTED_MODULES=(base_tools neovim nvim_config tmux_config herdr herdr_config zsh_ohmyzsh zsh_config golang_full nodejs tui_tools codex codex_sandbox claude playwright pi pi_sandbox copilot herdr_integrations)
+            SELECTED_MODULES=($(expand_profile full))
             ;;
         2)
-            SELECTED_MODULES=(base_tools neovim nvim_config tmux_config herdr herdr_config herdr_integrations)
+            SELECTED_MODULES=($(expand_profile minimal))
             ;;
         3)
-            SELECTED_MODULES=(base_tools neovim nvim_config tmux_config herdr herdr_config tui_tools copilot herdr_integrations)
+            SELECTED_MODULES=($(expand_profile work))
             ;;
         4)
             show_custom_menu
@@ -1917,27 +3244,13 @@ show_custom_menu() {
     print_header "Custom Component Selection"
 
     # Parallel arrays instead of associative array (bash 3.2 compat)
-    local options=(
-        "base_tools:Base Tools (git, curl, tmux, zsh, etc.)"
-        "neovim:Neovim 0.12+"
-        "nvim_config:Neovim Configuration (kickstart + custom)"
-        "tmux_config:Tmux Configuration"
-        "herdr:Herdr Terminal Workspace Manager"
-        "herdr_config:Herdr Configuration"
-        "herdr_integrations:Herdr Agent Integrations"
-        "zsh_ohmyzsh:Zsh + Oh My Zsh"
-        "zsh_config:Zsh Custom Configuration"
-        "golang_full:Go Development (toolchain + LSP + tools)"
-        "nodejs:Node.js LTS (fnm)"
-        "codex:Codex CLI"
-        "codex_sandbox:Codex Sandbox (Docker)"
-        "claude:Claude Code CLI"
-        "pi:Pi Coding Agent"
-        "pi_sandbox:Pi Sandbox (Docker)"
-        "tui_tools:TUI Tools (lazygit, yazi, zoxide)"
-        "playwright:Playwright CLI (browser automation)"
-        "copilot:GitHub Copilot CLI"
-    )
+    local options=()
+    local option_line
+
+    while IFS= read -r option_line; do
+        options+=("$option_line")
+    done < <(custom_menu_options)
+
     local count=${#options[@]}
     local toggle_num=$((count + 1))
     local done_num=$((count + 2))
@@ -2025,28 +3338,7 @@ show_installation_summary() {
 
     echo "The following components will be installed:"
     for module in "${SELECTED_MODULES[@]}"; do
-        case "$module" in
-            "base_tools") echo "  • Base Tools (git, curl, tmux, zsh, etc.)" ;;
-            "neovim") echo "  • Neovim 0.12+" ;;
-            "nvim_config") echo "  • Neovim Configuration (kickstart + custom)" ;;
-            "tmux_config") echo "  • Tmux Configuration" ;;
-            "herdr") echo "  • Herdr Terminal Workspace Manager" ;;
-            "herdr_config") echo "  • Herdr Configuration" ;;
-            "herdr_integrations") echo "  • Herdr Agent Integrations" ;;
-            "zsh_ohmyzsh") echo "  • Zsh + Oh My Zsh" ;;
-            "zsh_config") echo "  • Zsh Custom Configuration" ;;
-            "golang") echo "  • Go 1.24+ Toolchain (basic)" ;;
-            "golang_full") echo "  • Go Development (toolchain + LSP + tools + govulncheck)" ;;
-            "nodejs") echo "  • Node.js LTS (fnm)" ;;
-            "codex") echo "  • Codex CLI" ;;
-            "codex_sandbox") echo "  • Codex Sandbox (Docker)" ;;
-            "claude") echo "  • Claude Code CLI" ;;
-            "pi") echo "  • Pi Coding Agent" ;;
-            "pi_sandbox") echo "  • Pi Sandbox (Docker)" ;;
-            "tui_tools") echo "  • TUI Tools (lazygit, yazi, zoxide)" ;;
-            "playwright") echo "  • Playwright CLI (browser automation)" ;;
-            "copilot") echo "  • GitHub Copilot CLI" ;;
-        esac
+        echo "  • $(module_label "$module")"
     done
 
     echo ""
@@ -2070,117 +3362,101 @@ show_installation_summary() {
 # Module Execution
 # ===========================
 
+# Run one module function, recording success or failure without halting the
+# remaining modules.
+run_module() {
+    local module="$1"
+    local module_function="$2"
+
+    if "$module_function"; then
+        COMPLETED_MODULES+=("$module")
+    else
+        FAILED_MODULES+=("$module")
+    fi
+}
+
 execute_modules() {
     local modules=("$@")
     local run_herdr_integrations=0
 
     for module in "${modules[@]}"; do
         case "$module" in
-            "base_tools")
-                if ! install_base_tools; then
-                    FAILED_MODULES+=("base_tools")
-                fi
-                ;;
-            "neovim")
-                if ! install_neovim; then
-                    FAILED_MODULES+=("neovim")
-                fi
-                ;;
-            "nvim_config")
-                if ! configure_neovim; then
-                    FAILED_MODULES+=("nvim_config")
-                fi
-                ;;
-            "tmux_config")
-                if ! configure_tmux; then
-                    FAILED_MODULES+=("tmux_config")
-                fi
-                ;;
-            "herdr")
-                if ! install_herdr; then
-                    FAILED_MODULES+=("herdr")
-                fi
-                ;;
-            "herdr_config")
-                if ! configure_herdr; then
-                    FAILED_MODULES+=("herdr_config")
-                fi
-                ;;
+            "base_tools") run_module base_tools install_base_tools ;;
+            "neovim") run_module neovim install_neovim ;;
+            "nvim_config") run_module nvim_config configure_neovim ;;
+            "tmux_config") run_module tmux_config configure_tmux ;;
+            "herdr") run_module herdr install_herdr ;;
+            "herdr_config") run_module herdr_config configure_herdr ;;
             "herdr_integrations")
+                # Deferred so agent configs exist before integrations deploy.
                 run_herdr_integrations=1
                 ;;
-            "zsh_ohmyzsh")
-                if ! install_zsh; then
-                    FAILED_MODULES+=("zsh_ohmyzsh")
-                fi
-                ;;
-            "zsh_config")
-                if ! configure_zsh; then
-                    FAILED_MODULES+=("zsh_config")
-                fi
-                ;;
-            "golang")
-                if ! install_golang; then
-                    FAILED_MODULES+=("golang")
-                fi
-                ;;
-            "golang_full")
-                if ! install_golang_full; then
-                    FAILED_MODULES+=("golang_full")
-                fi
-                ;;
-            "nodejs")
-                if ! install_nodejs; then
-                    FAILED_MODULES+=("nodejs")
-                fi
-                ;;
-            "codex")
-                if ! install_codex; then
-                    FAILED_MODULES+=("codex")
-                fi
-                ;;
-            "codex_sandbox")
-                if ! install_codex_sandbox; then
-                    FAILED_MODULES+=("codex_sandbox")
-                fi
-                ;;
-            "claude")
-                if ! install_claude; then
-                    FAILED_MODULES+=("claude")
-                fi
-                ;;
-            "pi")
-                if ! install_pi; then
-                    FAILED_MODULES+=("pi")
-                fi
-                ;;
-            "pi_sandbox")
-                if ! install_pi_sandbox; then
-                    FAILED_MODULES+=("pi_sandbox")
-                fi
-                ;;
-            "tui_tools")
-                if ! install_tui_tools; then
-                    FAILED_MODULES+=("tui_tools")
-                fi
-                ;;
-            "playwright")
-                if ! install_playwright; then
-                    FAILED_MODULES+=("playwright")
-                fi
-                ;;
-            "copilot")
-                if ! install_copilot; then
-                    FAILED_MODULES+=("copilot")
-                fi
+            "zsh_ohmyzsh") run_module zsh_ohmyzsh install_zsh ;;
+            "zsh_config") run_module zsh_config configure_zsh ;;
+            "python") run_module python install_python ;;
+            "golang") run_module golang install_golang ;;
+            "golang_full") run_module golang_full install_golang_full ;;
+            "nodejs") run_module nodejs install_nodejs ;;
+            "codex") run_module codex install_codex ;;
+            "codex_sandbox") run_module codex_sandbox install_codex_sandbox ;;
+            "claude") run_module claude install_claude ;;
+            "pi") run_module pi install_pi ;;
+            "pi_sandbox") run_module pi_sandbox install_pi_sandbox ;;
+            "tui_tools") run_module tui_tools install_tui_tools ;;
+            "playwright") run_module playwright install_playwright ;;
+            "copilot") run_module copilot install_copilot ;;
+            "vscode") run_module vscode install_vscode ;;
+            "vscode_config") run_module vscode_config configure_vscode ;;
+            "code_server") run_module code_server install_code_server ;;
+            *)
+                print_error "Unknown module: $module"
+                FAILED_MODULES+=("$module")
                 ;;
         esac
     done
 
     if [ "$run_herdr_integrations" -eq 1 ]; then
-        if ! configure_herdr_integrations; then
-            FAILED_MODULES+=("herdr_integrations")
+        run_module herdr_integrations configure_herdr_integrations
+    fi
+}
+
+# ===========================
+# Editor Completion Notices
+# ===========================
+
+module_completed() {
+    local wanted="$1"
+    local module
+
+    # Expansion guard keeps an empty list safe on the oldest supported shell.
+    for module in ${COMPLETED_MODULES[@]+"${COMPLETED_MODULES[@]}"}; do
+        if [ "$module" == "$wanted" ]; then
+            return 0
         fi
+    done
+
+    return 1
+}
+
+# Editor guidance that is only true once the corresponding module actually
+# succeeded. Never prints secrets held in local configuration.
+show_editor_completion_notices() {
+    if module_completed "vscode_config"; then
+        print_info "Visual Studio Code Desktop:"
+        echo "  • Settings Sync must be disabled manually for Settings and Extensions."
+        echo "    The installer cannot detect or enforce this state; the repository"
+        echo "    remains the authority for the managed Default Profile."
+    fi
+
+    if module_completed "code_server"; then
+        print_info "code-server browser endpoint:"
+        echo "  • Local configuration (bind address, generated secrets): ~/.config/code-server/config.yaml"
+        echo "  • The endpoint serves HTTPS with a locally generated certificate;"
+        echo "    browsers warn until that certificate is accepted or trusted."
+        echo "  • Password authentication stays enabled; read the generated value"
+        echo "    from the local configuration file rather than from this output."
+        echo "  • Reachability is yours to restrict: expose the listener to trusted"
+        echo "    private networks only. The installer changes no firewall rules."
     fi
 }
 
@@ -2197,20 +3473,24 @@ parse_arguments() {
                 ;;
             --profile)
                 case $2 in
-                    full)
-                        SELECTED_MODULES=(base_tools neovim nvim_config tmux_config herdr herdr_config zsh_ohmyzsh zsh_config golang_full nodejs tui_tools codex codex_sandbox claude playwright pi pi_sandbox copilot herdr_integrations)
-                        ;;
-                    minimal)
-                        SELECTED_MODULES=(base_tools neovim nvim_config tmux_config herdr herdr_config herdr_integrations)
-                        ;;
-                    work)
-                        SELECTED_MODULES=(base_tools neovim nvim_config tmux_config herdr herdr_config tui_tools copilot herdr_integrations)
+                    full|minimal|work)
+                        # Expansion is deferred until after platform detection.
+                        REQUESTED_PROFILE="$2"
                         ;;
                     *)
                         print_error "Unknown profile: $2"
                         exit 1
                         ;;
                 esac
+                shift 2
+                ;;
+            --code-server-bind)
+                # Runtime-only override; validated before any module runs.
+                if [ $# -lt 2 ] || ! split_code_server_bind "$2" >/dev/null; then
+                    print_error "Invalid --code-server-bind value: '${2-}' (expected address:port with port 1-65535, e.g. 0.0.0.0:8080 or [::1]:8080)"
+                    exit 1
+                fi
+                CODE_SERVER_BIND="$2"
                 shift 2
                 ;;
             --help)
@@ -2249,6 +3529,10 @@ Options:
   --modules MODULES    Comma-separated list of modules to install
   --codex-config-template MODE
                        Codex config behavior: preserve (default) or overwrite
+  --code-server-bind ADDRESS:PORT
+                       Override the local code-server bind value for this run
+                       (e.g. 0.0.0.0:8080 or [::1]:8080); stored only in local
+                       code-server configuration, never in tracked files
   --help              Show this help message
 
 Profiles:
@@ -2266,6 +3550,7 @@ Modules:
   herdr_integrations  Herdr agent integrations
   zsh_ohmyzsh         Zsh + Oh My Zsh
   zsh_config          Zsh custom configuration
+  python              Python 3.10+ native interpreter and venv support
   golang              Go 1.24+ toolchain only
   golang_full         Go development (toolchain + LSP + tools + govulncheck)
   nodejs              Node.js LTS (fnm)
@@ -2277,6 +3562,9 @@ Modules:
   pi_sandbox          Pi Sandbox (Docker image + pis script)
   copilot             GitHub Copilot CLI
   playwright          Playwright CLI (browser automation)
+  vscode              Visual Studio Code Desktop (macOS only)
+  vscode_config       VS Code managed configuration (macOS only)
+  code_server         code-server browser endpoint (Ubuntu/Debian, explicit only)
 
 Examples:
   $0                                       # Interactive menu
@@ -2287,6 +3575,7 @@ Examples:
   $0 --modules herdr,herdr_config,herdr_integrations  # Herdr only
   $0 --modules golang_full,neovim          # Go dev environment
   $0 --modules codex --codex-config-template overwrite  # Refresh ~/.codex/config.toml
+  $0 --modules code_server --code-server-bind 0.0.0.0:8080  # Browser endpoint
 
 EOF
 }
@@ -2304,6 +3593,12 @@ main() {
 
     # Core setup (always required)
     detect_os
+
+    # Expand a requested installation profile now that the platform is known.
+    if [ -n "$REQUESTED_PROFILE" ]; then
+        SELECTED_MODULES=($(expand_profile "$REQUESTED_PROFILE"))
+    fi
+
     setup_package_manager
 
     # If no modules selected, show interactive menu
@@ -2347,6 +3642,9 @@ main() {
             echo "  ✓ $module"
         fi
     done
+
+    echo ""
+    show_editor_completion_notices
 
     echo ""
     print_info "Next steps:"
