@@ -1926,6 +1926,24 @@ install_vscode() {
     return 1
 }
 
+# Deploy the repository-managed editor layer into one editor User directory.
+# Only the managed children are owned; the User directory itself must stay a
+# regular directory so mutable editor state keeps living beside them.
+deploy_vscode_managed_layer() {
+    local user_dir="$1"
+
+    if [ -L "$user_dir" ]; then
+        print_error "Editor User directory is a symlink; refusing to deploy into it: $user_dir"
+        return 1
+    fi
+
+    mkdir -p "$user_dir"
+
+    replace_symlink "$DOTFILES_DIR/vscode/settings.json" "$user_dir/settings.json"
+    replace_symlink "$DOTFILES_DIR/vscode/keybindings.json" "$user_dir/keybindings.json"
+    replace_symlink "$DOTFILES_DIR/vscode/snippets" "$user_dir/snippets"
+}
+
 configure_vscode() {
     print_header "Configuring Visual Studio Code"
 
