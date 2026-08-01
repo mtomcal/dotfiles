@@ -1,7 +1,7 @@
 # Symlink Manager
 
-> **Version**: 1.6.0
-> **Last Updated**: 2026-07-31
+> **Version**: 2.0.0
+> **Last Updated**: 2026-08-01
 > **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md)
 > **Depended By**: [AI Agent Config](ai-agent-config.md), [Herdr Config](herdr-config.md), [Install Orchestrator](install-orchestrator.md), [Neovim Config](neovim-config.md), [VS Code Configuration](vscode-config.md), [Shell Config](shell-config.md), [Tmux Config](tmux-config.md)
 
@@ -82,18 +82,21 @@ The complete set of symlink deployments the system MUST establish. Most entries 
 | **Claude Code** | ~/.claude/agents | claude/agents | replace-symlink (directory) | Always |
 | **Claude Code** | ~/.claude/skills | shared/skills | replace-symlink (directory) | Always |
 | **Claude Code** | ~/.claude/statusline.sh | claude/statusline.sh | replace-symlink | Source file must exist |
+| **Claude Code** | ~/.claude/hooks/herdr-agent-state.sh | herdr/integrations/claude/herdr-agent-state.sh | replace-symlink | Agent config exists |
 | **Pi** | ~/.pi/agent/models.json | pi/models.json | replace-symlink | Always |
 | **Pi** | ~/.pi/agent/skills | pi/skills | replace-symlink (directory) | Always |
-| **Pi** | ~/.pi/agent/extensions/herdr-agent-state | pi/extensions/herdr-agent-state | replace-symlink (directory) | Always |
+| **Pi** | ~/.pi/agent/extensions/herdr-agent-state.ts | pi/extensions/herdr-agent-state.ts | replace-symlink | Always |
 | **Pi** | ~/.pi/agent/extensions/inherit-last-model | pi/extensions/inherit-last-model | replace-symlink (directory) | Always |
 | **Pi** | ~/.pi/agent/extensions/web-search | pi/extensions/web-search | replace-symlink (directory) | Always |
 | **Codex** | ~/.codex/config.toml | codex/config.toml | copy-from-template | Always (see Behavior section) |
 | **Codex** | ~/.codex/agents | codex/agents | replace-symlink (directory) | Always |
 | **Codex** | ~/.codex/AGENTS.md | codex/AGENTS.md | replace-symlink | Source file must exist |
+| **Codex** | ~/.codex/herdr-agent-state.sh | herdr/integrations/codex/herdr-agent-state.sh | replace-symlink | Agent config exists |
 | **Codex** | ~/.agents/skills | shared/skills | replace-symlink (directory) | Always |
 | **Copilot** | ~/.config/copilot/commands | copilot/commands | replace-symlink (directory) | Always |
 | **Copilot** | ~/.config/copilot/agents | copilot/agents | replace-symlink (directory) | Always |
 | **Copilot** | ~/.config/copilot/skills | shared/skills | replace-symlink (directory) | Always |
+| **Copilot** | ~/.copilot/hooks/herdr-agent-state.sh | herdr/integrations/copilot/herdr-agent-state.sh | replace-symlink | Agent config exists |
 | **Codex Sandbox** | ~/.local/bin/cods | codex/cods.sh | replace-symlink | Always |
 | **Pi Sandbox** | ~/.local/bin/pis | pi/pis.sh | replace-symlink | Always |
 
@@ -194,7 +197,7 @@ The Claude Code statusline script uses a conditional deployment: the symlink is 
 
 #### Pi Extensions Deployment
 
-Pi extensions use directory symlinks from `~/.pi/agent/extensions/{name}` to the dotfiles source. Parent directories MUST be created before the symlink. The system creates the `~/.pi/agent/extensions/` directory tree if it does not exist.
+Pi deploys its Herdr integration as a file symlink and its other shipped extensions as directory symlinks. Parent directories MUST be created before each symlink. The system creates the `~/.pi/agent/extensions/` directory tree if it does not exist and prunes stale managed links, including the superseded directory-form Herdr integration.
 
 #### Lazygit Platform Path
 
@@ -402,7 +405,7 @@ Category: Unit
 Priority: Medium
 Preconditions: `~/.pi/agent/extensions/` directory does not exist
 Input: Run the Pi module
-Expected Output: The `~/.pi/agent/extensions/` directory is created; the extension symlinks are created within it pointing to the correct dotfiles sources
+Expected Output: The directory is created; `herdr-agent-state.ts` is a file symlink; the other shipped extensions are directory symlinks; all point to the correct dotfiles sources
 
 ### TS-SYMLK-015: Yazi config symlinks skipped when source files absent
 Category: Unit
@@ -473,6 +476,7 @@ Expected Output: Local config remains a regular file, password is preserved, and
 
 | Version | Date | Summary |
 |---------|------|---------|
+| 2.0.0 | 2026-08-01 | Replaced Pi's directory-form Herdr integration with the current file mapping and registered repo-owned Claude, Codex, and Copilot Herdr hook symlinks. |
 | 1.6.0 | 2026-07-31 | Added individual macOS Visual Studio Code and Ubuntu/Debian code-server managed-layer mappings while keeping complete User directories and code-server secrets local. |
 | 1.5.0 | 2026-07-15 | Removed mutable Claude settings from symlink ownership; they are local runtime state managed by the Claude installer. |
 | 1.4.0 | 2026-07-15 | Removed mutable Pi settings from symlink ownership; they are local runtime state managed by the Pi installer. |

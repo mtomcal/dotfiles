@@ -271,10 +271,10 @@ The `herdr_integrations` module deploys repo-owned integration artifacts from `h
 |-------|-------------|
 | Claude Code | `herdr/integrations/claude/herdr-agent-state.sh` symlinked into `~/.claude/hooks/` |
 | Codex CLI | `herdr/integrations/codex/herdr-agent-state.sh` symlinked into `~/.codex/` |
-| GitHub Copilot CLI | `herdr/integrations/copilot/herdr-agent-state.sh` symlinked into `~/.config/copilot/hooks/` |
-| Pi | `pi/extensions/herdr-agent-state/` deployed to `~/.pi/agent/extensions/` |
+| GitHub Copilot CLI | `herdr/integrations/copilot/herdr-agent-state.sh` symlinked into `~/.copilot/hooks/` |
+| Pi | `pi/extensions/herdr-agent-state.ts` deployed to `~/.pi/agent/extensions/herdr-agent-state.ts` |
 
-Agents also share the generic `shared/skills/herdr/` skill, which owns Herdr CLI transport and concurrent agent-state observation. `shared/skills/herdr-claude-code/` composes that base for reliable Claude Code launch, readiness, prompt submission, and blocked-agent steering. `shared/skills/herdr-supervise/` composes the same transport for bounded editable-worker supervision, preflight model and escalation selection, independent acceptance, cost tracking, and an efficiency verdict without duplicating generic pane mechanics.
+Agents also share the generic `shared/skills/herdr/` skill, which owns Herdr CLI transport and server-owned settled-state observation. `shared/skills/herdr-claude-code/` composes that base for validated Claude Code launch, atomic prompt submission, and blocked-agent steering. `shared/skills/herdr-supervise/` composes the same transport for bounded editable-worker supervision, preflight model and escalation selection, independent acceptance, cost tracking, and an efficiency verdict without duplicating generic pane mechanics.
 
 Re-run integrations after changing agent config:
 
@@ -1020,7 +1020,7 @@ The installer preserves the npm-installed executable as `~/.local/bin/pi-bin`, t
 | `~/.pi/agent/settings.json` | Local runtime state (not tracked) |
 | `~/.pi/agent/models.json` | `pi/models.json` |
 | `~/.pi/agent/skills` | `pi/skills` |
-| `~/.pi/agent/extensions/herdr-agent-state` | `pi/extensions/herdr-agent-state` |
+| `~/.pi/agent/extensions/herdr-agent-state.ts` | `pi/extensions/herdr-agent-state.ts` |
 | `~/.pi/agent/extensions/inherit-last-model` | `pi/extensions/inherit-last-model` |
 | `~/.pi/agent/extensions/web-search` | `pi/extensions/web-search` |
 
@@ -1284,7 +1284,8 @@ Then verify the expected links exist:
 ls -la ~/.config/herdr/config.toml
 ls -la ~/.claude/hooks/herdr-agent-state.sh
 ls -la ~/.codex/herdr-agent-state.sh
-ls -la ~/.config/copilot/hooks/herdr-agent-state.sh
+ls -la ~/.copilot/hooks/herdr-agent-state.sh
+ls -la ~/.pi/agent/extensions/herdr-agent-state.ts
 ```
 
 Start an agent inside Herdr and check that the pane reports agent state:

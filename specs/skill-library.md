@@ -1,6 +1,6 @@
 # Skill Library Specification
 
-> **Version**: 5.0.0
+> **Version**: 6.0.0
 > **Last Updated**: 2026-08-01
 > **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md), [Herdr Config](herdr-config.md), [Execution Coordination](execution-coordination.md)
 > **Depended By**: AI Agent Configuration (AIAGT)
@@ -205,7 +205,7 @@ A revision is complete only when:
 8. Templates, output contracts, ranking models, and checklists remain owned by their domain producer rather than a universal schema.
 9. When a workflow delegates through Herdr, it MUST compose the shared Herdr skill instead of duplicating terminal commands. It MUST retain an in-process fallback outside Herdr unless its protected contract declares Herdr a hard precondition; a hard-precondition workflow MUST stop outside Herdr rather than provide a reduced fallback.
 10. Public Herdr IDs MUST be refreshed after topology changes; neither public IDs nor legacy display selectors may become durable workflow identity.
-11. An agent-specific Herdr skill MUST compose the generic Herdr skill for CLI transport, current IDs, input primitives, output inspection, status races, and cleanup. It MAY own only agent-specific launch, readiness, submission, interaction, and steering behavior.
+11. An agent-specific Herdr skill MUST compose the generic Herdr skill for CLI transport, current IDs, validated agent primitives, output inspection, server-owned settled-state waiting, and cleanup. It MAY own only agent-specific launch arguments, readiness interpretation, task contract, interaction, and steering behavior.
 
 ### Workflow Artifact and State Ownership
 
@@ -224,8 +224,8 @@ Reciprocal routing MAY compose workflows but MUST NOT transfer state or artifact
 | `handoff` | Writes redacted timestamped Markdown under the operating system's temporary handoff directory and reports its absolute path |
 | `research` | Produces durable primary-source-backed notes using the repository convention or an approved location |
 | `improve-codebase-architecture` | Produces a temporary visual HTML report with before-and-after diagrams and candidate comparison |
-| `herdr` | Owns generic Herdr CLI mechanics, including a safe executable race that prechecks and concurrently observes `done`, `idle`, and `blocked`, cancels remaining waits, and inspects output |
-| `herdr-claude-code` | Composes `herdr` and owns exact Claude launch, readiness, explicit prompt submission, completion observation, and blocked-agent steering without duplicating generic transport |
+| `herdr` | Owns current generic Herdr CLI mechanics, including validated agent startup, atomic prompt submission, logical keys, output inspection, server-owned settled-state waiting, and failure inspection |
+| `herdr-claude-code` | Composes `herdr` and owns Claude's required native launch argument, task contract, settled-result interpretation, and blocked-agent steering without duplicating generic transport |
 | `create-plan` | Pins a source fixed point, obtains a human-approved scope snapshot, proposes review/model policy, and creates one execution-ready command-repo molecule with context-sized TDD slices and traces |
 | `execute-molecule` | Requires one explicit execution-molecule id and Herdr, then coordinates Beads-backed leases, write-ahead attempts, isolated implementation, evidence-gated integration, configured reviews, synchronization, and crash recovery |
 | `teach` | Requires an approved teaching workspace and preserves mission, resources, learning records, lessons, references, assets, and notes |
@@ -241,9 +241,9 @@ Its only durable result is one execution-ready molecule in the external command 
 
 Creation MUST leave a partial graph draft/blocked, validate complete scope coverage, acyclicity, assignments, traces, and review topology before exposing ready work, then commit and push a semantic checkpoint. It MUST NOT write `PLAN.md`, `.plan`, slice files, verification files, or any `.beads/` state into a source repository.
 
-The generic `herdr` skill MUST precheck current agent state before waiting. When no terminal state is already present, it MUST start `done`, `idle`, and `blocked` waits concurrently, continue after the first successful wait, cancel and reap the remaining waiters, and read current output. `done` and `idle` are completion states; `blocked` is an immediate steering state. If every wait fails or times out, current state and output MUST be inspected before retry or failure reporting.
+The generic `herdr` skill MUST use Herdr's current agent facade for validated startup, atomic prompt submission, logical key input, agent reads, and settled-state waiting. Prompt-and-wait MUST use one server-owned operation when submitting new work. Waiting on an already-running agent MUST use the server-owned default settled-state set of `done`, `idle`, and `blocked`, including an already-reported matching state. `done` and `idle` are completion candidates; `blocked` is an immediate steering state. Any failed wait, timeout, stalled prompt, or `unknown` result MUST lead to current agent state and output inspection before retry or failure reporting. Ordinary command output waiting MUST use the pane facade.
 
-`herdr-claude-code` MUST compose `herdr`, launch exactly `claude --dangerously-skip-permissions`, and verify Claude readiness before task submission. Prompt delivery MUST distinguish pasted text from submission: `[Pasted text #1]` is not sufficient evidence, an explicit Enter and output/state inspection are required, and blind prompt resends or repeated Enter presses are prohibited. Completion and blocking MUST use the base concurrent status Activity; blocked Claude agents MUST be inspected and steered before observation resumes.
+`herdr-claude-code` MUST compose `herdr` and launch Claude through validated agent startup with the native `--dangerously-skip-permissions` argument. Task submission and waiting MUST use the base atomic prompt operation, which owns bracketed-paste handling and encoded Enter. Blind prompt resends or manual repeated Enter presses after a failed submission are prohibited until current agent state and output have been inspected. Blocked Claude agents MUST be inspected and steered through a new atomic prompt before observation resumes.
 
 `execute-molecule` MUST require one explicit execution-molecule id, valid global command-repo routing, and `HERDR_ENV=1`; there is no non-Herdr execution fallback. It validates repository identity, source fixed point, scope approval, review/model policy, graph integrity, and synchronization before mutation. The exact assigned coordinator model must acquire the non-expiring coordinator lease; conflicting authority stops unless evidence inspection and human-approved takeover create a new coordinator-session bead.
 
@@ -285,8 +285,8 @@ Imported skill material MUST be treated as a locally maintained fork. Before imp
 | Correction or escalation exhausted | Slice exceeds its approved allowance or has no higher available ladder rung | Attempt graph inspection | Block the owning work bead | Approve a decision changing policy or assignment |
 | Remote synchronization pending | Private remote cannot reconcile/push | Semantic checkpoint | Permit leased-host local work but block takeover and completion | Restore remote, reconcile, and push |
 | Missing durable worker evidence | Herdr reports completion but attempt evidence is incomplete | Attempt validation | Do not verify, integrate, or close | Request evidence through a write-ahead instruction or mark attempt failed |
-| Agent status race exhausted | All concurrent `done`, `idle`, and `blocked` waits fail or time out | Base Herdr wait results | Inspect current pane state and output; do not infer completion or failure | Retry only from inspected evidence or report the limitation |
-| Claude prompt not submitted | Claude displays `[Pasted text #1]` or remains idle after prompt delivery | Claude composer plus pane state/output inspection | Send an explicit Enter and inspect once; do not resend the prompt blindly | Report exact composer/state evidence if processing still does not begin |
+| Agent settled-state wait fails | The server-owned agent wait times out, returns `unknown`, or otherwise fails | Base Herdr wait result plus current agent inspection | Inspect current agent state and output; do not infer completion or failure | Retry only from inspected evidence or report the limitation |
+| Agent prompt stalls | Atomic prompt submission observes no lifecycle change within the startup window | Herdr returns the stalled-prompt error | Inspect agent state and output; do not resend or add manual Enter blindly | Retry only when inspection shows a safe, non-duplicating submission path |
 
 ---
 
@@ -399,21 +399,21 @@ Preconditions: Molecule execution and failure paths can be exercised.
 Input: Attempt execution outside Herdr, use an unassigned coordinator model, take over without approval, exhaust a ladder, and complete with `sync:pending`.
 Expected Output: Every attempt stops at its owning gate; no model is silently substituted, no lease expires automatically, and evidence remains in Beads.
 
-### TS-SKILL-013: Concurrent Herdr Terminal-State Wait
+### TS-SKILL-013: Server-Owned Herdr Settled-State Wait
 
 Category: Integration
 Priority: Critical
-Preconditions: A detected agent pane can transition to `done`, `idle`, or `blocked`.
-Input: Invoke the base Herdr coordination Activity from working state and separately from each already-terminal state.
-Expected Output: Current terminal state returns immediately; otherwise all three waits start concurrently, the first success wins, remaining waiters are cancelled and reaped, output is read, and complete exhaustion triggers state/output inspection.
+Preconditions: A detected agent can transition to `done`, `idle`, or `blocked`.
+Input: Invoke the base Herdr coordination Activity from working state and separately from each already-settled state.
+Expected Output: One server-owned wait observes the first matching settled state or returns an existing match immediately; output is inspected after the result; timeout, failure, or `unknown` triggers current state and output inspection.
 
 ### TS-SKILL-014: Claude Code Herdr Orchestration
 
 Category: End-to-End
 Priority: High
 Preconditions: Claude Code and Herdr are available and an authorized checkout is selected.
-Input: Launch the Claude Code Herdr workflow, submit a prompt that renders as `[Pasted text #1]`, and exercise completion and blocked states.
-Expected Output: Claude launches with `--dangerously-skip-permissions`; readiness is inspected; explicit Enter produces submission evidence without prompt duplication; base concurrent waiting observes completion or blocking; blocked output is inspected and steered.
+Input: Launch the Claude Code Herdr workflow, atomically submit a prompt, and exercise completion, blocking, and stalled-submission states.
+Expected Output: Validated startup runs Claude with `--dangerously-skip-permissions`; atomic prompt submission handles text and Enter; settled-state waiting observes completion or blocking; blocked output is inspected and steered; stalled submission is inspected without blind resubmission.
 
 ### TS-SKILL-015: Slice Traces and Configurable Review Graph
 
@@ -429,7 +429,8 @@ Expected Output: Every applicable slice carries an evidence-grounded intended tr
 
 | Version | Date | Change |
 |---------|------|--------|
-| 5.0.0 | 2026-08-01 | Replaced filesystem create/divide execution with command-repo execution molecules, exact per-bead model and review policy, `execute-molecule`, write-ahead attempts, coordinator leases, and Beads-first crash recovery. |
+| 6.0.0 | 2026-08-01 | Replaced filesystem create/divide execution with command-repo execution molecules, exact per-bead model and review policy, `execute-molecule`, write-ahead attempts, coordinator leases, and Beads-first crash recovery. |
+| 5.0.0 | 2026-08-01 | Replaced client-owned Herdr status races and manual Claude submission with Herdr 0.7.5's validated startup, atomic prompt, and server-owned settled-state facade. |
 | 4.0.0 | 2026-07-15 | Required a proposed execution trace per ordered step and binding final review gates in every non-empty implementation plan (mode-neutral, results excluded); required slices to retain source traces with a slice-scope frame mapping; added a final integrated Test Quality pass, risk-triggered gates, and impact-scoped review reruns to divide-plan. |
 | 3.1.0 | 2026-07-15 | Added executable concurrent Herdr terminal-state waiting and a composing Claude Code orchestration specialization with divide-plan routing. |
 | 3.0.0 | 2026-07-15 | Split immutable single-agent implementation planning from Herdr-only execution ledgers, established coordinator ownership, test-quality integration gates, and bounded final review remediation. |

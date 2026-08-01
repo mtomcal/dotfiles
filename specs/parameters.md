@@ -1,6 +1,6 @@
 # Parameters
 
-> **Spec Version**: 2.2.0
+> **Spec Version**: 2.3.0
 > **Last Updated**: 2026-08-01
 > **Depends On**: None (foundational spec)
 > **Depended By**: All other specs
@@ -169,7 +169,8 @@ Parameters serve three purposes:
 | `AGENT_CONFIG_DIR_CODEX` | ~/.codex | path | Codex CLI's canonical config directory |
 | `AGENT_CONFIG_DIR_CLAUDE` | ~/.claude | path | Claude Code's canonical config directory |
 | `AGENT_CONFIG_DIR_PI` | ~/.pi/agent | path | Pi's single runtime config directory |
-| `AGENT_CONFIG_DIR_COPILOT` | ~/.config/copilot | path | Copilot CLI's canonical config directory (XDG-style) |
+| `AGENT_CONFIG_DIR_COPILOT` | ~/.config/copilot | path | Repository-managed Copilot catalog exposure directory (XDG-style); holds commands, agents, and shared-skills symlinks |
+| `AGENT_STATE_DIR_COPILOT` | ~/.copilot | path | Current Copilot runtime settings and Herdr hook directory, distinct from the catalog exposure directory |
 | `AGENT_SKILLS_DIR_CODEX` | ~/.agents/skills | path | Codex CLI resolves skills from this path; symlinked to shared skills |
 | `AGENT_SKILLS_DIR_PI` | ~/.pi/agent/skills | path | Pi resolves skills through the single runtime config directory |
 | `HERDR_SKILL_DIR` | ~/dotfiles/shared/skills/herdr | path | Tracked shared Herdr skill source available to every supported agent |
@@ -222,7 +223,8 @@ Parameters serve three purposes:
 
 | Version | Date | Summary |
 |---------|------|---------|
-| 2.2.0 | 2026-08-01 | Added official Beads/Dolt install channels and external command-repo execution, review, lease, correction, synchronization, and attempt-policy parameters. |
+| 2.3.0 | 2026-08-01 | Added official Beads/Dolt install channels and external command-repo execution, review, lease, correction, synchronization, and attempt-policy parameters. |
+| 2.2.0 | 2026-08-01 | Relabeled `AGENT_CONFIG_DIR_COPILOT` as the catalog exposure directory and added `AGENT_STATE_DIR_COPILOT` for Copilot's current runtime settings and Herdr hook directory. |
 | 2.1.0 | 2026-07-31 | Added Python 3.10+ runtime provisioning and macOS Visual Studio Code, Ubuntu/Debian code-server, managed-layer, extension, Vim, bind, authentication, and certificate parameters. |
 | 2.0.0 | 2026-07-15 | Removed parameters owned solely by retired catalog workflows. |
 | 1.7.0 | 2026-07-14 | Added canonical Skill Library paths, naming, discovery, Reference-depth, and section-order parameters. |
