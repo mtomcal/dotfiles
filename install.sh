@@ -1736,9 +1736,9 @@ print_python_source_guidance() {
     print_python_native_policy
 }
 
-# A refused `brew upgrade` on an already-current formula is not an error; a
-# download, permission, or build failure is. Only the first is benign.
-python_upgrade_is_already_current() {
+# A refused `brew upgrade` on an already-current formula or Cask is not an
+# error; a download, permission, or build failure is. Only the first is benign.
+brew_upgrade_is_already_current() {
     case "$1" in
         *"already installed"*|*"up-to-date"*|*"up to date"*) return 0 ;;
     esac
@@ -1866,7 +1866,7 @@ install_python() {
                 # An already-current formula is reported as a refusal on some
                 # Homebrew versions; anything else is a genuine failure that
                 # leaves the installed formula for verification to judge.
-                if python_upgrade_is_already_current "$upgrade_output"; then
+                if brew_upgrade_is_already_current "$upgrade_output"; then
                     print_success "Homebrew Python is already current"
                 else
                     print_warning "brew upgrade python failed; verifying the installed formula instead"
@@ -1914,16 +1914,48 @@ install_python() {
     print_success "Python $version with working virtual environments is ready"
 }
 
+# Official stable Visual Studio Code. A substitute distribution would lose the
+# Microsoft Marketplace and Remote SSH, so this identity is not configurable.
+VSCODE_MACOS_CASK="visual-studio-code"
+
 install_vscode() {
     print_header "Installing Visual Studio Code"
+
+    local upgrade_output
 
     if [ "$OS" != "macos" ]; then
         print_error "Visual Studio Code Desktop is supported on macOS only (detected: ${OS:-unknown})"
         return 1
     fi
 
-    print_error "Visual Studio Code Desktop installation is not implemented yet"
-    return 1
+    if brew list --cask "$VSCODE_MACOS_CASK" &> /dev/null; then
+        print_info "Requesting an upgrade of official Visual Studio Code..."
+        if ! upgrade_output="$(brew upgrade --cask "$VSCODE_MACOS_CASK" 2>&1)"; then
+            if brew_upgrade_is_already_current "$upgrade_output"; then
+                print_success "Official Visual Studio Code is already current"
+            else
+                print_error "Upgrading the $VSCODE_MACOS_CASK Cask failed:"
+                printf '%s\n' "$upgrade_output"
+                return 1
+            fi
+        fi
+    else
+        print_info "Installing official Visual Studio Code..."
+        if ! brew install --cask "$VSCODE_MACOS_CASK"; then
+            print_error "Installing the $VSCODE_MACOS_CASK Cask failed"
+            return 1
+        fi
+    fi
+
+    # The managed configuration drives the editor through its own CLI, so a
+    # Cask that leaves no `code` command is an incomplete installation.
+    if ! command -v code &> /dev/null; then
+        print_error "The 'code' command is unavailable after installing $VSCODE_MACOS_CASK"
+        print_info "Run 'Shell Command: Install \"code\" command in PATH' from the editor's command palette, then rerun."
+        return 1
+    fi
+
+    print_success "Official Visual Studio Code Desktop is installed and 'code' is available"
 }
 
 # Deploy the repository-managed editor layer into one editor User directory.
@@ -2070,6 +2102,21 @@ reconcile_vscode_extensions() {
     print_success "Extension catalog reconciled"
 }
 
+# Language runtimes are provisioned by their own modules, so an editor target
+# reports their absence without owning it: the extensions are configured
+# either way and only stay idle until a runtime exists.
+warn_for_missing_editor_runtimes() {
+    if ! command -v python3 &> /dev/null; then
+        print_warning "No Python interpreter found; Python editor support stays idle until one is available (select the 'python' module or a project runtime)"
+    fi
+
+    if ! command -v node &> /dev/null; then
+        print_warning "No Node.js runtime found; JavaScript and TypeScript editor support stays idle until one is available (select the 'nodejs' module or a project runtime)"
+    fi
+
+    return 0
+}
+
 configure_vscode() {
     print_header "Configuring Visual Studio Code"
 
@@ -2078,8 +2125,25 @@ configure_vscode() {
         return 1
     fi
 
-    print_error "VS Code managed configuration is not implemented yet"
-    return 1
+    local user_dir="$HOME/Library/Application Support/Code/User"
+
+    deploy_vscode_managed_layer "$user_dir" || return 1
+
+    # The shared catalog first, then the desktop-only entries, both through
+    # the editor's own CLI.
+    reconcile_vscode_extensions code \
+        "$DOTFILES_DIR/vscode/extensions/shared.txt" \
+        "$DOTFILES_DIR/vscode/extensions/desktop.txt" || return 1
+
+    # Held movement keys must repeat instead of opening the accent picker.
+    if ! defaults write com.microsoft.VSCode ApplePressAndHoldEnabled -bool false; then
+        print_error "Disabling press-and-hold for Visual Studio Code failed"
+        return 1
+    fi
+
+    warn_for_missing_editor_runtimes
+
+    print_success "Visual Studio Code Default Profile is configured"
 }
 
 install_code_server() {

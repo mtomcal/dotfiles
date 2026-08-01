@@ -909,4 +909,544 @@ $OBSERVED_CALLS"
 $OBSERVED_OUTPUT"
 }
 
+# ---------------------------------------------------------------------------
+# Desktop provisioning — official Cask install/upgrade
+# ---------------------------------------------------------------------------
+
+# Install the Homebrew seam used by the desktop provisioning tests. Every
+# invocation is logged verbatim, so the log is the evidence of which official
+# identity was asked for — and that no substitute distribution was.
+#
+# Outcomes are controlled through the environment:
+#   STUB_CASK_PRESENT  non-empty when the Cask is already installed
+#   STUB_BREW_FAIL     "install" or "upgrade": that verb fails
+#   STUB_BREW_MESSAGE  what the failing verb reports
+install_brew_stub() {
+    local path="$1"
+
+    cat > "$path" <<'STUB'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >> "$STUB_LOG"
+
+case "$1 $2" in
+    "list --cask")
+        [ -n "${STUB_CASK_PRESENT:-}" ] || exit 1
+        exit 0
+        ;;
+    "install --cask")
+        [ "${STUB_BREW_FAIL:-}" != "install" ] || {
+            printf '%s\n' "${STUB_BREW_MESSAGE:-Error: Download failed}" >&2
+            exit 1
+        }
+        exit 0
+        ;;
+    "upgrade --cask")
+        [ "${STUB_BREW_FAIL:-}" != "upgrade" ] || {
+            printf '%s\n' "${STUB_BREW_MESSAGE:-Error: Download failed}"
+            exit 1
+        }
+        exit 0
+        ;;
+esac
+
+exit 9
+STUB
+    chmod +x "$path"
+}
+
+# A stub for a command that only has to exist and succeed.
+install_present_command() {
+    printf '#!/usr/bin/env bash\nexit 0\n' > "$1"
+    chmod +x "$1"
+}
+
+# Declare Homebrew's outcomes for the next run. All three are always set so
+# no test inherits another test's stub state.
+brew_outcomes() {
+    export STUB_CASK_PRESENT="$1"
+    export STUB_BREW_FAIL="${2:-}"
+    export STUB_BREW_MESSAGE="${3:-}"
+}
+
+# Run the desktop installer with a caller-built PATH holding the only
+# commands it is allowed to find.
+#
+# Sets in the caller's shell:
+#   OBSERVED_STATUS   exit status of install_vscode
+#   OBSERVED_OUTPUT   combined stdout/stderr of the call
+#   OBSERVED_CALLS    ordered Homebrew invocations, one per line
+run_install_vscode() {
+    local platform="$1"
+    local bin="$2"
+    local out
+
+    source_install
+
+    SUITE_TMP_SEQUENCE=$((SUITE_TMP_SEQUENCE + 1))
+    out="$(tmp_artifact "install-vscode-$SUITE_TMP_SEQUENCE.out")"
+    STUB_LOG="$(tmp_artifact "brew-$SUITE_TMP_SEQUENCE.log")"
+    export STUB_LOG
+    : > "$STUB_LOG"
+
+    OS="$platform"
+    OBSERVED_STATUS=0
+    (
+        export PATH="$bin"
+        install_vscode
+    ) > "$out" 2>&1 || OBSERVED_STATUS=$?
+    OBSERVED_OUTPUT="$(cat "$out")"
+    OBSERVED_CALLS="$(cat "$STUB_LOG")"
+}
+
+# A desktop host whose PATH holds Homebrew and, unless told otherwise, the
+# editor command a successful installation leaves behind.
+desktop_bin() {
+    local bin="$1"
+    local with_code="${2:-code}"
+
+    mkdir -p "$bin"
+    # The PATH is replaced rather than prefixed, so an absent editor command
+    # is genuinely absent; the stubs' own interpreter has to be reachable too.
+    ln -sf "$(command -v bash)" "$bin/bash"
+    install_brew_stub "$bin/brew"
+    [ "$with_code" != "code" ] || install_present_command "$bin/code"
+}
+
+test_desktop_installation_is_refused_outside_macos() {
+    local work
+
+    new_tmp_var work
+    desktop_bin "$work/bin"
+    brew_outcomes ""
+
+    run_install_vscode ubuntu "$work/bin"
+
+    [[ "$OBSERVED_STATUS" -ne 0 ]] || fail "expected desktop installation to fail off macOS"
+    [[ -z "$OBSERVED_CALLS" ]] || fail "an unsupported platform still asked Homebrew for the editor:
+$OBSERVED_CALLS"
+    [[ "$OBSERVED_OUTPUT" == *"macOS"* ]] || fail "the unsupported-platform message does not name the supported platform:
+$OBSERVED_OUTPUT"
+}
+
+test_an_absent_official_cask_is_installed_and_the_command_verified() {
+    local work
+
+    new_tmp_var work
+    desktop_bin "$work/bin"
+    brew_outcomes ""
+
+    run_install_vscode macos "$work/bin"
+
+    [[ "$OBSERVED_STATUS" -eq 0 ]] || fail "expected the absent Cask to install, got status $OBSERVED_STATUS: $OBSERVED_OUTPUT"
+    [[ "$OBSERVED_CALLS" == "list --cask visual-studio-code
+install --cask visual-studio-code" ]] || fail "the official Cask was not installed exactly:
+$OBSERVED_CALLS"
+}
+
+test_a_present_official_cask_is_asked_to_upgrade_instead_of_reinstall() {
+    local work
+
+    new_tmp_var work
+    desktop_bin "$work/bin"
+    brew_outcomes present
+
+    run_install_vscode macos "$work/bin"
+
+    [[ "$OBSERVED_STATUS" -eq 0 ]] || fail "expected the present Cask to upgrade, got status $OBSERVED_STATUS: $OBSERVED_OUTPUT"
+    [[ "$OBSERVED_CALLS" == "list --cask visual-studio-code
+upgrade --cask visual-studio-code" ]] || fail "the present Cask was not offered an upgrade exactly:
+$OBSERVED_CALLS"
+}
+
+test_no_substitute_distribution_or_application_bundle_is_touched() {
+    local work
+    local platform
+
+    new_tmp_var work
+    desktop_bin "$work/bin"
+
+    for platform in "" present; do
+        brew_outcomes "$platform"
+        run_install_vscode macos "$work/bin"
+
+        [[ "$OBSERVED_STATUS" -eq 0 ]] || fail "expected provisioning to succeed, got status $OBSERVED_STATUS: $OBSERVED_OUTPUT"
+        [[ "$OBSERVED_CALLS" != *codium* && "$OBSERVED_CALLS" != *oss* ]] || fail "a substitute distribution was requested:
+$OBSERVED_CALLS"
+        [[ "$OBSERVED_CALLS" != *"/Applications"* && "$OBSERVED_CALLS" != *codesign* ]] || fail "the application bundle was touched:
+$OBSERVED_CALLS"
+    done
+}
+
+test_a_missing_editor_command_after_provisioning_fails() {
+    local work
+
+    new_tmp_var work
+    desktop_bin "$work/bin" without-code
+    brew_outcomes ""
+
+    run_install_vscode macos "$work/bin"
+
+    [[ "$OBSERVED_STATUS" -ne 0 ]] || fail "a provisioning run that left no editor command reported success"
+    [[ "$OBSERVED_CALLS" == "list --cask visual-studio-code
+install --cask visual-studio-code" ]] || fail "unexpected Homebrew calls before verification:
+$OBSERVED_CALLS"
+    [[ "$OBSERVED_OUTPUT" == *"code"* ]] || fail "the failure does not name the missing command interface:
+$OBSERVED_OUTPUT"
+}
+
+test_a_failed_cask_installation_fails_the_module_with_its_diagnostics() {
+    local work
+
+    new_tmp_var work
+    desktop_bin "$work/bin"
+    brew_outcomes "" install "Error: Download failed on Cask visual-studio-code"
+
+    run_install_vscode macos "$work/bin"
+
+    [[ "$OBSERVED_STATUS" -ne 0 ]] || fail "a failed Cask installation was treated as success"
+    [[ "$OBSERVED_OUTPUT" == *"Download failed on Cask visual-studio-code"* ]] || fail "the Homebrew diagnostics were swallowed:
+$OBSERVED_OUTPUT"
+}
+
+test_a_failed_cask_upgrade_fails_the_module_with_its_diagnostics() {
+    local work
+
+    new_tmp_var work
+    desktop_bin "$work/bin"
+    brew_outcomes present upgrade "Error: Failed to download resource visual-studio-code"
+
+    run_install_vscode macos "$work/bin"
+
+    [[ "$OBSERVED_STATUS" -ne 0 ]] || fail "a failed Cask upgrade was treated as success"
+    [[ "$OBSERVED_OUTPUT" == *"Failed to download resource visual-studio-code"* ]] || fail "the Homebrew diagnostics were swallowed:
+$OBSERVED_OUTPUT"
+}
+
+test_an_already_current_cask_is_not_a_failure() {
+    local work
+    local message
+
+    new_tmp_var work
+    desktop_bin "$work/bin"
+
+    for message in \
+        "Warning: visual-studio-code 1.99.0 already installed" \
+        "Warning: visual-studio-code is up-to-date"
+    do
+        brew_outcomes present upgrade "$message"
+        run_install_vscode macos "$work/bin"
+
+        [[ "$OBSERVED_STATUS" -eq 0 ]] || fail "an already-current Cask was reported as a failure: $OBSERVED_OUTPUT"
+    done
+}
+
+# ---------------------------------------------------------------------------
+# Desktop configuration — Default Profile composition
+# ---------------------------------------------------------------------------
+
+# The managed catalogs the desktop target composes, named once so the tests
+# assert against canonical repository paths instead of restating them.
+SHARED_MANIFEST="$DOTFILES_DIR/vscode/extensions/shared.txt"
+DESKTOP_MANIFEST="$DOTFILES_DIR/vscode/extensions/desktop.txt"
+
+# A macOS host whose PATH holds only the commands the configuration is
+# allowed to find. Extra names ("code", "python3", "node") are present only
+# when listed, so absence is genuine.
+configure_bin() {
+    local bin="$1"
+    local name
+    shift
+
+    mkdir -p "$bin"
+    ln -sf "$(command -v bash)" "$bin/bash"
+    printf '#!/usr/bin/env bash\nprintf '"'"'%%s\\n'"'"' "defaults $*" >> "$STUB_LOG"\nexit "${STUB_DEFAULTS_STATUS:-0}"\n' > "$bin/defaults"
+    chmod +x "$bin/defaults"
+
+    for name in "$@"; do
+        install_present_command "$bin/$name"
+    done
+}
+
+# Replace the integrated helpers the desktop target owns the composition of
+# with recorders, optionally failing the named one. Every call is logged
+# before the injected failure, so the log shows both what ran and what never
+# started.
+stub_owned_operations() {
+    local failing="$1"
+
+    deploy_vscode_managed_layer() {
+        printf 'deploy_vscode_managed_layer %s\n' "$1" >> "$STUB_LOG"
+        [ "$failing" != "deploy" ] || return 1
+        return 0
+    }
+
+    reconcile_vscode_extensions() {
+        printf 'reconcile_vscode_extensions %s\n' "$*" >> "$STUB_LOG"
+        [ "$failing" != "reconcile" ] || return 1
+        return 0
+    }
+}
+
+# Run the desktop configuration with its owned dependencies recorded and one
+# of them optionally forced to fail.
+#
+# $4 selects the failing step: deploy, reconcile, defaults, or none.
+#
+# Sets in the caller's shell:
+#   OBSERVED_STATUS   exit status of configure_vscode
+#   OBSERVED_OUTPUT   combined stdout/stderr of the call
+#   OBSERVED_CALLS    ordered owned operations, one per line
+run_configure_vscode() {
+    local platform="$1"
+    local bin="$2"
+    local home="$3"
+    local failing="${4:-none}"
+    local out
+
+    source_install
+
+    SUITE_TMP_SEQUENCE=$((SUITE_TMP_SEQUENCE + 1))
+    out="$(tmp_artifact "configure-vscode-$SUITE_TMP_SEQUENCE.out")"
+    STUB_LOG="$(tmp_artifact "configure-calls-$SUITE_TMP_SEQUENCE.log")"
+    export STUB_LOG
+    : > "$STUB_LOG"
+
+    OS="$platform"
+    OBSERVED_STATUS=0
+    (
+        export PATH="$bin"
+        export HOME="$home"
+        export STUB_DEFAULTS_STATUS=0
+        [ "$failing" != "defaults" ] || export STUB_DEFAULTS_STATUS=1
+
+        stub_owned_operations "$failing"
+
+        configure_vscode
+    ) > "$out" 2>&1 || OBSERVED_STATUS=$?
+    OBSERVED_OUTPUT="$(cat "$out")"
+    OBSERVED_CALLS="$(cat "$STUB_LOG")"
+}
+
+test_desktop_configuration_is_refused_outside_macos() {
+    local work
+
+    new_tmp_var work
+    configure_bin "$work/bin" code python3 node
+
+    run_configure_vscode ubuntu "$work/bin" "$work/home"
+
+    [[ "$OBSERVED_STATUS" -ne 0 ]] || fail "expected desktop configuration to fail off macOS"
+    [[ -z "$OBSERVED_CALLS" ]] || fail "an unsupported platform still configured the editor:
+$OBSERVED_CALLS"
+    [[ "$OBSERVED_OUTPUT" == *"macOS"* ]] || fail "the unsupported-platform message does not name the supported platform:
+$OBSERVED_OUTPUT"
+}
+
+test_configuration_deploys_the_managed_layer_then_reconciles_shared_before_desktop() {
+    local work
+
+    new_tmp_var work
+    configure_bin "$work/bin" code python3 node
+
+    run_configure_vscode macos "$work/bin" "$work/home"
+
+    [[ "$OBSERVED_STATUS" -eq 0 ]] || fail "expected desktop configuration to succeed, got status $OBSERVED_STATUS: $OBSERVED_OUTPUT"
+    [[ "$OBSERVED_CALLS" == "deploy_vscode_managed_layer $work/home/Library/Application Support/Code/User
+reconcile_vscode_extensions code $SHARED_MANIFEST $DESKTOP_MANIFEST
+defaults write com.microsoft.VSCode ApplePressAndHoldEnabled -bool false" ]] || fail "unexpected desktop configuration steps:
+$OBSERVED_CALLS"
+}
+
+test_a_failing_owned_operation_stops_the_configuration_and_propagates() {
+    local work
+    local deploy_call
+    local reconcile_call
+
+    new_tmp_var work
+    configure_bin "$work/bin" code python3 node
+    deploy_call="deploy_vscode_managed_layer $work/home/Library/Application Support/Code/User"
+    reconcile_call="reconcile_vscode_extensions code $SHARED_MANIFEST $DESKTOP_MANIFEST"
+
+    run_configure_vscode macos "$work/bin" "$work/home" deploy
+    [[ "$OBSERVED_STATUS" -ne 0 ]] || fail "a failed managed deployment was reported as success"
+    [[ "$OBSERVED_CALLS" == "$deploy_call" ]] || fail "configuration continued past a failed deployment:
+$OBSERVED_CALLS"
+
+    run_configure_vscode macos "$work/bin" "$work/home" reconcile
+    [[ "$OBSERVED_STATUS" -ne 0 ]] || fail "a failed reconciliation was reported as success"
+    [[ "$OBSERVED_CALLS" == "$deploy_call
+$reconcile_call" ]] || fail "configuration continued past a failed reconciliation:
+$OBSERVED_CALLS"
+
+    run_configure_vscode macos "$work/bin" "$work/home" defaults
+    [[ "$OBSERVED_STATUS" -ne 0 ]] || fail "a failed key-repeat preference was reported as success"
+    [[ "$OBSERVED_CALLS" == "$deploy_call
+$reconcile_call
+defaults write com.microsoft.VSCode ApplePressAndHoldEnabled -bool false" ]] || fail "unexpected steps around the failed preference:
+$OBSERVED_CALLS"
+}
+
+# ---------------------------------------------------------------------------
+# Desktop configuration — nonblocking runtime warnings
+# ---------------------------------------------------------------------------
+
+# The configuration's own report, stripped of colour so lines can be matched
+# and ordered.
+configuration_report() {
+    printf '%s\n' "$OBSERVED_OUTPUT" | sed -e 's/'$'\033''\[[0-9;]*m//g'
+}
+
+# Warning lines naming a runtime, as reported to the operator.
+warnings_naming() {
+    configuration_report | grep '^\[WARNING\]' | grep -c -i -- "$1" || true
+}
+
+# 1-based line of the first report line matching a pattern, or 0.
+report_line_of() {
+    configuration_report | grep -n -i -- "$1" | head -1 | cut -d: -f1
+}
+
+test_present_runtimes_produce_no_warning() {
+    local work
+
+    new_tmp_var work
+    configure_bin "$work/bin" code python3 node
+
+    run_configure_vscode macos "$work/bin" "$work/home"
+
+    [[ "$OBSERVED_STATUS" -eq 0 ]] || fail "expected configuration to succeed, got status $OBSERVED_STATUS: $OBSERVED_OUTPUT"
+    [[ "$(configuration_report | grep -c '^\[WARNING\]' || true)" -eq 0 ]] || fail "present runtimes still produced a warning:
+$(configuration_report)"
+}
+
+test_a_missing_runtime_warns_without_failing_the_configuration() {
+    local work
+
+    new_tmp_var work
+
+    configure_bin "$work/bin-no-python" code node
+    run_configure_vscode macos "$work/bin-no-python" "$work/home"
+    [[ "$OBSERVED_STATUS" -eq 0 ]] || fail "a missing Python runtime failed the configuration: $OBSERVED_OUTPUT"
+    [[ "$(warnings_naming python)" -eq 1 ]] || fail "expected exactly one Python runtime warning:
+$(configuration_report)"
+    [[ "$(warnings_naming node)" -eq 0 ]] || fail "a present Node.js runtime was reported as missing:
+$(configuration_report)"
+
+    configure_bin "$work/bin-no-node" code python3
+    run_configure_vscode macos "$work/bin-no-node" "$work/home"
+    [[ "$OBSERVED_STATUS" -eq 0 ]] || fail "a missing Node.js runtime failed the configuration: $OBSERVED_OUTPUT"
+    [[ "$(warnings_naming node)" -eq 1 ]] || fail "expected exactly one Node.js runtime warning:
+$(configuration_report)"
+    [[ "$(warnings_naming python)" -eq 0 ]] || fail "a present Python runtime was reported as missing:
+$(configuration_report)"
+}
+
+test_both_missing_runtimes_warn_before_the_configuration_reports_success() {
+    local work
+    local warning_line
+    local success_line
+
+    new_tmp_var work
+    configure_bin "$work/bin" code
+
+    run_configure_vscode macos "$work/bin" "$work/home"
+
+    [[ "$OBSERVED_STATUS" -eq 0 ]] || fail "missing runtimes failed the configuration: $OBSERVED_OUTPUT"
+    [[ "$(warnings_naming python)" -eq 1 ]] || fail "expected a Python runtime warning:
+$(configuration_report)"
+    [[ "$(warnings_naming node)" -eq 1 ]] || fail "expected a Node.js runtime warning:
+$(configuration_report)"
+    [[ "$OBSERVED_CALLS" == *"defaults write com.microsoft.VSCode ApplePressAndHoldEnabled -bool false"* ]] || fail "missing runtimes skipped owned configuration work:
+$OBSERVED_CALLS"
+
+    warning_line="$(report_line_of '^\[WARNING\]')"
+    success_line="$(report_line_of 'Default Profile')"
+    [[ -n "$success_line" && "$warning_line" -lt "$success_line" ]] || fail "runtime warnings did not precede the success report:
+$(configuration_report)"
+}
+
+# ---------------------------------------------------------------------------
+# Desktop completion — honest Settings Sync guidance
+# ---------------------------------------------------------------------------
+
+# Run the desktop configuration the way the installer does — as a module
+# whose outcome decides the completion report — and capture everything the
+# operator sees.
+#
+# Sets in the caller's shell:
+#   OBSERVED_STATUS   0 only when the module completed
+#   OBSERVED_OUTPUT   combined module and completion-report output
+run_desktop_module() {
+    local bin="$1"
+    local home="$2"
+    local failing="${3:-none}"
+    local out
+
+    source_install
+
+    SUITE_TMP_SEQUENCE=$((SUITE_TMP_SEQUENCE + 1))
+    out="$(tmp_artifact "desktop-module-$SUITE_TMP_SEQUENCE.out")"
+    STUB_LOG="$(tmp_artifact "desktop-module-calls-$SUITE_TMP_SEQUENCE.log")"
+    export STUB_LOG
+    : > "$STUB_LOG"
+
+    OS="macos"
+    OBSERVED_STATUS=0
+    (
+        export PATH="$bin"
+        export HOME="$home"
+        export STUB_DEFAULTS_STATUS=0
+        [ "$failing" != "defaults" ] || export STUB_DEFAULTS_STATUS=1
+        COMPLETED_MODULES=()
+        FAILED_MODULES=()
+
+        stub_owned_operations "$failing"
+
+        run_module vscode_config configure_vscode
+        show_editor_completion_notices
+        [ "${#FAILED_MODULES[@]}" -eq 0 ]
+    ) > "$out" 2>&1 || OBSERVED_STATUS=$?
+    OBSERVED_OUTPUT="$(cat "$out")"
+}
+
+# Everything the operator was told about Settings Sync, in report order.
+settings_sync_guidance() {
+    configuration_report | grep -i 'settings sync' || true
+}
+
+test_successful_desktop_configuration_reports_the_manual_settings_sync_action() {
+    local work
+
+    new_tmp_var work
+    configure_bin "$work/bin" code python3 node
+
+    run_desktop_module "$work/bin" "$work/home"
+
+    [[ "$OBSERVED_STATUS" -eq 0 ]] || fail "expected the desktop module to complete, got status $OBSERVED_STATUS: $OBSERVED_OUTPUT"
+    [[ "$(settings_sync_guidance | wc -l)" -eq 1 ]] || fail "expected exactly one Settings Sync action line:
+$(settings_sync_guidance)"
+    [[ "$(settings_sync_guidance)" == *manual* ]] || fail "the Settings Sync action is not stated as manual:
+$(settings_sync_guidance)"
+    [[ "$(configuration_report)" == *"cannot detect or enforce"* ]] || fail "the report does not disclaim detection and enforcement:
+$(configuration_report)"
+    [[ "$(configuration_report | grep -i -c 'automatically\|disabled Settings Sync\|enforced Settings Sync' || true)" -eq 0 ]] || fail "the report claims Settings Sync automation:
+$(configuration_report)"
+}
+
+test_a_failed_desktop_configuration_reports_no_settings_sync_success_guidance() {
+    local work
+    local failing
+
+    new_tmp_var work
+    configure_bin "$work/bin" code python3 node
+
+    for failing in deploy reconcile defaults; do
+        run_desktop_module "$work/bin" "$work/home" "$failing"
+
+        [[ "$OBSERVED_STATUS" -ne 0 ]] || fail "a failed '$failing' step still completed the module"
+        [[ -z "$(settings_sync_guidance)" ]] || fail "a failed '$failing' step still printed success guidance:
+$(settings_sync_guidance)"
+    done
+}
+
 run_tests "install vscode managed layer and extension reconciliation"
