@@ -1947,6 +1947,114 @@ deploy_vscode_managed_layer() {
     replace_symlink "$DOTFILES_DIR/vscode/snippets" "$user_dir/snippets" || return 1
 }
 
+# The organizational content of a manifest line: surrounding whitespace is
+# removed and blanks and full-line comments collapse to nothing, so callers
+# can treat an empty result as "no entry here".
+vscode_manifest_entry() {
+    local entry="$1"
+
+    entry="${entry#"${entry%%[![:space:]]*}"}"
+    entry="${entry%"${entry##*[![:space:]]}"}"
+
+    case "$entry" in
+        '#'*) entry="" ;;
+    esac
+
+    printf '%s' "$entry"
+}
+
+# A marketplace identity is `publisher.name`, optionally pinned with
+# `@version`.
+vscode_extension_identity_is_valid() {
+    [[ "$1" =~ ^[A-Za-z0-9][A-Za-z0-9-]*\.[A-Za-z0-9][A-Za-z0-9-]*(@[A-Za-z0-9][A-Za-z0-9.+-]*)?$ ]]
+}
+
+# An install request reports success even when the marketplace resolved a
+# different release, so a pin counts as satisfied only when the editor itself
+# lists that exact version as installed. Editors report identities with their
+# own casing, so the comparison ignores case.
+vscode_extension_pin_is_active() {
+    local cli="$1"
+    local entry="$2"
+    local installed
+
+    installed="$("$cli" --list-extensions --show-versions < /dev/null)" || return 1
+    grep -q -i -x -F -- "$entry" <<< "$installed"
+}
+
+# Bring one manifest entry to its declared state, reporting only whether the
+# entry is now satisfied. Unpinned entries install or update to whatever the
+# marketplace currently considers compatible; pinned entries request their
+# exact version and are only satisfied once the editor confirms it is active.
+vscode_extension_is_reconciled() {
+    local cli="$1"
+    local entry="$2"
+
+    vscode_extension_identity_is_valid "$entry" || return 1
+    "$cli" --install-extension "$entry" --force < /dev/null || return 1
+
+    case "$entry" in
+        *@*) vscode_extension_pin_is_active "$cli" "$entry" || return 1 ;;
+    esac
+}
+
+# Record one failed identity in the caller's accumulator, at most once, so a
+# name that fails in both the shared and the target manifest still appears a
+# single time in the aggregate report.
+vscode_record_extension_failure() {
+    case "
+$VSCODE_EXTENSION_FAILURES" in
+        *"
+$1
+"*) return 0 ;;
+    esac
+
+    VSCODE_EXTENSION_FAILURES="$VSCODE_EXTENSION_FAILURES$1
+"
+}
+
+# Reconcile an editor's extension catalog through that editor's own CLI.
+# Manifests are processed in the order supplied (shared before target) and
+# entries in file order. The catalog is a required-presence declaration, not
+# an inventory: nothing is ever listed for removal or pruned, and a failing
+# entry never stops the ones behind it. Every failure is reported together
+# once the whole catalog has been attempted.
+reconcile_vscode_extensions() {
+    local cli="$1"
+    local manifest
+    local line
+    local entry
+    # Dynamically scoped: vscode_record_extension_failure appends here.
+    local VSCODE_EXTENSION_FAILURES=""
+    shift
+
+    for manifest in "$@"; do
+        if [ ! -f "$manifest" ]; then
+            vscode_record_extension_failure "$manifest"
+            continue
+        fi
+
+        while IFS= read -r line || [ -n "$line" ]; do
+            entry="$(vscode_manifest_entry "$line")"
+            [ -n "$entry" ] || continue
+
+            vscode_extension_is_reconciled "$cli" "$entry" ||
+                vscode_record_extension_failure "$entry"
+        done < "$manifest"
+    done
+
+    if [ -n "$VSCODE_EXTENSION_FAILURES" ]; then
+        print_error "Extension reconciliation failed for:"
+        while IFS= read -r entry; do
+            print_error "  $entry"
+        done <<< "${VSCODE_EXTENSION_FAILURES%
+}"
+        return 1
+    fi
+
+    print_success "Extension catalog reconciled"
+}
+
 configure_vscode() {
     print_header "Configuring Visual Studio Code"
 

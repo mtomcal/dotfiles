@@ -392,4 +392,283 @@ $(diff <(printf '%s\n' "$before") <(printf '%s\n' "$after") || true)"
 $(backup_entries "$work/User")"
 }
 
-run_tests "install vscode managed layer deployment"
+# ---------------------------------------------------------------------------
+# Extension reconciliation
+# ---------------------------------------------------------------------------
+
+# Install the editor CLI seam used by every reconciliation test. Each
+# invocation is logged verbatim, so the log is the evidence of what was asked
+# of the editor — including anything the reconciler must never ask. Any verb
+# other than the two supported ones exits 9, so a prune or a bare listing is
+# a loud failure rather than a silent success.
+#
+# Outcomes are controlled through the environment by cli_outcomes:
+#   STUB_FAIL       whitespace-separated identities whose install fails
+#   STUB_INSTALLED  "id@version" lines reported by --list-extensions
+install_cli_stub() {
+    local path="$1"
+
+    cat > "$path" <<'STUB'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >> "$STUB_LOG"
+
+case "$1" in
+    --install-extension)
+        for failing in ${STUB_FAIL:-}; do
+            [ "$2" != "$failing" ] || exit 1
+        done
+        exit 0
+        ;;
+    --list-extensions)
+        [ "$2" = "--show-versions" ] || exit 9
+        [ -z "${STUB_INSTALLED:-}" ] || printf '%s\n' "$STUB_INSTALLED"
+        exit 0
+        ;;
+esac
+
+exit 9
+STUB
+    chmod +x "$path"
+}
+
+# Declare the editor's outcomes for the next run. Both are always set so no
+# test inherits another test's stub state.
+cli_outcomes() {
+    export STUB_FAIL="$1"
+    export STUB_INSTALLED="$2"
+}
+
+# Write a manifest whose lines are given as arguments, so fixtures show their
+# comments, blanks, and entries literally at the call site.
+write_manifest() {
+    local path="$1"
+    shift
+
+    printf '%s\n' "$@" > "$path"
+}
+
+# Run the public reconciler against a stub CLI and caller-ordered manifests.
+#
+# Sets in the caller's shell:
+#   OBSERVED_STATUS   exit status of reconcile_vscode_extensions
+#   OBSERVED_OUTPUT   combined stdout/stderr of the call
+#   OBSERVED_CALLS    ordered editor CLI invocations, one per line
+run_reconcile() {
+    local cli="$1"
+    local out
+    shift
+
+    source_install
+
+    SUITE_TMP_SEQUENCE=$((SUITE_TMP_SEQUENCE + 1))
+    out="$(tmp_artifact "reconcile-$SUITE_TMP_SEQUENCE.out")"
+    STUB_LOG="$(tmp_artifact "cli-$SUITE_TMP_SEQUENCE.log")"
+    export STUB_LOG
+    : > "$STUB_LOG"
+
+    OBSERVED_STATUS=0
+    reconcile_vscode_extensions "$cli" "$@" > "$out" 2>&1 || OBSERVED_STATUS=$?
+    OBSERVED_OUTPUT="$(cat "$out")"
+    OBSERVED_CALLS="$(cat "$STUB_LOG")"
+}
+
+# Lines of the aggregate report that name the given identity.
+report_lines_naming() {
+    local identity="$1"
+
+    printf '%s\n' "$OBSERVED_OUTPUT" | grep -c -F -- "$identity" || true
+}
+
+# ---------------------------------------------------------------------------
+# Cycle A — ordered manifest parsing and unpinned installs
+# ---------------------------------------------------------------------------
+
+test_manifests_reconcile_in_argument_then_file_order() {
+    local work
+
+    new_tmp_var work
+    install_cli_stub "$work/code"
+    cli_outcomes "" ""
+    write_manifest "$work/shared.txt" \
+        '# Extensions reconciled on every editor target.' \
+        '' \
+        'EditorConfig.EditorConfig' \
+        '   ' \
+        '# Python linting and formatting' \
+        'charliermarsh.ruff'
+    write_manifest "$work/target.txt" \
+        '# Target-specific entries.' \
+        'ms-python.python' \
+        'ms-python.debugpy'
+
+    run_reconcile "$work/code" "$work/shared.txt" "$work/target.txt"
+
+    [[ "$OBSERVED_STATUS" -eq 0 ]] || fail "expected reconciliation to succeed, got status $OBSERVED_STATUS: $OBSERVED_OUTPUT"
+    [[ "$OBSERVED_CALLS" == "--install-extension EditorConfig.EditorConfig --force
+--install-extension charliermarsh.ruff --force
+--install-extension ms-python.python --force
+--install-extension ms-python.debugpy --force" ]] || fail "unexpected editor calls:
+$OBSERVED_CALLS"
+}
+
+test_malformed_entries_are_reported_and_never_executed() {
+    local work
+
+    new_tmp_var work
+    install_cli_stub "$work/code"
+    cli_outcomes "" ""
+    write_manifest "$work/shared.txt" \
+        'EditorConfig.EditorConfig' \
+        'nopublisher' \
+        'two words' \
+        'trailing.comment # note' \
+        'charliermarsh.ruff'
+
+    run_reconcile "$work/code" "$work/shared.txt"
+
+    [[ "$OBSERVED_STATUS" -ne 0 ]] || fail "expected malformed entries to fail reconciliation"
+    [[ "$OBSERVED_CALLS" == "--install-extension EditorConfig.EditorConfig --force
+--install-extension charliermarsh.ruff --force" ]] || fail "a malformed entry reached the editor:
+$OBSERVED_CALLS"
+    [[ "$(report_lines_naming 'nopublisher')" -eq 1 ]] || fail "malformed entry 'nopublisher' not reported exactly once:
+$OBSERVED_OUTPUT"
+    [[ "$(report_lines_naming 'two words')" -eq 1 ]] || fail "malformed entry 'two words' not reported exactly once:
+$OBSERVED_OUTPUT"
+    [[ "$(report_lines_naming 'trailing.comment # note')" -eq 1 ]] || fail "malformed entry with a trailing comment not reported exactly once:
+$OBSERVED_OUTPUT"
+}
+
+# ---------------------------------------------------------------------------
+# Cycle B — optional exact pins
+# ---------------------------------------------------------------------------
+
+test_a_pinned_entry_is_requested_exactly_and_verified_as_active() {
+    local work
+
+    new_tmp_var work
+    install_cli_stub "$work/code"
+    cli_outcomes "" "vscodevim.vim@1.27.2
+charliermarsh.ruff@2025.22.0"
+    write_manifest "$work/shared.txt" \
+        'vscodevim.vim@1.27.2' \
+        'charliermarsh.ruff'
+
+    run_reconcile "$work/code" "$work/shared.txt"
+
+    [[ "$OBSERVED_STATUS" -eq 0 ]] || fail "expected an active pin to succeed, got status $OBSERVED_STATUS: $OBSERVED_OUTPUT"
+    [[ "$OBSERVED_CALLS" == "--install-extension vscodevim.vim@1.27.2 --force
+--list-extensions --show-versions
+--install-extension charliermarsh.ruff --force" ]] || fail "pin was not requested exactly or not verified:
+$OBSERVED_CALLS"
+}
+
+test_an_inactive_pin_fails_the_entry_and_the_catalog_continues() {
+    local work
+
+    new_tmp_var work
+    install_cli_stub "$work/code"
+    cli_outcomes "" "vscodevim.vim@1.20.0"
+    write_manifest "$work/shared.txt" \
+        'vscodevim.vim@1.27.2' \
+        'esbenp.prettier-vscode@11.0.0' \
+        'charliermarsh.ruff'
+
+    run_reconcile "$work/code" "$work/shared.txt"
+
+    [[ "$OBSERVED_STATUS" -ne 0 ]] || fail "expected an unsatisfied pin to fail reconciliation"
+    [[ "$OBSERVED_CALLS" == "--install-extension vscodevim.vim@1.27.2 --force
+--list-extensions --show-versions
+--install-extension esbenp.prettier-vscode@11.0.0 --force
+--list-extensions --show-versions
+--install-extension charliermarsh.ruff --force" ]] || fail "the catalog did not continue past unsatisfied pins:
+$OBSERVED_CALLS"
+    [[ "$(report_lines_naming 'vscodevim.vim@1.27.2')" -eq 1 ]] || fail "mismatched pin not reported exactly once:
+$OBSERVED_OUTPUT"
+    [[ "$(report_lines_naming 'esbenp.prettier-vscode@11.0.0')" -eq 1 ]] || fail "missing pin not reported exactly once:
+$OBSERVED_OUTPUT"
+    [[ "$(report_lines_naming 'charliermarsh.ruff')" -eq 0 ]] || fail "a succeeding entry was reported as failed:
+$OBSERVED_OUTPUT"
+}
+
+# ---------------------------------------------------------------------------
+# Cycle C — aggregate failures and no pruning
+# ---------------------------------------------------------------------------
+
+test_every_failed_identity_is_reported_once_after_the_whole_catalog_ran() {
+    local work
+
+    new_tmp_var work
+    install_cli_stub "$work/code"
+    cli_outcomes "ms-python.python" "vscodevim.vim@1.20.0"
+    write_manifest "$work/shared.txt" \
+        'ms-python.python' \
+        'not an identity' \
+        'vscodevim.vim@1.27.2' \
+        'charliermarsh.ruff'
+    write_manifest "$work/target.txt" \
+        'ms-python.python' \
+        'ms-python.debugpy'
+
+    run_reconcile "$work/code" "$work/shared.txt" "$work/target.txt"
+
+    [[ "$OBSERVED_STATUS" -ne 0 ]] || fail "expected aggregated failures to fail reconciliation"
+    [[ "$OBSERVED_CALLS" == "--install-extension ms-python.python --force
+--install-extension vscodevim.vim@1.27.2 --force
+--list-extensions --show-versions
+--install-extension charliermarsh.ruff --force
+--install-extension ms-python.python --force
+--install-extension ms-python.debugpy --force" ]] || fail "the catalog was not attempted to completion:
+$OBSERVED_CALLS"
+    [[ "$(report_lines_naming 'ms-python.python')" -eq 1 ]] || fail "an identity failing in two manifests was not reported once:
+$OBSERVED_OUTPUT"
+    [[ "$(report_lines_naming 'not an identity')" -eq 1 ]] || fail "malformed entry not reported exactly once:
+$OBSERVED_OUTPUT"
+    [[ "$(report_lines_naming 'vscodevim.vim@1.27.2')" -eq 1 ]] || fail "unsatisfied pin not reported exactly once:
+$OBSERVED_OUTPUT"
+    [[ "$(report_lines_naming 'ms-python.debugpy')" -eq 0 ]] || fail "a succeeding entry was reported as failed:
+$OBSERVED_OUTPUT"
+}
+
+test_a_missing_manifest_is_reported_and_the_remaining_manifests_run() {
+    local work
+
+    new_tmp_var work
+    install_cli_stub "$work/code"
+    cli_outcomes "" ""
+    write_manifest "$work/target.txt" 'ms-python.debugpy'
+
+    run_reconcile "$work/code" "$work/absent.txt" "$work/target.txt"
+
+    [[ "$OBSERVED_STATUS" -ne 0 ]] || fail "expected a missing manifest to fail reconciliation"
+    [[ "$OBSERVED_CALLS" == "--install-extension ms-python.debugpy --force" ]] || fail "a missing manifest stopped the remaining ones:
+$OBSERVED_CALLS"
+    [[ "$(report_lines_naming "$work/absent.txt")" -eq 1 ]] || fail "missing manifest not reported exactly once:
+$OBSERVED_OUTPUT"
+}
+
+test_the_repository_catalogs_only_ever_ask_the_editor_to_install() {
+    local work
+    local last_shared
+    local first_target_only
+
+    new_tmp_var work
+    install_cli_stub "$work/code"
+    cli_outcomes "" ""
+
+    run_reconcile "$work/code" \
+        "$DOTFILES_DIR/vscode/extensions/shared.txt" \
+        "$DOTFILES_DIR/vscode/extensions/desktop.txt"
+
+    [[ "$OBSERVED_STATUS" -eq 0 ]] || fail "expected the repository catalogs to reconcile, got status $OBSERVED_STATUS: $OBSERVED_OUTPUT"
+    [[ -z "$(printf '%s\n' "$OBSERVED_CALLS" | grep -v '^--install-extension .* --force$' || true)" ]] || fail "the reconciler asked the editor for something other than an install:
+$OBSERVED_CALLS"
+
+    last_shared="$(printf '%s\n' "$OBSERVED_CALLS" | grep -n -- '--install-extension vscodevim.vim ' | tail -1 | cut -d: -f1)"
+    first_target_only="$(printf '%s\n' "$OBSERVED_CALLS" | grep -n -- '--install-extension ms-python.vscode-pylance ' | head -1 | cut -d: -f1)"
+    [[ -n "$last_shared" && -n "$first_target_only" ]] || fail "expected both catalogs to be reconciled:
+$OBSERVED_CALLS"
+    [[ "$last_shared" -lt "$first_target_only" ]] || fail "the target catalog was reconciled before the shared catalog:
+$OBSERVED_CALLS"
+}
+
+run_tests "install vscode managed layer and extension reconciliation"
