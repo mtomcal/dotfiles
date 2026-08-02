@@ -7,7 +7,7 @@ The following locally maintained skills contain material adapted in July 2026 fr
 - `codebase-design`
 - `code-review`
 - `create-plan`
-- `divide-plan`
+- `execute-molecule`
 - `diagnosing-bugs`
 - `handoff`
 - `improve-codebase-architecture`
@@ -20,7 +20,7 @@ The following locally maintained skills contain material adapted in July 2026 fr
 
 Separately, `shared/skills/grill-me/SKILL.md` contains material adapted from [`skills/productivity/grill-me/SKILL.md`](https://github.com/mattpocock/skills/blob/62f43a18177be6ec82da242e59ffbc490a4c22ea/skills/productivity/grill-me/SKILL.md) at commit `62f43a18177be6ec82da242e59ffbc490a4c22ea`. It was imported locally at commit `80eafee1882c0f2fccc0c066ac3a5e3572f25f02` and subsequently expanded for repository glossary, evidence, and routing behavior. It remains covered by the Matt Pocock MIT license reproduced below.
 
-These are one-time local forks adapted for this repository's cross-agent, specs-first, and Herdr-aware workflows. `divide-plan` was split locally from the adapted `create-plan` orchestration material in July 2026 and remains covered by the same recorded source revision and MIT license. They are not automatically synchronized with upstream.
+These are one-time local forks adapted for this repository's cross-agent, specs-first, and Herdr-aware workflows. `execute-molecule` was split locally from the adapted `create-plan` orchestration material in July 2026 as `divide-plan`, then renamed and rewritten for the Beads execution-coordination model in August 2026; it remains covered by the same recorded source revision and MIT license. They are not automatically synchronized with upstream.
 
 ### MIT License
 
