@@ -82,7 +82,9 @@ Completion criterion: every desired behavior has an evidenced disposition, only 
 
 Design context-sized vertical slices that each fit one fresh agent context and deliver observable behavior through the applicable layers. Give every slice explicit RED/GREEN/REFACTOR cycles, because implementation agents may run an economical model.
 
-Encode only genuine blocking dependencies. For a wide migration or mechanical refactor, use expand → migrate in bounded passing batches → contract, placing contraction after every migration.
+Encode only genuine blocking dependencies. A false edge idles a worker for no reason; chain slices only where one truly cannot start until another closes. For a wide migration or mechanical refactor, use expand → migrate in bounded passing batches → contract, placing contraction after every migration.
+
+When the dependency shape is not obvious — a wide migration, independent slices that may or may not be parallel, or a review topology whose fan-out is unclear — read [WORKFLOW-SHAPES.md](WORKFLOW-SHAPES.md) for worked graph shapes covering linear features, parallel slices with review fan-out, expand/migrate/contract, and regression-locked bugfixes. A straightforward linear feature does not need it.
 
 Give each slice at least one proposed execution trace where runtime or operational order is material: a nested call tree with sequence numbers, `path:symbol` where known, and markers distinguishing existing, changed, new, and uncertain frames plus binding required order versus proposed internal structure. Existing frames need fixed-point evidence. Distinct entry points and async roots get separate traces; concurrent branches are marked unordered unless order is guaranteed. Observable or safety-critical ordering is binding; internal proposed frames may vary with rationale. A trace is an intended call tree, not captured runtime evidence or an exhaustive graph. Non-runtime work may substitute an explicitly justified ordered operational flow.
 
@@ -120,29 +122,6 @@ Validate before exposing any ready work:
 
 A partial or failing graph stays draft/blocked and MUST NOT expose slices as ready. Reconcile it or explicitly discard the draft. Only after validation passes, mark the molecule ready and push the initial semantic checkpoint.
 
-### 7. Render the molecule map
+Report the root molecule id so execution can reference it explicitly.
 
-After validation passes, render the created graph as a Mermaid diagram so the agent that executes it and the human who approved it can both see the shape of the work at a glance. Derive it from what `bd` actually returned — real bead ids and real dependency edges — not from the design intent in step 4, so the diagram is evidence that the graph matches the plan.
-
-Show each bead's id, its kind, and a short behavior label; draw blocking dependencies as arrows from blocker to blocked; group by kind so slices, reviews, and remediation are visually distinct. Omit attempt beads — none exist yet at creation, and they are non-blocking operational nodes that would obscure the frontier.
-
-```mermaid
-graph TD
-    subgraph Slices
-        S1["bd-a1 · slice<br/>parse config file"]
-        S2["bd-a2 · slice<br/>validate remote URL"]
-        S3["bd-a3 · slice<br/>write runtime config"]
-    end
-    subgraph Review
-        R1["bd-a4 · review<br/>Scope fidelity"]
-        R2["bd-a5 · review<br/>Security"]
-    end
-    S1 --> S2
-    S2 --> S3
-    S3 --> R1
-    S3 --> R2
-```
-
-Report the diagram alongside the root molecule id. Label it **non-authoritative**: Beads remains the source of truth, and a diagram that disagrees with `bd` means the diagram is stale, never the graph. Do not write it to a durable Markdown file in the source repository.
-
-Completion criterion: one ready molecule exists with a validated acyclic graph, the initial checkpoint is pushed, the root id is reported, a Mermaid map rendered from actual `bd` output accompanies it and is labelled non-authoritative, and no durable Markdown or source-repository `.beads/` state was created.
+Completion criterion: one ready molecule exists with a validated acyclic graph, the initial checkpoint is pushed, the root id is reported, and no durable Markdown or source-repository `.beads/` state was created.

@@ -52,6 +52,8 @@ If either the implementation or oversight assignment selects Claude Code, load [
 
 Completion criterion: this session's model matches the coordinator assignment, exactly one nonterminal session holds the lease, the transport route per role is known, and any takeover has approval plus a decision bead.
 
+If the molecule's bead kinds, edge semantics, or state transitions are unfamiliar — or a recovery decision turns on which attempt states are terminal — read [WORKFLOW-SHAPES.md](../create-engineering-plan/WORKFLOW-SHAPES.md) for the bead taxonomy, the per-slice execution sequence, and the work-bead, attempt, and molecule state machines. Routine execution of a familiar graph does not need it.
+
 ### 3. Prepare integration and derive the frontier
 
 Create a dedicated integration branch and isolated integration worktree from the molecule's source fixed point. Derive the frontier from Beads, never from memory:

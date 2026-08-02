@@ -1,6 +1,6 @@
 # Skill Library Specification
 
-> **Version**: 8.0.0
+> **Version**: 8.1.0
 > **Last Updated**: 2026-08-02
 > **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md), [Herdr Config](herdr-config.md), [Execution Coordination](execution-coordination.md)
 > **Depended By**: AI Agent Configuration (AIAGT)
@@ -109,7 +109,7 @@ All Skill Library parameters are authoritative in [Parameters > Skill Library](p
 | work domain | enum | engineering only | Both entries assume Git fixed points, isolated worktrees, and testable slices |
 | creation entry | skill | `create-engineering-plan` | Creates one execution-ready Beads engineering molecule directly from approved scope |
 | execution entry | skill | `execute-engineering-molecule` | Coordinates one explicit engineering molecule through Herdr and Beads |
-| molecule map | generated diagram | Rendered from actual `bd` output; non-authoritative | Documents the created graph for the executing agent and the approving human |
+| workflow shapes | Reference file | Conditionally loaded; illustrative, not templates | Documents bead kinds, execution lifecycle, graph shapes, and state machines |
 | durable mechanics owner | skill | `beads` | Single source of truth for `bd` operations composed by both entries |
 | durable authority | bounded context | Execution Coordination | Owns command-repo graph, assignments, attempts, evidence, synchronization, and recovery |
 | source | repository identity | Normalized remote or explicit key plus full fixed commit | Reproducible source baseline without a mandatory spec diff |
@@ -259,7 +259,7 @@ Its only durable result is one execution-ready molecule in the external command 
 
 Creation MUST leave a partial graph draft/blocked, validate complete scope coverage, acyclicity, assignments, traces, and review topology before exposing ready work, then commit and push a semantic checkpoint. It MUST NOT write `PLAN.md`, `.plan`, slice files, verification files, or any `.beads/` state into a source repository.
 
-After validation passes, `create-engineering-plan` MUST render a **molecule map**: a diagram of the created graph reported alongside the root molecule id. It MUST be derived from actual `bd` output rather than design intent, so it doubles as evidence that the created graph matches the approved plan. It MUST show bead ids, kinds, and blocking edges, MUST exclude attempt beads because they are non-blocking operational nodes, and MUST be labelled non-authoritative — a map disagreeing with `bd` is stale, and Beads remains the source of truth. It MUST NOT be written as durable Markdown into a source repository.
+The execution workflow skills MUST share one **workflow shapes** Reference file documenting bead kinds and edge semantics, the per-slice execution lifecycle, worked graph shapes, and work-bead, attempt, and molecule state transitions. Its diagrams are illustrative models rather than templates to copy, and `execution-coordination.md` remains authoritative wherever they overlap. Creation loads it when dependency shape is not obvious; execution loads it when bead kinds, edge semantics, or terminal attempt states are unfamiliar. Both skills MUST retain a successful route that does not load it, and neither MAY generate a durable diagram artifact into a source repository.
 
 The generic `herdr` skill MUST use Herdr's current agent facade for validated startup, atomic prompt submission, logical key input, agent reads, and settled-state waiting. Prompt-and-wait MUST use one server-owned operation when submitting new work. Waiting on an already-running agent MUST use the server-owned default settled-state set of `done`, `idle`, and `blocked`, including an already-reported matching state. `done` and `idle` are completion candidates; `blocked` is an immediate steering state. Any failed wait, timeout, stalled prompt, or `unknown` result MUST lead to current agent state and output inspection before retry or failure reporting. Ordinary command output waiting MUST use the pane facade.
 
@@ -454,13 +454,13 @@ Preconditions: `create-engineering-plan` and `execute-engineering-molecule` are 
 Input: Request a molecule for pure skill-authoring work, then for non-engineering work with no owner such as a research program, then for mixed scope combining a script change with a skill revision, then supply `execute-engineering-molecule` a molecule whose slices describe prose authoring.
 Expected Output: The authoring request stops before molecule creation and names the owning skill; the ownerless request stops and states plainly that no planning skill exists rather than relaxing tracer cycles; the mixed request plans only the engineering portion and records the excluded portion with its owner or the absence of one, with no acceptance-only beads; and `execute-engineering-molecule` stops and reports rather than running tracer cycles against prose.
 
-### TS-SKILL-019: Molecule Map Accompanies Creation
+### TS-SKILL-019: Workflow Shapes Reference Is Conditionally Loaded
 
 Category: Integration
 Priority: High
-Preconditions: A validated molecule has just been created.
-Input: Inspect the reported creation output, then compare the rendered map against `bd` dependency output, then inspect a source repository working tree.
-Expected Output: A diagram accompanies the root molecule id showing bead ids, kinds, and blocking edges; it matches actual `bd` dependencies and excludes attempt beads; it is labelled non-authoritative; and no durable Markdown artifact was written into the source repository.
+Preconditions: The execution workflow skills and their shared workflow-shapes Reference file are available.
+Input: Plan a straightforward linear feature, then plan a wide migration with unclear dependency shape, then execute a molecule whose attempt states are unfamiliar, then inspect the source repository working tree afterward.
+Expected Output: The linear feature completes without loading the Reference file; the migration and the unfamiliar execution both load it; its diagrams are presented as illustrative models rather than templates; and no durable diagram artifact was written into the source repository.
 
 ### TS-SKILL-016: Beads Base-Skill Composition
 
@@ -484,7 +484,8 @@ Expected Output: No shared skill creates or operates any of these artifacts, and
 
 | Version | Date | Change |
 |---------|------|--------|
-| 8.0.0 | 2026-08-02 | Renamed the execution entries to `create-engineering-plan` and `execute-engineering-molecule`, constrained both to the engineering work domain by contract, required non-engineering work without an owner to stop honestly, and required a non-authoritative molecule map at creation. |
+| 8.1.0 | 2026-08-02 | Replaced the per-run molecule map with a shared conditionally-loaded workflow-shapes Reference documenting bead kinds, execution lifecycle, graph shapes, and state machines. |
+| 8.0.0 | 2026-08-02 | Renamed the execution entries to `create-engineering-plan` and `execute-engineering-molecule`, constrained both to the engineering work domain by contract, and required non-engineering work without an owner to stop honestly. |
 | 7.1.0 | 2026-08-02 | Added the execution planning scope boundary requiring `create-engineering-plan` to gate on engineering work, exclude authoring work with a named owner, and `execute-engineering-molecule` to refuse authoring molecules. |
 | 7.0.0 | 2026-08-02 | Removed the retired filesystem execution contract and its legacy-ledger grandfathering, registered the `beads` base skill as the canonical `bd` owner, and required execution workflows to compose it. |
 | 6.0.0 | 2026-08-01 | Replaced filesystem create/divide execution with command-repo execution molecules, exact per-bead model and review policy, `execute-engineering-molecule`, write-ahead attempts, coordinator leases, and Beads-first crash recovery. |
