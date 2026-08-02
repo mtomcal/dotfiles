@@ -1,7 +1,7 @@
 # Tool Provisioning
 
-> **Version**: 1.5.0
-> **Last Updated**: 2026-08-01
+> **Version**: 1.6.0
+> **Last Updated**: 2026-08-02
 > **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md), [Design Language](DESIGN_LANGUAGE.md), [Symlink Manager](symlink-manager.md)
 > **Depended By**: [VS Code Configuration](vscode-config.md), [Execution Coordination](execution-coordination.md), Install Orchestrator
 
@@ -16,13 +16,13 @@ The Tool Provisioning system is responsible for installing, upgrading, and verif
 3. **Mason packages** — LSP servers, formatters, and linters installed inside Neovim via headless Mason commands
 4. **Direct upstream installers** — official curl installers for selected user-local tools whose update path is owned by the tool itself
 5. **Editor distributions and runtimes** — platform-scoped Visual Studio Code, code-server, and baseline Python provisioning
-6. **Execution-coordination tools** — stable Beads CLI plus Dolt for concurrent command-repo storage
+6. **Execution-coordination tools** — stable Beads CLI with embedded single-writer Dolt storage
 
 The system is **idempotent**: every function either checks whether the tool is already present and at a satisfactory version before attempting installation, or delegates idempotent update behavior to the tool's official installer. Re-running the full install produces the same result without errors, warnings, or unnecessary side effects.
 
 For Pi, tool provisioning installs one shared Pi binary. Profile-specific behavior is provided by deployed runtime configs and wrapper commands, not separate binary installs per profile.
 
-The Python, Visual Studio Code Desktop, code-server, Beads, Dolt, command-repo bootstrap, and legacy cleanup clauses introduced after the current implementation are approved desired behavior and are not yet implemented.
+The Python, Visual Studio Code Desktop, code-server, Beads, command-repo bootstrap, and legacy cleanup clauses introduced after the current implementation are approved desired behavior and are not yet implemented.
 
 ---
 
@@ -47,29 +47,28 @@ The Python, Visual Studio Code Desktop, code-server, Beads, Dolt, command-repo b
 
 ## Parameters
 
-| Parameter | Value | Unit | Rationale |
-|-----------|-------|------|-----------|
-| `REQUIRED_NVIM_VERSION` | 0.10 | major.minor | Minimum Neovim version that supports all features in kickstart.nvim and custom plugins; triggers AppImage download on Ubuntu if below threshold |
-| `REQUIRED_GO_VERSION` | 1.24 | major.minor | Required by gofumpt formatter and govulncheck; triggers upgrade path if detected version is below threshold |
-| `NODE_LTS_VERSION` | LTS | version selector | fnm installs the current LTS release for stability; AI CLI tools do not need bleeding-edge Node |
-| `MASON_TOOLS_PYTHON` | stylua, ruff, pyright, prettier, eslint_d | list | Base language support installed during Neovim configuration; includes Lua formatting, Python linting/type-checking, and JS/TS formatting |
-| `MASON_TOOLS_GO` | gopls, delve, gofumpt, goimports | list | Go development toolchain: language server, debugger, formatter, import manager; installed only when golang_full module is selected |
-| `BACKUP_TIMESTAMP_FMT` | %Y%m%d_%H%M%S | strftime format | Timestamps on backup files must be sortable chronologically and granular to seconds |
-| `NPM_GLOBAL_PREFIX` | ~/.local | path | npm global install prefix shared across fnm Node versions; ensures CLI tools survive fnm version switches |
-| `GO_INSTALL_PATH` | /usr/local/go | path | Official Go binary installation directory on Ubuntu/Debian |
-| `GO_WORKSPACE` | ~/go-workspace | path | Go workspace directory (GOPATH); must be on PATH alongside Go install path; binaries installed via `go install` land in `~/go-workspace/bin/` |
-| `FNM_INSTALL_SCRIPT` | https://fnm.vercel.app/install | URL | Official fnm install script; not available via apt/brew on all platforms |
-| `HERDR_INSTALL_SCRIPT` | https://herdr.dev/install.sh | URL | Official Herdr direct installer; used on Linux and macOS to keep `herdr update` as the consistent update path |
-| `PYTHON_REQUIRED_VERSION` | 3.10 | major.minor | Native-package baseline for modern editor and project compatibility |
-| `PYTHON_UBUNTU_PACKAGES` | python3, python3-venv | list | Distro interpreter and virtual-environment support without third-party repositories |
-| `PYTHON_MACOS_PACKAGE` | python | Homebrew formula | Current stable interpreter without replacing system Python |
-| `VSCODE_MACOS_CASK` | visual-studio-code | Homebrew Cask | Official stable desktop distribution on macOS |
-| `CODE_SERVER_INSTALL_SCRIPT` | https://code-server.dev/install.sh | URL | Official stable code-server installation and update path on Ubuntu/Debian |
-| `CODE_SERVER_BIND_DEFAULT` | 0.0.0.0:8080 | address:port | First-install private-network listener default |
-| `BEADS_INSTALL_SCRIPT` | https://raw.githubusercontent.com/gastownhall/beads/main/scripts/install.sh | URL | Official checksum-verifying stable Beads release channel for Linux and macOS |
-| `DOLT_INSTALL_SCRIPT_LINUX` | https://github.com/dolthub/dolt/releases/latest/download/install.sh | URL | Official stable Dolt installer for Ubuntu/Debian |
-| `DOLT_MACOS_PACKAGE` | dolt | Homebrew formula | Official stable Dolt package for macOS |
-| `BEADS_COMMAND_CONFIG_PATH` | ~/.config/beads-command/env | path | Local runtime record written only by explicit command-repo bootstrap |
+| Parameter                    | Value                                                                       | Unit              | Rationale                                                                                                                                       |
+| ---------------------------- | --------------------------------------------------------------------------- | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `REQUIRED_NVIM_VERSION`      | 0.10                                                                        | major.minor       | Minimum Neovim version that supports all features in kickstart.nvim and custom plugins; triggers AppImage download on Ubuntu if below threshold |
+| `REQUIRED_GO_VERSION`        | 1.24                                                                        | major.minor       | Required by gofumpt formatter and govulncheck; triggers upgrade path if detected version is below threshold                                     |
+| `NODE_LTS_VERSION`           | LTS                                                                         | version selector  | fnm installs the current LTS release for stability; AI CLI tools do not need bleeding-edge Node                                                 |
+| `MASON_TOOLS_PYTHON`         | stylua, ruff, pyright, prettier, eslint_d                                   | list              | Base language support installed during Neovim configuration; includes Lua formatting, Python linting/type-checking, and JS/TS formatting        |
+| `MASON_TOOLS_GO`             | gopls, delve, gofumpt, goimports                                            | list              | Go development toolchain: language server, debugger, formatter, import manager; installed only when golang_full module is selected              |
+| `BACKUP_TIMESTAMP_FMT`       | %Y%m%d_%H%M%S                                                               | strftime format   | Timestamps on backup files must be sortable chronologically and granular to seconds                                                             |
+| `NPM_GLOBAL_PREFIX`          | ~/.local                                                                    | path              | npm global install prefix shared across fnm Node versions; ensures CLI tools survive fnm version switches                                       |
+| `GO_INSTALL_PATH`            | /usr/local/go                                                               | path              | Official Go binary installation directory on Ubuntu/Debian                                                                                      |
+| `GO_WORKSPACE`               | ~/go-workspace                                                              | path              | Go workspace directory (GOPATH); must be on PATH alongside Go install path; binaries installed via `go install` land in `~/go-workspace/bin/`   |
+| `FNM_INSTALL_SCRIPT`         | https://fnm.vercel.app/install                                              | URL               | Official fnm install script; not available via apt/brew on all platforms                                                                        |
+| `HERDR_INSTALL_SCRIPT`       | https://herdr.dev/install.sh                                                | URL               | Official Herdr direct installer; used on Linux and macOS to keep `herdr update` as the consistent update path                                   |
+| `PYTHON_REQUIRED_VERSION`    | 3.10                                                                        | major.minor       | Native-package baseline for modern editor and project compatibility                                                                             |
+| `PYTHON_UBUNTU_PACKAGES`     | python3, python3-venv                                                       | list              | Distro interpreter and virtual-environment support without third-party repositories                                                             |
+| `PYTHON_MACOS_PACKAGE`       | python                                                                      | Homebrew formula  | Current stable interpreter without replacing system Python                                                                                      |
+| `VSCODE_MACOS_CASK`          | visual-studio-code                                                          | Homebrew Cask     | Official stable desktop distribution on macOS                                                                                                   |
+| `CODE_SERVER_INSTALL_SCRIPT` | https://code-server.dev/install.sh                                          | URL               | Official stable code-server installation and update path on Ubuntu/Debian                                                                       |
+| `CODE_SERVER_BIND_DEFAULT`   | 0.0.0.0:8080                                                                | address:port      | First-install private-network listener default                                                                                                  |
+| `BEADS_INSTALL_SCRIPT`       | https://raw.githubusercontent.com/gastownhall/beads/main/scripts/install.sh | URL               | Official checksum-verifying stable Beads release channel for Linux and macOS                                                                    |
+| `BEADS_REQUIRED_VERSION`     | 0.59.0                                                                      | major.minor.patch | Minimum `bd` release providing the documented Dolt remote sync and bootstrap surface                                                            |
+| `BEADS_COMMAND_CONFIG_PATH`  | ~/.config/beads-command/env                                                 | path              | Local runtime record written only by explicit command-repo bootstrap                                                                            |
 
 ---
 
@@ -77,105 +76,103 @@ The Python, Visual Studio Code Desktop, code-server, Beads, Dolt, command-repo b
 
 ### Platform
 
-| Field | Type | Constraints | Description |
-|-------|------|-------------|-------------|
-| `os` | enum | ubuntu, macos | Detected operating system |
-| `package_manager` | enum | apt, brew | Package manager derived from OS detection |
-| `architecture` | enum | x86_64, aarch64 | CPU architecture from `uname -m`, mapped for binary downloads |
+| Field             | Type | Constraints     | Description                                                   |
+| ----------------- | ---- | --------------- | ------------------------------------------------------------- |
+| `os`              | enum | ubuntu, macos   | Detected operating system                                     |
+| `package_manager` | enum | apt, brew       | Package manager derived from OS detection                     |
+| `architecture`    | enum | x86_64, aarch64 | CPU architecture from `uname -m`, mapped for binary downloads |
 
 ### Architecture Mapping
 
-| uname -m output | Neovim AppImage suffix | Go binary suffix | lazygit archive suffix | yazi archive suffix |
-|-----------------|----------------------|-------------------|----------------------|---------------------|
-| x86_64 | nvim-linux-x86_64.appimage | amd64 | Linux_x86_64 | x86_64-unknown-linux-gnu |
-| aarch64 | nvim-linux-arm64.appimage | arm64 | Linux_arm64 | aarch64-unknown-linux-gnu |
-| arm64 | nvim-linux-arm64.appimage | arm64 | Linux_arm64 | aarch64-unknown-linux-gnu |
+| uname -m output | Neovim AppImage suffix     | Go binary suffix | lazygit archive suffix | yazi archive suffix       |
+| --------------- | -------------------------- | ---------------- | ---------------------- | ------------------------- |
+| x86_64          | nvim-linux-x86_64.appimage | amd64            | Linux_x86_64           | x86_64-unknown-linux-gnu  |
+| aarch64         | nvim-linux-arm64.appimage  | arm64            | Linux_arm64            | aarch64-unknown-linux-gnu |
+| arm64           | nvim-linux-arm64.appimage  | arm64            | Linux_arm64            | aarch64-unknown-linux-gnu |
 
 ### Package Name Mapping
 
 Packages with different names across platforms MUST use the `install_package` function's second parameter to specify the brew name when it differs from the apt name.
 
-| apt name | brew name | Notes |
-|----------|-----------|-------|
-| fd-find | fd | Ubuntu ships fd as fd-find; macOS uses fd directly |
-| build-essential | gcc | Both provide C compiler; Ubuntu uses meta-package, macOS uses gcc formula |
-| xclip | — | Clipboard support; macOS not needed |
-| python3 | python | Baseline Python interpreter; Ubuntu uses distro package, macOS uses Homebrew formula |
-| python3-venv | — | Python virtual environments; macOS Homebrew Python includes venv support |
-| tree-sitter-cli | tree-sitter-cli | CLI split from library in 0.26+; macOS only |
+| apt name        | brew name       | Notes                                                                                |
+| --------------- | --------------- | ------------------------------------------------------------------------------------ |
+| fd-find         | fd              | Ubuntu ships fd as fd-find; macOS uses fd directly                                   |
+| build-essential | gcc             | Both provide C compiler; Ubuntu uses meta-package, macOS uses gcc formula            |
+| xclip           | —               | Clipboard support; macOS not needed                                                  |
+| python3         | python          | Baseline Python interpreter; Ubuntu uses distro package, macOS uses Homebrew formula |
+| python3-venv    | —               | Python virtual environments; macOS Homebrew Python includes venv support             |
+| tree-sitter-cli | tree-sitter-cli | CLI split from library in 0.26+; macOS only                                          |
 
 ### Tool Download Specification
 
-| Tool | Ubuntu method | macOS method | Version source |
-|------|-------------|-------------|---------------|
-| Neovim | GitHub AppImage (latest stable) | Homebrew (install or upgrade) | GitHub releases list (excluding nightly/stable tags) |
-| Go | Official tarball from go.dev | Homebrew (install or upgrade) | go.dev VERSION endpoint |
-| fnm | curl \| bash install script | same as Ubuntu | N/A (script manages version) |
-| Node.js | fnm install --lts | same as Ubuntu | fnm resolves LTS |
-| lazygit | GitHub release tarball (architecture-specific) | Homebrew | GitHub `/releases/latest` endpoint `tag_name` field |
-| yazi | GitHub release zip (architecture-specific) | Homebrew | GitHub `/releases/latest` endpoint `tag_name` field |
-| zoxide | curl \| sh install script | Homebrew | N/A (script manages version) |
-| Herdr | curl \| sh installer | curl \| sh installer | Herdr stable channel; update via `herdr update` |
-| Codex CLI | npm global install (NPM_GLOBAL_PREFIX) | same as Ubuntu | npm resolves @latest |
-| Pi Coding Agent | npm global install (NPM_GLOBAL_PREFIX) | same as Ubuntu | npm resolves @latest |
-| Playwright CLI | npm global install (no prefix — inconsistent) | same as Ubuntu | npm resolves @latest |
-| Copilot CLI | curl \| bash installer | same as Ubuntu | Official installer script; binary lands in ~/.local/bin |
-| Claude Code | curl \| bash installer with `latest` target | same as Ubuntu | Official installer script resolves latest release; binary lands in ~/.local/bin |
-| Visual Studio Code Desktop | Unsupported | Homebrew Cask install/upgrade | Homebrew stable Cask release |
-| code-server | Official direct installer | Unsupported | Official installer stable release |
-| Beads | Official checksum-verifying direct installer | Same as Ubuntu | Official stable GitHub release |
-| Dolt | Official direct installer | Homebrew formula | Official stable release |
+| Tool                       | Ubuntu method                                  | macOS method                  | Version source                                                                  |
+| -------------------------- | ---------------------------------------------- | ----------------------------- | ------------------------------------------------------------------------------- |
+| Neovim                     | GitHub AppImage (latest stable)                | Homebrew (install or upgrade) | GitHub releases list (excluding nightly/stable tags)                            |
+| Go                         | Official tarball from go.dev                   | Homebrew (install or upgrade) | go.dev VERSION endpoint                                                         |
+| fnm                        | curl \| bash install script                    | same as Ubuntu                | N/A (script manages version)                                                    |
+| Node.js                    | fnm install --lts                              | same as Ubuntu                | fnm resolves LTS                                                                |
+| lazygit                    | GitHub release tarball (architecture-specific) | Homebrew                      | GitHub `/releases/latest` endpoint `tag_name` field                             |
+| yazi                       | GitHub release zip (architecture-specific)     | Homebrew                      | GitHub `/releases/latest` endpoint `tag_name` field                             |
+| zoxide                     | curl \| sh install script                      | Homebrew                      | N/A (script manages version)                                                    |
+| Herdr                      | curl \| sh installer                           | curl \| sh installer          | Herdr stable channel; update via `herdr update`                                 |
+| Codex CLI                  | npm global install (NPM_GLOBAL_PREFIX)         | same as Ubuntu                | npm resolves @latest                                                            |
+| Pi Coding Agent            | npm global install (NPM_GLOBAL_PREFIX)         | same as Ubuntu                | npm resolves @latest                                                            |
+| Playwright CLI             | npm global install (no prefix — inconsistent)  | same as Ubuntu                | npm resolves @latest                                                            |
+| Copilot CLI                | curl \| bash installer                         | same as Ubuntu                | Official installer script; binary lands in ~/.local/bin                         |
+| Claude Code                | curl \| bash installer with `latest` target    | same as Ubuntu                | Official installer script resolves latest release; binary lands in ~/.local/bin |
+| Visual Studio Code Desktop | Unsupported                                    | Homebrew Cask install/upgrade | Homebrew stable Cask release                                                    |
+| code-server                | Official direct installer                      | Unsupported                   | Official installer stable release                                               |
+| Beads                      | Official checksum-verifying direct installer   | Same as Ubuntu                | Official stable GitHub release                                                  |
 
 ### Mason Package Set
 
-| Set | Packages | When installed |
-|-----|----------|---------------|
-| Python base | stylua, ruff, pyright, prettier, eslint_d | Always during Neovim configuration |
-| Go development | gopls, delve, gofumpt, goimports | Only when golang_full module is selected AND Neovim is present |
+| Set            | Packages                                  | When installed                                                 |
+| -------------- | ----------------------------------------- | -------------------------------------------------------------- |
+| Python base    | stylua, ruff, pyright, prettier, eslint_d | Always during Neovim configuration                             |
+| Go development | gopls, delve, gofumpt, goimports          | Only when golang_full module is selected AND Neovim is present |
 
 ### Version Check Result
 
-| Field | Type | Constraints | Description |
-|-------|------|-------------|-------------|
-| `tool_name` | string | required | Name of the tool being checked |
-| `installed_version` | string | optional | Parsed version number; empty if tool not found |
-| `meets_requirement` | boolean | required | Whether installed version satisfies the minimum |
-| `action` | enum | install, upgrade, skip | Determined action based on version check |
+| Field               | Type    | Constraints            | Description                                     |
+| ------------------- | ------- | ---------------------- | ----------------------------------------------- |
+| `tool_name`         | string  | required               | Name of the tool being checked                  |
+| `installed_version` | string  | optional               | Parsed version number; empty if tool not found  |
+| `meets_requirement` | boolean | required               | Whether installed version satisfies the minimum |
+| `action`            | enum    | install, upgrade, skip | Determined action based on version check        |
 
 ### Module Dependency
 
-| Module | Requires | Reason |
-|--------|----------|--------|
-| nvim_config | git, neovim | Config clone needs git; Mason commands need nvim binary |
-| zsh_ohmyzsh | zsh, git | Oh My Zsh clone needs git and zsh |
-| tmux_config | tmux | Config deployment needs tmux installed |
-| herdr | curl | Direct installer download |
-| herdr_config | herdr | Config deployment assumes Herdr can be launched after install |
-| herdr_integrations | herdr, relevant agent configs | Repo-owned integration source generation/deployment |
-| zsh_config | zsh | Shell config sourcing needs zsh |
-| claude | curl, jq | Installer needs curl; local settings updates need jq |
-| pi | npm | npm global install for Pi binary |
-| codex | npm | npm global install for Codex binary |
-| copilot | curl | Installer needs curl |
-| playwright | npm | npm global install for Playwright CLI |
-| sandbox_base | docker | Shared Docker base image for agent sandboxes |
-| pi_sandbox | docker | Sandbox runs in Docker container |
-| codex_sandbox | docker | Codex `--yolo` sandbox runs in Docker container |
-| python | native package manager | Baseline interpreter and venv support |
-| vscode | Homebrew | Official desktop Cask; macOS only |
-| vscode_config | vscode when desktop command is absent | Managed desktop files and extension CLI require Visual Studio Code |
-| code_server | curl, service manager | Official installer, persistent service, and HTTPS verification; Ubuntu/Debian only |
-| dolt | curl on Ubuntu/Debian; Homebrew on macOS | Required for Beads server mode and private-remote synchronization |
-| beads | dolt, curl | Beads CLI requires the Dolt command surface selected for execution coordination |
+| Module             | Requires                              | Reason                                                                                                               |
+| ------------------ | ------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| nvim_config        | git, neovim                           | Config clone needs git; Mason commands need nvim binary                                                              |
+| zsh_ohmyzsh        | zsh, git                              | Oh My Zsh clone needs git and zsh                                                                                    |
+| tmux_config        | tmux                                  | Config deployment needs tmux installed                                                                               |
+| herdr              | curl                                  | Direct installer download                                                                                            |
+| herdr_config       | herdr                                 | Config deployment assumes Herdr can be launched after install                                                        |
+| herdr_integrations | herdr, relevant agent configs         | Repo-owned integration source generation/deployment                                                                  |
+| zsh_config         | zsh                                   | Shell config sourcing needs zsh                                                                                      |
+| claude             | curl, jq                              | Installer needs curl; local settings updates need jq                                                                 |
+| pi                 | npm                                   | npm global install for Pi binary                                                                                     |
+| codex              | npm                                   | npm global install for Codex binary                                                                                  |
+| copilot            | curl                                  | Installer needs curl                                                                                                 |
+| playwright         | npm                                   | npm global install for Playwright CLI                                                                                |
+| sandbox_base       | docker                                | Shared Docker base image for agent sandboxes                                                                         |
+| pi_sandbox         | docker                                | Sandbox runs in Docker container                                                                                     |
+| codex_sandbox      | docker                                | Codex `--yolo` sandbox runs in Docker container                                                                      |
+| python             | native package manager                | Baseline interpreter and venv support                                                                                |
+| vscode             | Homebrew                              | Official desktop Cask; macOS only                                                                                    |
+| vscode_config      | vscode when desktop command is absent | Managed desktop files and extension CLI require Visual Studio Code                                                   |
+| code_server        | curl, service manager                 | Official installer, persistent service, and HTTPS verification; Ubuntu/Debian only                                   |
+| beads              | curl                                  | Official installer download; embedded Dolt storage is linked into the `bd` binary and needs no separate Dolt install |
 
 ### Pi Command Surface
 
 The Pi binary is installed once, but the provisioning system MUST ensure the following command surface exists after the `pi` module deploys config:
 
-| Command | Backing behavior |
-|---------|------------------|
-| `pi` | Launch Pi against `~/.pi/agent` |
-| `pis` | Launch sandboxed Pi against `~/.pi/agent` |
+| Command | Backing behavior                          |
+| ------- | ----------------------------------------- |
+| `pi`    | Launch Pi against `~/.pi/agent`           |
+| `pis`   | Launch sandboxed Pi against `~/.pi/agent` |
 
 ---
 
@@ -417,27 +414,50 @@ Herdr MUST use the official curl installer on both Linux and macOS. Homebrew, mi
 
 The Herdr install function MUST be idempotent: if `command -v herdr` succeeds, it MUST skip the installer. If Herdr is installed but not on PATH, the function MUST report a PATH warning rather than installing duplicate binaries blindly.
 
-### Beads and Dolt Installation
+### Beads Installation
+
+Beads uses **embedded** storage: Dolt is linked into the `bd` binary and runs in-process. No `dolt` binary, server process, port, or PID file is provisioned.
 
 ```
-DOLT:
-    IF os = ubuntu
-        RUN the official stable DOLT_INSTALL_SCRIPT_LINUX
-    ELSE IF os = macos
-        INSTALL or UPGRADE the DOLT_MACOS_PACKAGE Homebrew formula
-    END IF
-    VERIFY dolt version succeeds
-
 BEADS:
     RUN the official checksum-verifying BEADS_INSTALL_SCRIPT on every selected module execution
-    VERIFY bd version succeeds
-    VERIFY the installed binary is not the retired pre-Dolt local build
-    VERIFY bd can discover the installed dolt command
+    VERIFY bd version succeeds and is at least BEADS_REQUIRED_VERSION
+    VERIFY the installed binary is embedded-capable
+    VERIFY the binary resides at NPM_GLOBAL_PREFIX/bin and is executable
+    IF a different bd appears earlier in PATH
+        EMIT a PATH priority warning
+    END IF
 ```
 
-The Beads installer MUST request the current stable release rather than a prerelease or source checkout. The Dolt module MUST complete before Beads when both are selected. Re-running either module MUST use its supported update path and preserve all command-repo data.
+The Beads installer MUST request the current stable release rather than a prerelease or source checkout. Re-running the module MUST use the official installer as its update path and preserve all command-repo data.
 
-Normal installation MUST NOT initialize, clone, migrate, delete, or synchronize a command repo. A separate explicit idempotent bootstrap operation accepts one absolute local path and private remote URL, then creates or clones the command repo, initializes Beads server mode, configures its Dolt remote, writes `BEADS_COMMAND_CONFIG_PATH`, and verifies server health plus pull/checkpoint/push. Credentials remain local and MUST NOT appear in arguments retained by tracked files or logs.
+**Critical rule — embedded capability**: The official installer downloads a release binary first, which is embedded-capable. Its `go install` fallback may produce a `CGO_ENABLED=0` binary that cannot use embedded Dolt and fails only later at `bd init`. The module MUST therefore detect a non-embedded binary at install time and fail with build-toolchain guidance rather than deferring the failure to first use.
+
+Normal installation MUST NOT initialize, clone, migrate, delete, or synchronize a command repo.
+
+### Command-Repo Bootstrap
+
+A separate explicit idempotent operation accepts one absolute local path and one private remote URL:
+
+```
+REQUIRE chosen absolute local path and private remote URL
+IF the command repo does not exist
+    CLONE the private remote
+END IF
+IF no .beads directory exists
+    RUN bd init in embedded mode
+END IF
+CONFIGURE the Dolt remote through bd dolt remote add
+COMMIT and PUSH .beads/config.yaml with ordinary git so fresh clones can bootstrap
+PUSH Dolt data with bd dolt push
+WRITE BEADS_COMMAND_CONFIG_PATH with the absolute .beads path
+VERIFY bd version, bd where resolution, and a successful pull/push round trip
+NEVER persist credentials in dotfiles, command output, or tracked config
+```
+
+On an additional machine, `bd bootstrap` resolves the database from the `sync.remote` value recorded in the repo's committed `.beads/config.yaml`. Bootstrap MUST support a non-interactive execution path.
+
+Both a Dolt push and an ordinary git push are required: `bd dolt push` moves issue data to `refs/dolt/data`, while `.beads/config.yaml` reaches other machines only through normal git.
 
 Legacy cleanup is a separate one-time explicit migration operation, never an install side effect. Before deletion it MUST archive and verify the untracked `~/code/beads/research/` contents outside that clone. It may then remove the approved retired Beads binary and alias symlink, global and project legacy databases, and `~/code/beads/`. Any archive failure blocks every deletion.
 
@@ -583,13 +603,13 @@ DEPLOY config symlinks for settings, agents, skills
 
 **Installer type variants**: AI CLI tools use two distinct installation patterns:
 
-| Tool | Installer type | Install command | Install location |
-|------|---------------|-----------------|----------------|
-| Codex CLI | npm global | `npm install -g --prefix ~/.local` | `~/.local/bin/` |
-| Pi Coding Agent | npm global | `npm install -g --prefix ~/.local` | `~/.local/bin/` |
-| Playwright CLI | npm global (no prefix) | `npm install -g` | fnm Node directory |
-| Claude Code | curl installer | `curl -fsSL https://claude.ai/install.sh \| bash -s latest` | `~/.local/bin/` |
-| Copilot CLI | curl installer | `curl -fsSL https://gh.io/copilot-install \| bash` | `~/.local/bin/` |
+| Tool            | Installer type         | Install command                                             | Install location   |
+| --------------- | ---------------------- | ----------------------------------------------------------- | ------------------ |
+| Codex CLI       | npm global             | `npm install -g --prefix ~/.local`                          | `~/.local/bin/`    |
+| Pi Coding Agent | npm global             | `npm install -g --prefix ~/.local`                          | `~/.local/bin/`    |
+| Playwright CLI  | npm global (no prefix) | `npm install -g`                                            | fnm Node directory |
+| Claude Code     | curl installer         | `curl -fsSL https://claude.ai/install.sh \| bash -s latest` | `~/.local/bin/`    |
+| Copilot CLI     | curl installer         | `curl -fsSL https://gh.io/copilot-install \| bash`          | `~/.local/bin/`    |
 
 **Claude Code update rule**: The Claude Code module MUST run the official installer with the `latest` target on every module execution:
 
@@ -626,87 +646,88 @@ Dependencies are resolved dynamically at runtime by checking whether prerequisit
 
 ### OS Detection Failure
 
-| Trigger | Detection | Response | Recovery |
-|---------|-----------|----------|----------|
+| Trigger                  | Detection                                        | Response                                                                           | Recovery                                                       |
+| ------------------------ | ------------------------------------------------ | ---------------------------------------------------------------------------------- | -------------------------------------------------------------- |
 | Linux distro without apt | Linux detected but apt package manager not found | EMIT error "Linux detected but apt not found. This script requires Ubuntu/Debian." | EXIT with failure; user must install apt or use a supported OS |
-| Unsupported OS | Operating system is neither Linux nor macOS | EMIT error "Unsupported operating system" | EXIT with failure; no recovery path |
+| Unsupported OS           | Operating system is neither Linux nor macOS      | EMIT error "Unsupported operating system"                                          | EXIT with failure; no recovery path                            |
 
 ### Package Manager Errors
 
-| Trigger | Detection | Response | Recovery |
-|---------|-----------|----------|----------|
-| apt package install fails | apt install returns non-zero | Script exits | User must resolve package conflict or network issue |
-| Homebrew not found on macOS | `brew` command not found | INSTALL Homebrew automatically | If Homebrew install fails, script exits |
-| Homebrew install fails on Apple Silicon | brew not in PATH after install | APPEND eval to ~/.zprofile; EVAL for current session | User may need to restart shell |
+| Trigger                                 | Detection                      | Response                                             | Recovery                                            |
+| --------------------------------------- | ------------------------------ | ---------------------------------------------------- | --------------------------------------------------- |
+| apt package install fails               | apt install returns non-zero   | Script exits                                         | User must resolve package conflict or network issue |
+| Homebrew not found on macOS             | `brew` command not found       | INSTALL Homebrew automatically                       | If Homebrew install fails, script exits             |
+| Homebrew install fails on Apple Silicon | brew not in PATH after install | APPEND eval to ~/.zprofile; EVAL for current session | User may need to restart shell                      |
 
 ### Version Check Failures
 
-| Trigger | Detection | Response | Recovery |
-|---------|-----------|----------|----------|
-| Neovim below minimum version | `nvim --version` returns version < 0.10 | DOWNLOAD latest AppImage on Ubuntu; WARN on macOS | On Ubuntu: replaces any apt-installed neovim; On macOS: upgrades via brew |
-| Neovim version parse fails | Floating-point comparison fails or returns error | TREAT as version 0.0 (triggers upgrade) | Full reinstall always safe |
-| Go below minimum version | `go version` returns version < 1.24 | UPGRADE via Homebrew (macOS); WARN (Ubuntu, binary path) | On macOS: brew upgrade; On Ubuntu: user must re-run install |
-| Go version fetch fails | Version endpoint returns empty result | EMIT error "Failed to fetch version" | RETURN failure from golang module; user may retry |
-| Herdr installer fails | Official installer exits non-zero or `herdr` is still unavailable after install | EMIT error "Herdr install failed" | RETURN failure from herdr module; user may retry after checking network and PATH |
-| Beads installer fails | Official installer exits non-zero or `bd version` fails | Fail `beads` without touching command-repo data | Repair network/PATH and rerun |
-| Dolt installer fails | Official installer/package update fails or `dolt version` fails | Fail `dolt`; do not initialize Beads server mode | Repair installer/package manager and rerun |
-| Command-repo bootstrap incomplete | Path, remote, server health, or synchronization validation fails | Leave no globally routed partial command repo; report exact state | Correct path/remote/credentials and rerun explicit bootstrap |
-| Legacy archive fails | Research archive cannot be verified | Delete none of the approved legacy paths | Correct archive destination and rerun explicit cleanup |
+| Trigger                              | Detection                                                                       | Response                                                          | Recovery                                                                         |
+| ------------------------------------ | ------------------------------------------------------------------------------- | ----------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| Neovim below minimum version         | `nvim --version` returns version < 0.10                                         | DOWNLOAD latest AppImage on Ubuntu; WARN on macOS                 | On Ubuntu: replaces any apt-installed neovim; On macOS: upgrades via brew        |
+| Neovim version parse fails           | Floating-point comparison fails or returns error                                | TREAT as version 0.0 (triggers upgrade)                           | Full reinstall always safe                                                       |
+| Go below minimum version             | `go version` returns version < 1.24                                             | UPGRADE via Homebrew (macOS); WARN (Ubuntu, binary path)          | On macOS: brew upgrade; On Ubuntu: user must re-run install                      |
+| Go version fetch fails               | Version endpoint returns empty result                                           | EMIT error "Failed to fetch version"                              | RETURN failure from golang module; user may retry                                |
+| Herdr installer fails                | Official installer exits non-zero or `herdr` is still unavailable after install | EMIT error "Herdr install failed"                                 | RETURN failure from herdr module; user may retry after checking network and PATH |
+| Beads installer fails                | Official installer exits non-zero or `bd version` fails                         | Fail `beads` without touching command-repo data                   | Repair network/PATH and rerun                                                    |
+| Beads below minimum version          | `bd version` is under `BEADS_REQUIRED_VERSION`                                  | Fail `beads` with upgrade guidance                                | Rerun the official installer for the current stable release                      |
+| Beads binary is not embedded-capable | Installed binary reports `CGO_ENABLED=0`                                        | Fail `beads` before any command-repo use                          | Install a C toolchain and rerun, or install the release binary directly          |
+| Command-repo bootstrap incomplete    | Path, remote, `bd where` resolution, or synchronization validation fails        | Leave no globally routed partial command repo; report exact state | Correct path/remote/credentials and rerun explicit bootstrap                     |
+| Legacy archive fails                 | Research archive cannot be verified                                             | Delete none of the approved legacy paths                          | Correct archive destination and rerun explicit cleanup                           |
 
 ### Download Failures
 
-| Trigger | Detection | Response | Recovery |
-|---------|-----------|----------|----------|
-| Neovim AppImage download fails | curl returns non-zero | EMIT error; RETURN failure from module | Temp directory cleaned up before return |
-| Go tarball download fails | wget returns non-zero | EMIT error; CLEANUP temp directory; RETURN failure | User may retry; previous Go installation preserved |
-| Lazygit version fetch fails | GitHub API returns empty tag | EMIT error | Module continues; lazygit not installed |
-| Lazygit download fails | curl returns non-zero | EMIT error | Module continues; lazygit not installed |
-| Yazi version fetch fails | GitHub API returns empty tag | EMIT error | Module continues; yazi not installed |
-| Yazi download fails | curl returns non-zero | EMIT error | Module continues; yazi not installed |
+| Trigger                        | Detection                    | Response                                           | Recovery                                           |
+| ------------------------------ | ---------------------------- | -------------------------------------------------- | -------------------------------------------------- |
+| Neovim AppImage download fails | curl returns non-zero        | EMIT error; RETURN failure from module             | Temp directory cleaned up before return            |
+| Go tarball download fails      | wget returns non-zero        | EMIT error; CLEANUP temp directory; RETURN failure | User may retry; previous Go installation preserved |
+| Lazygit version fetch fails    | GitHub API returns empty tag | EMIT error                                         | Module continues; lazygit not installed            |
+| Lazygit download fails         | curl returns non-zero        | EMIT error                                         | Module continues; lazygit not installed            |
+| Yazi version fetch fails       | GitHub API returns empty tag | EMIT error                                         | Module continues; yazi not installed               |
+| Yazi download fails            | curl returns non-zero        | EMIT error                                         | Module continues; yazi not installed               |
 
 ### Mason Installation Failures
 
-| Trigger | Detection | Response | Recovery |
-|---------|-----------|----------|----------|
-| Mason base packages fail | Headless nvim command returns non-zero | EMIT warning "may require manual installation" | User runs `:Mason` inside Neovim |
-| Lazy sync fails with dirty cache | Error message contains "local changes" | CLEANUP dirty plugins (remove each directory); RETRY sync once | If retry fails, EMIT warning with manual command |
-| Lazy sync fails for other reason | Headless nvim returns non-zero | EMIT warning "may require manual intervention" | User runs Lazy! sync manually inside Neovim |
-| Treesitter update fails | Headless TSUpdateSync returns non-zero | EMIT warning "parser update had issues" | Non-blocking; most parsers still work |
-| Neovim not found for Mason Go install | `nvim` command not found | EMIT info "Neovim not found — skip Go LSP tools" | User installs nvim first, then re-runs or uses `:MasonInstall` manually |
+| Trigger                               | Detection                              | Response                                                       | Recovery                                                                |
+| ------------------------------------- | -------------------------------------- | -------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| Mason base packages fail              | Headless nvim command returns non-zero | EMIT warning "may require manual installation"                 | User runs `:Mason` inside Neovim                                        |
+| Lazy sync fails with dirty cache      | Error message contains "local changes" | CLEANUP dirty plugins (remove each directory); RETRY sync once | If retry fails, EMIT warning with manual command                        |
+| Lazy sync fails for other reason      | Headless nvim returns non-zero         | EMIT warning "may require manual intervention"                 | User runs Lazy! sync manually inside Neovim                             |
+| Treesitter update fails               | Headless TSUpdateSync returns non-zero | EMIT warning "parser update had issues"                        | Non-blocking; most parsers still work                                   |
+| Neovim not found for Mason Go install | `nvim` command not found               | EMIT info "Neovim not found — skip Go LSP tools"               | User installs nvim first, then re-runs or uses `:MasonInstall` manually |
 
 ### Python and Editor Provisioning Failures
 
-| Trigger | Detection | Response | Recovery |
-|---------|-----------|----------|----------|
-| Native Python is below 3.10 | Interpreter version check | Fail `python`; do not add third-party repository | Upgrade supported OS/package source |
-| Python virtual environment cannot run | Temporary venv verification fails | Fail `python`; remove temporary state | Repair native Python packages and rerun |
-| Desktop VS Code selected outside macOS | Platform check | Fail selected module | Use macOS desktop target |
-| code-server selected outside Ubuntu/Debian | Platform check | Fail selected module | Use supported Linux target |
-| Visual Studio Code Cask install/upgrade fails | Homebrew non-zero status | Fail `vscode` | Repair Homebrew/network and rerun |
-| code-server installer fails | Official installer non-zero status | Fail `code_server` | Check network and installer output, then rerun |
-| code-server port is occupied | Listener preflight or service bind failure | Fail without selecting another port | Stop conflicting process or provide explicit bind |
-| code-server service does not become active | Service manager status | Fail and report service diagnostics | Correct local config/service and rerun |
-| code-server HTTPS endpoint does not respond | Local HTTPS health verification | Fail without exposing secrets | Inspect service, bind, and certificate state |
+| Trigger                                       | Detection                                  | Response                                         | Recovery                                          |
+| --------------------------------------------- | ------------------------------------------ | ------------------------------------------------ | ------------------------------------------------- |
+| Native Python is below 3.10                   | Interpreter version check                  | Fail `python`; do not add third-party repository | Upgrade supported OS/package source               |
+| Python virtual environment cannot run         | Temporary venv verification fails          | Fail `python`; remove temporary state            | Repair native Python packages and rerun           |
+| Desktop VS Code selected outside macOS        | Platform check                             | Fail selected module                             | Use macOS desktop target                          |
+| code-server selected outside Ubuntu/Debian    | Platform check                             | Fail selected module                             | Use supported Linux target                        |
+| Visual Studio Code Cask install/upgrade fails | Homebrew non-zero status                   | Fail `vscode`                                    | Repair Homebrew/network and rerun                 |
+| code-server installer fails                   | Official installer non-zero status         | Fail `code_server`                               | Check network and installer output, then rerun    |
+| code-server port is occupied                  | Listener preflight or service bind failure | Fail without selecting another port              | Stop conflicting process or provide explicit bind |
+| code-server service does not become active    | Service manager status                     | Fail and report service diagnostics              | Correct local config/service and rerun            |
+| code-server HTTPS endpoint does not respond   | Local HTTPS health verification            | Fail without exposing secrets                    | Inspect service, bind, and certificate state      |
 
 ### npm Global Install Failures
 
-| Trigger | Detection | Response | Recovery |
-|---------|-----------|----------|----------|
-| npm not found during AI CLI install | npm command not found | TRIGGER Node.js installation as dependency | If Node.js install succeeds, retry the AI CLI install |
-| Binary not at expected path after npm install | Expected binary path not found or not executable | EMIT error "install failed: binary not found" | RETURN failure from module |
-| Different binary shadows the installed one | Another binary with same name appears earlier in PATH | EMIT warning about PATH priority; EMIT info about ensuring NPM_GLOBAL_PREFIX/bin is first | Non-blocking; user must adjust PATH |
+| Trigger                                       | Detection                                             | Response                                                                                  | Recovery                                              |
+| --------------------------------------------- | ----------------------------------------------------- | ----------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| npm not found during AI CLI install           | npm command not found                                 | TRIGGER Node.js installation as dependency                                                | If Node.js install succeeds, retry the AI CLI install |
+| Binary not at expected path after npm install | Expected binary path not found or not executable      | EMIT error "install failed: binary not found"                                             | RETURN failure from module                            |
+| Different binary shadows the installed one    | Another binary with same name appears earlier in PATH | EMIT warning about PATH priority; EMIT info about ensuring NPM_GLOBAL_PREFIX/bin is first | Non-blocking; user must adjust PATH                   |
 
 ### PATH Issues
 
-| Trigger | Detection | Response | Recovery |
-|---------|-----------|----------|----------|
-| NPM_GLOBAL_PREFIX/bin not in PATH after install | PATH string does not contain the expected prefix bin directory | EMIT info "Add ~/.local/bin to your PATH" | User must add to shell config |
-| Homebrew not in PATH on Apple Silicon | After install, brew not found | APPEND to ~/.zprofile; EVAL for current session | User may need to restart shell |
+| Trigger                                         | Detection                                                      | Response                                        | Recovery                       |
+| ----------------------------------------------- | -------------------------------------------------------------- | ----------------------------------------------- | ------------------------------ |
+| NPM_GLOBAL_PREFIX/bin not in PATH after install | PATH string does not contain the expected prefix bin directory | EMIT info "Add ~/.local/bin to your PATH"       | User must add to shell config  |
+| Homebrew not in PATH on Apple Silicon           | After install, brew not found                                  | APPEND to ~/.zprofile; EVAL for current session | User may need to restart shell |
 
 ### Architecture Edge Cases
 
-| Trigger | Detection | Response | Recovery |
-|---------|-----------|----------|----------|
+| Trigger                      | Detection                                              | Response                              | Recovery                            |
+| ---------------------------- | ------------------------------------------------------ | ------------------------------------- | ----------------------------------- |
 | Unsupported CPU architecture | Detected architecture is not x86_64, aarch64, or arm64 | EMIT error "Unsupported architecture" | RETURN failure; no binary available |
 
 ---
@@ -743,9 +764,11 @@ Dependencies are resolved dynamically at runtime by checking whether prerequisit
 
 14. **code-server secrets are local state**. Stable updates and configuration reconciliation preserve password, certificate, and bind state unless the user explicitly overrides the bind.
 
-15. **Command-repo state is not install state**. Normal Beads/Dolt provisioning never initializes, syncs, or deletes the private command repo; bootstrap and legacy cleanup are explicit operations with separate authority.
+15. **Command-repo state is not install state**. Normal Beads provisioning never initializes, syncs, or deletes the private command repo; bootstrap and legacy cleanup are explicit operations with separate authority.
 
-16. **Server mode requires Dolt**. The Beads execution workflow uses a Beads-managed Dolt server, so tool verification covers both binaries before command-repo bootstrap.
+16. **Embedded storage needs no Dolt binary**. Dolt is a Go library linked into `bd` and runs in-process, so provisioning installs exactly one binary. The `bd dolt push`, `bd dolt pull`, and `bd dolt remote` subcommands drive that embedded engine and do not require the external Dolt CLI.
+
+17. **Embedded capability is verified, not assumed**. The install-time check exists because a `CGO_ENABLED=0` binary is server-mode-only and would otherwise fail confusingly at first `bd init`.
 
 ---
 
@@ -1049,21 +1072,39 @@ Expected Output: Selected module fails with supported-platform guidance and perf
 ```
 
 ```
-TS-TOOL-034: Beads and Dolt official stable provisioning
+TS-TOOL-034: Beads official stable provisioning
 Category: Integration
 Priority: Critical
-Preconditions: Supported platform without bd or dolt
-Input: Select dolt and beads modules twice
-Expected Output: Official stable channels install and then idempotently update/verify both binaries; no command repo is created or mutated
+Preconditions: Supported platform without bd and without a dolt binary
+Input: Select the beads module twice
+Expected Output: The official stable channel installs and then idempotently updates/verifies one embedded-capable binary at or above the minimum version; no Dolt binary is installed; no command repo is created or mutated
+```
+
+```
+TS-TOOL-034a: Non-embedded Beads binary is rejected
+Category: Unit
+Priority: Critical
+Preconditions: The installed bd binary reports CGO_ENABLED=0
+Input: beads module verification
+Expected Output: Module fails with build-toolchain guidance at install time rather than deferring failure to first `bd init`
 ```
 
 ```
 TS-TOOL-035: Explicit command-repo bootstrap
 Category: End-to-End
 Priority: Critical
-Preconditions: bd and dolt are installed; private remote and credentials are valid
+Preconditions: bd is installed; private GitHub remote and SSH credentials are valid
 Input: Bootstrap with an absolute local path and private remote URL, then rerun
-Expected Output: One server-mode command repo is created or cloned, local runtime config is written, health and synchronization pass, and rerun preserves operational data
+Expected Output: One embedded command repo is created or cloned, its Dolt remote is configured, `.beads/config.yaml` is committed and pushed with git, Dolt data is pushed, local runtime config is written, `bd where` resolves to the command repo, and rerun preserves operational data
+```
+
+```
+TS-TOOL-035a: Routed writes leave source repositories clean
+Category: Integration
+Priority: Critical
+Preconditions: Bootstrap configured a command repo and exported BEADS_DIR
+Input: Run `bd create` and `bd list` from an unrelated source repository
+Expected Output: Issues are written to and read from the external command repo; the source repository gains no `.beads/` directory
 ```
 
 ```
@@ -1079,12 +1120,13 @@ Expected Output: Normal install deletes nothing; invalid archive deletes nothing
 
 ## Changelog
 
-| Version | Date | Summary |
-|---------|------|---------|
-| 1.5.0 | 2026-08-01 | Added official Beads and Dolt provisioning, explicit private command-repo bootstrap, and archive-gated one-time legacy cleanup. |
-| 1.4.0 | 2026-07-31 | Added native Python 3.10+ provisioning, macOS official Visual Studio Code installation/update, and Ubuntu/Debian code-server installation, service, security-state preservation, and health verification. |
-| 1.3.0 | 2026-07-15 | Made Claude settings local runtime state, preserved them across installer runs, and defined legacy symlink migration. |
-| 1.2.1 | 2026-07-06 | Required Claude Code to run the official installer with the `latest` target on every Claude module execution, with user-local binary verification. |
-| 1.2.0 | 2026-07-05 | Added Herdr direct-installer provisioning, Herdr modules, error handling, and tests. |
-| 1.1.0 | 2026-06-02 | Clarified that Pi installs a single shared binary. |
-| 1.0.0 | 2026-05-01 | Initial spec extracted from install.sh. Covers OS detection, package installation, tool downloads, fnm/Node.js, TUI tools, Mason packages, AI CLI tools, dependency resolution, and error handling. |
+| Version | Date       | Summary                                                                                                                                                                                                   |
+| ------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1.6.0   | 2026-08-02 | Adopted single-writer embedded Beads storage: removed Dolt provisioning, added minimum-version and embedded-capability verification, and specified bootstrap against a private git+ssh remote.            |
+| 1.5.0   | 2026-08-01 | Added official Beads and Dolt provisioning, explicit private command-repo bootstrap, and archive-gated one-time legacy cleanup.                                                                           |
+| 1.4.0   | 2026-07-31 | Added native Python 3.10+ provisioning, macOS official Visual Studio Code installation/update, and Ubuntu/Debian code-server installation, service, security-state preservation, and health verification. |
+| 1.3.0   | 2026-07-15 | Made Claude settings local runtime state, preserved them across installer runs, and defined legacy symlink migration.                                                                                     |
+| 1.2.1   | 2026-07-06 | Required Claude Code to run the official installer with the `latest` target on every Claude module execution, with user-local binary verification.                                                        |
+| 1.2.0   | 2026-07-05 | Added Herdr direct-installer provisioning, Herdr modules, error handling, and tests.                                                                                                                      |
+| 1.1.0   | 2026-06-02 | Clarified that Pi installs a single shared binary.                                                                                                                                                        |
+| 1.0.0   | 2026-05-01 | Initial spec extracted from install.sh. Covers OS detection, package installation, tool downloads, fnm/Node.js, TUI tools, Mason packages, AI CLI tools, dependency resolution, and error handling.       |

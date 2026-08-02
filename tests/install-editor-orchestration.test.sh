@@ -4,8 +4,8 @@ set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/harness.sh"
 
 COMMON_MINIMAL="base_tools neovim nvim_config tmux_config herdr herdr_config herdr_integrations"
-COMMON_WORK="base_tools neovim nvim_config tmux_config herdr herdr_config python tui_tools copilot herdr_integrations"
-COMMON_FULL="base_tools neovim nvim_config tmux_config herdr herdr_config zsh_ohmyzsh zsh_config python golang_full nodejs tui_tools codex codex_sandbox claude playwright pi pi_sandbox copilot herdr_integrations"
+COMMON_WORK="base_tools neovim nvim_config tmux_config herdr herdr_config python tui_tools beads copilot herdr_integrations"
+COMMON_FULL="base_tools neovim nvim_config tmux_config herdr herdr_config zsh_ohmyzsh zsh_config python golang_full nodejs tui_tools beads codex codex_sandbox claude playwright pi pi_sandbox copilot herdr_integrations"
 MACOS_EDITOR_ADDITIONS="vscode vscode_config"
 
 expanded_modules() {
@@ -501,7 +501,7 @@ EDITOR_MODULES="python vscode vscode_config code_server"
 
 # Independent expectations. These are declared by the test, not derived from
 # the implementation, so a label or module-list change must be made here too.
-EXPECTED_MENU_MODULES="base_tools neovim nvim_config tmux_config herdr herdr_config herdr_integrations zsh_ohmyzsh zsh_config python golang_full nodejs codex codex_sandbox claude pi pi_sandbox tui_tools playwright copilot vscode vscode_config code_server"
+EXPECTED_MENU_MODULES="base_tools neovim nvim_config tmux_config herdr herdr_config herdr_integrations zsh_ohmyzsh zsh_config python golang_full nodejs codex codex_sandbox claude pi pi_sandbox tui_tools beads playwright copilot vscode vscode_config code_server"
 
 EXPECTED_MODULE_LABELS="base_tools=Base Tools (git, curl, tmux, zsh, etc.)
 neovim=Neovim 0.12+
@@ -522,6 +522,7 @@ claude=Claude Code CLI
 pi=Pi Coding Agent
 pi_sandbox=Pi Sandbox (Docker)
 tui_tools=TUI Tools (lazygit, yazi, zoxide)
+beads=Beads Execution Coordination (bd, embedded storage)
 playwright=Playwright CLI (browser automation)
 copilot=GitHub Copilot CLI
 vscode=Visual Studio Code Desktop (macOS)

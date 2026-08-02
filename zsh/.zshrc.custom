@@ -108,3 +108,23 @@ if [ -d "$FNM_PATH" ]; then
   # Keep user-local npm binaries (for example Codex) ahead of fnm-managed globals.
   export PATH="$HOME/.local/bin:$PATH"
 fi
+
+# ===========================
+# Beads Command Repo
+# ===========================
+
+# Route bd at the private external command repo so issue state never lands in
+# a source checkout. The path comes from explicit bootstrap, which writes
+# machine-local state that is deliberately untracked. Anything unusable is
+# ignored silently: a machine that never bootstrapped still gets a working
+# shell, and execution workflows report the missing route themselves.
+# BEADS-ROUTING-START
+: "${BEADS_COMMAND_CONFIG_PATH:=$HOME/.config/beads-command/env}"
+if [ -r "$BEADS_COMMAND_CONFIG_PATH" ]; then
+  __beads_dir="$(sed -n 's/^BEADS_DIR=//p' "$BEADS_COMMAND_CONFIG_PATH" 2>/dev/null | tail -n1)"
+  case "$__beads_dir" in
+    /*) [ -d "$__beads_dir" ] && export BEADS_DIR="$__beads_dir" ;;
+  esac
+  unset __beads_dir
+fi
+# BEADS-ROUTING-END
