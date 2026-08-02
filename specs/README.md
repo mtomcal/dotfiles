@@ -1,6 +1,6 @@
 # Personal Dotfiles Manager Specification Suite
 
-> **Version**: 0.15.0
+> **Version**: 0.16.0
 > **Last Updated**: 2026-08-02
 > **Purpose**: Complete specification for the personal dotfiles manager — automates setup of a Herdr/tmux + Beads + Neovim + platform-scoped VS Code + zsh dev environment across Linux and macOS. Primarily for personal use, serves as reference/inspiration for others.
 
@@ -136,7 +136,7 @@ graph TD
 | [neovim-config.md](neovim-config.md) | Kickstart + custom plugin layer | 1.0.0 |
 | [vscode-config.md](vscode-config.md) | Managed VS Code/code-server configuration and extensions | 1.0.0 |
 | [execution-coordination.md](execution-coordination.md) | Beads command-repo execution and recovery contract | 1.2.0 |
-| [skill-library.md](skill-library.md) | Shared-skill catalog and authoring contracts | 7.0.0 |
+| [skill-library.md](skill-library.md) | Shared-skill catalog and authoring contracts | 7.1.0 |
 | [ai-agent-config.md](ai-agent-config.md) | AI agent runtime configs and catalog exposure | 4.1.0 |
 | [install-orchestrator.md](install-orchestrator.md) | Top-level idempotent setup orchestrator | 2.1.0 |
 
@@ -175,6 +175,7 @@ graph TD
 
 | Version | Date | Change |
 |---------|------|--------|
+| 0.16.0 | 2026-08-02 | Added the execution planning scope boundary separating engineering work from authoring work. |
 | 0.15.0 | 2026-08-02 | Registered the `beads` base skill, removed the retired filesystem execution contract and legacy-ledger grandfathering, and updated affected spec versions. |
 | 0.14.0 | 2026-08-02 | Adopted single-writer embedded Beads storage, removed the Dolt module, and updated affected spec versions. |
 | 0.13.0 | 2026-08-01 | Registered Execution Coordination, Beads/Dolt tooling, command-repo shell routing, updated dependency order, and current spec versions. |

@@ -1,6 +1,6 @@
 ---
 name: create-plan
-description: Create one execution-ready Beads molecule from a human-approved scope snapshot, with context-sized TDD slices, genuine dependencies, execution traces, and exact model and review policy. Use when a feature, fix, migration, or refactor needs a durable implementation graph before execution begins.
+description: Create one execution-ready Beads molecule from a human-approved scope snapshot, with context-sized TDD slices, genuine dependencies, execution traces, and exact model and review policy. Use when a feature, fix, migration, or refactor needs a durable implementation graph before execution begins. Plans engineering work only — route skill, spec, glossary, and documentation authoring to write-a-skill, update-specs, or ubiquitous-language instead.
 metadata:
   short-description: Create an execution-ready Beads molecule
 allowed-tools: read,bash
@@ -12,6 +12,8 @@ allowed-tools: read,bash
 
 - **Scope snapshot** — human-approved objective, acceptance criteria, failure criteria, and exclusions, frozen once approved.
 - **Execution molecule** — one root epic plus its work-bead graph; the only durable result of this skill.
+- **Engineering work** — behavior in code, configuration, or scripts that a test can observe failing before the change and passing after it.
+- **Authoring work** — prose, instruction, or vocabulary artifacts whose correctness is judged by review and audit rather than by a failing test: skills, specs, glossaries, documentation, and agent instructions.
 - **Current-state gap** — desired behavior that code or tests at the source fixed point do not yet satisfy.
 - **Proposed execution trace** — evidence-grounded call tree of intended runtime order and depth for one slice, distinguishing binding order from permitted internal variance.
 - **Exact model assignment** — command, provider, model id, and thinking level bound to a role.
@@ -24,7 +26,27 @@ This skill creates no durable Markdown. It MUST NOT write `PLAN.md`, `.plan`, sl
 
 Load the shared [`beads`](../beads/SKILL.md) skill before any `bd` operation; it owns routing verification, durable-write serialization, graph mechanics, and checkpointing.
 
-### 1. Pin source identity and fixed point
+### 1. Gate on engineering work
+
+This skill plans **engineering work only**. Every slice it produces carries RED/GREEN/REFACTOR tracer cycles, which require a test that can observably fail before the change. Authoring work has no such test, so forcing it into slices produces invented tests for prose, inflated graphs, and scope bloat.
+
+Classify the request before doing anything else. If the requested outcome is authoring work, **stop without creating a molecule** and name the owning skill:
+
+| Requested outcome | Owner |
+|---|---|
+| Write, revise, split, or audit a skill | [`write-a-skill`](../write-a-skill/SKILL.md) |
+| Verify skill frontmatter across agents | [`audit-shared-skills`](../audit-shared-skills/SKILL.md) |
+| Change specs, contracts, or requirements | [`update-specs`](../update-specs/SKILL.md) |
+| Define or reconcile domain vocabulary | [`ubiquitous-language`](../ubiquitous-language/SKILL.md) |
+| Produce an `AGENTS.md` codebase map | [`create-agents-md`](../create-agents-md/SKILL.md) |
+
+Judge the requested outcome, not the file extension: a change to a Markdown file that a test asserts on is engineering work, while a `.sh` file rewritten purely for prose in its help text is not. When genuinely uncertain, ask whether a test could observe the change failing; if no honest test can, it is authoring work.
+
+For **mixed scope**, plan only the engineering portion and record the authoring portion as an explicit exclusion naming its owner. Do not create authoring beads with acceptance-only criteria to keep them in the graph.
+
+Completion criterion: the requested outcome is classified as engineering, authoring, or mixed; authoring work has stopped with a named owner; and any mixed request has its authoring portion written down for the exclusions list before planning continues.
+
+### 2. Pin source identity and fixed point
 
 Verify command-repo routing through the `beads` skill first. Then resolve the canonical source checkout, its normalized repository identity, and one full source fixed point:
 
@@ -40,17 +62,19 @@ Record the caller's current exact model configuration as planner provenance.
 
 Completion criterion: canonical root, normalized repository identity, full source fixed point, and planner provenance are fixed, and `BEADS_DIR` routing is verified.
 
-### 2. Gather evidence and approve the scope snapshot
+### 3. Gather evidence and approve the scope snapshot
 
 Inspect relevant code, tests, documentation, available specifications, and risks at the fixed point. Account for each desired behavior as already satisfied with concrete evidence, a current-state gap with evidence of what is absent, or ambiguous with the conflicting sources quoted.
 
 Then obtain **explicit human approval** of the scope snapshot: objective, acceptance criteria, failure criteria, and exclusions. Ambiguity that prevents a safe technical sequence stops planning; report the exact decision needed rather than inferring it.
 
+Any authoring portion identified in step 1 MUST appear in the exclusions with its owning skill named, so the boundary is frozen with the snapshot instead of resurfacing as slice work later.
+
 The snapshot freezes on approval. Any later mutation requires a linked decision bead and fresh human approval.
 
-Completion criterion: every desired behavior has an evidenced disposition, only current-state gaps remain in scope, and the human has explicitly approved all four snapshot fields.
+Completion criterion: every desired behavior has an evidenced disposition, only current-state gaps remain in scope, any excluded authoring work names its owner, and the human has explicitly approved all four snapshot fields.
 
-### 3. Design slices, traces, and dependencies
+### 4. Design slices, traces, and dependencies
 
 Design context-sized vertical slices that each fit one fresh agent context and deliver observable behavior through the applicable layers. Give every slice explicit RED/GREEN/REFACTOR cycles, because implementation agents may run an economical model.
 
@@ -62,7 +86,7 @@ Each slice carries: behavior, dependencies, acceptance and failure criteria, a p
 
 Completion criterion: every gap maps to at least one context-sized slice, every slice has a public test seam and applicable trace, and dependency edges reflect genuine blockers only.
 
-### 4. Approve review topology and exact assignments
+### 5. Approve review topology and exact assignments
 
 Propose one review preset and obtain human approval for the complete policy:
 
@@ -78,7 +102,7 @@ In the same approval, settle exact role defaults and per-bead overrides, reviewe
 
 Completion criterion: the human has approved one preset with any overrides, and every executable bead has a resolved exact model assignment, escalation ladder, and correction allowance.
 
-### 5. Create the graph and validate before activation
+### 6. Create the graph and validate before activation
 
 Create the root molecule in **draft**, then its complete work graph, then validate. Serialize every durable write per the `beads` skill and retry contention rather than skipping it.
 

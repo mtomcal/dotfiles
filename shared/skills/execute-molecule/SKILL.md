@@ -36,6 +36,8 @@ Require **one explicit execution-molecule id**. Do not infer a latest molecule o
 
 Stop on any mismatch, missing fixed point, unapproved scope, partial graph, or contradiction. The scope snapshot is frozen; changing it requires a linked decision bead and human approval.
 
+If the molecule's slices describe authoring work — skills, specs, glossaries, documentation, or agent instructions — rather than engineering work with observable failing tests, stop and report it. Such a molecule should not have been created; route the work to its owning skill instead of executing tracer cycles against prose.
+
 Completion criterion: Herdr is available, its skill is loaded, and the explicit molecule id, repository identity, fixed point, approved scope, assignments, graph integrity, and sync state are verified.
 
 ### 2. Acquire the coordinator lease
