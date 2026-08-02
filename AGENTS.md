@@ -33,17 +33,18 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 |   |   `-- web-search
 |   |-- skills
 |   |   |-- audit-shared-skills -> ../../shared/skills/audit-shared-skills
+|   |   |-- beads -> ../../shared/skills/beads
 |   |   |-- bootstrap-specs -> ../../shared/skills/bootstrap-specs
 |   |   |-- codebase-design -> ../../shared/skills/codebase-design
 |   |   |-- code-review -> ../../shared/skills/code-review
 |   |   |-- create-agents-md -> ../../shared/skills/create-agents-md
+|   |   |-- create-engineering-plan -> ../../shared/skills/create-engineering-plan
 |   |   |-- create-explainer -> ../../shared/skills/create-explainer
-|   |   |-- create-plan -> ../../shared/skills/create-plan
 |   |   |-- curator -> ../../shared/skills/curator
 |   |   |-- design-md -> ../../shared/skills/design-md
 |   |   |-- diagnosing-bugs -> ../../shared/skills/diagnosing-bugs
-|   |   |-- divide-plan -> ../../shared/skills/divide-plan
 |   |   |-- em-train -> ../../shared/skills/em-train
+|   |   |-- execute-engineering-molecule -> ../../shared/skills/execute-engineering-molecule
 |   |   |-- grill-me -> ../../shared/skills/grill-me
 |   |   |-- handoff -> ../../shared/skills/handoff
 |   |   |-- herdr -> ../../shared/skills/herdr
@@ -52,6 +53,7 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 |   |   |-- improve-codebase-architecture -> ../../shared/skills/improve-codebase-architecture
 |   |   |-- playwright -> ../../shared/skills/playwright
 |   |   |-- prototype -> ../../shared/skills/prototype
+|   |   |-- python-tracing -> ../../shared/skills/python-tracing
 |   |   |-- research -> ../../shared/skills/research
 |   |   |-- resolving-merge-conflicts -> ../../shared/skills/resolving-merge-conflicts
 |   |   |-- tdd -> ../../shared/skills/tdd
@@ -65,20 +67,21 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 |-- shared
 |   `-- skills
 |       |-- audit-shared-skills
+|       |-- beads
 |       |-- bootstrap-specs
 |       |-- codebase-design
 |       |-- code-review
 |       |-- create-agents-md
 |       |   `-- scripts
+|       |-- create-engineering-plan
 |       |-- create-explainer
 |       |   `-- lab
-|       |-- create-plan
 |       |-- curator
 |       |-- design-md
 |       |-- diagnosing-bugs
-|       |-- divide-plan
 |       |-- em-train
 |       |   `-- scripts
+|       |-- execute-engineering-molecule
 |       |-- grill-me
 |       |-- handoff
 |       |-- herdr
@@ -88,6 +91,7 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 |       |-- playwright
 |       |   `-- references
 |       |-- prototype
+|       |-- python-tracing
 |       |-- research
 |       |-- resolving-merge-conflicts
 |       |-- tdd
