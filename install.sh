@@ -53,6 +53,9 @@ CODEX_CONFIG_TEMPLATE_MODE="preserve"
 REQUESTED_PROFILE=""
 # Runtime-only code-server bind override; never written to a tracked file.
 CODE_SERVER_BIND=""
+# Explicit command-repo bootstrap request; empty during ordinary installs.
+BEADS_BOOTSTRAP_PATH=""
+BEADS_BOOTSTRAP_REMOTE=""
 
 # ===========================
 # Core Functions
@@ -881,6 +884,242 @@ configure_herdr() {
 
     replace_symlink "$DOTFILES_DIR/herdr/config.toml" "$HOME/.config/herdr/config.toml"
     print_success "Herdr configuration linked"
+}
+
+# Beads stores execution-coordination state in one private external command
+# repo. Dolt is linked into the bd binary and runs in-process as a single
+# writer, so no separate Dolt binary, server, or port is provisioned.
+BEADS_INSTALL_SCRIPT="https://raw.githubusercontent.com/gastownhall/beads/main/scripts/install.sh"
+BEADS_REQUIRED_VERSION="0.59.0"
+
+beads_reported_version() {
+    "$1" version 2>/dev/null | head -n1 | sed -n 's/.*[Vv]ersion[[:space:]]\{1,\}\([0-9][0-9.]*\).*/\1/p'
+}
+
+beads_version_meets_requirement() {
+    [ -n "$1" ] || return 1
+    ! version_lt "$1" "$BEADS_REQUIRED_VERSION"
+}
+
+# The official installer downloads a release binary first, which is
+# embedded-capable. Its `go install` fallback can produce a CGO_ENABLED=0
+# build that is server-mode-only and fails only later at `bd init`, so the
+# capability is checked here rather than deferred to first use.
+beads_binary_is_embedded_capable() {
+    local binary="$1"
+
+    [ -f "$binary" ] || return 1
+
+    if ! command -v strings &> /dev/null; then
+        print_warning "'strings' not found; cannot verify embedded Dolt support in $binary"
+        return 0
+    fi
+
+    ! strings "$binary" | grep -q '^build[[:space:]]\{1,\}CGO_ENABLED=0$'
+}
+
+print_beads_embedded_guidance() {
+    print_info "A CGO_ENABLED=0 build cannot use embedded Dolt and would fail at 'bd init'."
+    print_info "Install a C toolchain (Ubuntu: build-essential pkg-config libzstd-dev) and re-run,"
+    print_info "or install the release binary directly from the Beads GitHub releases page."
+}
+
+install_beads() {
+    print_header "Installing Beads"
+
+    local binary="$HOME/.local/bin/bd"
+    local version
+
+    print_info "Installing/updating Beads to the latest stable release..."
+    if ! curl -fsSL "$BEADS_INSTALL_SCRIPT" | bash; then
+        print_error "Beads install failed: official installer returned an error"
+        return 1
+    fi
+    export PATH="$HOME/.local/bin:$PATH"
+
+    if [ ! -x "$binary" ]; then
+        print_error "Beads install failed: $binary not found or not executable"
+        return 1
+    fi
+
+    version="$(beads_reported_version "$binary")"
+    if [ -z "$version" ]; then
+        print_error "Could not read a Beads version from $binary"
+        return 1
+    fi
+
+    if ! beads_version_meets_requirement "$version"; then
+        print_error "Beads reports '$version' (required: $BEADS_REQUIRED_VERSION or newer)"
+        return 1
+    fi
+
+    if ! beads_binary_is_embedded_capable "$binary"; then
+        print_error "Beads binary at $binary was built without embedded Dolt support"
+        print_beads_embedded_guidance
+        return 1
+    fi
+
+    if command -v bd &> /dev/null && [ "$(command -v bd)" != "$binary" ]; then
+        print_warning "Another bd binary is earlier in PATH: $(command -v bd)"
+        print_info "Ensure ~/.local/bin comes first in PATH"
+    fi
+
+    print_success "Beads $version installed at ~/.local/bin/bd (embedded storage)"
+    print_info "Run './install.sh --beads-bootstrap <path> <remote-url>' to set up the command repo"
+}
+
+# --- Command-repo bootstrap --------------------------------------------------
+#
+# Explicit and idempotent, never an install side effect. Normal module runs
+# install binaries only; creating, routing, or synchronizing the private
+# command repo happens here and nowhere else.
+
+beads_bootstrap_arguments_valid() {
+    local local_path="$1"
+    local remote_url="$2"
+
+    case "$local_path" in
+        /*) ;;
+        *) return 1 ;;
+    esac
+
+    # Dolt needs its git+ transport prefix. A bare git URL bootstraps cleanly
+    # and then fails at push time, long after the mistake was made.
+    case "$remote_url" in
+        git+ssh://*|git+https://*) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+# Only the resolved path is persisted. The remote URL may carry credentials
+# and is never written to disk or logged.
+write_beads_command_config() {
+    local beads_dir="$1"
+    local config_dir="$HOME/.config/beads-command"
+
+    mkdir -p "$config_dir" || return 1
+    printf 'BEADS_DIR=%s\n' "$beads_dir" > "$config_dir/env" || return 1
+    print_success "Command-repo route recorded at ~/.config/beads-command/env"
+}
+
+print_beads_bootstrap_usage() {
+    print_error "Usage: ./install.sh --beads-bootstrap <absolute-local-path> <remote-url>"
+    print_info "Remote must use Dolt's git transport, for example:"
+    print_info "  git+ssh://git@github.com/<you>/<command-repo>.git"
+    print_info "  git+https://github.com/<you>/<command-repo>.git"
+}
+
+beads_bootstrap() {
+    local local_path="$1"
+    local remote_url="$2"
+    local beads_dir="$local_path/.beads"
+
+    print_header "Bootstrapping Beads Command Repo"
+
+    if ! beads_bootstrap_arguments_valid "$local_path" "$remote_url"; then
+        print_beads_bootstrap_usage
+        return 1
+    fi
+
+    if ! command -v bd &> /dev/null; then
+        print_error "bd not found on PATH; run the beads module first"
+        return 1
+    fi
+
+    if ! command -v git &> /dev/null; then
+        print_error "git not found on PATH; the command repo needs ordinary git"
+        return 1
+    fi
+
+    if [ ! -d "$local_path/.git" ]; then
+        print_info "Cloning the private command repo..."
+        mkdir -p "$(dirname "$local_path")" || return 1
+        if ! git clone "$(beads_git_clone_url "$remote_url")" "$local_path"; then
+            print_error "Could not clone the command repo"
+            print_info "Create the private repository first, then re-run bootstrap"
+            return 1
+        fi
+    else
+        print_success "Command repo already present at $local_path"
+    fi
+
+    if [ -d "$beads_dir" ]; then
+        # An existing database is reconciled rather than recreated; bootstrap
+        # must never discard operational state on a re-run.
+        print_info "Existing Beads database found; reconciling..."
+        if ! (cd "$local_path" && BEADS_DIR="$beads_dir" bd bootstrap --yes); then
+            print_error "bd bootstrap could not reconcile the existing database"
+            return 1
+        fi
+    else
+        print_info "Initializing Beads in embedded mode..."
+        if ! (cd "$local_path" && BEADS_DIR="$beads_dir" bd init --quiet); then
+            print_error "bd init failed"
+            return 1
+        fi
+    fi
+
+    print_info "Configuring the private Dolt remote..."
+    if ! (cd "$local_path" && BEADS_DIR="$beads_dir" bd dolt remote add origin "$remote_url" 2>/dev/null); then
+        print_info "Dolt remote 'origin' already configured"
+    fi
+
+    # Two halves, both required: issue data rides the Dolt remote to
+    # refs/dolt/data, while .beads/config.yaml reaches other machines only
+    # through ordinary git. Without the git half, `bd bootstrap` elsewhere
+    # has no sync.remote to resolve.
+    if ! (cd "$local_path" && BEADS_DIR="$beads_dir" bd dolt push); then
+        print_error "bd dolt push failed; check remote access and credentials"
+        return 1
+    fi
+
+    if ! beads_commit_command_config "$local_path"; then
+        return 1
+    fi
+
+    write_beads_command_config "$beads_dir" || return 1
+
+    print_success "Command repo ready at $local_path"
+    print_info "Open a new shell (or re-source ~/.zshrc) so BEADS_DIR is exported"
+}
+
+# Dolt's git+ transport prefix is not understood by git itself.
+beads_git_clone_url() {
+    printf '%s' "${1#git+}"
+}
+
+# bd commits .beads/config.yaml itself when it records sync.remote, so the
+# work here is usually pushing an already-made commit rather than creating
+# one. Staging is still checked because a manual edit may be outstanding.
+beads_commit_command_config() {
+    local local_path="$1"
+
+    (
+        cd "$local_path" || exit 1
+
+        git add .beads/config.yaml 2>/dev/null || true
+        if ! git diff --cached --quiet 2>/dev/null; then
+            git commit -m "chore: record beads sync remote" >/dev/null || exit 1
+        fi
+
+        # Push whenever the branch is ahead or has no upstream yet; an
+        # unpushed sync.remote commit leaves other machines unable to
+        # bootstrap, which is exactly the failure this step must prevent.
+        if git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' >/dev/null 2>&1; then
+            if [ -z "$(git log --oneline '@{upstream}..HEAD' 2>/dev/null)" ]; then
+                exit 0
+            fi
+            git push >/dev/null 2>&1 || exit 1
+        else
+            git push -u origin HEAD >/dev/null 2>&1 || exit 1
+        fi
+    ) || {
+        print_error "Could not commit and push .beads/config.yaml"
+        print_info "Other machines need this file pushed before 'bd bootstrap' works"
+        return 1
+    }
+
+    print_success "Recorded sync configuration in git"
 }
 
 shell_single_quote() {
@@ -2958,13 +3197,13 @@ expand_profile() {
 
     case "$profile" in
         full)
-            common=(base_tools neovim nvim_config tmux_config herdr herdr_config zsh_ohmyzsh zsh_config python golang_full nodejs tui_tools codex codex_sandbox claude playwright pi pi_sandbox copilot herdr_integrations)
+            common=(base_tools neovim nvim_config tmux_config herdr herdr_config zsh_ohmyzsh zsh_config python golang_full nodejs tui_tools beads codex codex_sandbox claude playwright pi pi_sandbox copilot herdr_integrations)
             ;;
         minimal)
             common=(base_tools neovim nvim_config tmux_config herdr herdr_config herdr_integrations)
             ;;
         work)
-            common=(base_tools neovim nvim_config tmux_config herdr herdr_config python tui_tools copilot herdr_integrations)
+            common=(base_tools neovim nvim_config tmux_config herdr herdr_config python tui_tools beads copilot herdr_integrations)
             ;;
         *)
             print_error "Unknown profile: $profile" >&2
@@ -3037,6 +3276,15 @@ resolve_dependencies() {
                     resolved+=("base_tools")
                 fi
                 resolved+=("herdr")
+                ;;
+            "beads")
+                # Beads direct installer needs curl. Embedded Dolt storage is
+                # linked into the bd binary, so no Dolt module is required.
+                if ! command -v curl &> /dev/null; then
+                    print_warning "Adding curl (required by Beads)" >&2
+                    resolved+=("base_tools")
+                fi
+                resolved+=("beads")
                 ;;
             "herdr_config")
                 if ! command -v herdr &> /dev/null; then
@@ -3185,6 +3433,7 @@ claude:Claude Code CLI
 pi:Pi Coding Agent
 pi_sandbox:Pi Sandbox (Docker)
 tui_tools:TUI Tools (lazygit, yazi, zoxide)
+beads:Beads Execution Coordination (bd, embedded storage)
 playwright:Playwright CLI (browser automation)
 copilot:GitHub Copilot CLI
 vscode:Visual Studio Code Desktop (macOS)
@@ -3430,6 +3679,7 @@ execute_modules() {
             "pi") run_module pi install_pi ;;
             "pi_sandbox") run_module pi_sandbox install_pi_sandbox ;;
             "tui_tools") run_module tui_tools install_tui_tools ;;
+            "beads") run_module beads install_beads ;;
             "playwright") run_module playwright install_playwright ;;
             "copilot") run_module copilot install_copilot ;;
             "vscode") run_module vscode install_vscode ;;
@@ -3520,6 +3770,17 @@ parse_arguments() {
                 CODE_SERVER_BIND="$2"
                 shift 2
                 ;;
+            --beads-bootstrap)
+                # Explicit command-repo bootstrap; runs alone and never as
+                # part of profile or module execution.
+                if [ $# -lt 3 ]; then
+                    print_beads_bootstrap_usage
+                    exit 1
+                fi
+                BEADS_BOOTSTRAP_PATH="$2"
+                BEADS_BOOTSTRAP_REMOTE="$3"
+                shift 3
+                ;;
             --help)
                 show_help
                 exit 0
@@ -3560,6 +3821,10 @@ Options:
                        Override the local code-server bind value for this run
                        (e.g. 0.0.0.0:8080 or [::1]:8080); stored only in local
                        code-server configuration, never in tracked files
+  --beads-bootstrap PATH REMOTE_URL
+                       Set up the private Beads command repo at PATH against
+                       REMOTE_URL (git+ssh:// or git+https://) and record the
+                       machine-local route. Runs alone; installs nothing.
   --help              Show this help message
 
 Profiles:
@@ -3584,6 +3849,7 @@ Modules:
   codex               Codex CLI
   codex_sandbox       Codex Sandbox (Docker image + cods script)
   tui_tools           TUI tools (lazygit, yazi, zoxide)
+  beads               Beads execution coordination (bd, embedded storage)
   claude              Claude Code CLI
   pi                  Pi Coding Agent
   pi_sandbox          Pi Sandbox (Docker image + pis script)
@@ -3614,6 +3880,13 @@ EOF
 main() {
     # Parse command line arguments first (for --help)
     parse_arguments "$@"
+
+    # Command-repo bootstrap is a standalone operation: it installs nothing
+    # and no profile or module may trigger it.
+    if [ -n "$BEADS_BOOTSTRAP_PATH" ]; then
+        beads_bootstrap "$BEADS_BOOTSTRAP_PATH" "$BEADS_BOOTSTRAP_REMOTE"
+        exit $?
+    fi
 
     print_header "Dotfiles Installation Script"
     print_info "Dotfiles directory: $DOTFILES_DIR"
