@@ -101,7 +101,7 @@
 | **behavior-preservation ledger** | An audit record mapping each required behavior to its retained location or replacement owner | "change summary", "checklist" | Covers triggers, branches, gates, failures, guardrails, outputs, ownership, and completion conditions |
 | **command repo** | The private external repository whose Beads database is authoritative for execution coordination across multiple source repositories | "planning repo", "central beads folder" | It stores operational state rather than source code or dotfiles configuration, and source repositories contain no `.beads/` state. |
 | **scope snapshot** | The frozen human-approved objective, acceptance criteria, failure criteria, and exclusions that authorize one execution molecule | "spec diff", "mutable brief" | A specification diff is optional evidence rather than a creation precondition; changing scope requires an approved decision bead. |
-| **execution molecule** | A Beads molecule whose root scope and dependency-ordered work beads form one execution-ready implementation and review graph | "implementation plan", "execution ledger", "plan file" | Created directly by `create-plan`; it combines planning and execution state without durable workflow Markdown. |
+| **execution molecule** | A Beads molecule whose root scope and dependency-ordered work beads form one execution-ready implementation and review graph | "implementation plan", "execution ledger", "plan file" | Created directly by `create-engineering-plan`; it combines planning and execution state without durable workflow Markdown. |
 | **legacy execution ledger** | The single grandfathered filesystem execution record allowed to reach a terminal state during Beads adoption | "current plan", "new ledger" | No new legacy execution ledger may be created, and support is removed after it becomes terminal. |
 | **work bead** | A dependency-aware executable or decision record within an execution molecule | "task file", "slice file" | Work beads include slices, review beads, remediation beads, mechanical gates, and decision beads. |
 | **review policy** | The human-approved review breadth, depth, and independence requirements selected when an execution molecule is created | "review budget", "review configuration" | Lean, Standard, and High-assurance presets provide defaults with explicit overrides. |
@@ -240,9 +240,9 @@
 > **Domain Expert**: "No. That is sequencing. A valid **Reference pointer** requires a **branch outcome** and at least one successful no-load route."
 > **Dev**: "Where does universally required behavior go?"
 > **Domain Expert**: "Keep it as a compact **core instruction** in the skill body; **semantic YAGNI** removes unnecessary detail instead of creating **hill climbing**."
-> **Dev**: "Does `create-plan` write a `PLAN.md` before execution?"
+> **Dev**: "Does `create-engineering-plan` write a `PLAN.md` before execution?"
 > **Domain Expert**: "No. It creates one execution-ready **execution molecule** whose **slices**, review policy, and model assignments are already explicit."
-> **Dev**: "Should `execute-molecule` own Claude-specific launch or waiting mechanics?"
+> **Dev**: "Should `execute-engineering-molecule` own Claude-specific launch or waiting mechanics?"
 > **Domain Expert**: "No. It composes the **Herdr skill** for generic transport and server-owned settled-state waiting, and the **Claude Code Herdr skill** for Claude-specific launch arguments, task interpretation, and steering behavior."
 > **Dev**: "Is a **proposed execution trace** a real stack trace I captured at runtime?"
 > **Domain Expert**: "No. It is an evidence-grounded intended call tree carried directly by an applicable **slice** bead."

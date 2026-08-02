@@ -24,9 +24,9 @@ Workspace, tab, and pane use the project definitions in `specs/UBIQUITOUS_LANGUA
 
 ### Route supervision before transport
 
-Use this skill directly for terminal transport and resource control. When the caller asks to select implementation and escalation models, supervise a bounded editable worker, independently accept its candidate, or compare delegated cost against one strong model, load [`herdr-supervise`](../herdr-supervise/SKILL.md); it owns that supervision contract while this skill continues to own transport. When an explicit execution molecule needs recoverable execution, route to [`execute-molecule`](../execute-molecule/SKILL.md) instead.
+Use this skill directly for terminal transport and resource control. When the caller asks to select implementation and escalation models, supervise a bounded editable worker, independently accept its candidate, or compare delegated cost against one strong model, load [`herdr-supervise`](../herdr-supervise/SKILL.md); it owns that supervision contract while this skill continues to own transport. When an explicit execution molecule needs recoverable execution, route to [`execute-engineering-molecule`](../execute-engineering-molecule/SKILL.md) instead.
 
-Completion: transport-only work remains here, bounded supervision composes `herdr-supervise`, and molecule execution composes `execute-molecule` without copying either workflow into this skill.
+Completion: transport-only work remains here, bounded supervision composes `herdr-supervise`, and molecule execution composes `execute-engineering-molecule` without copying either workflow into this skill.
 
 ### Verify runtime context and discover live state
 

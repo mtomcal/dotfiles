@@ -1,6 +1,6 @@
 # Personal Dotfiles Manager Specification Suite
 
-> **Version**: 0.16.0
+> **Version**: 0.17.0
 > **Last Updated**: 2026-08-02
 > **Purpose**: Complete specification for the personal dotfiles manager — automates setup of a Herdr/tmux + Beads + Neovim + platform-scoped VS Code + zsh dev environment across Linux and macOS. Primarily for personal use, serves as reference/inspiration for others.
 
@@ -135,8 +135,8 @@ graph TD
 | [tmux-config.md](tmux-config.md) | Tmux keybindings and nested sessions | 1.1.0 |
 | [neovim-config.md](neovim-config.md) | Kickstart + custom plugin layer | 1.0.0 |
 | [vscode-config.md](vscode-config.md) | Managed VS Code/code-server configuration and extensions | 1.0.0 |
-| [execution-coordination.md](execution-coordination.md) | Beads command-repo execution and recovery contract | 1.2.0 |
-| [skill-library.md](skill-library.md) | Shared-skill catalog and authoring contracts | 7.1.0 |
+| [execution-coordination.md](execution-coordination.md) | Beads command-repo execution and recovery contract | 1.3.0 |
+| [skill-library.md](skill-library.md) | Shared-skill catalog and authoring contracts | 8.0.0 |
 | [ai-agent-config.md](ai-agent-config.md) | AI agent runtime configs and catalog exposure | 4.1.0 |
 | [install-orchestrator.md](install-orchestrator.md) | Top-level idempotent setup orchestrator | 2.1.0 |
 
@@ -158,7 +158,7 @@ graph TD
 
 - [x] Extract shell-config spec from zsh/.zshrc.custom
 - [x] Extract herdr-config spec from herdr/config.toml
-- [ ] Implement and validate execution-coordination against the approved command-repo, molecule, assignment, attempt, and recovery contracts — bootstrap, routing, and the encoding skills (`beads`, `create-plan`, `execute-molecule`) are complete; molecule creation and execution remain unexercised at runtime
+- [ ] Implement and validate execution-coordination against the approved command-repo, molecule, assignment, attempt, and recovery contracts — bootstrap, routing, and the encoding skills (`beads`, `create-engineering-plan`, `execute-engineering-molecule`) are complete; molecule creation and execution remain unexercised at runtime
 - [x] Extract tmux-config spec from tmux/.tmux.conf
 - [x] Extract neovim-config spec from nvim/custom/ plugin files
 - [ ] Implement and validate vscode-config against the approved managed-layer, extension, service, and capture contracts
@@ -175,6 +175,7 @@ graph TD
 
 | Version | Date | Change |
 |---------|------|--------|
+| 0.17.0 | 2026-08-02 | Renamed the execution entries to `create-engineering-plan` and `execute-engineering-molecule` and required a molecule map at creation. |
 | 0.16.0 | 2026-08-02 | Added the execution planning scope boundary separating engineering work from authoring work. |
 | 0.15.0 | 2026-08-02 | Registered the `beads` base skill, removed the retired filesystem execution contract and legacy-ledger grandfathering, and updated affected spec versions. |
 | 0.14.0 | 2026-08-02 | Adopted single-writer embedded Beads storage, removed the Dolt module, and updated affected spec versions. |

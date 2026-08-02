@@ -1,12 +1,12 @@
 ---
-name: execute-molecule
-description: Coordinate one explicit Beads execution molecule through Herdr — acquiring the coordinator lease, launching write-ahead attempts, verifying evidence, integrating slices, running configured reviews, and recovering after a crash. Use when a create-plan molecule is ready for implementation, verification, integration, remediation, or interrupted-execution recovery inside Herdr.
+name: execute-engineering-molecule
+description: Coordinate one explicit Beads engineering molecule through Herdr — acquiring the coordinator lease, launching write-ahead attempts, verifying evidence, integrating slices, running configured reviews, and recovering after a crash. Use when a create-engineering-plan molecule is ready for implementation, verification, integration, remediation, or interrupted-execution recovery inside Herdr. Coordinates engineering molecules only; its loop assumes Git commits, isolated worktrees, and testable slices.
 metadata:
   short-description: Execute a Beads molecule in Herdr
 allowed-tools: read,bash
 ---
 
-# Execute Molecule
+# Execute Engineering Molecule
 
 ## Language Definitions
 
@@ -17,6 +17,8 @@ allowed-tools: read,bash
 - **Observation timeout** — maximum wait for the next expected Herdr evidence before the coordinator inspects and steers.
 
 Beads is durable authority; Herdr is ephemeral transport. Herdr state is never a durable record.
+
+This skill coordinates **engineering molecules only**. Its loop is Git- and test-shaped throughout: fixed points are commit hashes, slices are implemented in isolated worktrees and integrated by cherry-pick, and every slice requires an independent test-quality audit. A molecule whose work has no commits to integrate and no tests to audit cannot be executed here. Coordinating another kind of Beads work would need its own skill; none exists yet.
 
 ## Workflow
 

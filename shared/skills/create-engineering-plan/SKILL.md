@@ -1,5 +1,5 @@
 ---
-name: create-plan
+name: create-engineering-plan
 description: Create one execution-ready Beads molecule from a human-approved scope snapshot, with context-sized TDD slices, genuine dependencies, execution traces, and exact model and review policy. Use when a feature, fix, migration, or refactor needs a durable implementation graph before execution begins. Plans engineering work only — route skill, spec, glossary, and documentation authoring to write-a-skill, update-specs, or ubiquitous-language instead.
 metadata:
   short-description: Create an execution-ready Beads molecule
@@ -28,9 +28,11 @@ Load the shared [`beads`](../beads/SKILL.md) skill before any `bd` operation; it
 
 ### 1. Gate on engineering work
 
-This skill plans **engineering work only**. Every slice it produces carries RED/GREEN/REFACTOR tracer cycles, which require a test that can observably fail before the change. Authoring work has no such test, so forcing it into slices produces invented tests for prose, inflated graphs, and scope bloat.
+This skill plans **engineering work only**. Every slice it produces carries RED/GREEN/REFACTOR tracer cycles, which require a test that can observably fail before the change. Non-engineering work has no such test, so forcing it into slices produces invented tests, inflated graphs, and scope bloat.
 
-Classify the request before doing anything else. If the requested outcome is authoring work, **stop without creating a molecule** and name the owning skill:
+Classify the requested outcome before doing anything else. Engineering work continues to step 2. Non-engineering work **stops without creating a molecule**.
+
+Authoring work — prose, instruction, and vocabulary artifacts — has established owners. Name the owner and route there:
 
 | Requested outcome | Owner |
 |---|---|
@@ -40,11 +42,13 @@ Classify the request before doing anything else. If the requested outcome is aut
 | Define or reconcile domain vocabulary | [`ubiquitous-language`](../ubiquitous-language/SKILL.md) |
 | Produce an `AGENTS.md` codebase map | [`create-agents-md`](../create-agents-md/SKILL.md) |
 
-Judge the requested outcome, not the file extension: a change to a Markdown file that a test asserts on is engineering work, while a `.sh` file rewritten purely for prose in its help text is not. When genuinely uncertain, ask whether a test could observe the change failing; if no honest test can, it is authoring work.
+Other non-engineering work — research programs, operational runbooks, content production, or any outcome no test can observe failing — has **no planning skill yet**. Stop and say so plainly. Beads can track such work under a future non-engineering planning workflow, but that workflow does not exist; do not approximate it by relaxing tracer cycles, substituting acceptance-only criteria, or widening this skill's scope.
 
-For **mixed scope**, plan only the engineering portion and record the authoring portion as an explicit exclusion naming its owner. Do not create authoring beads with acceptance-only criteria to keep them in the graph.
+Judge the requested outcome, not the file extension: a change to a Markdown file that a test asserts on is engineering work, while a `.sh` file rewritten purely for prose in its help text is not. When genuinely uncertain, ask whether a test could observe the change failing; if no honest test can, it is not engineering work.
 
-Completion criterion: the requested outcome is classified as engineering, authoring, or mixed; authoring work has stopped with a named owner; and any mixed request has its authoring portion written down for the exclusions list before planning continues.
+For **mixed scope**, plan only the engineering portion and record every non-engineering portion as an explicit exclusion naming its owner, or naming the absence of one. Do not create non-engineering beads with acceptance-only criteria to keep them in the graph.
+
+Completion criterion: the requested outcome is classified as engineering, non-engineering, or mixed; non-engineering work has stopped with a named owner or an explicit statement that none exists; and any mixed request has its excluded portions written down for the exclusions list before planning continues.
 
 ### 2. Pin source identity and fixed point
 
@@ -116,6 +120,29 @@ Validate before exposing any ready work:
 
 A partial or failing graph stays draft/blocked and MUST NOT expose slices as ready. Reconcile it or explicitly discard the draft. Only after validation passes, mark the molecule ready and push the initial semantic checkpoint.
 
-Report the root molecule id so execution can reference it explicitly.
+### 7. Render the molecule map
 
-Completion criterion: one ready molecule exists with a validated acyclic graph, the initial checkpoint is pushed, the root id is reported, and no durable Markdown or source-repository `.beads/` state was created.
+After validation passes, render the created graph as a Mermaid diagram so the agent that executes it and the human who approved it can both see the shape of the work at a glance. Derive it from what `bd` actually returned — real bead ids and real dependency edges — not from the design intent in step 4, so the diagram is evidence that the graph matches the plan.
+
+Show each bead's id, its kind, and a short behavior label; draw blocking dependencies as arrows from blocker to blocked; group by kind so slices, reviews, and remediation are visually distinct. Omit attempt beads — none exist yet at creation, and they are non-blocking operational nodes that would obscure the frontier.
+
+```mermaid
+graph TD
+    subgraph Slices
+        S1["bd-a1 · slice<br/>parse config file"]
+        S2["bd-a2 · slice<br/>validate remote URL"]
+        S3["bd-a3 · slice<br/>write runtime config"]
+    end
+    subgraph Review
+        R1["bd-a4 · review<br/>Scope fidelity"]
+        R2["bd-a5 · review<br/>Security"]
+    end
+    S1 --> S2
+    S2 --> S3
+    S3 --> R1
+    S3 --> R2
+```
+
+Report the diagram alongside the root molecule id. Label it **non-authoritative**: Beads remains the source of truth, and a diagram that disagrees with `bd` means the diagram is stale, never the graph. Do not write it to a durable Markdown file in the source repository.
+
+Completion criterion: one ready molecule exists with a validated acyclic graph, the initial checkpoint is pushed, the root id is reported, a Mermaid map rendered from actual `bd` output accompanies it and is labelled non-authoritative, and no durable Markdown or source-repository `.beads/` state was created.

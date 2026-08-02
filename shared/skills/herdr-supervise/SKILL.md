@@ -26,7 +26,7 @@ allowed-tools: read,bash
 
 Require `HERDR_ENV=1`; if absent, stop because this workflow has no non-Herdr fallback. Load [`herdr`](../herdr/SKILL.md) before controlling any pane. Herdr owns terminal transport; this skill owns supervision and acceptance.
 
-Use this workflow only for one bounded delegated task. If an explicit execution molecule needs recoverable execution state or multiple dependent implementation workers, route to [`execute-molecule`](../execute-molecule/SKILL.md). If no editable delegation is needed, use the relevant review or research workflow with base Herdr transport instead.
+Use this workflow only for one bounded delegated task. If an explicit execution molecule needs recoverable execution state or multiple dependent implementation workers, route to [`execute-engineering-molecule`](../execute-engineering-molecule/SKILL.md). If no editable delegation is needed, use the relevant review or research workflow with base Herdr transport instead.
 
 Completion criterion: Herdr is available, its skill is loaded, and the task is confirmed as one bounded editable delegation rather than plan execution or read-only work.
 

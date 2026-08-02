@@ -1,6 +1,6 @@
 # Execution Coordination
 
-> **Version**: 1.2.0
+> **Version**: 1.3.0
 > **Last Updated**: 2026-08-02
 > **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md), [Tool Provisioning](tool-provisioning.md), [Herdr Config](herdr-config.md)
 > **Depended By**: [Skill Library](skill-library.md), [Install Orchestrator](install-orchestrator.md)
@@ -12,12 +12,12 @@
 
 Execution Coordination owns durable planning, agent assignment, dependency ordering, execution attempts, review policy, evidence, synchronization, and crash recovery for agent-driven implementation work. One private external **command repo** contains the Beads database for every source repository. Source repositories remain free of `.beads/` directories and durable workflow Markdown.
 
-The approved behavior in this specification is desired. The `beads`, `create-plan`, and `execute-molecule` shared skills encode this contract, but no molecule has yet been created or executed against it, so the runtime behavior remains unproven. All work MUST use an **execution molecule**; no legacy filesystem ledger remains.
+The approved behavior in this specification is desired. The `beads`, `create-engineering-plan`, and `execute-engineering-molecule` shared skills encode this contract, but no molecule has yet been created or executed against it, so the runtime behavior remains unproven. All work MUST use an **execution molecule**; no legacy filesystem ledger remains.
 
 The system MUST ensure that:
 
-1. `create-plan` creates one execution-ready Beads molecule directly from a human-approved scope snapshot.
-2. `execute-molecule` uses Herdr for live agent transport while Beads remains the complete durable control and recovery authority.
+1. `create-engineering-plan` creates one execution-ready Beads molecule directly from a human-approved scope snapshot.
+2. `execute-engineering-molecule` uses Herdr for live agent transport while Beads remains the complete durable control and recovery authority.
 3. A coordinator may be killed after any durable transition and a fresh coordinator can derive the next safe action from Beads.
 4. Every agent side effect has write-ahead intent, exact model assignment, durable instructions, and durable return evidence.
 5. Only integrated work closes a blocking slice, so the Beads ready queue is the authoritative frontier.
@@ -225,7 +225,7 @@ Shell startup MUST source valid local runtime configuration and globally export 
 
 ### Molecule Creation
 
-`create-plan` MUST:
+`create-engineering-plan` MUST:
 
 1. Resolve canonical source checkout, normalized repository identity, and one full source fixed point.
 2. Use the caller's current exact model configuration and record it as planner provenance.
@@ -238,7 +238,7 @@ Shell startup MUST source valid local runtime configuration and globally export 
 9. Create a draft molecule and its complete work graph; validate coverage, acyclicity, assignments, traces, and acceptance before marking it ready.
 10. Commit and push the initial semantic checkpoint.
 
-A partial graph MUST remain draft/blocked and MUST NOT expose slices as ready. `create-plan` MUST NOT create durable Markdown artifacts or source-repository `.beads/` state.
+A partial graph MUST remain draft/blocked and MUST NOT expose slices as ready. `create-engineering-plan` MUST NOT create durable Markdown artifacts or source-repository `.beads/` state.
 
 ### Single-Writer Durable Storage
 
@@ -269,7 +269,7 @@ Only closed blockers release dependent work into `bd ready` for the molecule.
 
 ### Coordinator Lease
 
-Before structural mutation or Herdr control, `execute-molecule` MUST verify the exact coordinator assignment and acquire the non-expiring coordinator lease. If another nonterminal session holds it, execution stops.
+Before structural mutation or Herdr control, `execute-engineering-molecule` MUST verify the exact coordinator assignment and acquire the non-expiring coordinator lease. If another nonterminal session holds it, execution stops.
 
 Takeover requires:
 
@@ -498,6 +498,7 @@ Expected Output: Normal install deletes no legacy data; explicit cleanup verifie
 
 | Version | Date       | Change                                                                                                                                                                                                                 |
 | ------- | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1.3.0   | 2026-08-02 | Renamed the planning and execution entries to `create-engineering-plan` and `execute-engineering-molecule`, scoping both to the engineering work domain.                                                                |
 | 1.2.0   | 2026-08-02 | Closed the legacy transition after the filesystem ledger contract was removed from the skill catalog, and recorded that the encoding skills exist while runtime execution remains unproven.                             |
 | 1.1.0   | 2026-08-02 | Adopted single-writer embedded storage, added the durable-write serialization constraint, and specified two-half synchronization against a private git+ssh remote.                                                     |
 | 1.0.0   | 2026-08-01 | Established private command-repo execution molecules, exact model and review policy, write-ahead attempt graphs, Herdr transport boundaries, semantic synchronization, crash recovery, and legacy transition behavior. |

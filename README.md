@@ -186,8 +186,8 @@ dotfiles/
 │   └── skills/            # Canonical skill catalog — exposed to all agents
 │       ├── playwright/
 │       ├── video-to-contact-sheet/
-│       ├── create-plan/
-│       ├── execute-molecule/
+│       ├── create-engineering-plan/
+│       ├── execute-engineering-molecule/
 │       ├── beads/
 │       ├── teach/
 │       ├── research/
@@ -917,8 +917,8 @@ Codex, Claude, Pi, and Copilot share a single skills directory at `shared/skills
 |-------|-------------|
 | `playwright` | Browser automation, scripted capture, and Playwright test workflows |
 | `video-to-contact-sheet` | Convert recordings into trimmed clips, contact sheets, and focused crops |
-| `create-plan` | Create one immutable single-agent implementation plan from a fixed spec diff |
-| `execute-molecule` | Coordinate a Beads execution molecule through Herdr with leases, write-ahead attempts, and configured reviews |
+| `create-engineering-plan` | Create one immutable single-agent implementation plan from a fixed spec diff |
+| `execute-engineering-molecule` | Coordinate a Beads execution molecule through Herdr with leases, write-ahead attempts, and configured reviews |
 | `beads` | Canonical `bd` contract — command-repo routing, execution molecules, work beads, attempts, and sync |
 | `teach` | Build a durable, researched teaching workspace with HTML lessons and learning records |
 | `code-review` | Review a fixed diff independently against repository standards and originating requirements |

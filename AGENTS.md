@@ -38,13 +38,13 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 |   |   |-- codebase-design -> ../../shared/skills/codebase-design
 |   |   |-- code-review -> ../../shared/skills/code-review
 |   |   |-- create-agents-md -> ../../shared/skills/create-agents-md
+|   |   |-- create-engineering-plan -> ../../shared/skills/create-engineering-plan
 |   |   |-- create-explainer -> ../../shared/skills/create-explainer
-|   |   |-- create-plan -> ../../shared/skills/create-plan
 |   |   |-- curator -> ../../shared/skills/curator
 |   |   |-- design-md -> ../../shared/skills/design-md
 |   |   |-- diagnosing-bugs -> ../../shared/skills/diagnosing-bugs
 |   |   |-- em-train -> ../../shared/skills/em-train
-|   |   |-- execute-molecule -> ../../shared/skills/execute-molecule
+|   |   |-- execute-engineering-molecule -> ../../shared/skills/execute-engineering-molecule
 |   |   |-- grill-me -> ../../shared/skills/grill-me
 |   |   |-- handoff -> ../../shared/skills/handoff
 |   |   |-- herdr -> ../../shared/skills/herdr
@@ -73,15 +73,15 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 |       |-- code-review
 |       |-- create-agents-md
 |       |   `-- scripts
+|       |-- create-engineering-plan
 |       |-- create-explainer
 |       |   `-- lab
-|       |-- create-plan
 |       |-- curator
 |       |-- design-md
 |       |-- diagnosing-bugs
 |       |-- em-train
 |       |   `-- scripts
-|       |-- execute-molecule
+|       |-- execute-engineering-molecule
 |       |-- grill-me
 |       |-- handoff
 |       |-- herdr
