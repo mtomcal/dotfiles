@@ -43,6 +43,27 @@ test_bootstrap_rejects_remote_without_dolt_scheme() {
         || fail "bare HTTPS remote must be rejected"
 }
 
+# git+ssh:// is a URL scheme, so the host is delimited by '/'. Pasting the
+# scp-style form GitHub displays keeps the ':' separator, which SSH then reads
+# as a port and resolves "github.com:owner" as a hostname. That surfaces deep
+# inside git clone, so reject it at the boundary instead.
+test_bootstrap_rejects_scp_style_host_separator() {
+    source_install
+
+    ! beads_bootstrap_arguments_valid "/abs/path" "git+ssh://git@github.com:owner/repo.git" \
+        || fail "scp-style ':' separator must be rejected"
+    ! beads_bootstrap_arguments_valid "/abs/path" "git+https://github.com:owner/repo.git" \
+        || fail "scp-style ':' separator must be rejected for https"
+}
+
+# An explicit port is legitimate URL syntax and must survive the check above.
+test_bootstrap_accepts_explicit_port() {
+    source_install
+
+    beads_bootstrap_arguments_valid "/abs/path" "git+ssh://git@example.com:2222/owner/repo.git" \
+        || fail "explicit numeric port must be accepted"
+}
+
 # --- runtime config ----------------------------------------------------------
 
 test_bootstrap_writes_machine_local_runtime_config() {

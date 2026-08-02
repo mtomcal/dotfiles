@@ -986,9 +986,25 @@ beads_bootstrap_arguments_valid() {
     # Dolt needs its git+ transport prefix. A bare git URL bootstraps cleanly
     # and then fails at push time, long after the mistake was made.
     case "$remote_url" in
-        git+ssh://*|git+https://*) return 0 ;;
+        git+ssh://*|git+https://*) ;;
         *) return 1 ;;
     esac
+
+    # These are URL-form remotes, so the host ends at '/'. Pasting the
+    # scp-style form GitHub shows keeps ':' as the path separator, which SSH
+    # reads as a port and resolves "github.com:owner" as a hostname. An
+    # explicit numeric port is still valid and must pass.
+    local authority="${remote_url#git+*://}"
+    authority="${authority%%/*}"
+    case "$authority" in
+        *:*)
+            case "${authority##*:}" in
+                ''|*[!0-9]*) return 1 ;;
+            esac
+            ;;
+    esac
+
+    return 0
 }
 
 # Only the resolved path is persisted. The remote URL may carry credentials
@@ -1007,6 +1023,9 @@ print_beads_bootstrap_usage() {
     print_info "Remote must use Dolt's git transport, for example:"
     print_info "  git+ssh://git@github.com/<you>/<command-repo>.git"
     print_info "  git+https://github.com/<you>/<command-repo>.git"
+    print_info "Use '/' after the host, not the scp-style ':' GitHub displays:"
+    print_info "  correct: git+ssh://git@github.com/you/repo.git"
+    print_info "  wrong:   git+ssh://git@github.com:you/repo.git"
 }
 
 beads_bootstrap() {
