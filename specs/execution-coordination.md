@@ -1,7 +1,7 @@
 # Execution Coordination
 
-> **Version**: 1.0.0
-> **Last Updated**: 2026-08-01
+> **Version**: 1.1.0
+> **Last Updated**: 2026-08-02
 > **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md), [Tool Provisioning](tool-provisioning.md), [Herdr Config](herdr-config.md)
 > **Depended By**: [Skill Library](skill-library.md), [Install Orchestrator](install-orchestrator.md)
 > **Prefix**: EXEC
@@ -29,38 +29,38 @@ The system MUST ensure that:
 
 ### Technology Dependencies
 
-| Dependency | Purpose |
-|---|---|
-| Beads `bd` CLI | Durable issue, dependency, event, and molecule operations |
-| Dolt CLI and managed SQL server | Concurrent local writers, version history, and private-remote synchronization |
-| Git | Source identity, fixed points, worktrees, branches, and integration |
-| Herdr | Ephemeral agent launch, communication, observation, and steering |
-| Supported coding agents | Planning, implementation, review, remediation, and coordination |
+| Dependency              | Purpose                                                                                                                                |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Beads `bd` CLI          | Durable issue, dependency, event, and molecule operations, plus embedded single-writer Dolt storage and private-remote synchronization |
+| Git                     | Source identity, fixed points, worktrees, branches, and integration                                                                    |
+| Herdr                   | Ephemeral agent launch, communication, observation, and steering                                                                       |
+| Supported coding agents | Planning, implementation, review, remediation, and coordination                                                                        |
 
 ### Spec Dependencies
 
-| Spec | Relationship |
-|---|---|
-| [Parameters](parameters.md) | Command-repo paths, installer channels, presets, statuses, and correction limits |
-| [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md) | Canonical coordination artifacts, actors, and lifecycle terms |
-| [Tool Provisioning](tool-provisioning.md) | Installs Beads and Dolt and exposes explicit command-repo bootstrap |
-| [Herdr Config](herdr-config.md) | Supplies live transport and non-durable session identity rules |
+| Spec                                          | Relationship                                                                     |
+| --------------------------------------------- | -------------------------------------------------------------------------------- |
+| [Parameters](parameters.md)                   | Command-repo paths, installer channels, presets, statuses, and correction limits |
+| [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md) | Canonical coordination artifacts, actors, and lifecycle terms                    |
+| [Tool Provisioning](tool-provisioning.md)     | Installs Beads and exposes explicit command-repo bootstrap                       |
+| [Herdr Config](herdr-config.md)               | Supplies live transport and non-durable session identity rules                   |
 
 ---
 
 ## Parameters
 
-| Parameter | Value | Rationale |
-|---|---|---|
-| `BEADS_COMMAND_CONFIG_PATH` | `~/.config/beads-command/env` | Machine-local bootstrap result can select a different command-repo checkout on each host |
-| `BEADS_COMMAND_ENV` | `BEADS_DIR` | Native Beads discovery override routes all commands to the external command repo |
-| `BEADS_STORAGE_MODE` | server | Concurrent coordinator, worker, and reviewer writes require Dolt server mode |
-| `BEADS_SYNC_POLICY` | semantic checkpoints | Bounds recovery loss without committing every liveness action |
-| `COORDINATOR_LEASE_EXPIRY` | none | Long reviews and blocked workers make time-based takeover unsafe |
-| `SLICE_CORRECTION_DEFAULT` | 2 | Preserves a bounded correction loop while allowing approved per-slice overrides |
-| `REVIEW_PRESETS` | Lean, Standard, High assurance | Provides concise creation-time review selection with explicit overrides |
-| `ATTEMPT_RETENTION` | permanent, compactable | Active recovery requires distinct durable attempts; completed history may later decay through supported compaction |
-| `ATTEMPT_PROGRESS_POLICY` | semantic transitions only | Herdr owns live progress; Beads stores only recovery-relevant state |
+| Parameter                   | Value                          | Rationale                                                                                                          |
+| --------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
+| `BEADS_COMMAND_CONFIG_PATH` | `~/.config/beads-command/env`  | Machine-local bootstrap result can select a different command-repo checkout on each host                           |
+| `BEADS_COMMAND_ENV`         | `BEADS_DIR`                    | Native Beads discovery override routes all commands to the external command repo                                   |
+| `BEADS_STORAGE_MODE`        | embedded                       | Dolt runs in-process inside `bd`; one command repo serves every source repository without a server process         |
+| `BEADS_WRITER_CONCURRENCY`  | one at a time                  | Embedded storage is single-writer, so durable writes serialize rather than overlap                                 |
+| `BEADS_SYNC_POLICY`         | semantic checkpoints           | Bounds recovery loss without committing every liveness action                                                      |
+| `COORDINATOR_LEASE_EXPIRY`  | none                           | Long reviews and blocked workers make time-based takeover unsafe                                                   |
+| `SLICE_CORRECTION_DEFAULT`  | 2                              | Preserves a bounded correction loop while allowing approved per-slice overrides                                    |
+| `REVIEW_PRESETS`            | Lean, Standard, High assurance | Provides concise creation-time review selection with explicit overrides                                            |
+| `ATTEMPT_RETENTION`         | permanent, compactable         | Active recovery requires distinct durable attempts; completed history may later decay through supported compaction |
+| `ATTEMPT_PROGRESS_POLICY`   | semantic transitions only      | Herdr owns live progress; Beads stores only recovery-relevant state                                                |
 
 ---
 
@@ -68,131 +68,131 @@ The system MUST ensure that:
 
 ### Command Repo
 
-| Field | Type | Constraints | Description |
-|---|---|---|---|
-| local path | absolute path | Selected by explicit bootstrap | Checkout containing the authoritative `.beads/` directory |
-| private remote | URL | Required; credentials excluded | Remote used for command-repo Git and Dolt synchronization |
-| runtime config | local file | Unversioned; contains resolved Beads path | Source for global `BEADS_DIR` export |
-| server mode | enum | `server` | Enables concurrent local Beads writers |
-| credentials | local secret state | Never tracked or logged | Authentication for private remote operations |
+| Field          | Type               | Constraints                                                                      | Description                                                               |
+| -------------- | ------------------ | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| local path     | absolute path      | Selected by explicit bootstrap                                                   | Checkout containing the authoritative `.beads/` directory                 |
+| private remote | URL                | Required; credentials excluded; `git+ssh://` against a private GitHub repository | Remote used for command-repo Git and Dolt synchronization                 |
+| runtime config | local file         | Unversioned; contains resolved Beads path                                        | Source for global `BEADS_DIR` export                                      |
+| storage mode   | enum               | `embedded`                                                                       | Single-writer in-process Dolt; no server process or separate Dolt install |
+| credentials    | local secret state | Never tracked or logged                                                          | Authentication for private remote operations                              |
 
 ### Repository Identity
 
-| Field | Type | Constraints | Description |
-|---|---|---|---|
-| repository key | string | Stable and required | Normalized canonical Git remote identity or explicit key for a remote-less repository |
-| normalized remote | string | Optional only for remote-less repositories | SSH and HTTPS spellings of the same remote normalize to one identity |
-| runtime checkout | absolute path | Replaceable and non-authoritative | Checkout currently bound to the repository key |
-| source fixed point | full Git commit | Required | Reproducible implementation baseline pinned at molecule creation |
+| Field              | Type            | Constraints                                | Description                                                                           |
+| ------------------ | --------------- | ------------------------------------------ | ------------------------------------------------------------------------------------- |
+| repository key     | string          | Stable and required                        | Normalized canonical Git remote identity or explicit key for a remote-less repository |
+| normalized remote  | string          | Optional only for remote-less repositories | SSH and HTTPS spellings of the same remote normalize to one identity                  |
+| runtime checkout   | absolute path   | Replaceable and non-authoritative          | Checkout currently bound to the repository key                                        |
+| source fixed point | full Git commit | Required                                   | Reproducible implementation baseline pinned at molecule creation                      |
 
 ### Scope Snapshot
 
-| Field | Type | Constraints | Description |
-|---|---|---|---|
-| objective | text | Human-approved; required | Desired outcome |
-| acceptance criteria | ordered list | Human-approved; non-empty | Observable success conditions |
-| failure criteria | ordered list | Human-approved; non-empty | Boundaries that distinguish incorrect behavior |
-| exclusions | list | Human-approved; may be `none` | Adjacent work not authorized |
-| approval evidence | event reference | Required | Human confirmation that freezes the snapshot |
+| Field               | Type            | Constraints                   | Description                                    |
+| ------------------- | --------------- | ----------------------------- | ---------------------------------------------- |
+| objective           | text            | Human-approved; required      | Desired outcome                                |
+| acceptance criteria | ordered list    | Human-approved; non-empty     | Observable success conditions                  |
+| failure criteria    | ordered list    | Human-approved; non-empty     | Boundaries that distinguish incorrect behavior |
+| exclusions          | list            | Human-approved; may be `none` | Adjacent work not authorized                   |
+| approval evidence   | event reference | Required                      | Human confirmation that freezes the snapshot   |
 
 A scope snapshot does not require a specification diff. Any later scope mutation requires a linked decision bead and explicit human approval.
 
 ### Execution Molecule
 
-| Field | Type | Constraints | Description |
-|---|---|---|---|
-| root | Beads epic/molecule | One per approved scope | Parent coordination record |
-| repository identity | record | Required | Source repository and fixed point |
-| scope snapshot | record | Frozen after creation | Implementation authority |
-| planner provenance | exact model assignment | Required | Configuration that created the graph |
-| coordinator assignment | exact model assignment | Required | Configuration allowed to acquire the coordinator lease |
-| review policy | record | Approved before activation | Required final review breadth and depth |
-| work beads | graph | Acyclic blocking edges | Slices, reviews, remediation, and decisions |
-| attempt graph | graph | Non-blocking operational edges | Coordinator sessions and agent attempts |
-| sync state | enum | clean, pending, blocked | Durability relative to the private remote |
-| status | enum | draft, ready, executing, blocked, complete | Molecule lifecycle |
+| Field                  | Type                   | Constraints                                | Description                                            |
+| ---------------------- | ---------------------- | ------------------------------------------ | ------------------------------------------------------ |
+| root                   | Beads epic/molecule    | One per approved scope                     | Parent coordination record                             |
+| repository identity    | record                 | Required                                   | Source repository and fixed point                      |
+| scope snapshot         | record                 | Frozen after creation                      | Implementation authority                               |
+| planner provenance     | exact model assignment | Required                                   | Configuration that created the graph                   |
+| coordinator assignment | exact model assignment | Required                                   | Configuration allowed to acquire the coordinator lease |
+| review policy          | record                 | Approved before activation                 | Required final review breadth and depth                |
+| work beads             | graph                  | Acyclic blocking edges                     | Slices, reviews, remediation, and decisions            |
+| attempt graph          | graph                  | Non-blocking operational edges             | Coordinator sessions and agent attempts                |
+| sync state             | enum                   | clean, pending, blocked                    | Durability relative to the private remote              |
+| status                 | enum                   | draft, ready, executing, blocked, complete | Molecule lifecycle                                     |
 
 ### Work Bead
 
-| Field | Type | Constraints | Description |
-|---|---|---|---|
-| kind | enum | slice, review, remediation, decision, mechanical gate | Work role |
-| behavior | text | One vertical or review outcome | Authorized result |
-| dependencies | list of bead ids | Acyclic; genuine blockers only | Determines readiness |
-| acceptance and failure | record | Required | Machine- or human-verifiable boundaries |
-| public test seam | text | Required for editable slices | Refactor-resilient behavior seam |
-| tracer cycles | ordered list | Required for editable slices | RED, GREEN, and optional REFACTOR instructions |
-| proposed execution traces | list | Required where runtime or operational order is material | Evidence-grounded intended order and allowed variance |
-| model assignment | exact configuration | Required for agent-executed work | Runtime binding |
-| escalation policy | record | Required for editable work | Approved ladder and triggers |
-| state | enum | open, in_progress, awaiting_review, needs_correction, integrating, closed, blocked | Work lifecycle |
+| Field                     | Type                | Constraints                                                                        | Description                                           |
+| ------------------------- | ------------------- | ---------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| kind                      | enum                | slice, review, remediation, decision, mechanical gate                              | Work role                                             |
+| behavior                  | text                | One vertical or review outcome                                                     | Authorized result                                     |
+| dependencies              | list of bead ids    | Acyclic; genuine blockers only                                                     | Determines readiness                                  |
+| acceptance and failure    | record              | Required                                                                           | Machine- or human-verifiable boundaries               |
+| public test seam          | text                | Required for editable slices                                                       | Refactor-resilient behavior seam                      |
+| tracer cycles             | ordered list        | Required for editable slices                                                       | RED, GREEN, and optional REFACTOR instructions        |
+| proposed execution traces | list                | Required where runtime or operational order is material                            | Evidence-grounded intended order and allowed variance |
+| model assignment          | exact configuration | Required for agent-executed work                                                   | Runtime binding                                       |
+| escalation policy         | record              | Required for editable work                                                         | Approved ladder and triggers                          |
+| state                     | enum                | open, in_progress, awaiting_review, needs_correction, integrating, closed, blocked | Work lifecycle                                        |
 
 ### Review Policy
 
-| Field | Type | Constraints | Description |
-|---|---|---|---|
-| preset | enum | Lean, Standard, High assurance | Creation-time baseline |
-| gates | list | Explicit after overrides | Required acceptance conditions |
-| depth | map | Reviewer count per gate | Number of independent passes |
-| independence | map | Fresh context always; model/provider rules explicit | Separation required for each pass |
-| approval evidence | decision/event reference | Required | Human-approved review topology |
+| Field             | Type                     | Constraints                                         | Description                       |
+| ----------------- | ------------------------ | --------------------------------------------------- | --------------------------------- |
+| preset            | enum                     | Lean, Standard, High assurance                      | Creation-time baseline            |
+| gates             | list                     | Explicit after overrides                            | Required acceptance conditions    |
+| depth             | map                      | Reviewer count per gate                             | Number of independent passes      |
+| independence      | map                      | Fresh context always; model/provider rules explicit | Separation required for each pass |
+| approval evidence | decision/event reference | Required                                            | Human-approved review topology    |
 
-| Preset | Required final gates | Depth |
-|---|---|---|
-| Lean | Repository mechanical gates; Scope fidelity | One independent Scope pass |
-| Standard | Lean; integrated Test Quality; Standards; Premortem; Security | One independent pass per non-mechanical gate |
-| High assurance | Standard; risk-triggered gates | Standard depth plus approved second independent passes for selected risk-bearing gates |
+| Preset         | Required final gates                                          | Depth                                                                                  |
+| -------------- | ------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Lean           | Repository mechanical gates; Scope fidelity                   | One independent Scope pass                                                             |
+| Standard       | Lean; integrated Test Quality; Standards; Premortem; Security | One independent pass per non-mechanical gate                                           |
+| High assurance | Standard; risk-triggered gates                                | Standard depth plus approved second independent passes for selected risk-bearing gates |
 
 Independent per-slice Test Quality is mandatory before integration under every preset. Post-creation additions, removals, or depth changes require explicit approval and a linked decision bead.
 
 ### Exact Model Assignment
 
-| Field | Type | Constraints | Description |
-|---|---|---|---|
-| command | string | Required | Agent launch command |
-| provider | string | Required | Runtime provider identity |
-| model id | string | Exact and required | Provider model identifier |
-| thinking level | string | Exact and required | Runtime reasoning configuration |
-| role | enum | planner, coordinator, implementation, review axis, remediation | Assignment purpose |
-| independence rule | record | Required for reviewers | Fresh context plus any model/provider diversity requirement |
+| Field             | Type   | Constraints                                                    | Description                                                 |
+| ----------------- | ------ | -------------------------------------------------------------- | ----------------------------------------------------------- |
+| command           | string | Required                                                       | Agent launch command                                        |
+| provider          | string | Required                                                       | Runtime provider identity                                   |
+| model id          | string | Exact and required                                             | Provider model identifier                                   |
+| thinking level    | string | Exact and required                                             | Runtime reasoning configuration                             |
+| role              | enum   | planner, coordinator, implementation, review axis, remediation | Assignment purpose                                          |
+| independence rule | record | Required for reviewers                                         | Fresh context plus any model/provider diversity requirement |
 
 Role defaults are approved for implementation, Test Quality, Standards/Scope, Premortem/Security, and remediation. Per-bead overrides MAY replace a default, but the resolved exact assignment MUST be materialized onto every executable bead. An unavailable initial assignment blocks until a human approves reassignment.
 
 ### Escalation Policy
 
-| Field | Type | Constraints | Description |
-|---|---|---|---|
-| ladder | ordered list of exact model assignments | Human-approved at creation | Permitted automatic escalation order |
-| correction allowance | non-negative integer | Materialized per slice | Corrections allowed before escalation |
-| critical-invariant trigger | boolean | Materialized per slice | Whether a critical miss escalates immediately |
-| current rung | integer | Attempt-derived | Last assignment used |
+| Field                      | Type                                    | Constraints                | Description                                   |
+| -------------------------- | --------------------------------------- | -------------------------- | --------------------------------------------- |
+| ladder                     | ordered list of exact model assignments | Human-approved at creation | Permitted automatic escalation order          |
+| correction allowance       | non-negative integer                    | Materialized per slice     | Corrections allowed before escalation         |
+| critical-invariant trigger | boolean                                 | Materialized per slice     | Whether a critical miss escalates immediately |
+| current rung               | integer                                 | Attempt-derived            | Last assignment used                          |
 
 Automatic escalation may select only the next available higher approved rung. If no higher rung is available, the work bead becomes blocked. Runtime reputation or an unapproved model MUST NOT determine escalation.
 
 ### Coordinator Lease and Session
 
-| Field | Type | Constraints | Description |
-|---|---|---|---|
-| active session | coordinator-session bead id | At most one per molecule | Current structural and acceptance authority |
-| assigned model | exact model assignment | Must match root assignment | Coordinator capability |
-| host | string | Required | Host currently coordinating |
-| acquired at | timestamp | Required | Lease start |
-| expiry | none | Non-expiring | Prevents unsafe timeout takeover |
-| takeover evidence | decision/event reference | Required for replacement of nonterminal session | Human-approved reconciliation |
+| Field             | Type                        | Constraints                                     | Description                                 |
+| ----------------- | --------------------------- | ----------------------------------------------- | ------------------------------------------- |
+| active session    | coordinator-session bead id | At most one per molecule                        | Current structural and acceptance authority |
+| assigned model    | exact model assignment      | Must match root assignment                      | Coordinator capability                      |
+| host              | string                      | Required                                        | Host currently coordinating                 |
+| acquired at       | timestamp                   | Required                                        | Lease start                                 |
+| expiry            | none                        | Non-expiring                                    | Prevents unsafe timeout takeover            |
+| takeover evidence | decision/event reference    | Required for replacement of nonterminal session | Human-approved reconciliation               |
 
 Each coordinator boot creates a permanent coordinator-session bead recording its model, host, lease event, checkpoints, decisions, and terminal outcome. The root points to the active session without deleting prior sessions.
 
 ### Worker Attempt
 
-| Field | Type | Constraints | Description |
-|---|---|---|---|
-| attempt id | Beads id | Unique and never reused | Durable launch identity and Herdr correlation token |
-| owner | work bead id | Required | Slice, review, or remediation being attempted |
-| relation | enum | tracks, validates | Non-blocking operational edge |
-| exact model | exact model assignment | Required | Actual runtime binding |
-| durable instructions | ordered list | Write-ahead | Consequential messages sent to the agent |
-| state | enum | planned, launched, submitted, working, evidence_returned, verified, rejected, cancelled, lost | Semantic progress |
-| evidence | record | Required before successful completion | Fixed point, commands, results, findings, risks, and outcome |
+| Field                | Type                   | Constraints                                                                                   | Description                                                  |
+| -------------------- | ---------------------- | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| attempt id           | Beads id               | Unique and never reused                                                                       | Durable launch identity and Herdr correlation token          |
+| owner                | work bead id           | Required                                                                                      | Slice, review, or remediation being attempted                |
+| relation             | enum                   | tracks, validates                                                                             | Non-blocking operational edge                                |
+| exact model          | exact model assignment | Required                                                                                      | Actual runtime binding                                       |
+| durable instructions | ordered list           | Write-ahead                                                                                   | Consequential messages sent to the agent                     |
+| state                | enum                   | planned, launched, submitted, working, evidence_returned, verified, rejected, cancelled, lost | Semantic progress                                            |
+| evidence             | record                 | Required before successful completion                                                         | Fixed point, commands, results, findings, risks, and outcome |
 
 Worker attempts are permanent and auditable but MAY be compacted after their molecule completes. They never enter the executable frontier or block downstream work directly.
 
@@ -207,16 +207,19 @@ The bootstrap operation MUST be explicit and idempotent:
 ```
 REQUIRE chosen absolute local path and private remote URL
 IF command repo exists
-    VERIFY identity, remote, Beads database, server mode, and runtime config
+    VERIFY identity, remote, Beads database, storage mode, and runtime config
 ELSE
     CLONE or initialize the private command repo
-    INITIALIZE Beads in server mode without modifying a source repository
+    INITIALIZE Beads in embedded mode without modifying a source repository
     CONFIGURE the private Dolt remote
 END IF
 WRITE machine-local runtime config with the absolute .beads path
-VERIFY bd, dolt, server health, pull, checkpoint, and push
+COMMIT and PUSH the recorded remote configuration with ordinary Git
+VERIFY bd version, resolved workspace, pull, checkpoint, and push
 NEVER persist credentials in dotfiles, command output, or tracked config
 ```
+
+Synchronization has two halves that MUST both succeed: issue data travels over the Dolt remote to `refs/dolt/data`, while the recorded remote configuration reaches other machines only through ordinary Git. A machine whose database is missing or stale recovers from that committed configuration rather than from a manual database copy.
 
 Shell startup MUST source valid local runtime configuration and globally export `BEADS_DIR`. If bootstrap has not configured a valid path, ordinary shell startup remains usable, but coordination workflows MUST stop with bootstrap guidance.
 
@@ -236,6 +239,19 @@ Shell startup MUST source valid local runtime configuration and globally export 
 10. Commit and push the initial semantic checkpoint.
 
 A partial graph MUST remain draft/blocked and MUST NOT expose slices as ready. `create-plan` MUST NOT create durable Markdown artifacts or source-repository `.beads/` state.
+
+### Single-Writer Durable Storage
+
+The command repo uses embedded single-writer storage. Every durable write — coordinator checkpoints, write-ahead attempt creation, worker evidence, and reviewer findings — MUST hold the writer position exclusively for the duration of that write.
+
+This constrains execution rather than the graph:
+
+1. Durable writes MUST be short and serialized. Concurrent write attempts contend for a file lock and one of them fails.
+2. A writer MUST treat a contention failure as a retryable condition and MUST NOT report success, skip the write, or continue past it. Losing a write-ahead record would break the recovery guarantees this specification depends on.
+3. Live agent work MAY overlap; only the durable write MUST serialize. Agents doing long implementation or review work hold no writer position while working.
+4. Parallel fan-out MUST be bounded so that evidence submission does not become a sustained contention point.
+
+Read-only inspection is unconstrained. If sustained concurrent writing later becomes necessary, moving to server-mode storage is an approved migration rather than a change to the coordination contract.
 
 ### Work Ownership and Frontier
 
@@ -349,22 +365,23 @@ Legacy cleanup is a separate explicit migration operation. It MUST archive untra
 
 ## Error Handling
 
-| Error | Trigger | Response | Recovery |
-|---|---|---|---|
-| Missing command repo | `BEADS_DIR` absent or invalid | Stop coordination; do not initialize a source repo | Run explicit bootstrap |
-| Repository identity ambiguity | Remote aliases cannot normalize or no remote/key exists | Stop molecule creation | Supply explicit repository key or resolve remote |
-| Unapproved scope | Objective or criteria lack human confirmation | Keep draft; create no ready work | Obtain approval |
-| Partial molecule | Batch creation or validation fails | Keep root draft/blocked; push no ready state | Reconcile or explicitly discard draft |
-| Model unavailable | Exact initial binding cannot launch | Block work; do not substitute | Approve reassignment with decision bead |
-| Escalation exhausted | No higher approved available rung | Block owning work bead | Approve ladder change or new decision |
-| Lease conflict | Nonterminal coordinator session owns lease | Stop mutation and launch | Resume owner or approve takeover |
-| Herdr unavailable | Launch, resume, or steering required | Preserve graph and block live execution | Start fresh Herdr and boot assigned coordinator |
-| Uncertain launch | Attempt is planned/submitted but observation was lost | Reconcile by token; never relaunch same id blindly | Resume match or mark lost and create new attempt |
-| Missing evidence | Agent reports completion without durable return record | Do not verify, integrate, or close | Request evidence through a durable instruction or mark attempt failed |
-| Remote outage | Pull/push fails after lease | Mark `sync:pending`; prevent takeover/completion | Continue locally on lease host, then reconcile and push |
-| Dependency cycle | Graph validation finds cycle | Keep molecule draft/blocked | Correct graph before activation |
-| Review-policy drift | Gate topology changes without decision approval | Reject transition | Record approved decision and regenerated graph |
-| Legacy cleanup archive failure | Untracked research cannot be archived and verified | Delete nothing | Correct archive destination and rerun explicit cleanup |
+| Error                          | Trigger                                                                   | Response                                                   | Recovery                                                              |
+| ------------------------------ | ------------------------------------------------------------------------- | ---------------------------------------------------------- | --------------------------------------------------------------------- |
+| Missing command repo           | `BEADS_DIR` absent or invalid                                             | Stop coordination; do not initialize a source repo         | Run explicit bootstrap                                                |
+| Repository identity ambiguity  | Remote aliases cannot normalize or no remote/key exists                   | Stop molecule creation                                     | Supply explicit repository key or resolve remote                      |
+| Unapproved scope               | Objective or criteria lack human confirmation                             | Keep draft; create no ready work                           | Obtain approval                                                       |
+| Partial molecule               | Batch creation or validation fails                                        | Keep root draft/blocked; push no ready state               | Reconcile or explicitly discard draft                                 |
+| Model unavailable              | Exact initial binding cannot launch                                       | Block work; do not substitute                              | Approve reassignment with decision bead                               |
+| Escalation exhausted           | No higher approved available rung                                         | Block owning work bead                                     | Approve ladder change or new decision                                 |
+| Lease conflict                 | Nonterminal coordinator session owns lease                                | Stop mutation and launch                                   | Resume owner or approve takeover                                      |
+| Herdr unavailable              | Launch, resume, or steering required                                      | Preserve graph and block live execution                    | Start fresh Herdr and boot assigned coordinator                       |
+| Uncertain launch               | Attempt is planned/submitted but observation was lost                     | Reconcile by token; never relaunch same id blindly         | Resume match or mark lost and create new attempt                      |
+| Missing evidence               | Agent reports completion without durable return record                    | Do not verify, integrate, or close                         | Request evidence through a durable instruction or mark attempt failed |
+| Writer contention              | A durable write fails because another writer holds the single-writer lock | Treat as retryable; never report success or skip the write | Retry the write; reduce parallel fan-out if contention persists       |
+| Remote outage                  | Pull/push fails after lease                                               | Mark `sync:pending`; prevent takeover/completion           | Continue locally on lease host, then reconcile and push               |
+| Dependency cycle               | Graph validation finds cycle                                              | Keep molecule draft/blocked                                | Correct graph before activation                                       |
+| Review-policy drift            | Gate topology changes without decision approval                           | Reject transition                                          | Record approved decision and regenerated graph                        |
+| Legacy cleanup archive failure | Untracked research cannot be archived and verified                        | Delete nothing                                             | Correct archive destination and rerun explicit cleanup                |
 
 ---
 
@@ -461,6 +478,13 @@ Preconditions: A slice has multiple correction, review, and lost attempt beads.
 Input: Query ready work for the molecule.
 Expected Output: Attempt beads are absent from executable readiness; only owning work-bead dependencies determine the frontier.
 
+### TS-EXEC-011a: Durable Writes Serialize Under Contention
+Category: Integration
+Priority: Critical
+Preconditions: Two agents attempt durable writes to the command repo at the same moment.
+Input: Submit two attempt-evidence writes concurrently.
+Expected Output: Both writes eventually land; the contending writer retries rather than reporting success, skipping the record, or continuing past the failure.
+
 ### TS-EXEC-012: Explicit Legacy Cleanup
 Category: Integration
 Priority: Critical
@@ -472,6 +496,7 @@ Expected Output: Normal install deletes no legacy data; explicit cleanup verifie
 
 ## Changelog
 
-| Version | Date | Change |
-|---|---|---|
-| 1.0.0 | 2026-08-01 | Established private command-repo execution molecules, exact model and review policy, write-ahead attempt graphs, Herdr transport boundaries, semantic synchronization, crash recovery, and legacy transition behavior. |
+| Version | Date       | Change                                                                                                                                                                                                                 |
+| ------- | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1.1.0   | 2026-08-02 | Adopted single-writer embedded storage, added the durable-write serialization constraint, and specified two-half synchronization against a private git+ssh remote.                                                     |
+| 1.0.0   | 2026-08-01 | Established private command-repo execution molecules, exact model and review policy, write-ahead attempt graphs, Herdr transport boundaries, semantic synchronization, crash recovery, and legacy transition behavior. |

@@ -67,8 +67,7 @@ Parameters serve three purposes:
 | `HERDR_CONFIG_TARGET` | ~/.config/herdr/config.toml | path | Herdr's XDG TOML config location |
 | `HERDR_INSTALL_SCRIPT` | https://herdr.dev/install.sh | URL | Official direct installer; chosen over Homebrew on both Linux and macOS for one update model |
 | `BEADS_INSTALL_SCRIPT` | https://raw.githubusercontent.com/gastownhall/beads/main/scripts/install.sh | URL | Official checksum-verifying stable installer supports the same update channel on Linux and macOS |
-| `DOLT_INSTALL_SCRIPT_LINUX` | https://github.com/dolthub/dolt/releases/latest/download/install.sh | URL | Official Dolt release installer for Ubuntu/Debian server-mode support |
-| `DOLT_MACOS_PACKAGE` | dolt | Homebrew formula | Official macOS Dolt package and update channel |
+| `BEADS_REQUIRED_VERSION` | 0.59.0 | major.minor.patch | Minimum `bd` release providing the documented Dolt remote sync and bootstrap surface |
 | `HERDR_UPDATE_COMMAND` | herdr update | command | Herdr's update path for direct-installer installs |
 | `HERDR_PREFIX` | ctrl+a | key | Matches existing tmux muscle memory and migration parity requirements |
 | `HERDR_PANE_HISTORY` | true | boolean | Pane history is acceptable as local runtime state as long as it remains out of git |
@@ -191,7 +190,8 @@ Parameters serve three purposes:
 |-----------|-------|------|-----------|
 | `BEADS_COMMAND_CONFIG_PATH` | ~/.config/beads-command/env | path | Machine-local bootstrap result selects an external command repo without tracking machine-specific paths in dotfiles |
 | `BEADS_COMMAND_ENV` | BEADS_DIR | environment variable | Native Beads discovery override routes ordinary `bd` commands to the command repo from every source checkout |
-| `BEADS_STORAGE_MODE` | server | enum | Concurrent coordinator, worker, and reviewer writes require Dolt server mode |
+| `BEADS_STORAGE_MODE` | embedded | enum | Dolt runs in-process inside `bd`; a single-writer command repo needs no server process and no separate Dolt install |
+| `BEADS_COMMAND_REMOTE_SCHEME` | git+ssh:// | URL scheme | Private GitHub command repo synchronizes Dolt data under `refs/dolt/data` over SSH |
 | `BEADS_SYNC_POLICY` | semantic checkpoints | policy | Checkpointing recovery boundaries avoids both per-keystroke commits and end-of-session data loss |
 | `COORDINATOR_LEASE_EXPIRY` | none | duration policy | Long reviews and blocked workers make automatic timeout takeover unsafe |
 | `SLICE_CORRECTION_DEFAULT` | 2 | correction rounds | Preserves bounded retries while allowing approved risk-specific overrides |
@@ -223,6 +223,7 @@ Parameters serve three purposes:
 
 | Version | Date | Summary |
 |---------|------|---------|
+| 2.4.0 | 2026-08-02 | Adopted single-writer embedded Beads storage: removed the Dolt installer parameters, added the minimum `bd` version and the private command-repo remote scheme. |
 | 2.3.0 | 2026-08-01 | Added official Beads/Dolt install channels and external command-repo execution, review, lease, correction, synchronization, and attempt-policy parameters. |
 | 2.2.0 | 2026-08-01 | Relabeled `AGENT_CONFIG_DIR_COPILOT` as the catalog exposure directory and added `AGENT_STATE_DIR_COPILOT` for Copilot's current runtime settings and Herdr hook directory. |
 | 2.1.0 | 2026-07-31 | Added Python 3.10+ runtime provisioning and macOS Visual Studio Code, Ubuntu/Debian code-server, managed-layer, extension, Vim, bind, authentication, and certificate parameters. |

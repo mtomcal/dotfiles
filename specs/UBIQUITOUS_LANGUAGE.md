@@ -1,6 +1,6 @@
 # Ubiquitous Language
 
-> **Version**: 2.0.0
+> **Version**: 2.1.0
 > **Last Updated**: 2026-08-01
 > **Purpose**: Shared vocabulary for all specs. Every term used in multiple specs MUST be defined here. Read this before any other spec.
 
@@ -130,7 +130,7 @@
 | **LSP server** | A Language Server Protocol server providing code intelligence in Neovim | "language server" | Installed via Mason, not via system packages |
 | **formatter** | A code formatting tool configured for Neovim's on-save formatting | — | Managed via conform.nvim in the custom layer |
 | **Beads** | The graph issue tracker whose CLI and database represent durable execution-coordination state in the command repo | "Markdown plan tracker", "filesystem ledger" | `bd` is globally routed to the external command repo after bootstrap. |
-| **Dolt server** | The locally managed versioned SQL service backing concurrent Beads writers and private-remote synchronization | "Beads daemon", "Git database" | Beads owns on-demand lifecycle for the command repo; Herdr does not. |
+| **embedded Dolt** | The versioned SQL storage engine linked into the `bd` binary, running in-process as a single writer and backing private-remote synchronization | "Dolt server", "Beads daemon", "Git database" | No separate Dolt binary, server process, or port exists; durable writes serialize through one writer position. |
 
 ---
 
@@ -157,7 +157,7 @@
 - A **repo-owned Herdr integration** is generated or copied into **agent configs** before deployment, rather than installed directly into live runtime paths
 - The **Herdr skill** and **Claude Code Herdr skill** live in the **shared skills directory** and are visible to supported agents through their skills deployment paths
 - The **Claude Code Herdr skill** composes the **Herdr skill**, which retains generic terminal transport and server-owned settled-state waiting
-- One **command repo** contains one **Beads** database backed by one managed **Dolt server** and zero or more **execution molecules** for multiple source repositories, while each source repository contains no Beads workspace
+- One **command repo** contains one **Beads** database backed by **embedded Dolt** and zero or more **execution molecules** for multiple source repositories, while each source repository contains no Beads workspace
 - One **execution molecule** contains one frozen **scope snapshot**, multiple dependency-ordered **work beads**, one approved **review policy**, and one non-blocking **worker-attempt graph**
 - A **slice** carries its TDD contract and applicable **proposed execution traces** directly as Beads content rather than a Markdown packet
 - A **review policy** contains one or more **review gates**, and a review gate may require multiple independent **review beads**
@@ -208,6 +208,7 @@
 
 | Version | Date | Change |
 |---------|------|--------|
+| 2.1.0 | 2026-08-02 | Replaced the "Dolt server" term with single-writer **embedded Dolt**. |
 | 2.0.0 | 2026-08-01 | Replaced filesystem plans and ledgers with command-repo execution molecules, exact model and review policy, coordinator leases/sessions, and write-ahead worker-attempt graphs. |
 | 1.5.0 | 2026-08-01 | Added `catalog exposure` to name the agent config role that exposes the shared skill catalog, distinguishing Copilot's catalog exposure directory from its runtime settings directory. |
 | 1.4.0 | 2026-08-01 | Updated the Herdr skill relationship from client-owned concurrent status races to server-owned settled-state waiting. |

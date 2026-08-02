@@ -1,14 +1,14 @@
 # Personal Dotfiles Manager Specification Suite
 
-> **Version**: 0.13.0
+> **Version**: 0.14.0
 > **Last Updated**: 2026-08-01
-> **Purpose**: Complete specification for the personal dotfiles manager — automates setup of a Herdr/tmux + Beads/Dolt + Neovim + platform-scoped VS Code + zsh dev environment across Linux and macOS. Primarily for personal use, serves as reference/inspiration for others.
+> **Purpose**: Complete specification for the personal dotfiles manager — automates setup of a Herdr/tmux + Beads + Neovim + platform-scoped VS Code + zsh dev environment across Linux and macOS. Primarily for personal use, serves as reference/inspiration for others.
 
 ---
 
 ## Project Summary
 
-A personal dotfiles manager that automates the setup of a Herdr-first terminal workspace with tmux retained as a legacy fallback, Beads/Dolt execution coordination, Neovim, platform-scoped Visual Studio Code/code-server, baseline Python, and zsh across Linux (Ubuntu/Debian) and macOS. It uses a symlink-based architecture to maintain configurations in version control while deploying them to standard system locations. The primary user is the owner, but the repository serves as a reference for others seeking a reproducible, version-controlled development environment.
+A personal dotfiles manager that automates the setup of a Herdr-first terminal workspace with tmux retained as a legacy fallback, Beads execution coordination, Neovim, platform-scoped Visual Studio Code/code-server, baseline Python, and zsh across Linux (Ubuntu/Debian) and macOS. It uses a symlink-based architecture to maintain configurations in version control while deploying them to standard system locations. The primary user is the owner, but the repository serves as a reference for others seeking a reproducible, version-controlled development environment.
 
 ---
 
@@ -32,7 +32,7 @@ A personal dotfiles manager that automates the setup of a Herdr-first terminal w
 | File manager | Yazi | latest | Terminal file manager |
 | Git UI | lazygit | latest | Terminal git interface |
 | Smart cd | Zoxide | latest | Directory jumping |
-| Execution graph | Beads + Dolt | stable | Private command-repo planning, orchestration state, and recovery |
+| Execution graph | Beads (embedded Dolt) | stable | Private command-repo planning, orchestration state, and recovery |
 
 ---
 
@@ -127,18 +127,18 @@ graph TD
 
 | Spec | Description | Version |
 |------|-------------|---------|
-| [parameters.md](parameters.md) | All tuning values with rationale | 2.3.0 |
+| [parameters.md](parameters.md) | All tuning values with rationale | 2.4.0 |
 | [symlink-manager.md](symlink-manager.md) | Symlink creation, backup, and verification | 2.0.0 |
-| [tool-provisioning.md](tool-provisioning.md) | Dependency and tool installation | 1.5.0 |
+| [tool-provisioning.md](tool-provisioning.md) | Dependency and tool installation | 1.6.0 |
 | [shell-config.md](shell-config.md) | Zsh + Oh My Zsh configuration | 2.0.0 |
 | [herdr-config.md](herdr-config.md) | Herdr default multiplexer and migration contract | 0.3.0 |
 | [tmux-config.md](tmux-config.md) | Tmux keybindings and nested sessions | 1.1.0 |
 | [neovim-config.md](neovim-config.md) | Kickstart + custom plugin layer | 1.0.0 |
 | [vscode-config.md](vscode-config.md) | Managed VS Code/code-server configuration and extensions | 1.0.0 |
-| [execution-coordination.md](execution-coordination.md) | Beads command-repo execution and recovery contract | 1.0.0 |
+| [execution-coordination.md](execution-coordination.md) | Beads command-repo execution and recovery contract | 1.1.0 |
 | [skill-library.md](skill-library.md) | Shared-skill catalog and authoring contracts | 6.0.0 |
 | [ai-agent-config.md](ai-agent-config.md) | AI agent runtime configs and catalog exposure | 4.1.0 |
-| [install-orchestrator.md](install-orchestrator.md) | Top-level idempotent setup orchestrator | 2.0.0 |
+| [install-orchestrator.md](install-orchestrator.md) | Top-level idempotent setup orchestrator | 2.1.0 |
 
 ---
 
@@ -175,6 +175,7 @@ graph TD
 
 | Version | Date | Change |
 |---------|------|--------|
+| 0.14.0 | 2026-08-02 | Adopted single-writer embedded Beads storage, removed the Dolt module, and updated affected spec versions. |
 | 0.13.0 | 2026-08-01 | Registered Execution Coordination, Beads/Dolt tooling, command-repo shell routing, updated dependency order, and current spec versions. |
 | 0.12.0 | 2026-08-01 | Synced the Copilot catalog-exposure vs runtime-state parameter split into parameters.md, added the `catalog exposure` glossary term, and corrected the implementation checklist to reflect extracted specs. |
 | 0.11.0 | 2026-08-01 | Synchronized Herdr 0.7.5 agent coordination, current repo-owned integration targets, and affected spec versions. |

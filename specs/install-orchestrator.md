@@ -1,7 +1,7 @@
 # Install Orchestrator
 
-> **Spec Version**: 2.0.0
-> **Last Updated**: 2026-08-01
+> **Spec Version**: 2.1.0
+> **Last Updated**: 2026-08-02
 > **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md), [Design Language](DESIGN_LANGUAGE.md), [Tool Provisioning](tool-provisioning.md), [Symlink Manager](symlink-manager.md), [Herdr Config](herdr-config.md), [VS Code Configuration](vscode-config.md), [Execution Coordination](execution-coordination.md)
 > **Depended By**: None (this is the top-level orchestrator)
 
@@ -23,38 +23,38 @@ The orchestrator does NOT implement any module's internal logic (package install
 
 ### Technology Dependencies
 
-| Technology | Purpose | Version Constraint |
-|-----------|---------|-------------------|
-| Bash | Runtime interpreter | Compatible with macOS system shell |
-| apt | Package manager (Ubuntu/Debian) | — |
-| Homebrew | Package manager (macOS) | Auto-installed if missing |
-| curl | Downloading external installers | System-provided |
-| git | Cloning kickstart.nvim and Oh My Zsh | System-provided |
+| Technology | Purpose                              | Version Constraint                 |
+| ---------- | ------------------------------------ | ---------------------------------- |
+| Bash       | Runtime interpreter                  | Compatible with macOS system shell |
+| apt        | Package manager (Ubuntu/Debian)      | —                                  |
+| Homebrew   | Package manager (macOS)              | Auto-installed if missing          |
+| curl       | Downloading external installers      | System-provided                    |
+| git        | Cloning kickstart.nvim and Oh My Zsh | System-provided                    |
 
 ### Spec Dependencies
 
-| Spec | Relationship |
-|------|-------------|
-| [Parameters](parameters.md) | All tuning values (versions, URLs, thresholds) live there |
-| [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md) | Shared term definitions |
-| [Design Language](DESIGN_LANGUAGE.md) | CLI output formatting tokens |
-| [Tool Provisioning](tool-provisioning.md) | Per-module install/configure function specifications |
-| [Symlink Manager](symlink-manager.md) | Cross-cutting symlink deployment and backup rules |
-| [VS Code Configuration](vscode-config.md) | Platform-scoped managed layer, extension, capture, Vim, and code-server lifecycle contracts |
-| [Execution Coordination](execution-coordination.md) | Beads/Dolt profile inclusion and command-repo bootstrap separation |
+| Spec                                                | Relationship                                                                                |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| [Parameters](parameters.md)                         | All tuning values (versions, URLs, thresholds) live there                                   |
+| [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md)       | Shared term definitions                                                                     |
+| [Design Language](DESIGN_LANGUAGE.md)               | CLI output formatting tokens                                                                |
+| [Tool Provisioning](tool-provisioning.md)           | Per-module install/configure function specifications                                        |
+| [Symlink Manager](symlink-manager.md)               | Cross-cutting symlink deployment and backup rules                                           |
+| [VS Code Configuration](vscode-config.md)           | Platform-scoped managed layer, extension, capture, Vim, and code-server lifecycle contracts |
+| [Execution Coordination](execution-coordination.md) | Beads/Dolt profile inclusion and command-repo bootstrap separation                          |
 
 ---
 
 ## Parameters
 
-| Parameter | Value | Unit | Rationale |
-|-----------|-------|------|-----------|
-| `SCRIPT_MODE` | strict | enum: `strict` | Any command failure halts execution immediately; module functions MUST catch their own failures and convert them into tracked module failures rather than allowing the script to exit |
-| `BACKUP_TIMESTAMP_FMT` | `%Y%m%d_%H%M%S` | strftime | Sortable, second-granular timestamps for conflict backups |
-| `DOTFILES_DIR` | Auto-detected script directory | path | The repository root MUST be auto-detected from the script's own location at runtime, never hard-coded |
-| `CODEX_CONFIG_TEMPLATE_MODE` | `preserve` | enum: `preserve`, `overwrite` | Controls whether an existing local Codex config is kept or replaced from the dotfiles template |
-| `MAX_PROFILE_CHOICE` | 4 | integer | Highest valid choice on the profile menu (Full, Minimal, Work, Custom) |
-| `NPM_GLOBAL_PREFIX` | `~/.local` | path | All npm-based global installs (Codex and Pi) use this prefix so they survive fnm Node version switches |
+| Parameter                    | Value                          | Unit                          | Rationale                                                                                                                                                                             |
+| ---------------------------- | ------------------------------ | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `SCRIPT_MODE`                | strict                         | enum: `strict`                | Any command failure halts execution immediately; module functions MUST catch their own failures and convert them into tracked module failures rather than allowing the script to exit |
+| `BACKUP_TIMESTAMP_FMT`       | `%Y%m%d_%H%M%S`                | strftime                      | Sortable, second-granular timestamps for conflict backups                                                                                                                             |
+| `DOTFILES_DIR`               | Auto-detected script directory | path                          | The repository root MUST be auto-detected from the script's own location at runtime, never hard-coded                                                                                 |
+| `CODEX_CONFIG_TEMPLATE_MODE` | `preserve`                     | enum: `preserve`, `overwrite` | Controls whether an existing local Codex config is kept or replaced from the dotfiles template                                                                                        |
+| `MAX_PROFILE_CHOICE`         | 4                              | integer                       | Highest valid choice on the profile menu (Full, Minimal, Work, Custom)                                                                                                                |
+| `NPM_GLOBAL_PREFIX`          | `~/.local`                     | path                          | All npm-based global installs (Codex and Pi) use this prefix so they survive fnm Node version switches                                                                                |
 
 ---
 
@@ -62,19 +62,19 @@ The orchestrator does NOT implement any module's internal logic (package install
 
 ### Platform Identity
 
-| Field | Type | Constraints | Description |
-|-------|------|-------------|-------------|
-| `OS` | enum: `ubuntu`, `macos` | Set exactly once during detection | Determines package manager, architecture detection method, and platform-specific branching |
-| `PACKAGE_MANAGER` | enum: `apt`, `brew` | Derived from `OS` | Drives all package operations |
+| Field             | Type                    | Constraints                       | Description                                                                                |
+| ----------------- | ----------------------- | --------------------------------- | ------------------------------------------------------------------------------------------ |
+| `OS`              | enum: `ubuntu`, `macos` | Set exactly once during detection | Determines package manager, architecture detection method, and platform-specific branching |
+| `PACKAGE_MANAGER` | enum: `apt`, `brew`     | Derived from `OS`                 | Drives all package operations                                                              |
 
 ### Module
 
-| Field | Type | Constraints | Description |
-|-------|------|-------------|-------------|
-| `name` | string | One of the valid module identifiers | Unique identifier for a selectable install unit |
-| `label` | string | Human-readable description | Displayed in menus and summaries |
+| Field   | Type   | Constraints                         | Description                                     |
+| ------- | ------ | ----------------------------------- | ----------------------------------------------- |
+| `name`  | string | One of the valid module identifiers | Unique identifier for a selectable install unit |
+| `label` | string | Human-readable description          | Displayed in menus and summaries                |
 
-**Valid module identifiers**: `base_tools`, `neovim`, `nvim_config`, `vscode`, `vscode_config`, `code_server`, `tmux_config`, `herdr`, `herdr_config`, `herdr_integrations`, `zsh_ohmyzsh`, `zsh_config`, `python`, `golang` (toolchain only), `golang_full` (toolchain + LSP + tools), `nodejs`, `tui_tools`, `dolt`, `beads`, `codex`, `codex_sandbox`, `claude`, `pi`, `pi_sandbox`, `copilot`, `playwright`
+**Valid module identifiers**: `base_tools`, `neovim`, `nvim_config`, `vscode`, `vscode_config`, `code_server`, `tmux_config`, `herdr`, `herdr_config`, `herdr_integrations`, `zsh_ohmyzsh`, `zsh_config`, `python`, `golang` (toolchain only), `golang_full` (toolchain + LSP + tools), `nodejs`, `tui_tools`, `beads`, `codex`, `codex_sandbox`, `claude`, `pi`, `pi_sandbox`, `copilot`, `playwright`
 
 ### Pi Module Deployment Contract
 
@@ -87,22 +87,22 @@ When the `pi` module is selected, the orchestrator MUST:
 
 ### Editor Module Contracts
 
-| Module | Supported Platform | Contract |
-|--------|--------------------|----------|
-| `vscode` | macOS | Install or update official stable Visual Studio Code through Homebrew Cask |
-| `vscode_config` | macOS | Deploy the VS Code managed layer, reconcile extensions, configure Vim key repeat, and report manual Settings Sync disablement |
-| `code_server` | Ubuntu/Debian | Install/update, configure, enable, start, reconcile, and health-check the authenticated HTTPS service |
-| `python` | Ubuntu/Debian and macOS | Install and verify native Python 3.10+ plus virtual-environment capability |
+| Module          | Supported Platform      | Contract                                                                                                                      |
+| --------------- | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `vscode`        | macOS                   | Install or update official stable Visual Studio Code through Homebrew Cask                                                    |
+| `vscode_config` | macOS                   | Deploy the VS Code managed layer, reconcile extensions, configure Vim key repeat, and report manual Settings Sync disablement |
+| `code_server`   | Ubuntu/Debian           | Install/update, configure, enable, start, reconcile, and health-check the authenticated HTTPS service                         |
+| `python`        | Ubuntu/Debian and macOS | Install and verify native Python 3.10+ plus virtual-environment capability                                                    |
 
 `code_server` MUST be available in the Custom menu and through `--modules`, but MUST NOT be included in any standard installation profile.
 
 ### Installation Profile
 
-| Profile | Common Modules Included | macOS-only Additions |
-|---------|-------------------------|----------------------|
-| `full` | base_tools, neovim, nvim_config, tmux_config, herdr, herdr_config, herdr_integrations, zsh_ohmyzsh, zsh_config, python, golang_full, nodejs, tui_tools, dolt, beads, codex, codex_sandbox, claude, playwright, pi, pi_sandbox, copilot | vscode, vscode_config |
-| `minimal` | base_tools, neovim, nvim_config, tmux_config, herdr, herdr_config, herdr_integrations | none |
-| `work` | base_tools, neovim, nvim_config, tmux_config, herdr, herdr_config, herdr_integrations, python, tui_tools, dolt, beads, copilot | vscode, vscode_config |
+| Profile   | Common Modules Included                                                                                                                                                                                                          | macOS-only Additions  |
+| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------- |
+| `full`    | base_tools, neovim, nvim_config, tmux_config, herdr, herdr_config, herdr_integrations, zsh_ohmyzsh, zsh_config, python, golang_full, nodejs, tui_tools, beads, codex, codex_sandbox, claude, playwright, pi, pi_sandbox, copilot | vscode, vscode_config |
+| `minimal` | base_tools, neovim, nvim_config, tmux_config, herdr, herdr_config, herdr_integrations                                                                                                                                            | none                  |
+| `work`    | base_tools, neovim, nvim_config, tmux_config, herdr, herdr_config, herdr_integrations, python, tui_tools, beads, copilot                                                                                                         | vscode, vscode_config |
 
 On Ubuntu/Debian, standard profiles MUST omit the macOS-only additions rather than selecting and skipping them.
 
@@ -110,38 +110,37 @@ On Ubuntu/Debian, standard profiles MUST omit the macOS-only additions rather th
 
 Modules declare implicit prerequisites via the dependency resolver. The resolver adds missing prerequisites **conditionally** — only when the prerequisite tool is not already found on the system. If a tool is already installed, its prerequisite module is not added.
 
-| Module | Conditional Prerequisite(s) | Condition |
-|--------|----------------------------|-----------|
-| `nvim_config` | `base_tools` | Only if `git` is not found |
-| `nvim_config` | `neovim` | Only if `nvim` is not found |
-| `zsh_ohmyzsh` | `base_tools` | Only if `zsh` or `git` is not found |
-| `zsh_config` | `base_tools` | Only if `zsh` is not found |
-| `tmux_config` | `base_tools` | Only if `tmux` is not found |
-| `herdr` | `base_tools` | Only if `curl` is not found |
-| `herdr_config` | `herdr` | Only if `herdr` is not found |
-| `herdr_integrations` | `herdr` | Only if `herdr` is not found; agent-specific integration deployment skips missing agent configs |
-| `claude` | `base_tools` | Only if `curl` or `jq` is not found |
-| `copilot` | `base_tools` | Only if `curl` is not found |
-| `pi` | `nodejs` | Only if `npm` is not found |
-| `pi_sandbox` | Docker (external) | Not auto-installed; warning issued if missing |
-| `codex` | `nodejs` | Only if `npm` is not found |
-| `codex_sandbox` | `codex`, `nodejs`, Docker (external) | `nodejs` only if `npm` is not found; Docker warning issued if missing |
-| `playwright` | `nodejs` | Only if `npm` is not found |
-| `golang_full` | `golang` | Always (golang_full calls golang install internally) |
-| `vscode_config` | `vscode` | Only on macOS and only if the desktop editor command is not found |
-| `code_server` | `base_tools` | Only if curl is not found; service manager is a platform prerequisite |
-| `python` | none | Native package manager is initialized during platform setup |
-| `dolt` | `base_tools` | Only if the platform-specific official installer prerequisite is missing |
-| `beads` | `dolt`, `base_tools` | `dolt` only if the Dolt command is missing; `base_tools` only if curl is missing |
+| Module               | Conditional Prerequisite(s)          | Condition                                                                                       |
+| -------------------- | ------------------------------------ | ----------------------------------------------------------------------------------------------- |
+| `nvim_config`        | `base_tools`                         | Only if `git` is not found                                                                      |
+| `nvim_config`        | `neovim`                             | Only if `nvim` is not found                                                                     |
+| `zsh_ohmyzsh`        | `base_tools`                         | Only if `zsh` or `git` is not found                                                             |
+| `zsh_config`         | `base_tools`                         | Only if `zsh` is not found                                                                      |
+| `tmux_config`        | `base_tools`                         | Only if `tmux` is not found                                                                     |
+| `herdr`              | `base_tools`                         | Only if `curl` is not found                                                                     |
+| `herdr_config`       | `herdr`                              | Only if `herdr` is not found                                                                    |
+| `herdr_integrations` | `herdr`                              | Only if `herdr` is not found; agent-specific integration deployment skips missing agent configs |
+| `claude`             | `base_tools`                         | Only if `curl` or `jq` is not found                                                             |
+| `copilot`            | `base_tools`                         | Only if `curl` is not found                                                                     |
+| `pi`                 | `nodejs`                             | Only if `npm` is not found                                                                      |
+| `pi_sandbox`         | Docker (external)                    | Not auto-installed; warning issued if missing                                                   |
+| `codex`              | `nodejs`                             | Only if `npm` is not found                                                                      |
+| `codex_sandbox`      | `codex`, `nodejs`, Docker (external) | `nodejs` only if `npm` is not found; Docker warning issued if missing                           |
+| `playwright`         | `nodejs`                             | Only if `npm` is not found                                                                      |
+| `golang_full`        | `golang`                             | Always (golang_full calls golang install internally)                                            |
+| `vscode_config`      | `vscode`                             | Only on macOS and only if the desktop editor command is not found                               |
+| `code_server`        | `base_tools`                         | Only if curl is not found; service manager is a platform prerequisite                           |
+| `python`             | none                                 | Native package manager is initialized during platform setup                                     |
+| `beads`              | `base_tools`                         | Only if curl is missing; embedded storage needs no separate Dolt install                        |
 
 **Deduplication rule**: After dependency resolution, duplicate modules MUST be removed while preserving insertion order.
 
 ### Failure Tracking
 
-| Field | Type | Constraints | Description |
-|-------|------|-------------|-------------|
-| `FAILED_MODULES` | list of string | Appended to when a module function returns non-zero | Modules that failed during execution |
-| `SELECTED_MODULES` | list of string | Final resolved list after dependency expansion | All modules that were attempted |
+| Field              | Type           | Constraints                                         | Description                          |
+| ------------------ | -------------- | --------------------------------------------------- | ------------------------------------ |
+| `FAILED_MODULES`   | list of string | Appended to when a module function returns non-zero | Modules that failed during execution |
+| `SELECTED_MODULES` | list of string | Final resolved list after dependency expansion      | All modules that were attempted      |
 
 ---
 
@@ -189,21 +188,21 @@ Phase 7: COMPLETION REPORT
 
 ### Platform Detection Rules
 
-| Condition | `OS` | `PACKAGE_MANAGER` |
-|-----------|------|-------------------|
-| `$OSTYPE` matches `linux-gnu*` AND `apt` is available | `ubuntu` | `apt` |
-| `$OSTYPE` matches `linux-gnu*` AND `apt` is NOT available | — | Script exits with error |
-| `$OSTYPE` matches `darwin*` | `macos` | `brew` |
-| Any other `$OSTYPE` | — | Script exits with error |
+| Condition                                                 | `OS`     | `PACKAGE_MANAGER`       |
+| --------------------------------------------------------- | -------- | ----------------------- |
+| `$OSTYPE` matches `linux-gnu*` AND `apt` is available     | `ubuntu` | `apt`                   |
+| `$OSTYPE` matches `linux-gnu*` AND `apt` is NOT available | —        | Script exits with error |
+| `$OSTYPE` matches `darwin*`                               | `macos`  | `brew`                  |
+| Any other `$OSTYPE`                                       | —        | Script exits with error |
 
 **Homebrew auto-install**: On macOS, if `brew` is not found, the orchestrator MUST install Homebrew automatically. For Apple Silicon Macs, it MUST also add Homebrew shell environment initialization to `~/.zprofile`.
 
 ### Package Install Idempotency
 
-| Condition | Action |
-|-----------|--------|
-| Package NOT installed | Install via appropriate package manager |
-| Package already installed | Log success, skip installation |
+| Condition                 | Action                                  |
+| ------------------------- | --------------------------------------- |
+| Package NOT installed     | Install via appropriate package manager |
+| Package already installed | Log success, skip installation          |
 
 ### Interactive Menu Behavior
 
@@ -215,13 +214,13 @@ Phase 7: COMPLETION REPORT
 
 ### Command-Line Interface
 
-| Flag | Argument | Description |
-|------|----------|-------------|
-| `--profile` | `full`, `minimal`, `work` | Select a predefined profile |
-| `--modules` | comma-separated module names | Select specific modules |
-| `--codex-config-template` | `preserve` or `overwrite` | Control Codex config template behavior |
-| `--code-server-bind` | `address:port` | Set or replace the local code-server bind value when `code_server` is selected |
-| `--help` | — | Display help text and exit |
+| Flag                      | Argument                     | Description                                                                    |
+| ------------------------- | ---------------------------- | ------------------------------------------------------------------------------ |
+| `--profile`               | `full`, `minimal`, `work`    | Select a predefined profile                                                    |
+| `--modules`               | comma-separated module names | Select specific modules                                                        |
+| `--codex-config-template` | `preserve` or `overwrite`    | Control Codex config template behavior                                         |
+| `--code-server-bind`      | `address:port`               | Set or replace the local code-server bind value when `code_server` is selected |
+| `--help`                  | —                            | Display help text and exit                                                     |
 
 **Precedence**: CLI arguments override interactive menu. If `--profile` or `--modules` is provided, the interactive menu is skipped entirely.
 
@@ -236,7 +235,7 @@ Phase 7: COMPLETION REPORT
 - Explicit selection of `vscode` or `vscode_config` outside macOS fails the selected module
 - Explicit selection of `code_server` outside Ubuntu/Debian fails the selected module
 - `code_server` is never inferred from another module or standard profile
-- `dolt` and `beads` are included in Full and Work and omitted from Minimal
+- `beads` is included in Full and Work and omitted from Minimal
 - normal module execution installs tools only; it MUST NOT bootstrap, synchronize, migrate, clean, or delete a command repo or legacy Beads data
 - command-repo bootstrap and legacy cleanup are explicit operations outside profile expansion
 - Each module function returns 0 on success, non-zero on failure
@@ -247,12 +246,12 @@ Phase 7: COMPLETION REPORT
 
 The orchestrator delegates symlink creation to per-module functions, but all MUST follow these uniform rules:
 
-| Existing Path Condition | Action |
-|-------------------------|--------|
-| Symlink pointing to the correct dotfiles target | Remove and recreate (ensure freshness) |
-| Symlink pointing elsewhere | Remove, then create new symlink |
-| Regular file or directory | Back up with timestamp suffix, then create symlink |
-| Path does not exist | Create parent directories, then create symlink |
+| Existing Path Condition                         | Action                                             |
+| ----------------------------------------------- | -------------------------------------------------- |
+| Symlink pointing to the correct dotfiles target | Remove and recreate (ensure freshness)             |
+| Symlink pointing elsewhere                      | Remove, then create new symlink                    |
+| Regular file or directory                       | Back up with timestamp suffix, then create symlink |
+| Path does not exist                             | Create parent directories, then create symlink     |
 
 **Backup naming**: `{original_path}.backup.{TIMESTAMP}` where `TIMESTAMP` uses `BACKUP_TIMESTAMP_FMT`.
 
@@ -260,53 +259,52 @@ The orchestrator delegates symlink creation to per-module functions, but all MUS
 
 ### Fresh Installation vs Update Cache Management
 
-| Condition | Cache Handling |
-|-----------|---------------|
+| Condition                                            | Cache Handling                                                                      |
+| ---------------------------------------------------- | ----------------------------------------------------------------------------------- |
 | Neovim data directory does NOT exist (fresh install) | Delete `~/.local/share/nvim`, `~/.local/state/nvim`, `~/.cache/nvim` to start clean |
-| Neovim data directory EXISTS (update) | Preserve `~/.local/share/nvim` (Mason packages); delete only `~/.cache/nvim` |
+| Neovim data directory EXISTS (update)                | Preserve `~/.local/share/nvim` (Mason packages); delete only `~/.cache/nvim`        |
 
 ### Dirty Plugin Cache Cleanup
 
 When Neovim's Lazy plugin sync reports local changes in cached plugins:
 
-| Step | Action |
-|------|--------|
-| 1 | Enumerate all plugin directories under `~/.local/share/nvim/lazy/` |
-| 2 | For each directory with a `.git` subdirectory, check for uncommitted changes (`git status --porcelain`) |
-| 3 | Remove any plugin directory with dirty state |
-| 4 | Retry Lazy sync once |
-| 5 | If retry also fails, log a warning with manual remediation steps |
+| Step | Action                                                                                                  |
+| ---- | ------------------------------------------------------------------------------------------------------- |
+| 1    | Enumerate all plugin directories under `~/.local/share/nvim/lazy/`                                      |
+| 2    | For each directory with a `.git` subdirectory, check for uncommitted changes (`git status --porcelain`) |
+| 3    | Remove any plugin directory with dirty state                                                            |
+| 4    | Retry Lazy sync once                                                                                    |
+| 5    | If retry also fails, log a warning with manual remediation steps                                        |
 
 ---
 
 ## Error Handling
 
-| Error Case | Trigger | Detection | Response | Recovery |
-|------------|---------|-----------|----------|----------|
-| Unsupported OS | Operating system type is not a Linux variant or macOS | Platform detection phase | Print error with detected OS type, exit 1 | User must run on Ubuntu/Debian or macOS |
-| Linux without apt | Linux detected but apt package manager not found | Platform detection phase | Print error, exit 1 | User must install apt or use a supported platform |
-| Module install failure | A module function signals failure | Failure tracking | Append module name to `FAILED_MODULES`, continue execution | Report at completion; user re-runs with failed modules |
-| Neovim below minimum version | Installed Neovim version reports less than 0.10 | `configure_neovim` module | Remove apt version if present, download and install AppImage from GitHub releases | Automatic; fails if download or architecture unsupported |
-| Unsupported CPU architecture | Detected architecture is not x86_64, aarch64, or arm64 | Neovim or Go install modules | Print error, skip module | User must build from source or use supported hardware |
-| Homebrew install failure | Homebrew installation script exits non-zero | `setup_package_manager` | Script exits | User troubleshoots Homebrew install manually |
-| Lazy sync dirty cache | `Lazy! sync` reports local changes in plugins | Plugin sync phase | Clean dirty plugin caches, retry once | Automatic; manual Lazy sync if retry fails |
-| Mason package install failure | MasonInstall command exits non-zero | Mason installation phase | Print warning with manual remediation command | User runs `:Mason` inside Neovim |
-| npm not found for agent install | Node.js/npm is not available when installing Codex or Pi | Dependency resolver | Auto-add `nodejs` module to resolved list | Automatic; user notified via warning message |
-| Docker not found for Pi sandbox | Docker command not found when installing `pi_sandbox` | `install_pi_sandbox` module | Print error, skip module | User must install Docker separately before re-running |
-| Docker not found for Codex sandbox | Docker command not found when installing `codex_sandbox` | `install_codex_sandbox` module | Print error, skip module | User must install Docker separately before re-running |
-| Herdr install failure | Herdr direct installer exits non-zero or `herdr` remains unavailable | `herdr` module | Append `herdr` to failed modules; continue with remaining modules | Check network/PATH and re-run install |
-| Herdr integration target missing | A managed agent config directory does not exist when `herdr_integrations` runs | `herdr_integrations` module | Skip that agent integration and continue | Install the relevant agent module and re-run |
-| Go version fetch failure | Version endpoint returns empty result | `install_golang` module | Print error, signal module failure | Module fails; user retries or installs Go manually || PATH conflict for npm-installed agents | The agent binary is found via PATH but not at `~/.local/bin/` | Post-install verification | Print warning identifying the conflicting binary path | User must ensure `~/.local/bin` is earlier in PATH |
-| Codex config symlink detected | Existing `~/.codex/config.toml` is a symlink | `install_codex` module | Remove symlink, copy template as regular file | Automatic; local config file created from template |
-| Unsupported desktop editor selection | `vscode` or `vscode_config` explicitly selected outside macOS | Module platform gate | Append selected module to failures; install no substitute editor | Select supported platform/module |
-| Unsupported code-server selection | `code_server` explicitly selected outside Ubuntu/Debian | Module platform gate | Append module to failures; create no service | Select supported platform/module |
-| Invalid code-server bind | Bind lacks valid address and port shape | Argument validation | Exit before module execution with usage guidance | Correct flag value |
-| code-server port conflict | Selected local port is occupied | Module preflight/startup | Append module to failures; do not choose alternate | Stop conflict or pass explicit bind |
-| Required VS Code extension failure | One or more manifest entries fail after all are attempted | Extension reconciliation | Append owning module to failures and list every failed extension | Correct manifest/marketplace or rerun |
-| Python below required version | Native interpreter reports less than 3.10 | `python` module verification | Append `python` to failures; add no third-party repository | Upgrade supported OS/package source |
-| Dolt provisioning failure | Official installer/update or version verification fails | `dolt` module | Append `dolt`; dependent Beads execution cannot proceed | Repair network/package manager and rerun |
-| Beads provisioning failure | Stable installer or `bd version` verification fails | `beads` module | Append `beads`; preserve every command-repo path | Repair network/PATH and rerun |
-| Bootstrap selected implicitly | Profile or normal module execution would create command-repo state | Orchestrator boundary check | Refuse implicit bootstrap and complete tool installation only | Run the explicit bootstrap operation with path and remote URL |
+| Error Case                           | Trigger                                                                           | Detection                      | Response                                                                          | Recovery                                                      |
+| ------------------------------------ | --------------------------------------------------------------------------------- | ------------------------------ | --------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| Unsupported OS                       | Operating system type is not a Linux variant or macOS                             | Platform detection phase       | Print error with detected OS type, exit 1                                         | User must run on Ubuntu/Debian or macOS                       |
+| Linux without apt                    | Linux detected but apt package manager not found                                  | Platform detection phase       | Print error, exit 1                                                               | User must install apt or use a supported platform             |
+| Module install failure               | A module function signals failure                                                 | Failure tracking               | Append module name to `FAILED_MODULES`, continue execution                        | Report at completion; user re-runs with failed modules        |
+| Neovim below minimum version         | Installed Neovim version reports less than 0.10                                   | `configure_neovim` module      | Remove apt version if present, download and install AppImage from GitHub releases | Automatic; fails if download or architecture unsupported      |
+| Unsupported CPU architecture         | Detected architecture is not x86_64, aarch64, or arm64                            | Neovim or Go install modules   | Print error, skip module                                                          | User must build from source or use supported hardware         |
+| Homebrew install failure             | Homebrew installation script exits non-zero                                       | `setup_package_manager`        | Script exits                                                                      | User troubleshoots Homebrew install manually                  |
+| Lazy sync dirty cache                | `Lazy! sync` reports local changes in plugins                                     | Plugin sync phase              | Clean dirty plugin caches, retry once                                             | Automatic; manual Lazy sync if retry fails                    |
+| Mason package install failure        | MasonInstall command exits non-zero                                               | Mason installation phase       | Print warning with manual remediation command                                     | User runs `:Mason` inside Neovim                              |
+| npm not found for agent install      | Node.js/npm is not available when installing Codex or Pi                          | Dependency resolver            | Auto-add `nodejs` module to resolved list                                         | Automatic; user notified via warning message                  |
+| Docker not found for Pi sandbox      | Docker command not found when installing `pi_sandbox`                             | `install_pi_sandbox` module    | Print error, skip module                                                          | User must install Docker separately before re-running         |
+| Docker not found for Codex sandbox   | Docker command not found when installing `codex_sandbox`                          | `install_codex_sandbox` module | Print error, skip module                                                          | User must install Docker separately before re-running         |
+| Herdr install failure                | Herdr direct installer exits non-zero or `herdr` remains unavailable              | `herdr` module                 | Append `herdr` to failed modules; continue with remaining modules                 | Check network/PATH and re-run install                         |
+| Herdr integration target missing     | A managed agent config directory does not exist when `herdr_integrations` runs    | `herdr_integrations` module    | Skip that agent integration and continue                                          | Install the relevant agent module and re-run                  |
+| Go version fetch failure             | Version endpoint returns empty result                                             | `install_golang` module        | Print error, signal module failure                                                | Module fails; user retries or installs Go manually            |  | PATH conflict for npm-installed agents | The agent binary is found via PATH but not at `~/.local/bin/` | Post-install verification | Print warning identifying the conflicting binary path | User must ensure `~/.local/bin` is earlier in PATH |
+| Codex config symlink detected        | Existing `~/.codex/config.toml` is a symlink                                      | `install_codex` module         | Remove symlink, copy template as regular file                                     | Automatic; local config file created from template            |
+| Unsupported desktop editor selection | `vscode` or `vscode_config` explicitly selected outside macOS                     | Module platform gate           | Append selected module to failures; install no substitute editor                  | Select supported platform/module                              |
+| Unsupported code-server selection    | `code_server` explicitly selected outside Ubuntu/Debian                           | Module platform gate           | Append module to failures; create no service                                      | Select supported platform/module                              |
+| Invalid code-server bind             | Bind lacks valid address and port shape                                           | Argument validation            | Exit before module execution with usage guidance                                  | Correct flag value                                            |
+| code-server port conflict            | Selected local port is occupied                                                   | Module preflight/startup       | Append module to failures; do not choose alternate                                | Stop conflict or pass explicit bind                           |
+| Required VS Code extension failure   | One or more manifest entries fail after all are attempted                         | Extension reconciliation       | Append owning module to failures and list every failed extension                  | Correct manifest/marketplace or rerun                         |
+| Python below required version        | Native interpreter reports less than 3.10                                         | `python` module verification   | Append `python` to failures; add no third-party repository                        | Upgrade supported OS/package source                           |
+| Beads provisioning failure           | Stable installer, `bd version` minimum, or embedded-capability verification fails | `beads` module                 | Append `beads`; preserve every command-repo path                                  | Repair network/PATH and rerun                                 |
+| Bootstrap selected implicitly        | Profile or normal module execution would create command-repo state                | Orchestrator boundary check    | Refuse implicit bootstrap and complete tool installation only                     | Run the explicit bootstrap operation with path and remote URL |
 
 ---
 
@@ -345,7 +343,7 @@ When Neovim's Lazy plugin sync reports local changes in cached plugins:
 
 15. **Private network neutrality**: Argument parsing and completion output MAY identify a generic bind value and local config path but MUST NOT name or configure a private-network product.
 
-16. **Execution tools are not execution state**: Full and Work provision Beads and Dolt, but profile execution never creates the private command repo, writes its runtime path, synchronizes its remote, or removes legacy data.
+16. **Execution tools are not execution state**: Full and Work provision Beads, but profile execution never creates the private command repo, writes its runtime path, synchronizes its remote, or removes legacy data.
 
 ---
 
@@ -613,16 +611,16 @@ Expected Output: Report requires manual Settings Sync disablement and does not c
 ### TS-INSTL-038: Execution Coordination Tools By Profile
 Category: Integration
 Priority: Critical
-Preconditions: Supported platform without bd or dolt
+Preconditions: Supported platform without bd
 Input: Expand Full, Work, and Minimal profiles
-Expected Output: Full and Work include dolt before beads; Minimal includes neither
+Expected Output: Full and Work include beads; Minimal omits it; no profile selects a Dolt module
 
-### TS-INSTL-039: Explicit Beads Module Resolves Dolt
+### TS-INSTL-039: Explicit Beads Module Resolves Its Prerequisites
 Category: Integration
 Priority: High
-Preconditions: bd and dolt are absent
+Preconditions: bd is absent
 Input: `--modules beads`
-Expected Output: Dependency resolution adds required installer prerequisites and dolt before beads
+Expected Output: Dependency resolution adds `base_tools` only when curl is missing and selects no Dolt module
 
 ### TS-INSTL-040: Normal Install Preserves Operational State
 Category: Integration
@@ -635,15 +633,16 @@ Expected Output: Tools install/update successfully while no command-repo bootstr
 
 ## Changelog
 
-| Version | Date | Summary |
-|---------|------|---------|
-| 2.0.0 | 2026-08-01 | Added Beads and Dolt modules to Full and Work, preserved Minimal, and separated tool installation from command-repo bootstrap and legacy cleanup. |
-| 1.6.0 | 2026-07-31 | Added platform-aware macOS Visual Studio Code modules, explicit Ubuntu/Debian code-server, Python 3.10+ provisioning, bind override semantics, extension failure handling, and manual Settings Sync action. |
-| 1.5.0 | 2026-07-15 | Made Claude settings local runtime state and added jq-backed status-line configuration. |
-| 1.4.0 | 2026-07-15 | Made Pi settings local runtime state and required content-preserving migration from the former repo-managed symlink. |
-| 1.3.2 | 2026-07-06 | Added the shell test suite contract: `bash tests/run.sh` discovers top-level shell tests, syntax-checks them, and uses a shared harness for install-script unit tests. |
-| 1.3.1 | 2026-07-06 | Clarified idempotency wording for modules that run official updater paths such as Claude Code's `latest` installer. |
-| 1.3.0 | 2026-07-05 | Added Herdr modules, included Herdr in every standard installation profile, specified Herdr integration skip behavior, and documented the Herdr default replacement migration rule. |
-| 1.2.0 | 2026-06-02 | Added Pi deployment requirements. |
-| 1.1.0 | 2026-05-19 | Updated skills deployment expectations for Pi's composed skills directory |
-| 1.0.0 | 2026-05-01 | Initial spec: orchestration flow, phase ordering, platform branching, dependency resolution, idempotency rules, error handling, interactive/CLI modes |
+| Version | Date       | Summary                                                                                                                                                                                                     |
+| ------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2.1.0   | 2026-08-02 | Removed the `dolt` module after adopting single-writer embedded Beads storage; `beads` now depends only on `base_tools`.                                                                                    |
+| 2.0.0   | 2026-08-01 | Added Beads and Dolt modules to Full and Work, preserved Minimal, and separated tool installation from command-repo bootstrap and legacy cleanup.                                                           |
+| 1.6.0   | 2026-07-31 | Added platform-aware macOS Visual Studio Code modules, explicit Ubuntu/Debian code-server, Python 3.10+ provisioning, bind override semantics, extension failure handling, and manual Settings Sync action. |
+| 1.5.0   | 2026-07-15 | Made Claude settings local runtime state and added jq-backed status-line configuration.                                                                                                                     |
+| 1.4.0   | 2026-07-15 | Made Pi settings local runtime state and required content-preserving migration from the former repo-managed symlink.                                                                                        |
+| 1.3.2   | 2026-07-06 | Added the shell test suite contract: `bash tests/run.sh` discovers top-level shell tests, syntax-checks them, and uses a shared harness for install-script unit tests.                                      |
+| 1.3.1   | 2026-07-06 | Clarified idempotency wording for modules that run official updater paths such as Claude Code's `latest` installer.                                                                                         |
+| 1.3.0   | 2026-07-05 | Added Herdr modules, included Herdr in every standard installation profile, specified Herdr integration skip behavior, and documented the Herdr default replacement migration rule.                         |
+| 1.2.0   | 2026-06-02 | Added Pi deployment requirements.                                                                                                                                                                           |
+| 1.1.0   | 2026-05-19 | Updated skills deployment expectations for Pi's composed skills directory                                                                                                                                   |
+| 1.0.0   | 2026-05-01 | Initial spec: orchestration flow, phase ordering, platform branching, dependency resolution, idempotency rules, error handling, interactive/CLI modes                                                       |
