@@ -1,6 +1,6 @@
 # Execution Coordination
 
-> **Version**: 1.1.0
+> **Version**: 1.2.0
 > **Last Updated**: 2026-08-02
 > **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md), [Tool Provisioning](tool-provisioning.md), [Herdr Config](herdr-config.md)
 > **Depended By**: [Skill Library](skill-library.md), [Install Orchestrator](install-orchestrator.md)
@@ -12,7 +12,7 @@
 
 Execution Coordination owns durable planning, agent assignment, dependency ordering, execution attempts, review policy, evidence, synchronization, and crash recovery for agent-driven implementation work. One private external **command repo** contains the Beads database for every source repository. Source repositories remain free of `.beads/` directories and durable workflow Markdown.
 
-The approved behavior in this specification is desired and is not yet implemented. One already-active **legacy execution ledger** MAY finish under its existing contract during migration; all newly created work MUST use an **execution molecule**.
+The approved behavior in this specification is desired. The `beads`, `create-plan`, and `execute-molecule` shared skills encode this contract, but no molecule has yet been created or executed against it, so the runtime behavior remains unproven. All work MUST use an **execution molecule**; no legacy filesystem ledger remains.
 
 The system MUST ensure that:
 
@@ -357,7 +357,7 @@ Closed attempts MAY undergo supported Beads compaction after molecule completion
 
 ### Legacy Transition
 
-One **legacy execution ledger** active at adoption time MAY continue to a terminal state under its existing skill contract. No new filesystem plan or ledger may be created after Beads molecule creation is available. Legacy workflow support is removed only after that active ledger is complete or explicitly abandoned.
+The migration is complete. No legacy execution ledger remains active, and the filesystem plan and ledger contract has been removed from the skill catalog. No filesystem plan, ledger, slice packet, verification file, or repository-local `.plan` pointer may be created.
 
 Legacy cleanup is a separate explicit migration operation. It MUST archive untracked `~/code/beads/research/` outside the clone before deleting the old Beads binaries, symlink, global and project databases, and source clone. Normal installation MUST NEVER repeat destructive cleanup.
 
@@ -394,7 +394,7 @@ Legacy cleanup is a separate explicit migration operation. It MUST archive untra
 5. Editable agents use isolated branches and worktrees before Herdr launch. Separate panes are not checkout isolation.
 6. The source fixed point and every candidate/review/integration fixed point use full commit hashes.
 7. Generated human-readable reports MAY be temporary, but Beads remains authoritative and reports MUST be labelled non-authoritative.
-8. Planner and execution behavior belongs to shared skills; command-repo mutable state does not belong in dotfiles.
+8. Planner and execution behavior belongs to shared skills; command-repo mutable state does not belong in dotfiles. The `beads` shared skill owns the canonical `bd` contract, and planner and coordinator skills compose it rather than restating command-repo mechanics.
 9. Runtime configuration and credentials remain local even though command-repo operational history is privately synchronized.
 
 ---
@@ -498,5 +498,6 @@ Expected Output: Normal install deletes no legacy data; explicit cleanup verifie
 
 | Version | Date       | Change                                                                                                                                                                                                                 |
 | ------- | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1.2.0   | 2026-08-02 | Closed the legacy transition after the filesystem ledger contract was removed from the skill catalog, and recorded that the encoding skills exist while runtime execution remains unproven.                             |
 | 1.1.0   | 2026-08-02 | Adopted single-writer embedded storage, added the durable-write serialization constraint, and specified two-half synchronization against a private git+ssh remote.                                                     |
 | 1.0.0   | 2026-08-01 | Established private command-repo execution molecules, exact model and review policy, write-ahead attempt graphs, Herdr transport boundaries, semantic synchronization, crash recovery, and legacy transition behavior. |

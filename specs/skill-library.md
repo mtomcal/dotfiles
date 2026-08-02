@@ -1,7 +1,7 @@
 # Skill Library Specification
 
-> **Version**: 6.0.0
-> **Last Updated**: 2026-08-01
+> **Version**: 7.0.0
+> **Last Updated**: 2026-08-02
 > **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md), [Herdr Config](herdr-config.md), [Execution Coordination](execution-coordination.md)
 > **Depended By**: AI Agent Configuration (AIAGT)
 > **Prefix**: SKILL
@@ -108,13 +108,15 @@ All Skill Library parameters are authoritative in [Parameters > Skill Library](p
 |-------|------|-------------|-------------|
 | creation entry | skill | `create-plan` | Creates one execution-ready Beads molecule directly from approved scope |
 | execution entry | skill | `execute-molecule` | Coordinates one explicit molecule through Herdr and Beads |
+| durable mechanics owner | skill | `beads` | Single source of truth for `bd` operations composed by both entries |
 | durable authority | bounded context | Execution Coordination | Owns command-repo graph, assignments, attempts, evidence, synchronization, and recovery |
 | source | repository identity | Normalized remote or explicit key plus full fixed commit | Reproducible source baseline without a mandatory spec diff |
 | scope | scope snapshot | Explicit human approval | Objective, acceptance, failure, and exclusions are frozen after creation |
 | work | Beads graph | Context-sized slices and review/remediation beads | Blocking dependencies derive the frontier |
 | traces | evidence-grounded call trees | Applicable trace lives on each slice bead | Intended order, not captured runtime evidence |
 | live transport | composed skill | Herdr required for agent operations | Herdr state is ephemeral and never durable authority |
-| compatibility | existing legacy execution ledger only | No new filesystem artifacts | Grandfathered work may reach a terminal state before retired support is removed |
+| durable mechanics | composed skill | `beads` owns the canonical `bd` contract | Creation and execution compose it rather than restating command-repo mechanics |
+| compatibility | none | No filesystem plan, ledger, or `.plan` artifacts | The retired filesystem execution contract is removed; no grandfathered work remains |
 
 ---
 
@@ -203,9 +205,10 @@ A revision is complete only when:
 6. Generic Standards and Spec review remain owned by `code-review`.
 7. Visual work MUST preserve capture, optional recording conversion, evidence limitations, and caller or human acceptance. Capture and conversion workflows MUST return evidence directly without claiming final acceptance.
 8. Templates, output contracts, ranking models, and checklists remain owned by their domain producer rather than a universal schema.
-9. When a workflow delegates through Herdr, it MUST compose the shared Herdr skill instead of duplicating terminal commands. It MUST retain an in-process fallback outside Herdr unless its protected contract declares Herdr a hard precondition; a hard-precondition workflow MUST stop outside Herdr rather than provide a reduced fallback.
-10. Public Herdr IDs MUST be refreshed after topology changes; neither public IDs nor legacy display selectors may become durable workflow identity.
-11. An agent-specific Herdr skill MUST compose the generic Herdr skill for CLI transport, current IDs, validated agent primitives, output inspection, server-owned settled-state waiting, and cleanup. It MAY own only agent-specific launch arguments, readiness interpretation, task contract, interaction, and steering behavior.
+9. When a workflow performs durable coordination operations, it MUST compose the shared `beads` skill instead of duplicating `bd` mechanics. `beads` owns routing verification, durable-write serialization, graph operations, checkpointing, write-ahead attempts, and recovery; its callers retain scope approval, review policy, acceptance authority, and workflow state. Composing it transfers no artifact or acceptance ownership.
+10. When a workflow delegates through Herdr, it MUST compose the shared Herdr skill instead of duplicating terminal commands. It MUST retain an in-process fallback outside Herdr unless its protected contract declares Herdr a hard precondition; a hard-precondition workflow MUST stop outside Herdr rather than provide a reduced fallback.
+11. Public Herdr IDs MUST be refreshed after topology changes; neither public IDs nor legacy display selectors may become durable workflow identity.
+12. An agent-specific Herdr skill MUST compose the generic Herdr skill for CLI transport, current IDs, validated agent primitives, output inspection, server-owned settled-state waiting, and cleanup. It MAY own only agent-specific launch arguments, readiness interpretation, task contract, interaction, and steering behavior.
 
 ### Workflow Artifact and State Ownership
 
@@ -226,6 +229,7 @@ Reciprocal routing MAY compose workflows but MUST NOT transfer state or artifact
 | `improve-codebase-architecture` | Produces a temporary visual HTML report with before-and-after diagrams and candidate comparison |
 | `herdr` | Owns current generic Herdr CLI mechanics, including validated agent startup, atomic prompt submission, logical keys, output inspection, server-owned settled-state waiting, and failure inspection |
 | `herdr-claude-code` | Composes `herdr` and owns Claude's required native launch argument, task contract, settled-result interpretation, and blocked-agent steering without duplicating generic transport |
+| `beads` | Owns the canonical `bd` contract — command-repo routing verification, read-before-write inspection, single-writer durable-write serialization, work-bead and dependency mechanics, semantic checkpoint synchronization, write-ahead attempts, completion evidence, and Beads-only recovery |
 | `create-plan` | Pins a source fixed point, obtains a human-approved scope snapshot, proposes review/model policy, and creates one execution-ready command-repo molecule with context-sized TDD slices and traces |
 | `execute-molecule` | Requires one explicit execution-molecule id and Herdr, then coordinates Beads-backed leases, write-ahead attempts, isolated implementation, evidence-gated integration, configured reviews, synchronization, and crash recovery |
 | `teach` | Requires an approved teaching workspace and preserves mission, resources, learning records, lessons, references, assets, and notes |
@@ -255,7 +259,7 @@ Final work follows the approved Lean, Standard, or High-assurance review graph. 
 
 A fresh coordinator MUST recover from Beads without conversation or Herdr history, then use Herdr to rediscover sessions by durable attempt token. Unmatched uncertain attempts become lost and replacement work receives a new attempt id. Remote outages permit only leased-host work with `sync:pending`; takeover and completion wait for successful synchronization. Neither command-repo records, branches, worktrees, nor attempts are cleaned automatically.
 
-The retired `divide-plan` contract MAY remain temporarily available only to finish the single legacy execution ledger already active at adoption. It MUST create no new filesystem plan or ledger, and it is removed after that ledger becomes terminal.
+The retired filesystem execution contract is removed. No shared skill may create or operate a filesystem implementation plan, execution ledger, slice packet, verification file, or repository-local `.plan` pointer. No grandfathered legacy ledger remains.
 
 The teaching workflow MUST obtain approval for a dedicated workspace before scaffolding. It MUST ground lessons in an agreed mission, use primary-source research, maintain durable resources and demonstrated-learning records, prefer reusable lesson assets, and distinguish knowledge acquisition, skill practice, and wisdom from real-world interaction. Interactive codebase lessons SHOULD compose `create-explainer` without weakening teaching-workspace ownership or citation requirements.
 
@@ -425,10 +429,29 @@ Expected Output: Every applicable slice carries an evidence-grounded intended tr
 
 ---
 
+### TS-SKILL-016: Beads Base-Skill Composition
+
+Category: Integration
+Priority: Critical
+Preconditions: The catalog contains `beads`, `create-plan`, and `execute-molecule`.
+Input: Inspect each execution-workflow skill for `bd` operations, composition of `beads`, and ownership of scope, review policy, and acceptance.
+Expected Output: `beads` is the only skill defining routing verification, durable-write serialization, and attempt mechanics; both entries compose it without restating those mechanics; and each caller retains its own approval gates and acceptance authority.
+
+### TS-SKILL-017: Retired Filesystem Execution Contract
+
+Category: Integration
+Priority: Critical
+Preconditions: The catalog is available.
+Input: Search every shared skill for filesystem implementation plans, execution ledgers, slice packets, verification files, and repository-local `.plan` pointers.
+Expected Output: No shared skill creates or operates any of these artifacts, and no grandfathered legacy ledger contract remains in the catalog.
+
+---
+
 ## Changelog
 
 | Version | Date | Change |
 |---------|------|--------|
+| 7.0.0 | 2026-08-02 | Removed the retired filesystem execution contract and its legacy-ledger grandfathering, registered the `beads` base skill as the canonical `bd` owner, and required execution workflows to compose it. |
 | 6.0.0 | 2026-08-01 | Replaced filesystem create/divide execution with command-repo execution molecules, exact per-bead model and review policy, `execute-molecule`, write-ahead attempts, coordinator leases, and Beads-first crash recovery. |
 | 5.0.0 | 2026-08-01 | Replaced client-owned Herdr status races and manual Claude submission with Herdr 0.7.5's validated startup, atomic prompt, and server-owned settled-state facade. |
 | 4.0.0 | 2026-07-15 | Required a proposed execution trace per ordered step and binding final review gates in every non-empty implementation plan (mode-neutral, results excluded); required slices to retain source traces with a slice-scope frame mapping; added a final integrated Test Quality pass, risk-triggered gates, and impact-scoped review reruns to divide-plan. |
