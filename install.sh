@@ -1018,6 +1018,46 @@ write_beads_command_config() {
     print_success "Command-repo route recorded at ~/.config/beads-command/env"
 }
 
+# A freshly created GitHub repo has no branches, and Dolt refuses to push to
+# a branchless remote. Seed one initial commit so `bd dolt push` has somewhere
+# to land. A repo that already has history is left untouched.
+beads_ensure_remote_has_branch() {
+    local local_path="$1"
+
+    (
+        cd "$local_path" || exit 1
+
+        if git rev-parse HEAD >/dev/null 2>&1; then
+            exit 0
+        fi
+
+        git commit -q --allow-empty -m "chore: initialize command repo" >/dev/null 2>&1 || exit 1
+        git push -q -u origin HEAD >/dev/null 2>&1 || exit 1
+    ) || {
+        print_error "Could not create an initial commit on the command repo"
+        print_info "Dolt cannot push to a remote with no branches"
+        return 1
+    }
+
+    print_success "Command repo has an initial branch"
+}
+
+# `bd bootstrap` plans a clone from the remote, which fails outright when a
+# local database already exists. A re-run wants pull semantics instead: keep
+# the local database and reconcile it with the remote.
+beads_reconcile_existing_database() {
+    local local_path="$1"
+    local beads_dir="$2"
+
+    if ! (cd "$local_path" && BEADS_DIR="$beads_dir" bd dolt pull); then
+        print_error "Could not pull the command repo from its remote"
+        print_info "Resolve the remote state, then re-run bootstrap"
+        return 1
+    fi
+
+    print_success "Existing command-repo database reconciled"
+}
+
 print_beads_bootstrap_usage() {
     print_error "Usage: ./install.sh --beads-bootstrap <absolute-local-path> <remote-url>"
     print_info "Remote must use Dolt's git transport, for example:"
@@ -1062,14 +1102,15 @@ beads_bootstrap() {
         print_success "Command repo already present at $local_path"
     fi
 
+    # Must precede any Beads work: Dolt cannot push to a branchless remote,
+    # which is the state a newly created GitHub repo is in.
+    beads_ensure_remote_has_branch "$local_path" || return 1
+
     if [ -d "$beads_dir" ]; then
         # An existing database is reconciled rather than recreated; bootstrap
         # must never discard operational state on a re-run.
         print_info "Existing Beads database found; reconciling..."
-        if ! (cd "$local_path" && BEADS_DIR="$beads_dir" bd bootstrap --yes); then
-            print_error "bd bootstrap could not reconcile the existing database"
-            return 1
-        fi
+        beads_reconcile_existing_database "$local_path" "$beads_dir" || return 1
     else
         print_info "Initializing Beads in embedded mode..."
         if ! (cd "$local_path" && BEADS_DIR="$beads_dir" bd init --quiet); then
