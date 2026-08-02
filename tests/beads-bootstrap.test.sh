@@ -43,6 +43,27 @@ test_bootstrap_rejects_remote_without_dolt_scheme() {
         || fail "bare HTTPS remote must be rejected"
 }
 
+# git+ssh:// is a URL scheme, so the host is delimited by '/'. Pasting the
+# scp-style form GitHub displays keeps the ':' separator, which SSH then reads
+# as a port and resolves "github.com:owner" as a hostname. That surfaces deep
+# inside git clone, so reject it at the boundary instead.
+test_bootstrap_rejects_scp_style_host_separator() {
+    source_install
+
+    ! beads_bootstrap_arguments_valid "/abs/path" "git+ssh://git@github.com:owner/repo.git" \
+        || fail "scp-style ':' separator must be rejected"
+    ! beads_bootstrap_arguments_valid "/abs/path" "git+https://github.com:owner/repo.git" \
+        || fail "scp-style ':' separator must be rejected for https"
+}
+
+# An explicit port is legitimate URL syntax and must survive the check above.
+test_bootstrap_accepts_explicit_port() {
+    source_install
+
+    beads_bootstrap_arguments_valid "/abs/path" "git+ssh://git@example.com:2222/owner/repo.git" \
+        || fail "explicit numeric port must be accepted"
+}
+
 # --- runtime config ----------------------------------------------------------
 
 test_bootstrap_writes_machine_local_runtime_config() {
@@ -164,6 +185,85 @@ test_commit_helper_is_idempotent() {
     beads_commit_command_config "$root/work" >/dev/null || fail "rerun failed"
 
     remote_head_has_config "$root" || fail "sync configuration missing after rerun"
+}
+
+# --- empty remote ------------------------------------------------------------
+#
+# A freshly created GitHub repo has no branches. Dolt refuses to push to it
+# ("git remote has no branches"), so the repo needs an initial commit before
+# any Beads work happens.
+
+test_empty_clone_gets_an_initial_commit() {
+    local root
+    new_tmp_var root
+
+    source_install
+
+    git init -q --bare "$root/remote.git"
+    git clone -q "$root/remote.git" "$root/work" 2>/dev/null
+    git -C "$root/work" config user.email test@example.com
+    git -C "$root/work" config user.name "Test"
+
+    beads_ensure_remote_has_branch "$root/work" >/dev/null \
+        || fail "seeding an empty clone failed"
+
+    git -C "$root/remote.git" rev-parse HEAD >/dev/null 2>&1 \
+        || fail "remote still has no branch after seeding"
+}
+
+test_existing_history_is_not_disturbed() {
+    local root
+    new_tmp_var root
+
+    source_install
+
+    git init -q --bare "$root/remote.git"
+    git clone -q "$root/remote.git" "$root/work" 2>/dev/null
+    git -C "$root/work" config user.email test@example.com
+    git -C "$root/work" config user.name "Test"
+    git -C "$root/work" commit -q --allow-empty -m "existing work"
+    git -C "$root/work" push -q -u origin HEAD 2>/dev/null
+
+    local before
+    before="$(git -C "$root/work" rev-parse HEAD)"
+
+    beads_ensure_remote_has_branch "$root/work" >/dev/null \
+        || fail "seeding reported failure on a populated repo"
+
+    [[ "$(git -C "$root/work" rev-parse HEAD)" == "$before" ]] \
+        || fail "existing history must not be rewritten"
+}
+
+# --- reconciling an existing database ----------------------------------------
+#
+# `bd bootstrap` plans a clone from the remote, which fails when a local
+# database already exists. A re-run must reconcile with pull semantics
+# instead of attempting to recreate what is already there.
+
+test_rerun_does_not_attempt_a_clone_over_an_existing_database() {
+    local root
+    local log
+    new_tmp_var root
+    log="$(tmp_artifact bd-calls.log)"
+    : >"$log"
+
+    source_install
+
+    mkdir -p "$root/work/.beads/embeddeddolt" "$root/bin"
+    cat >"$root/bin/bd" <<STUB
+#!/usr/bin/env bash
+printf '%s\n' "\$*" >>"$log"
+STUB
+    chmod +x "$root/bin/bd"
+
+    PATH="$root/bin:$PATH" beads_reconcile_existing_database \
+        "$root/work" "$root/work/.beads" >/dev/null \
+        || fail "reconcile reported failure"
+
+    ! grep -q '^bootstrap' "$log" \
+        || fail "must not run 'bd bootstrap' over an existing database: $(cat "$log")"
+    grep -q 'dolt pull' "$log" \
+        || fail "expected a dolt pull to reconcile; got: $(cat "$log")"
 }
 
 # --- install boundary --------------------------------------------------------
