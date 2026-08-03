@@ -13,13 +13,20 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/harness.sh"
 route_with() {
     local config_path="$1"
 
+    # The block is extracted to a real file rather than sourced from a
+    # process substitution: macOS ships bash 3.2, which sources nothing at
+    # all from /dev/fd and would make every case look like "not exported".
+    local block
+    block="$(tmp_artifact beads-routing-block.sh)"
+    awk '/# BEADS-ROUTING-START/,/# BEADS-ROUTING-END/' \
+        "$DOTFILES_DIR/zsh/.zshrc.custom" >"$block"
+
     (
         set +u
         unset BEADS_DIR
         BEADS_COMMAND_CONFIG_PATH="$config_path"
         # shellcheck disable=SC1090
-        source <(awk '/# BEADS-ROUTING-START/,/# BEADS-ROUTING-END/' \
-            "$DOTFILES_DIR/zsh/.zshrc.custom")
+        source "$block"
         printf '%s' "${BEADS_DIR:-}"
     )
 }
