@@ -21,7 +21,7 @@ When converting a plan, spec, review, or any structured document into slides, fo
 
 **Step 3 — Choose layouts.** For each planned slide, pick a slide type and spatial composition. Vary across the sequence (see Compositional Variety below). This is where narrative pacing happens — alternate dense slides with sparse ones.
 
-**Step 4 — Plan images.** Run `which surf`. If surf-cli is available, plan 2–4 generated images for the deck. At minimum, target the **title slide** (16:9 background that sets the visual tone) and **one full-bleed slide** (immersive background for a key moment). Content slides with conceptual topics also benefit from a 1:1 illustration in the aside area. Generate these images early — before writing HTML — so you can embed them as base64 data URIs. See the Proactive Imagery section below for the full workflow. If surf isn't available, degrade to CSS gradients and SVG decorations — note the fallback in a comment but don't error.
+**Step 4 — Plan backgrounds.** Decide the visual treatment for the title slide and any full-bleed slide. Default to CSS gradients, layered SVG shapes, and typographic scale. Embed a raster image only when the harness can generate one natively, as a base64 data URI; never invoke an external image tool. See Proactive Imagery below.
 
 **Step 5 — Verify before writing HTML.** Scan the inventory from Step 1. Is anything unmapped? Would a reader of the source document notice something missing from the deck? If yes, add slides. A source document with 7 sections typically produces 18–25 slides, not 10–13.
 
@@ -467,7 +467,7 @@ Each type has a defined HTML structure and CSS layout. The agent can adapt color
 
 ### Title Slide
 
-Full-viewport hero. Background treatment via gradient, texture, or surf-generated image. 80–120px display type.
+Full-viewport hero. Background treatment via gradient, texture, or a natively generated image. 80–120px display type.
 
 ```html
 <section class="slide slide--title">
@@ -1000,7 +1000,7 @@ KPI cards at presentation scale (48–64px hero numbers). Mini-charts via Chart.
 
 ### Full-Bleed Slide
 
-Background image (surf-generated or CSS gradient) dominates the viewport. Text overlay with gradient scrim ensuring contrast. Zero slide padding.
+Background treatment (CSS gradient, layered SVG, or a natively generated image) dominates the viewport. Text overlay with gradient scrim ensuring contrast. Zero slide padding.
 
 ```html
 <section class="slide slide--bleed">
@@ -1120,42 +1120,13 @@ Vary gradient direction and accent glow position across slides to create visual 
 
 Slides should reach for visuals before defaulting to text alone. If a slide could be more compelling with an image, chart, or diagram, add one.
 
-**surf-cli integration:** Check `which surf` at the start of every slide deck generation. If available, **generate 2–4 images minimum** for any deck over 10 slides. This is not optional when surf is available — a deck with AI-generated imagery is dramatically more compelling than one with only CSS gradients. Target these slides in priority order:
+**Images:** Embed a raster image only when the harness can generate one natively. Never shell out to an external image-generation binary or service, and never check for one. When native generation is unavailable — the normal case — build the visual from CSS gradients and SVG, which is the default path rather than a fallback.
 
-1. **Title slide** (always): background image that sets the deck's visual tone. Match the topic and palette. Use `--aspect-ratio 16:9`. Prompt example: "abstract dark geometric pattern with green accent lines, technical and minimal" for Terminal Mono preset.
-2. **Full-bleed slide** (always if deck has one): immersive background for the deck's visual anchor moment. Style should match the preset — photo-realistic for Midnight Editorial, abstract/geometric for Swiss Clean, circuit-board or terminal aesthetic for Terminal Mono.
-3. **Content slides with conceptual topics** (1–2 if the deck has room): illustration in the `.slide__aside` area for slides about abstract concepts. Use `--aspect-ratio 1:1`.
+When a native image is available, embed it as a base64 data URI so the deck stays self-contained. Title slides and full-bleed slides are the slides that benefit most.
 
-**Generate images before writing HTML** so they're ready to embed. The workflow:
+**Design the deck without images.** Use the `.slide__bg--gradient` pattern with bold `linear-gradient` or `radial-gradient` backgrounds, layered SVG shapes, and typographic scale for the deck's visual anchor moments. Images enhance a deck; they never carry it.
 
-```bash
-# Check availability
-which surf
-
-# Generate (one per target slide)
-surf gemini "descriptive prompt matching deck palette" --generate-image /tmp/ve-slide-title.png --aspect-ratio 16:9
-
-# Base64 encode for self-containment (macOS)
-TITLE_IMG=$(base64 -i /tmp/ve-slide-title.png)
-# Linux: TITLE_IMG=$(base64 -w 0 /tmp/ve-slide-title.png)
-
-# Embed in the slide
-# <div class="slide__bg" style="background-image:url('data:image/png;base64,${TITLE_IMG}')"></div>
-
-# Clean up
-rm /tmp/ve-slide-title.png
-```
-
-**Prompt craft for slides:** Be specific about style, dominant colors, and mood. Pull colors from the preset's CSS variables. Examples:
-- Terminal Mono: "dark abstract circuit board pattern, green (#50fa7b) traces on near-black (#0a0e14), minimal, technical"
-- Midnight Editorial: "deep navy abstract composition, warm gold accent light, cinematic depth of field, premium editorial feel"
-- Warm Signal: "warm cream textured paper with terracotta geometric accents, confident modern design"
-
-**When surf fails or isn't available:** Degrade gracefully to CSS gradients and SVG decorations. Use the `.slide__bg--gradient` pattern with bold `linear-gradient` or `radial-gradient` backgrounds. The deck should stand on its own visually without generated images — they enhance, they don't carry. Note the fallback in an HTML comment (`<!-- surf unavailable, using CSS gradient fallback -->`) so future edits know to retry.
-
-**Inline data visualizations:** Proactively add SVG sparklines next to numbers, mini-charts on dashboard slides, and small Mermaid diagrams on split slides even when not explicitly requested. A number with a sparkline next to it tells a better story than a number alone.
-
-**When to skip images:** If surf isn't available, degrade gracefully — use CSS gradients and SVG decorations instead. Never error on missing surf. Pure structural or data-heavy decks (code reviews, table comparisons) may not need generated images.
+**Inline data visualizations:** Proactively add SVG sparklines next to numbers, mini-charts on dashboard slides, and small Mermaid diagrams on split slides even when not explicitly requested. A number with a sparkline next to it tells a better story than a number alone. These are pure SVG and need no external tooling.
 
 ## Compositional Variety
 

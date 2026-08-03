@@ -718,7 +718,7 @@ For more information on this, and how to apply and follow the GNU AGPL, see
 
 ## Visual Explainer
 
-`shared/skills/visual-explainer/` contains material adapted in August 2026 from [`nicobailon/visual-explainer`](https://github.com/nicobailon/visual-explainer) at commit `528b71feb85dab5d92b82c3554880826f50a75da` (release v0.8.1). The adapted material comprises the four files under `references/` and the four files under `templates/`, copied unmodified from `plugins/visual-explainer/`.
+`shared/skills/visual-explainer/` contains material adapted in August 2026 from [`nicobailon/visual-explainer`](https://github.com/nicobailon/visual-explainer) at commit `528b71feb85dab5d92b82c3554880826f50a75da` (release v0.8.1). The adapted material comprises the four files under `references/` and the four files under `templates/` from `plugins/visual-explainer/`. The `templates/` files are unmodified. `references/slide-patterns.md` and `references/css-patterns.md` are modified: upstream's `surf-cli` integration, which shells out to `surf gemini --generate-image` and probes for the binary with `which surf`, is removed in favor of harness-native image generation only. This repository does not invoke third-party binaries or network services from a skill workflow.
 
 `shared/skills/visual-explainer/SKILL.md` is repository-authored. It preserves the upstream rendering contract — representation routing, Mermaid diagram-shell invariants, aesthetic direction, and layout rules — while restructuring placement for this repository's progressive-disclosure contract, replacing the upstream `~/.agent/diagrams/` output path with caller-specified locations defaulting to the system temporary directory, and omitting the upstream slash commands and Pi extension.
 

@@ -58,6 +58,8 @@ Completion criterion: the page would remain recognizable if compared against a g
 
 Produce one complete self-contained HTML document with embedded CSS and any needed JavaScript. No external build step, no separate asset files.
 
+Never invoke an external binary or network service to build the page. Embed a raster image only when the harness can generate one natively, as a base64 data URI; otherwise build the visual from CSS and SVG. Do not probe for image-generation tooling.
+
 **Mermaid invariants**, when the page contains a diagram:
 
 - Use `theme: 'base'` with `themeVariables` matching the page palette.
