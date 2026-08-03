@@ -1,6 +1,6 @@
 ---
 name: execute-engineering-molecule
-description: Coordinate one explicit Beads engineering molecule through Herdr — acquiring the coordinator lease, launching write-ahead attempts, verifying evidence, integrating slices, running configured reviews, and recovering after a crash. Use when a create-engineering-plan molecule is ready for implementation, verification, integration, remediation, or interrupted-execution recovery inside Herdr. Coordinates engineering molecules only; its loop assumes Git commits, isolated worktrees, and testable slices.
+description: Coordinate one explicit Beads engineering molecule through Herdr — summary-first startup, write-ahead attempts, fixed-point verification, isolated integration, configured reviews, compact recovery, and crash reconciliation. Use when a create-engineering-plan molecule is ready for implementation, verification, integration, remediation, or interrupted recovery inside Herdr. Coordinates engineering molecules only; its loop assumes Git commits, isolated worktrees, and testable slices.
 metadata:
   short-description: Execute a Beads molecule in Herdr
 allowed-tools: read,bash
@@ -10,106 +10,83 @@ allowed-tools: read,bash
 
 ## Language Definitions
 
-- **Coordinator** — the leased authority that mutates graph structure, verifies evidence, and integrates approved commits without implementing or reviewing.
-- **Coordinator lease** — the non-expiring claim on a molecule; at most one nonterminal coordinator session holds it.
-- **Frontier** — ready work beads whose blockers are closed, from `bd ready --mol <root>`.
-- **Fixed point** — full immutable commit hash under verification.
-- **Observation timeout** — maximum wait for the next expected Herdr evidence before the coordinator inspects and steers.
-- **Context rotation** — checkpoint-and-recreate lifecycle that prevents a worker from beginning new work after its approved context thresholds.
-- **Watchdog** — bounded liveness monitor that may request checkpoints and, when explicitly authorized, terminate only a nonresponsive worker pane.
+- **Coordinator** — solo actor responsible for structure, evidence verification, integration, and recovery without implementing or independently reviewing.
+- **Recovery projection** — compact Beads current-state cache read before notes or historical attempts.
+- **Coordinator run marker** — optional non-authoritative duplicate-process hint; never a lease or mutation gate.
+- **Frontier** — ready work beads whose blockers are closed.
+- **Fixed point** — full immutable Git commit under verification.
+- **Context rotation** — checkpoint-and-recreate lifecycle at approved worker thresholds.
 
-Beads is durable authority; Herdr is ephemeral transport. Herdr state is never a durable record.
-
-This skill coordinates **engineering molecules only**. Its loop is Git- and test-shaped throughout: fixed points are commit hashes, slices are implemented in isolated worktrees and integrated by cherry-pick, and every slice requires an independent test-quality audit. A molecule whose work has no commits to integrate and no tests to audit cannot be executed here. Coordinating another kind of Beads work would need its own skill; none exists yet.
+Beads is durable authority; Herdr is ephemeral transport. This skill executes engineering molecules only. Work without testable behavior and commits to integrate stops and routes to its authoring owner or reports that none exists.
 
 ## Workflow
 
-Load the shared [`beads`](../beads/SKILL.md) skill for all `bd` operations — routing, durable-write serialization, write-ahead attempts, evidence recording, and recovery.
+Load [`beads`](../beads/SKILL.md) for every `bd` operation and recovery mechanic.
 
-### 1. Gate Herdr and validate the molecule
+### 1. Gate and start from summaries
 
-Require `HERDR_ENV=1`; if absent, stop. There is no non-Herdr execution fallback. After the gate passes, load the shared [`herdr`](../herdr/SKILL.md) skill before controlling panes or agents. Herdr owns terminal transport only; the coordinator retains task briefs, checkout isolation, evidence contracts, and acceptance.
+Require `HERDR_ENV=1` and one explicit molecule id; never infer the latest. Load [`herdr`](../herdr/SKILL.md) only before live control. There is no non-Herdr fallback.
 
-Require **one explicit execution-molecule id**. Do not infer a latest molecule or search for one. Verify command-repo routing, pull, then validate:
+Match provider, model, and thinking to the coordinator assignment. Validate repository identity, source fixed point, approved scope, review/model/lifecycle policy, graph acyclicity, and sync state. Stop on mismatch; never substitute models silently.
 
-- repository identity and source fixed point match the current canonical checkout;
-- the scope snapshot carries explicit human approval;
-- review policy, exact model assignments, and context-rotation/watchdog policy are materialized on executable beads;
-- the graph is acyclic and complete — `bd dep cycles` reports none; and
-- sync state is clean or an explicitly accepted `sync:pending` on this host.
+Run the `beads` compact startup: root and active-child projections, filtered frontier, then projected Git paths and hashes. Do not load the complete coordination spec, all notes/attempts, transcripts, or irrelevant branches. Expand only missing, oversized, contradictory, or evidence-incomplete records. Invoked skill prose plus filtered startup output must remain below 20 KB before work resumes.
 
-Stop on any mismatch, missing fixed point, unapproved scope, partial graph, or contradiction. The scope snapshot is frozen; changing it requires a linked decision bead and human approval.
+No lease or takeover exists. Stale session beads and run markers never block mutation. A verifiably live duplicate local coordinator triggers a warning and stop before overlapping side effects; resolving it needs reconciliation, not a decision bead. No liveness-monitor or worker-pane-termination workflow is shipped; preserve historical records.
 
-If the molecule's slices describe authoring work — skills, specs, glossaries, documentation, or agent instructions — rather than engineering work with observable failing tests, stop and report it. Such a molecule should not have been created; route the work to its owning skill instead of executing tracer cycles against prose.
+Completion: runtime, molecule, policies, compact state, frontier, sync, and Git agree; only contradictions expanded; no live duplicate is performing side effects.
 
-Completion criterion: Herdr is available, its skill is loaded, and the explicit molecule id, repository identity, fixed point, approved scope, assignments, graph integrity, and sync state are verified.
+### 2. Reconcile integration and frontier
 
-### 2. Acquire the coordinator lease
+Create or reconcile the integration branch and isolated worktree at the recorded full fixed point. Derive readiness from `bd ready --mol <root> --json`; attempts remain non-blocking.
 
-Verify this session's exact model matches the molecule's recorded coordinator assignment. A mismatched model MUST NOT coordinate. Then create a coordinator-session bead and acquire the non-expiring lease before any structural mutation or Herdr launch.
+Completion: integration path/branch/head match the root projection and the frontier matches closed blockers.
 
-If another nonterminal session holds the lease, **stop**. No timeout or heartbeat transfers authority. Takeover requires all four: inspection of molecule, sync, Git, attempt, and prior-session state; explicit human approval; a linked decision bead recording rationale; and a new coordinator-session bead created before the root pointer changes. Prior sessions are preserved, never deleted.
+### 3. Implement with write-ahead evidence
 
-If either the implementation or oversight assignment selects Claude Code, load [`herdr-claude-code`](../herdr-claude-code/SKILL.md) before launching it; it owns Claude's launch arguments, readiness interpretation, atomic prompt submission, and blocked-agent steering. Other assignments use base Herdr transport. When the lifecycle policy enables watchdog enforcement, load [`herdr-watchdog`](../herdr-watchdog/SKILL.md); it owns heartbeat/checkpoint observation and bounded worker-pane termination, never execution authority. Record the observation timeout, checkpoint and hard-rotation thresholds, acknowledgment deadline, and pane-close authority. Keep secrets out of bead state.
+Before transport, create an isolated slice branch/worktree from the integration fixed point. Separate panes are not isolation. Use the exact assignment and `beads` write-ahead ordering for launch, correction, escalation, and evidence requests. Claude assignments additionally compose [`herdr-claude-code`](../herdr-claude-code/SKILL.md); others use base Herdr.
 
-Completion criterion: this session's model matches the coordinator assignment, exactly one nonterminal session holds the lease, the transport route per role is known, and any takeover has approval plus a decision bead.
+Observe with the recorded timeout and inspect current evidence before waiting. Blocked, premature idle, error, missing evidence, or input-needed states require inspection and steering. Timeout is not failure. Workers never mutate graph, integration, or acceptance.
 
-If the molecule's bead kinds, edge semantics, or state transitions are unfamiliar — or a recovery decision turns on which attempt states are terminal — read [WORKFLOW-SHAPES.md](../create-engineering-plan/WORKFLOW-SHAPES.md) for the bead taxonomy, the per-slice execution sequence, and the work-bead, attempt, and molecule state machines. Routine execution of a familiar graph does not need it.
+Use native/reported context, never estimates. At checkpoint threshold, persist the instruction before sending it, require Git/test/handoff evidence, and assign no new work. At hard threshold, persist wind-down, verify evidence, end the attempt, and resume under a new id in fresh context. A nonresponsive worker is handled by ordinary Herdr state/output inspection and coordinator reconciliation; do not launch a separate monitor or close its pane automatically.
 
-### 3. Prepare integration and derive the frontier
+The worker records exact completion evidence before Herdr notification; refresh attempt and slice projections in the same transition.
 
-Create a dedicated integration branch and isolated integration worktree from the molecule's source fixed point. Derive the frontier from Beads, never from memory:
+Completion: each return has an isolated full commit, complete evidence, matching projections, and no transport state treated as authority.
 
-```bash
-bd ready --mol <root-id> --json
-```
+### 4. Verify Test Quality and corrections
 
-Attempt beads use non-blocking edges and never appear in the frontier; only work-bead dependencies determine readiness.
+Pin the candidate. Launch a fresh read-only reviewer with the oversight assignment and compose [`test-quality-verifier`](../test-quality-verifier/SKILL.md) in audit-only mode. Independent per-slice Test Quality is mandatory under every preset; reviewers never edit.
 
-Completion criterion: the integration branch and isolated worktree exist at the source fixed point, and the frontier equals ready work beads whose blockers are closed.
+For findings or missing evidence, persist one consolidated correction under a new attempt id. Resume the same implementer when policy requires; otherwise block rather than substitute. Increment correction count and rerun Test Quality at each new commit.
 
-### 4. Implement, verify, and integrate each frontier slice
+Correction allowance and critical triggers are fixed. Escalate only to the next available exact approved rung; initial unavailability is not escalation, and exhaustion blocks. After Test Quality passes, run focused and applicable repository commands at that exact commit; failures re-enter correction and reverification.
 
-For each frontier slice, create an isolated editable branch and worktree from the current recorded integration fixed point **before** using Herdr transport. Separate panes are not checkout isolation.
+Completion: candidate Test Quality has no unresolved findings, commands pass, and projections record verdict/count, corrections, fixed point, and evidence completeness.
 
-Follow the write-ahead ordering from the `beads` skill: create the planned attempt bead and persist its instruction, checkpoint, and only then launch through Herdr carrying the attempt id. Launch one implementation agent with the slice's exact assignment and authorize only that slice's scope.
+### 5. Integrate and release blockers
 
-Observe through the composed Herdr skill using the recorded observation timeout. Read current evidence before waiting for future evidence. Steer immediately on blocked, premature-idle, error, missing-evidence, or input-needed states. A timeout triggers state and output inspection, not a conclusion — it is not proof of a stall or failure. Never infer success from idle, missing, or compacted panes. Workers never mutate graph structure or claim acceptance.
+Only after step 4 passes, integrate mechanically and record the full integration commit. On conflict or semantic change, abort and route evidence to the implementer; the coordinator does not edit behavior.
 
-Apply the bead's context-rotation policy to each editable worker. Include the Watchdog protocol in its write-ahead initial packet. At the checkpoint threshold, persist the consequential checkpoint instruction before the Watchdog sends it, request durable Git-state/test/handoff evidence, including a commit when changes exist, and assign no new work. At the hard-rotation threshold, likewise persist the wind-down instruction before sending it; after evidence is verified, end that attempt and recreate the worker in a fresh context under a new write-ahead attempt carrying the remaining scope. If context is unknown, record that threshold enforcement is unavailable rather than estimating it.
+Run post-integration checks, refresh root/slice projections, close only after success, checkpoint locally, and recompute the frontier. Push only when authorized; otherwise set root sync pending.
 
-A timeout or missed checkpoint invokes the Watchdog's two-window inspection rule. Only a worker that remains nonresponsive may have its explicitly authorized pane closed. Pane termination does not mark the attempt, accept work, launch a replacement, mutate Beads/Git, or transfer the coordinator lease; the coordinator reconciles durable and Git state first, then records the attempt outcome and chooses the next authorized action. Coordinator loss always fails closed pending reconciliation and human-approved lease takeover.
+Completion: each closed slice has implementation evidence, independent Test Quality, coordinator gates, integration commit, and post-integration checks before releasing dependents.
 
-The worker writes evidence to its attempt before reporting completion. Herdr completion is notification only; missing durable evidence leaves the attempt nonterminal and blocks progress.
+### 6. Run final reviews and remediation
 
-Pin the returned commit as a fixed point. In a separate read-only agent using the oversight assignment, compose [`test-quality-verifier`](../test-quality-verifier/SKILL.md) in audit-only mode against that slice scope and fixed point. This independent per-slice pass is mandatory under every review preset. The verifier must be independent of implementation and returns findings without editing.
+After implementation closes, hold one integrated fixed point for repository gates and the approved review graph. Repository gates and independent Scope fidelity are always required. Standard adds integrated Test Quality, Standards, Premortem, and Security; High assurance adds approved risk gates and redundant passes.
 
-On findings or missing evidence, record the attempt and relay one **consolidated** correction batch to the same implementer on the same slice branch, as a new attempt with a new id. If that implementer cannot be resumed, block rather than silently substituting another agent. After a new commit, pin the new fixed point and rerun the verifier. When the slice's approved correction allowance is exhausted or a critical-invariant trigger fires, escalate to the next available higher rung on the approved ladder and record the rung and reason; if no higher rung is available, block the work bead. Unavailable initial assignments block for reassignment and are not escalation triggers.
+Use fresh contexts and exact independence rules. Compose `test-quality-verifier` for integrated Test Quality and [`code-review`](../code-review/SKILL.md) for Standards/Spec. Every review is a write-ahead attempt with findings and no edits.
 
-After the verifier passes, run the slice's focused commands and applicable mechanical repository gates at that exact fixed point. Failures return through the same correction loop and require reverification at the new fixed point.
+Consolidate without collapsing axes. One isolated remediation agent uses the exact assignment and complete batch. Integrate mechanically, rerun repository gates and affected reviews, and record rationale for unaffected non-reruns. Remediation exhaustion blocks.
 
-Only after both independent test-quality verification and coordinator mechanical gates pass may integration proceed. Use mechanical cherry-pick or merge commands and record the resulting full integration commit. If integration conflicts or checks require semantic changes, abort the mechanical operation and return evidence to the same implementer through the correction loop — the coordinator does not resolve behavior by editing. Close the slice only after post-integration checks pass, then recompute the frontier.
+Completion: every configured gate passes at one current fixed point with rerun evidence, or the molecule records exact blockers and next action.
 
-Completion criterion: every closed slice has isolated implementation commits, durable attempt evidence at a full fixed point, a passing independent test-quality audit, passing coordinator gates, and a recorded integration commit — and only closed blockers released dependent work.
+### 7. Complete or recover
 
-### 5. Run configured final reviews and remediate
+Before closure, verify scope acceptance, all gates, final Git state, and a successful remote checkpoint. Record final fixed point and retained branches/worktrees. Never auto-merge an unapproved target or delete branches, worktrees, molecule records, attempts, decisions, or historical coordinator/Watchdog records. Pending sync blocks completion.
 
-After all implementation slices close, pin the integration branch head, run all repository gates, and hold that one unchanged integrated candidate for every review. Run the molecule's approved review policy against that single held fixed point, concurrently where supported.
+After interruption, run summary-first startup. Continue directly when projections agree with Git; expand contradictions only. Search nonterminal attempts by durable token; resume a certain match or reconcile and mark it lost before creating a new id. Never trust pane ids.
 
-Repository mechanical gates and independent Scope fidelity are always required. Standard adds integrated Test Quality, Standards, Premortem, and Security; High assurance adds approved risk-triggered gates and second passes. Compose [`test-quality-verifier`](../test-quality-verifier/SKILL.md) for the integrated Test Quality pass — in addition to, never replacing, the per-slice audits in step 4 — and [`code-review`](../code-review/SKILL.md) for independent Standards and Spec axes.
+Stale run markers or historical active-session labels have no authority. Reconcile and replace current metadata without takeover approval; keep notes immutable. Active projections remain at most 1024 bytes; local-only transitions set sync pending.
 
-Every independent pass uses a fresh context and its bead's exact model and provider-diversity rule. Each pass is a write-ahead attempt with durable findings. Reviewers report findings and never edit.
-
-Consolidate all gate and review findings without collapsing review-axis ownership. If findings remain, launch one isolated editable remediation agent using the exact remediation assignment — never an original slice worker — with the complete consolidated batch, exact fixed point, authorized scope, and evidence contract. Integrate its returned commit mechanically and pin the new fixed point. After any remediation, always rerun repository gates, rerun every failed review, and rerun each passing review the change invalidates; record explicit rationale for any review not rerun. Remediation follows its own escalation ladder and correction allowance; exhaustion blocks.
-
-Completion criterion: every configured gate passes against the same integrated fixed point with recorded rerun rationale, or the molecule is explicitly blocked with all fixed points, findings, and attempts preserved.
-
-### 6. Complete or recover
-
-Before closing the molecule, verify every acceptance criterion against integrated evidence, confirm all configured gates passed, and complete a successful private-remote checkpoint. Record the final fixed point, remaining worktrees and branches, and any limitations.
-
-Never automatically merge the integration branch into an unapproved target, and never delete source branches, worktrees, molecule records, attempts, or decisions. Completion is blocked while sync is pending.
-
-On interruption, recover from Beads alone using the `beads` skill's recovery activity: pull, inspect the molecule, frontier, sessions, attempts, and sync state; reconcile recorded branches, worktrees, and commits against Git before any transition. Rediscover live Herdr resources by durable attempt token; reconcile Watchdog termination evidence before marking an unmatched nonterminal attempt `lost`, and create new ids for resumed work. Never trust persisted pane identity. A fresh Herdr instance may be empty — the graph says which sessions and instructions to recreate. Coordinator termination or disappearance never transfers its lease; takeover requires the step 2 reconciliation and human approval.
-
-Completion criterion: either the molecule is closed at one fully passing fixed point with a successful checkpoint and another coordinator could audit it without conversation history, or it is blocked with the exact recovery action and every prior attempt intact.
+Completion: close at one synchronized fully passing fixed point, or remain explicitly blocked/executing with compact state sufficient for fresh recovery without conversation.

@@ -1,162 +1,121 @@
 ---
 name: beads
-description: Operate the external Beads command repo as durable execution authority — issue and dependency mechanics, version-aware graph ingestion, execution molecules, work-bead frontiers, write-ahead attempts, and single-writer synchronization. Use when creating or executing an execution molecule, materializing a reviewed graph, claiming or closing work beads, recording attempt evidence, recovering coordination state after a crash, or when another skill needs the canonical bd contract.
+description: Operate the external Beads command repo as durable execution authority — issue and dependency mechanics, compact current-state recovery, graph ingestion, work frontiers, write-ahead attempts, and serialized synchronization. Use when creating or executing a molecule, claiming or closing work, recording attempt evidence, recovering after a crash, or when another skill needs the canonical bd contract.
 metadata:
-  short-description: Canonical bd and execution-molecule contract
+  short-description: Canonical bd and recovery contract
 allowed-tools: read,bash
 ---
 
 # Beads
 
-Beads is the durable source of truth for coordination work. This skill owns the canonical `bd` contract for this repository; other skills compose it rather than restating `bd` mechanics.
-
-Every source repository routes to **one private external command repo** through `BEADS_DIR`. A source repository never gains a `.beads/` directory.
-
 ## Language Definitions
 
-- **Command repo** — the private external checkout holding the authoritative `.beads/` database for every source repository.
-- **Execution molecule** — one root epic plus its work-bead graph, created from one human-approved scope snapshot. Not a `bd mol` template proto.
-- **Work bead** — one slice, review, remediation, decision, or mechanical gate. Blocking dependencies between work beads derive the frontier.
-- **Frontier** — ready work beads whose blockers are closed, as reported by `bd ready --mol <root>`.
-- **Attempt** — a durable non-blocking bead recording one agent launch, its instructions, and its returned evidence.
-- **Fixed point** — a full Git commit hash under implementation or review.
-- **Activation gate** — a planner-owned blocker that keeps implementation frontiers unrunnable until graph materialization and readback validation succeed.
-- **Semantic checkpoint** — a recovery-relevant transition whose correlated local Beads writes are complete and durably committed, whether by verified auto-commits or one explicit batch commit.
-- **Remote checkpoint** — a semantic checkpoint successfully pushed to the configured Dolt remote by the active sync authority.
+- **Command repo** — private external checkout holding the authoritative `.beads/` database for all source repositories.
+- **Execution molecule** — one root epic and work-bead graph from an approved scope; not a `bd mol` template.
+- **Frontier** — ready work beads whose blockers are closed.
+- **Attempt** — permanent non-blocking bead recording one agent launch, instruction, and evidence.
+- **Fixed point** — full Git commit under implementation, review, or integration.
+- **Recovery projection** — canonical compact `metadata.recovery` current-state cache; notes remain audit history.
+- **Semantic checkpoint** — one locally durable recovery-relevant transition.
+- **Remote checkpoint** — a semantic checkpoint successfully pushed to the Dolt remote.
 
-`bd mol` in the upstream CLI means template instantiation (`pour`, `wisp`, `bond`, `distill`). An execution molecule is a root epic and its graph; do not spawn one from a proto.
+Beads owns `bd` mechanics. Callers retain scope, review policy, workflow state, and acceptance. Source repositories never gain `.beads/` state.
 
 ## Workflow
 
-### 1. Verify routing before any durable operation
+### 1. Verify routing before writes
 
 ```bash
 bd --version
 echo "${BEADS_DIR:?run install.sh --beads-bootstrap PATH REMOTE}"
 bd where
-```
-
-`BEADS_DIR` must resolve to the command repo's `.beads` directory. If it is unset or invalid, stop and report bootstrap guidance; never run `bd init` in a source repository to recover. Run `bd prime` when Beads context is missing or stale — it is the upstream-maintained CLI reference and stays current across `bd` releases.
-
-Pull before mutating, so a stale local database cannot fork authority:
-
-```bash
 bd dolt pull
 ```
 
-Completion criterion: `bd` runs, `BEADS_DIR` resolves to the command repo, the working database is current, and no source repository gained `.beads/` state.
+Require the external command repo. If routing is invalid, stop; never run `bd init` in a source repository. Use `bd prime` when installed CLI context is stale. Reconcile pull failure before mutation unless the root already records accepted local `sync:pending`.
 
-### 2. Read state before writing
+Completion: version, routing, and pull state are known; source checkouts remain Beads-free.
 
-Inspect before mutating anything:
+### 2. Read compact current state first
 
-```bash
-bd ready --mol <root-id> --json   # frontier for one molecule
-bd show <id> --long --json        # full bead context
-bd list --status in_progress --json
-bd dep tree <root-id>
-```
-
-Use `--json` whenever output is parsed. Read-only inspection is unconstrained and never contends for the writer position.
-
-Completion criterion: current graph state, frontier, and the target bead's context are known from `bd` output rather than from conversation history.
-
-### 3. Serialize every durable write
-
-The command repo uses embedded single-writer storage. Each durable write holds the writer position exclusively and must be short.
-
-A write that fails because another writer holds the lock is **retryable, never skippable**. Retry it. Do not report success, do not skip the record, and do not continue past it — a lost write-ahead record breaks recovery. If contention persists, reduce parallel fan-out rather than dropping writes.
-
-Live agent work may overlap freely; only the durable write serializes. Agents hold no writer position while implementing or reviewing.
-
-Completion criterion: every attempted durable write either landed and was verified by reading it back, or was retried to completion; none were skipped.
-
-### 4. Create and close work
-
-Create work beads with explicit dependencies, then validate the graph:
+Require an explicit root id; never infer the latest. Ordinary startup runs only filtered reads:
 
 ```bash
-bd create "<behavior>" --type=task --parent=<root-id> \
-  --description="<scope>" --acceptance="<observable criteria>" --json
-bd dep <blocker-id> --blocks <blocked-id>
-bd dep cycles                      # must report none before activation
+bd show <root> --long --json |
+  jq '.[0] | {id,status,labels,recovery:.metadata.recovery}'
+bd list --parent <root> --status in_progress,blocked --json |
+  jq '[.[] | {id,status,labels,recovery:.metadata.recovery}]'
+bd ready --mol <root> --json |
+  jq '[.[] | {id,title,status,labels}]'
 ```
 
-Claim atomically, record evidence as you go, and close only completed work:
+Reconcile projected branches, worktrees, and hashes with Git. Do not read all notes/attempts, transcripts, the complete coordination spec, or unfiltered frontier output. Expand `bd show <id> --long --json` only when an active projection is missing, over 1024 serialized bytes, contradictory, evidence-incomplete for its state, or inconsistent with Git. Notes never silently override current metadata.
 
-```bash
-bd update <id> --claim --json
-bd update <id> --append-notes "<evidence>" --json
-bd close <id> --reason "<what was verified>" --json
-```
+Completion: root, active records, frontier, and next action are known; only contradictions were expanded.
 
-Notes are how work survives compaction and handoff — append evidence during the work, not only at the end. A partial graph stays draft or blocked and must not expose ready work.
+### 3. Serialize and verify writes
 
-Completion criterion: created beads carry acceptance criteria and genuine blocking edges, `bd dep cycles` reports none, and no bead was closed without verified completion evidence.
+Embedded Dolt has one writer. Keep writes short. Retry lock contention; never skip or continue past a lost write. Live agent work may overlap, durable writes may not.
 
-### 5. Checkpoint at semantic transitions
+Use `bd update <id> --metadata '<complete-json>' --json` to remove obsolete keys; `--set-metadata` cannot prove deletion. Preserve notes and historical beads unless appending approved audit evidence. Read back status, labels, metadata, and projection size after each write.
 
-A successful local `bd` write and its local Dolt commit are durable local state; neither implies remote durability. Inspect `bd config get dolt.auto-commit` and installed command help before choosing commit mechanics. Group correlated writes into recovery-relevant transitions such as molecule activation, work claim/attempt launch, accepted integration, remediation routing, or molecule closure.
+Completion: every write landed exactly once, obsolete current keys are absent, and readback matches intent.
 
-With auto-commit `on`, verify that every related write has a local commit before checkpointing. When the installed release supports batch mode and the transition needs several writes, pass `--dolt-auto-commit=batch` to those writes and finish with:
+### 4. Maintain recovery projections
 
-```bash
-bd dolt commit -m "<transition>"
-```
+Every active root, work bead, and attempt has a projection at most 1024 serialized bytes containing, as applicable:
 
-Do not push after every field, edge, heartbeat, evidence write, or auto-commit. Only the active sync authority may push, and only when the configured remote and caller authorization permit it:
+- state and one next action;
+- branch, worktree, and base/candidate/integration fixed points;
+- latest attempt id, state, and resumability;
+- correction count;
+- latest review verdict and finding count; and
+- evidence completeness, plus root sync state.
 
-```bash
-bd dolt push
-```
+Refresh it in the transition's semantic checkpoint. Use explicit `none`, `pending`, or `not_applicable` where omission could resemble missing evidence. Notes remain audit history, not startup input.
 
-Issue data travels over the Dolt remote to `refs/dolt/data`; recorded remote *configuration* reaches other machines only through ordinary Git. A push failure leaves the semantic checkpoint locally durable but not remotely durable. Mark it `sync:pending` and retry from the same lease epoch rather than replaying writes. While sync is pending, only the leased coordinator host may continue; lease transfer and final closure stay blocked until pull and push succeed.
+Completion: each changed active projection is within limit and agrees with Git and evidence.
 
-Worker termination, including watchdog termination, MUST NOT transfer the coordinator lease. Takeover remains a separate human-approved compare-and-set action after durable-state reconciliation.
+### 5. Create, claim, and close work
 
-Completion criterion: each recovery-relevant transition has one complete local semantic checkpoint, each required remote checkpoint is pushed once or explicitly `sync:pending`, and no per-write push churn obscures the recovery history.
+Create work with observable acceptance and genuine blockers; keep partial graphs behind an activation gate and validate cycles. Claim ready work atomically. Attempts use non-blocking `tracks` or `validates` relations and never affect the frontier.
+
+Close a slice only after candidate evidence, independent per-slice Test Quality, focused checks, mechanical integration, and post-integration checks.
+
+Completion: readiness derives only from work edges, writes survive readback, and no slice closes before verified integration.
+
+### 6. Checkpoint without push churn
+
+Inspect `bd config get dolt.auto-commit` and installed help. Verify local commits; use supported batch mode for correlated writes when useful. Push only with caller authority and only at semantic boundaries, never per field, edge, heartbeat, or evidence write.
+
+Without an authorized successful push, set root `sync_state: pending`. Pending sync blocks completion but creates no coordinator lease or takeover gate. A fresh process reconciles pull results, local commits, projections, and Git.
+
+Completion: local durability is verified; remote durability is verified once or explicitly pending; no push is claimed without evidence.
 
 ## Activities
 
-Select these outside the ordinary sequence.
+### Write ahead an agent side effect
 
-### Write-ahead an agent side effect
+Before a consequential launch or message: create a unique planned attempt with a non-blocking owner relation; persist its exact instruction and projection; checkpoint; then perform the Herdr side effect with the attempt id; finally record the observed semantic state and refresh affected projections.
 
-Every consequential agent instruction is persisted **before** the agent is launched or messaged, so a coordinator that dies mid-launch can reconcile:
+Initial packets, clarifications, consolidated corrections, escalation handoffs, and evidence requests are consequential. Keypresses, liveness probes, pane output, public Herdr ids, and transcripts are ephemeral.
 
-1. `bd create` the attempt bead in `planned` state, linked to its owning work bead with a non-blocking edge.
-2. Persist the consequential instruction on that attempt and checkpoint it.
-3. Only then launch or message through Herdr, carrying the attempt id as the correlation token.
-4. Record the next semantic attempt state after observing the result.
-
-Consequential instructions are the initial packet, scope clarification, consolidated correction batch, escalation handoff, and evidence request. Liveness probes, keypresses, pane output, and transcripts stay ephemeral. Attempt beads use non-blocking edges so retries and lost attempts never pollute `bd ready`.
-
-Completion criterion: no agent side effect preceded its durable attempt record, and each attempt carries a unique never-reused id.
+Completion: no side effect preceded durable intent and no uncertain id was reused.
 
 ### Record completion evidence
 
-Before an agent reports completion, write to its attempt: exact model used, full candidate commit or reviewed fixed point, changed-file list where applicable, commands and observed results, acceptance and failure evidence, findings or `none`, and terminal outcome.
+Before transport completion, record exact model, full candidate/review fixed point, changed files when applicable, commands/results, acceptance/failure evidence, findings or `none`, risks, and outcome. Set `evidence_returned`, mark evidence completeness accurately, and refresh the owner projection. Missing evidence blocks verification and integration.
 
-Transport-level completion is notification only. Missing durable evidence leaves the attempt nonterminal and blocks verification, integration, and closure.
+Completion: readback contains the fixed point, results, outcome, and matching projection.
 
-Completion criterion: the attempt holds a full fixed-point hash and command results, verified by reading the bead back.
+### Recover after a crash
 
-### Recover coordination state after a crash
+Run summary-first startup. If projections and Git agree, resume without notes. For each contradictory or nonterminal attempt only, inspect its full record and search live transport by token. Resume a certain match; otherwise reconcile Git/evidence, mark it `lost`, and create a new id if work remains. Never persist pane identity.
 
-Derive the next safe action from Beads alone, without conversation history:
+Historical coordinator-session, lease, rotation, decision, Watchdog, and attempt beads remain provenance; old metadata never overrides projections.
 
-```bash
-bd dolt pull
-bd show <root-id> --long --json
-bd ready --mol <root-id> --json
-bd list --status in_progress --json
-```
-
-Inspect the molecule, Git fixed points, frontier, coordinator sessions, attempts, instructions, evidence, and sync state before any mutation. For each nonterminal attempt: search the live transport by durable attempt token; resume a match; otherwise mark it `lost` after reconciliation and create a **new** attempt id for resumed work. Never reuse an uncertain attempt identity and never persist a pane id.
-
-Completion criterion: every nonterminal attempt is resumed or explicitly marked lost, and the next action is justified by `bd` state rather than recalled context.
+Completion: contradictions are reconciled, uncertain attempts are resumed or lost, and the next action follows Beads plus Git rather than conversation.
 
 ## Reference
 
-- When a caller must materialize a reviewed graph large enough that sequential creation risks partial or prematurely runnable state, load [`GRAPH-INGESTION.md`](GRAPH-INGESTION.md) for installed-version capability probing, atomic apply, readback validation, and activation gating. Ordinary issue, dependency, and attempt operations do not load it.
-- When execution requires the full coordination contract — coordinator lease acquisition and takeover, review presets and independence rules, exact model assignment, escalation ladders, or correction allowances — read `~/dotfiles/specs/execution-coordination.md`. It is authoritative where this skill and it overlap. Ordinary bead creation, claiming, evidence recording, and closing do not need it.
+- When a reviewed graph is large enough that sequential creation risks partial or runnable state, load [`GRAPH-INGESTION.md`](GRAPH-INGESTION.md) before materialization for version probing, atomic apply, readback, and activation. Ordinary issue, attempt, projection, and recovery operations do not load it.

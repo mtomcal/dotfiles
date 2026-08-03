@@ -1,6 +1,6 @@
 # Herdr Configuration Specification
 
-> **Version**: 0.4.0
+> **Version**: 1.0.0
 > **Last Updated**: 2026-08-03
 > **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md), [Design Language](DESIGN_LANGUAGE.md), [Symlink Manager](symlink-manager.md), [Tool Provisioning](tool-provisioning.md)
 > **Depended By**: Shell Config, Skill Library, AI Agent Config, Install Orchestrator
@@ -134,15 +134,11 @@ Herdr integrations for agents managed by this repo MUST be repo-owned. The imple
 
 ### HERDR-CONFIG-008: Shared Skill Distribution
 
-The generic Herdr skill MUST live under `shared/skills/herdr/`, the Claude Code specialization under `shared/skills/herdr-claude-code/`, bounded editable-worker supervision under `shared/skills/herdr-supervise/`, and bounded liveness monitoring under `shared/skills/herdr-watchdog/`. Non-Pi agents receive all four through their shared skills symlink. Pi receives all four through `pi/skills/`. The three composing skills MUST use the generic skill rather than copy its CLI mechanics.
+The generic Herdr skill MUST live under `shared/skills/herdr/`, the Claude Code specialization under `shared/skills/herdr-claude-code/`, and bounded editable-worker supervision under `shared/skills/herdr-supervise/`. Non-Pi agents receive all three through their shared skills symlink. Pi receives all three through `pi/skills/`. The two composing skills MUST use the generic skill rather than copy its CLI mechanics. No separate liveness-monitor or worker-pane-termination skill is shipped.
 
 ### HERDR-CONFIG-009: Use the Current Agent Facade
 
 The shared Herdr skill MUST use the installed stable CLI's agent facade for validated agent startup, atomic prompt submission, logical agent keys, output inspection, and server-owned settled-state waiting. Ordinary terminal commands MUST use the pane facade and its output wait. Removed top-level wait commands and client-owned status races MUST NOT remain in executable skill guidance.
-
-### HERDR-CONFIG-010: Bound Watchdog Termination
-
-`herdr-watchdog` MUST observe one explicitly named worker through the generic Herdr facade. A timeout alone MUST NOT classify nonresponsiveness: current output/state inspection and one final bounded acknowledgment request are required first. When pane-close authority is explicit, it MAY close only that worker pane after both windows fail. It MUST NOT mutate Beads, Git, scope, acceptance, replacement work, or coordinator-lease ownership.
 
 ---
 
@@ -228,9 +224,9 @@ Expected Output: Integration files are deployed from dotfiles-managed sources; n
 TS-HERDR-008: Herdr skills are available to all agents
 Category: Integration
 Priority: High
-Preconditions: shared/skills/herdr/SKILL.md, shared/skills/herdr-claude-code/SKILL.md, shared/skills/herdr-supervise/SKILL.md, and shared/skills/herdr-watchdog/SKILL.md exist
+Preconditions: shared/skills/herdr/SKILL.md, shared/skills/herdr-claude-code/SKILL.md, and shared/skills/herdr-supervise/SKILL.md exist
 Input: Inspect non-Pi skills symlinks and Pi skills
-Expected Output: Non-Pi agents resolve all four skills through shared/skills; Pi includes herdr, herdr-claude-code, herdr-supervise, and herdr-watchdog through pi/skills; all three composing skills use the base skill
+Expected Output: Non-Pi agents resolve all three skills through shared/skills; Pi includes herdr, herdr-claude-code, and herdr-supervise through pi/skills; both composing skills use the base skill; no liveness-monitor skill is exposed
 
 TS-HERDR-009: Shared skills use the current agent facade
 Category: Integration
@@ -239,12 +235,6 @@ Preconditions: Stable Herdr is installed and the shared Herdr skills exist
 Input: Compare executable skill commands with installed agent and pane command groups
 Expected Output: Agent startup, prompts, keys, reads, and settled-state waits use the agent facade; ordinary output waits use the pane facade; no removed top-level wait command remains
 
-TS-HERDR-010: Watchdog termination is bounded
-Category: End-to-End
-Priority: Critical
-Preconditions: One responsive and one nonresponsive worker pane exist; close authority names only the latter
-Input: Exercise a wait timeout, final acknowledgment request, and termination
-Expected Output: Timeout alone closes nothing; the responsive worker is preserved; only the authorized nonresponsive pane closes after final evidence capture; no durable execution state or lease changes
 ```
 
 ---
@@ -253,6 +243,7 @@ Expected Output: Timeout alone closes nothing; the responsive worker is preserve
 
 | Version | Date | Summary |
 |---------|------|---------|
+| 1.0.0 | 2026-08-03 | Removed the Watchdog/liveness-monitor skill and worker-pane-termination contract; retained generic transport, Claude specialization, bounded supervision, and coordinator-owned context rotation. |
 | 0.4.0 | 2026-08-03 | Completed shared Herdr-skill distribution with `herdr-supervise` and `herdr-watchdog`, and bounded Watchdog pane termination without granting durable execution or lease authority. |
 | 0.3.0 | 2026-08-01 | Migrated shared skills to Herdr 0.7.5's agent facade and current Pi and Copilot integration targets. |
 | 0.2.0 | 2026-07-15 | Added cross-agent distribution of the composing Claude Code Herdr specialization beside the generic base skill. |

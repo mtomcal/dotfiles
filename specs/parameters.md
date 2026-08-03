@@ -1,7 +1,7 @@
 # Parameters
 
-> **Spec Version**: 2.4.0
-> **Last Updated**: 2026-08-02
+> **Spec Version**: 3.0.0
+> **Last Updated**: 2026-08-03
 > **Depends On**: None (foundational spec)
 > **Depended By**: All other specs
 
@@ -193,7 +193,8 @@ Parameters serve three purposes:
 | `BEADS_STORAGE_MODE` | embedded | enum | Dolt runs in-process inside `bd`; a single-writer command repo needs no server process and no separate Dolt install |
 | `BEADS_COMMAND_REMOTE_SCHEME` | git+ssh:// | URL scheme | Private GitHub command repo synchronizes Dolt data under `refs/dolt/data` over SSH |
 | `BEADS_SYNC_POLICY` | semantic checkpoints | policy | Checkpointing recovery boundaries avoids both per-keystroke commits and end-of-session data loss |
-| `COORDINATOR_LEASE_EXPIRY` | none | duration policy | Long reviews and blocked workers make automatic timeout takeover unsafe |
+| `ORDINARY_COORDINATOR_STARTUP_BUDGET` | less than 20 | kilobytes | Compact skill bodies and filtered current-state reads prevent broad context loading before ordinary recovery |
+| `RECOVERY_PROJECTION_MAX_BYTES` | 1024 | serialized bytes per active record | A bounded canonical current-state cache keeps startup cheap while detailed notes retain audit history |
 | `SLICE_CORRECTION_DEFAULT` | 2 | correction rounds | Preserves bounded retries while allowing approved risk-specific overrides |
 | `REVIEW_PRESET_LEAN` | repository gates, Scope fidelity | gate set | Minimum final safety floor plus mandatory per-slice Test Quality |
 | `REVIEW_PRESET_STANDARD` | Lean, integrated Test Quality, Standards, Premortem, Security | gate set | Default independent review breadth |
@@ -223,6 +224,7 @@ Parameters serve three purposes:
 
 | Version | Date | Summary |
 |---------|------|---------|
+| 3.0.0 | 2026-08-03 | Removed the coordinator-lease parameter and added the sub-20-KB ordinary startup budget and 1-KB active-record recovery-projection limit for solo coordination. |
 | 2.4.0 | 2026-08-02 | Adopted single-writer embedded Beads storage: removed the Dolt installer parameters, added the minimum `bd` version and the private command-repo remote scheme. |
 | 2.3.0 | 2026-08-01 | Added official Beads/Dolt install channels and external command-repo execution, review, lease, correction, synchronization, and attempt-policy parameters. |
 | 2.2.0 | 2026-08-01 | Relabeled `AGENT_CONFIG_DIR_COPILOT` as the catalog exposure directory and added `AGENT_STATE_DIR_COPILOT` for Copilot's current runtime settings and Herdr hook directory. |

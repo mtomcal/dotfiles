@@ -4,7 +4,7 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 
 ## Map
 
-<!-- TREE-HASH: ddb7f58a572b1a3043ecee3a1a4b8fb8fd2f8b95050a398c3d5f8d7fe5411a7c -->
+<!-- TREE-HASH: 386d9ba94679962af548e6ce0ec6c632d87cb4c0e0bb3149075cba8eb6d4298c -->
 
 <!-- TREE-START -->
 ```
@@ -47,7 +47,6 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 |   |   |-- herdr -> ../../shared/skills/herdr
 |   |   |-- herdr-claude-code -> ../../shared/skills/herdr-claude-code
 |   |   |-- herdr-supervise -> ../../shared/skills/herdr-supervise
-|   |   |-- herdr-watchdog -> ../../shared/skills/herdr-watchdog
 |   |   |-- improve-codebase-architecture -> ../../shared/skills/improve-codebase-architecture
 |   |   |-- playwright -> ../../shared/skills/playwright
 |   |   |-- prototype -> ../../shared/skills/prototype
@@ -82,7 +81,6 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 |       |-- herdr
 |       |-- herdr-claude-code
 |       |-- herdr-supervise
-|       |-- herdr-watchdog
 |       |-- improve-codebase-architecture
 |       |-- playwright
 |       |   `-- references
@@ -111,7 +109,7 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 |-- yazi
 `-- zsh
 
-102 directories
+101 directories
 ```
 <!-- TREE-END -->
 
