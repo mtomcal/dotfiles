@@ -195,6 +195,7 @@ dotfiles/
 │       ├── herdr/
 │       ├── herdr-claude-code/
 │       ├── herdr-supervise/
+│       ├── herdr-watchdog/
 │       ├── ubiquitous-language/
 │       ├── audit-shared-skills/
 │       └── grill-me/
@@ -275,7 +276,7 @@ The `herdr_integrations` module deploys repo-owned integration artifacts from `h
 | GitHub Copilot CLI | `herdr/integrations/copilot/herdr-agent-state.sh` symlinked into `~/.copilot/hooks/` |
 | Pi | `pi/extensions/herdr-agent-state.ts` deployed to `~/.pi/agent/extensions/herdr-agent-state.ts` |
 
-Agents also share the generic `shared/skills/herdr/` skill, which owns Herdr CLI transport and server-owned settled-state observation. `shared/skills/herdr-claude-code/` composes that base for validated Claude Code launch, atomic prompt submission, and blocked-agent steering. `shared/skills/herdr-supervise/` composes the same transport for bounded editable-worker supervision, preflight model and escalation selection, independent acceptance, cost tracking, and an efficiency verdict without duplicating generic pane mechanics.
+Agents also share the generic `shared/skills/herdr/` skill, which owns Herdr CLI transport and server-owned settled-state observation. `shared/skills/herdr-claude-code/` composes that base for validated Claude Code launch, atomic prompt submission, and blocked-agent steering. `shared/skills/herdr-supervise/` composes the same transport for bounded editable-worker supervision, preflight model and escalation selection, independent acceptance, cost tracking, and an efficiency verdict. `shared/skills/herdr-watchdog/` composes it for context checkpoints and authorized fail-closed termination of one nonresponsive worker pane without acquiring durable execution or lease authority.
 
 Re-run integrations after changing agent config:
 
@@ -917,7 +918,7 @@ Codex, Claude, Pi, and Copilot share a single skills directory at `shared/skills
 |-------|-------------|
 | `playwright` | Browser automation, scripted capture, and Playwright test workflows |
 | `video-to-contact-sheet` | Convert recordings into trimmed clips, contact sheets, and focused crops |
-| `create-engineering-plan` | Create one immutable single-agent implementation plan from a fixed spec diff |
+| `create-engineering-plan` | Atomically create and activate one validated Beads engineering molecule from approved scope |
 | `execute-engineering-molecule` | Coordinate a Beads execution molecule through Herdr with leases, write-ahead attempts, and configured reviews |
 | `beads` | Canonical `bd` contract — command-repo routing, execution molecules, work beads, attempts, and sync |
 | `teach` | Build a durable, researched teaching workspace with HTML lessons and learning records |
@@ -928,6 +929,7 @@ Codex, Claude, Pi, and Copilot share a single skills directory at `shared/skills
 | `herdr` | Control Herdr workspaces, tabs, panes, output, and concurrent agent status from inside Herdr |
 | `herdr-claude-code` | Reliably launch, prompt, observe, and steer Claude Code by composing base Herdr transport |
 | `herdr-supervise` | Supervise one bounded editable worker with preflight model selection, escalation, independent acceptance, cost tracking, and an efficiency verdict |
+| `herdr-watchdog` | Monitor context rotation and safely terminate one authorized nonresponsive Herdr worker without taking execution authority |
 | `ubiquitous-language` | Extract a DDD-style glossary from project evidence _(adapted from [mattpocock/skills](https://github.com/mattpocock/skills))_ |
 | `audit-shared-skills` | Audit `shared/skills/` for cross-agent frontmatter compatibility, flag and fix issues |
 | `grill-me` | Resolve design branches through evidence-grounded, term-aware interviewing |

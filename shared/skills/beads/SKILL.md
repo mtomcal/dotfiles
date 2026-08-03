@@ -1,6 +1,6 @@
 ---
 name: beads
-description: Operate the external Beads command repo as durable execution authority — issue and dependency mechanics, execution molecules, work-bead frontiers, write-ahead attempts, and single-writer synchronization. Use when creating or executing an execution molecule, claiming or closing work beads, recording attempt evidence, recovering coordination state after a crash, or when another skill needs the canonical bd contract.
+description: Operate the external Beads command repo as durable execution authority — issue and dependency mechanics, version-aware graph ingestion, execution molecules, work-bead frontiers, write-ahead attempts, and single-writer synchronization. Use when creating or executing an execution molecule, materializing a reviewed graph, claiming or closing work beads, recording attempt evidence, recovering coordination state after a crash, or when another skill needs the canonical bd contract.
 metadata:
   short-description: Canonical bd and execution-molecule contract
 allowed-tools: read,bash
@@ -20,7 +20,9 @@ Every source repository routes to **one private external command repo** through 
 - **Frontier** — ready work beads whose blockers are closed, as reported by `bd ready --mol <root>`.
 - **Attempt** — a durable non-blocking bead recording one agent launch, its instructions, and its returned evidence.
 - **Fixed point** — a full Git commit hash under implementation or review.
-- **Semantic checkpoint** — a durable commit plus push at a recovery-relevant transition.
+- **Activation gate** — a planner-owned blocker that keeps implementation frontiers unrunnable until graph materialization and readback validation succeed.
+- **Semantic checkpoint** — a recovery-relevant transition whose correlated local Beads writes are complete and durably committed, whether by verified auto-commits or one explicit batch commit.
+- **Remote checkpoint** — a semantic checkpoint successfully pushed to the configured Dolt remote by the active sync authority.
 
 `bd mol` in the upstream CLI means template instantiation (`pour`, `wisp`, `bond`, `distill`). An execution molecule is a root epic and its graph; do not spawn one from a proto.
 
@@ -94,18 +96,25 @@ Completion criterion: created beads carry acceptance criteria and genuine blocki
 
 ### 5. Checkpoint at semantic transitions
 
-Commit and push at recovery-relevant transitions — molecule activation, durable evidence submission, verified integration and closure, approved decisions, review and remediation transitions, and completion:
+A successful local `bd` write and its local Dolt commit are durable local state; neither implies remote durability. Inspect `bd config get dolt.auto-commit` and installed command help before choosing commit mechanics. Group correlated writes into recovery-relevant transitions such as molecule activation, work claim/attempt launch, accepted integration, remediation routing, or molecule closure.
+
+With auto-commit `on`, verify that every related write has a local commit before checkpointing. When the installed release supports batch mode and the transition needs several writes, pass `--dolt-auto-commit=batch` to those writes and finish with:
 
 ```bash
 bd dolt commit -m "<transition>"
+```
+
+Do not push after every field, edge, heartbeat, evidence write, or auto-commit. Only the active sync authority may push, and only when the configured remote and caller authorization permit it:
+
+```bash
 bd dolt push
 ```
 
-Issue data travels over the Dolt remote to `refs/dolt/data`; recorded remote *configuration* reaches other machines only through ordinary Git. Both halves must succeed for another machine to recover.
+Issue data travels over the Dolt remote to `refs/dolt/data`; recorded remote *configuration* reaches other machines only through ordinary Git. A push failure leaves the semantic checkpoint locally durable but not remotely durable. Mark it `sync:pending` and retry from the same lease epoch rather than replaying writes. While sync is pending, only the leased coordinator host may continue; lease transfer and final closure stay blocked until pull and push succeed.
 
-If the remote is unavailable, only the leased coordinator host may continue: local checkpoints proceed with the molecule marked `sync:pending`, while lease transfer and final closure stay blocked until pull and push succeed.
+Worker termination, including watchdog termination, MUST NOT transfer the coordinator lease. Takeover remains a separate human-approved compare-and-set action after durable-state reconciliation.
 
-Completion criterion: every semantic transition has a durable commit, and each is pushed or explicitly recorded as `sync:pending` on the leased host.
+Completion criterion: each recovery-relevant transition has one complete local semantic checkpoint, each required remote checkpoint is pushed once or explicitly `sync:pending`, and no per-write push churn obscures the recovery history.
 
 ## Activities
 
@@ -149,4 +158,5 @@ Completion criterion: every nonterminal attempt is resumed or explicitly marked 
 
 ## Reference
 
+- When a caller must materialize a reviewed graph large enough that sequential creation risks partial or prematurely runnable state, load [`GRAPH-INGESTION.md`](GRAPH-INGESTION.md) for installed-version capability probing, atomic apply, readback validation, and activation gating. Ordinary issue, dependency, and attempt operations do not load it.
 - When execution requires the full coordination contract — coordinator lease acquisition and takeover, review presets and independence rules, exact model assignment, escalation ladders, or correction allowances — read `~/dotfiles/specs/execution-coordination.md`. It is authoritative where this skill and it overlap. Ordinary bead creation, claiming, evidence recording, and closing do not need it.

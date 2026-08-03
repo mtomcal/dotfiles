@@ -1,6 +1,6 @@
 # Ubiquitous Language
 
-> **Version**: 2.2.0
+> **Version**: 2.3.0
 > **Last Updated**: 2026-08-03
 > **Purpose**: Shared vocabulary for all specs. Every term used in multiple specs MUST be defined here. Read this before any other spec.
 
@@ -106,6 +106,9 @@
 | **execution molecule** | A Beads molecule whose root scope and dependency-ordered work beads form one execution-ready implementation and review graph | "implementation plan", "execution ledger", "plan file" | Created directly by `create-engineering-plan`; it combines planning and execution state without durable workflow Markdown. |
 | **legacy execution ledger** | The single grandfathered filesystem execution record allowed to reach a terminal state during Beads adoption | "current plan", "new ledger" | No new legacy execution ledger may be created, and support is removed after it becomes terminal. |
 | **work bead** | A dependency-aware executable or decision record within an execution molecule | "task file", "slice file" | Work beads include slices, review beads, remediation beads, mechanical gates, and decision beads. |
+| **activation gate** | The planner-owned blocker that keeps every initial implementation frontier unrunnable until graph materialization and readback validation succeed | "draft status", "root blocker" | Closing it is the one transition from a validated inactive graph to executable work. |
+| **semantic checkpoint** | A recovery-relevant transition whose correlated local Beads writes are complete and durably committed by verified auto-commits or one explicit batch commit | "every write", "automatic push" | It is locally durable; remote durability is a separate **remote checkpoint**. |
+| **remote checkpoint** | A semantic checkpoint successfully pushed to the configured Dolt remote by the active sync authority | "local commit", "sync call" | Pushes occur at authorized recovery boundaries, not after each field, edge, heartbeat, or evidence write. |
 | **review policy** | The human-approved review breadth, depth, and independence requirements selected when an execution molecule is created | "review budget", "review configuration" | Lean, Standard, and High-assurance presets provide defaults with explicit overrides. |
 | **review gate** | A required acceptance condition in a review policy, satisfied by mechanical evidence or one or more independent review beads | "review pass", "review step" | Repository gates and Scope fidelity form the minimum final floor; other gates and redundant passes are creation-time choices. |
 | **review bead** | A work bead representing one independent pass for a review gate against a fixed candidate | "verification artifact", "review file" | A gate may have multiple review beads when its approved depth exceeds one. |
@@ -113,6 +116,8 @@
 | **coordinator** | The actor with exclusive authority over an execution molecule's structure, scope, acceptance, integration, and recovery without implementing or reviewing | "parent owner", "parent agent" | Beads stores durable authority while Herdr provides live transport and communication. |
 | **coordinator lease** | The non-expiring exclusive authority granted to one coordinator session on one host for one execution molecule | "timeout lock", "pane ownership" | Takeover requires evidence inspection, human approval, and an auditable decision. |
 | **coordinator session** | A permanent bead representing one coordinator incarnation, including its exact model, host, lease events, checkpoints, and terminal outcome | "coordinator pane", "current coordinator" | The molecule root points to one active session while preserving prior sessions. |
+| **context rotation** | The approved lifecycle that checkpoints an editable worker at one context threshold and winds it down for fresh-context recreation at a hard threshold | "compaction", "estimated context" | Context comes from a native signal or explicit worker report and remaining work receives a new write-ahead attempt. |
+| **Watchdog** | A bounded Herdr monitor that requests heartbeat/checkpoint evidence and may close one explicitly authorized nonresponsive worker pane after two failed response windows | "coordinator", "lease monitor" | It cannot mutate Beads, Git, scope, acceptance, replacement work, or coordinator-lease ownership. |
 | **model assignment** | The exact command, provider, model id, thinking level, role, and applicable independence rule approved for an executable bead or coordinator | "model hint", "strong model" | An unavailable initial assignment blocks until approved reassignment. |
 | **escalation ladder** | The human-approved ordered list of exact model assignments permitted for automatic escalation within one execution molecule | "stronger model ranking", "fallback guess" | Runtime escalation moves only to an available higher approved rung. |
 | **worker attempt** | A permanent non-blocking bead recording one agent launch, its exact model, durable instructions, semantic transitions, evidence, and outcome | "worker pane", "attempt comment" | Attempts link to their owning work bead but never determine the executable frontier directly. |
@@ -164,7 +169,10 @@
 - A **slice** carries its TDD contract and applicable **proposed execution traces** directly as Beads content rather than a Markdown packet
 - A **review policy** contains one or more **review gates**, and a review gate may require multiple independent **review beads**
 - A **model assignment** is materialized onto every executable bead, while an **escalation ladder** constrains automatic runtime escalation
-- A **coordinator lease** points to one active **coordinator session** and never expires automatically
+- A **coordinator lease** points to one active **coordinator session** and never expires or transfers automatically
+- An **activation gate** blocks initial implementation frontiers until graph readback passes
+- A **semantic checkpoint** is local; its authorized successful push creates a **remote checkpoint**
+- **Context rotation** governs editable worker checkpoint and recreation, while a **Watchdog** may terminate only an authorized nonresponsive worker without changing the coordinator lease
 - A **write-ahead attempt** precedes every Herdr agent side effect, while the owning **worker attempt** stores instructions and evidence
 - The **worker-attempt graph** is durable in Beads, while Herdr provides ephemeral agent transport, communication, and observation
 - An execution **frontier** contains ready **work beads** only after every blocker closes following integration; worker attempts never enter it
@@ -210,6 +218,7 @@
 
 | Version | Date | Change |
 |---------|------|--------|
+| 2.3.0 | 2026-08-03 | Added **activation gate**, **semantic checkpoint**, **remote checkpoint**, **context rotation**, and **Watchdog** for atomic planning and fail-closed Herdr execution. |
 | 2.2.0 | 2026-08-03 | Added **explainer page** and **learning artifact** to separate communication rendering from interactive retrieval practice after `create-explainer` was removed. |
 | 2.1.0 | 2026-08-02 | Replaced the "Dolt server" term with single-writer **embedded Dolt**. |
 | 2.0.0 | 2026-08-01 | Replaced filesystem plans and ledgers with command-repo execution molecules, exact model and review policy, coordinator leases/sessions, and write-ahead worker-attempt graphs. |

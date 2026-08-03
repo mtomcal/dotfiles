@@ -1,6 +1,6 @@
 # Personal Dotfiles Manager Specification Suite
 
-> **Version**: 0.19.0
+> **Version**: 0.20.0
 > **Last Updated**: 2026-08-03
 > **Purpose**: Complete specification for the personal dotfiles manager — automates setup of a Herdr/tmux + Beads + Neovim + platform-scoped VS Code + zsh dev environment across Linux and macOS. Primarily for personal use, serves as reference/inspiration for others.
 
@@ -131,12 +131,12 @@ graph TD
 | [symlink-manager.md](symlink-manager.md) | Symlink creation, backup, and verification | 2.0.0 |
 | [tool-provisioning.md](tool-provisioning.md) | Dependency and tool installation | 1.6.0 |
 | [shell-config.md](shell-config.md) | Zsh + Oh My Zsh configuration | 2.0.0 |
-| [herdr-config.md](herdr-config.md) | Herdr default multiplexer and migration contract | 0.3.0 |
+| [herdr-config.md](herdr-config.md) | Herdr default multiplexer and migration contract | 0.4.0 |
 | [tmux-config.md](tmux-config.md) | Tmux keybindings and nested sessions | 1.1.0 |
 | [neovim-config.md](neovim-config.md) | Kickstart + custom plugin layer | 1.0.0 |
 | [vscode-config.md](vscode-config.md) | Managed VS Code/code-server configuration and extensions | 1.0.0 |
-| [execution-coordination.md](execution-coordination.md) | Beads command-repo execution and recovery contract | 1.3.0 |
-| [skill-library.md](skill-library.md) | Shared-skill catalog and authoring contracts | 8.2.0 |
+| [execution-coordination.md](execution-coordination.md) | Beads command-repo execution and recovery contract | 1.4.0 |
+| [skill-library.md](skill-library.md) | Shared-skill catalog and authoring contracts | 8.3.0 |
 | [ai-agent-config.md](ai-agent-config.md) | AI agent runtime configs and catalog exposure | 4.1.0 |
 | [install-orchestrator.md](install-orchestrator.md) | Top-level idempotent setup orchestrator | 2.1.0 |
 
@@ -158,7 +158,7 @@ graph TD
 
 - [x] Extract shell-config spec from zsh/.zshrc.custom
 - [x] Extract herdr-config spec from herdr/config.toml
-- [ ] Implement and validate execution-coordination against the approved command-repo, molecule, assignment, attempt, and recovery contracts — bootstrap, routing, and the encoding skills (`beads`, `create-engineering-plan`, `execute-engineering-molecule`) are complete; molecule creation and execution remain unexercised at runtime
+- [ ] Complete runtime validation of execution-coordination — bootstrap/routing and encoding skills (`beads`, `create-engineering-plan`, `execute-engineering-molecule`, `herdr-watchdog`) are complete; Firepod exercised version-aware molecule creation and activation, while end-to-end execution, rotation, termination, and recovery remain unexercised
 - [x] Extract tmux-config spec from tmux/.tmux.conf
 - [x] Extract neovim-config spec from nvim/custom/ plugin files
 - [ ] Implement and validate vscode-config against the approved managed-layer, extension, service, and capture contracts
@@ -175,6 +175,7 @@ graph TD
 
 | Version | Date | Change |
 |---------|------|--------|
+| 0.20.0 | 2026-08-03 | Recorded exercised Firepod molecule creation, added atomic graph activation, worker context rotation, bounded Watchdog termination, and semantic checkpoint batching, and updated affected spec versions. |
 | 0.19.0 | 2026-08-03 | Registered `visual-explainer` as the communication-only explainer-page renderer and separated explainer pages from `teach`-owned learning artifacts. |
 | 0.18.0 | 2026-08-02 | Replaced the per-run molecule map with a shared workflow-shapes Reference file. |
 | 0.17.0 | 2026-08-02 | Renamed the execution entries to `create-engineering-plan` and `execute-engineering-molecule`. |

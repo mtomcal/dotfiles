@@ -1,7 +1,7 @@
 # Execution Coordination
 
-> **Version**: 1.3.0
-> **Last Updated**: 2026-08-02
+> **Version**: 1.4.0
+> **Last Updated**: 2026-08-03
 > **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md), [Tool Provisioning](tool-provisioning.md), [Herdr Config](herdr-config.md)
 > **Depended By**: [Skill Library](skill-library.md), [Install Orchestrator](install-orchestrator.md)
 > **Prefix**: EXEC
@@ -107,6 +107,8 @@ A scope snapshot does not require a specification diff. Any later scope mutation
 | planner provenance     | exact model assignment | Required                                   | Configuration that created the graph                   |
 | coordinator assignment | exact model assignment | Required                                   | Configuration allowed to acquire the coordinator lease |
 | review policy          | record                 | Approved before activation                 | Required final review breadth and depth                |
+| worker lifecycle policy | record                | Approved before activation                 | Context thresholds, deadlines, and watchdog authority  |
+| activation gate        | work bead id           | Blocks all initial implementation frontiers | Planner-owned validation barrier                      |
 | work beads             | graph                  | Acyclic blocking edges                     | Slices, reviews, remediation, and decisions            |
 | attempt graph          | graph                  | Non-blocking operational edges             | Coordinator sessions and agent attempts                |
 | sync state             | enum                   | clean, pending, blocked                    | Durability relative to the private remote              |
@@ -125,6 +127,7 @@ A scope snapshot does not require a specification diff. Any later scope mutation
 | proposed execution traces | list                | Required where runtime or operational order is material                            | Evidence-grounded intended order and allowed variance |
 | model assignment          | exact configuration | Required for agent-executed work                                                   | Runtime binding                                       |
 | escalation policy         | record              | Required for editable work                                                         | Approved ladder and triggers                          |
+| worker lifecycle policy   | record              | Required for editable work                                                         | Context rotation and watchdog envelope                |
 | state                     | enum                | open, in_progress, awaiting_review, needs_correction, integrating, closed, blocked | Work lifecycle                                        |
 
 ### Review Policy
@@ -168,6 +171,18 @@ Role defaults are approved for implementation, Test Quality, Standards/Scope, Pr
 | current rung               | integer                                 | Attempt-derived            | Last assignment used                          |
 
 Automatic escalation may select only the next available higher approved rung. If no higher rung is available, the work bead becomes blocked. Runtime reputation or an unapproved model MUST NOT determine escalation.
+
+### Worker Lifecycle Policy
+
+| Field | Type | Constraints | Description |
+|-------|------|-------------|-------------|
+| checkpoint threshold | percentage | Human-approved; 1–99 | Point at which the worker checkpoints and receives no new work |
+| hard-rotation threshold | percentage | Greater than or equal to checkpoint threshold; at most 100 | Point at which the worker winds down for recreation |
+| acknowledgment deadline | duration | Positive; human-approved | Bound for each Watchdog response window |
+| termination authority | boolean | Explicit | Whether the Watchdog may close the named worker pane after two failed windows |
+| lease effect | enum | `none` | Worker or coordinator termination never transfers the coordinator lease |
+
+Context MUST come from a native runtime signal or explicit worker report; it MUST NOT be estimated from elapsed time or output volume.
 
 ### Coordinator Lease and Session
 
@@ -233,12 +248,14 @@ Shell startup MUST source valid local runtime configuration and globally export 
 4. Obtain explicit human approval of the scope snapshot.
 5. Design context-sized vertical TDD slices with genuine blocking dependencies and evidence-grounded proposed execution traces.
 6. Propose Lean, Standard, or High-assurance review topology with any risk-driven gates and overrides.
-7. Propose exact role defaults, per-bead overrides, reviewer independence, exact coordinator assignment, escalation ladders, correction allowances, and critical-invariant triggers.
-8. Obtain human approval of the complete scope, review, and model-assignment map.
-9. Create a draft molecule and its complete work graph; validate coverage, acyclicity, assignments, traces, and acceptance before marking it ready.
-10. Commit and push the initial semantic checkpoint.
+7. Propose exact role defaults, per-bead overrides, reviewer independence, exact coordinator assignment, escalation ladders, correction allowances, critical-invariant triggers, and worker lifecycle policy.
+8. Obtain human approval of the complete scope, review, model-assignment, context-rotation, and Watchdog map.
+9. Probe the installed Beads graph schema with a disposable dry run; warnings about unknown or dropped fields are validation failures.
+10. Atomically create the complete graph with a planner-owned activation gate blocking every initial implementation frontier; materialize required unsupported fields while that gate remains open.
+11. Read back nodes, fields, metadata, edges, assignments, traces, acceptance, and readiness; validate exact counts/directions, coverage, acyclicity, and review topology.
+12. Record validation evidence, transition the root to executable state, close the activation gate, verify the expected first frontier, and create one initial semantic checkpoint. Push once at activation when configured and authorized.
 
-A partial graph MUST remain draft/blocked and MUST NOT expose slices as ready. `create-engineering-plan` MUST NOT create durable Markdown artifacts or source-repository `.beads/` state.
+A partial, lossy, cyclic, or mismatched graph MUST remain blocked by the activation gate and MUST NOT expose implementation slices as ready. The planner MUST NOT fall back to a partially runnable sequential graph. `create-engineering-plan` MUST NOT create durable Markdown artifacts or source-repository `.beads/` state.
 
 ### Single-Writer Durable Storage
 
@@ -278,7 +295,7 @@ Takeover requires:
 3. a linked decision/event recording rationale; and
 4. a new coordinator-session bead before the root pointer changes.
 
-No timeout or heartbeat may transfer authority automatically.
+No timeout, heartbeat, worker termination, Watchdog action, or coordinator process termination may transfer authority automatically.
 
 ### Write-Ahead Herdr Attempts
 
@@ -310,6 +327,14 @@ Before reporting completion through Herdr, a worker or reviewer MUST write to it
 
 Herdr completion is notification only. Missing durable evidence leaves the attempt nonterminal and prevents verification or integration.
 
+### Context Rotation and Watchdog
+
+Every editable worker follows the lifecycle policy materialized on its bead. At the checkpoint threshold it MUST preserve durable Git state, including a commit when changes exist, record test and handoff evidence, and receive no new work. At the hard-rotation threshold it MUST wind down; verified remaining work resumes only in a fresh context under a new write-ahead attempt.
+
+`herdr-watchdog` composes generic Herdr transport and owns bounded liveness observation. It classifies nonresponsiveness only after an initial request and a final acknowledgment request both expire without acknowledgment, protocol evidence, or an inspectable settled state. A blocked or questioning worker is responsive.
+
+When explicitly authorized, the Watchdog MAY capture final evidence and close only the named nonresponsive worker pane. It MUST NOT edit source, mutate Beads or Git, accept work, create replacement attempts, change scope, or transfer a coordinator lease. The coordinator reconciles durable and Git state before recording the attempt outcome. Coordinator loss fails closed pending evidence inspection and human-approved takeover.
+
 ### Correction and Escalation
 
 A failed review or mechanical gate creates one consolidated correction instruction on a new or resumed attempt according to the recorded policy. Each new attempt has a distinct id. Correction allowance and critical-invariant behavior are fixed per slice unless changed through an approved decision bead.
@@ -324,16 +349,16 @@ Findings are consolidated without collapsing review-axis ownership. Final remedi
 
 ### Synchronization
 
-The coordinator pulls before acquiring a lease or beginning mutation. It commits and pushes at semantic recovery checkpoints, including:
+The coordinator pulls before acquiring a lease or beginning mutation. A successful local Beads write and local Dolt commit do not imply remote durability. Correlated writes MUST be grouped into one local semantic checkpoint at recovery-relevant transitions, including:
 
 - initial molecule activation;
-- durable evidence submission;
+- work claim plus write-ahead attempt launch;
 - verified integration and slice closure;
 - approved scope, review, assignment, or takeover decisions;
-- final-review and remediation transitions; and
+- final-review or remediation routing; and
 - molecule completion.
 
-If the private remote becomes unavailable, only the leased coordinator host may continue. The molecule becomes `sync:pending`; local checkpoints continue. Lease transfer and final closure are blocked until pull/reconciliation and push succeed.
+Only the active sync authority may push. It pushes once per required recovery boundary when a remote is configured and caller authority permits, never after every field, edge, heartbeat, or evidence write. A successful push creates the remote checkpoint. If push fails, the local checkpoint remains durable but the molecule becomes `sync:pending`; only the leased coordinator host may continue. Lease transfer and final closure are blocked until pull/reconciliation and push succeed.
 
 ### Crash Recovery and Herdr Loss
 
@@ -485,7 +510,28 @@ Preconditions: Two agents attempt durable writes to the command repo at the same
 Input: Submit two attempt-evidence writes concurrently.
 Expected Output: Both writes eventually land; the contending writer retries rather than reporting success, skipping the record, or continuing past the failure.
 
-### TS-EXEC-012: Explicit Legacy Cleanup
+### TS-EXEC-012: Atomic Graph Activation
+Category: End-to-End
+Priority: Critical
+Preconditions: Installed Beads graph support may reject or silently drop fields.
+Input: Probe the installed schema, ingest a complete molecule, materialize unsupported required fields, and inspect readiness before and after activation.
+Expected Output: Unknown-field warnings fail the probe; one activation gate blocks every implementation frontier until exact graph readback, acyclicity, lint, assignment, and trace checks pass; gate closure exposes only the expected first frontier.
+
+### TS-EXEC-013: Context Rotation and Nonresponsive Worker
+Category: End-to-End
+Priority: Critical
+Preconditions: An editable worker has approved checkpoint/hard-rotation thresholds, deadlines, and Watchdog pane-close authority.
+Input: Cross both thresholds with a responsive worker, then exercise two missed acknowledgment windows with another worker.
+Expected Output: The responsive worker checkpoints, winds down, and resumes under a fresh attempt; the nonresponsive worker pane is closed only after final evidence capture; neither path transfers the coordinator lease or lets the Watchdog mutate Beads, Git, scope, acceptance, or replacement work.
+
+### TS-EXEC-014: Semantic Checkpoint Batching
+Category: Integration
+Priority: High
+Preconditions: One transition requires several correlated Beads writes and a configured Dolt remote.
+Input: Materialize the transition and inspect local commits and pushes.
+Expected Output: Related writes form one local semantic checkpoint and one authorized push at the recovery boundary; no per-field or per-edge push occurs; local and remote durability states are distinguishable.
+
+### TS-EXEC-015: Explicit Legacy Cleanup
 Category: Integration
 Priority: Critical
 Preconditions: Legacy binaries, databases, source clone, and untracked research exist.
@@ -498,6 +544,7 @@ Expected Output: Normal install deletes no legacy data; explicit cleanup verifie
 
 | Version | Date       | Change                                                                                                                                                                                                                 |
 | ------- | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1.4.0   | 2026-08-03 | Added version-aware atomic graph ingestion with an activation gate, explicit worker context rotation and bounded Watchdog termination, fail-closed lease handling, and local-versus-remote semantic checkpoint rules. |
 | 1.3.0   | 2026-08-02 | Renamed the planning and execution entries to `create-engineering-plan` and `execute-engineering-molecule`, scoping both to the engineering work domain.                                                                |
 | 1.2.0   | 2026-08-02 | Closed the legacy transition after the filesystem ledger contract was removed from the skill catalog, and recorded that the encoding skills exist while runtime execution remains unproven.                             |
 | 1.1.0   | 2026-08-02 | Adopted single-writer embedded storage, added the durable-write serialization constraint, and specified two-half synchronization against a private git+ssh remote.                                                     |

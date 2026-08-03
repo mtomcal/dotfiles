@@ -104,24 +104,26 @@ Propose one review preset and obtain human approval for the complete policy:
 
 Independent per-slice Test Quality is mandatory before integration under **every** preset.
 
-In the same approval, settle exact role defaults and per-bead overrides, reviewer independence rules, the exact coordinator assignment, escalation ladders, correction allowances (default 2), and critical-invariant triggers. Every executable bead receives a materialized exact assignment. An unavailable assignment blocks pending human-approved reassignment; it is never silently substituted and is not an escalation trigger.
+In the same approval, settle exact role defaults and per-bead overrides, reviewer independence rules, the exact coordinator assignment, escalation ladders, correction allowances (default 2), and critical-invariant triggers. Also settle worker lifecycle policy: checkpoint and hard-rotation context thresholds from 1–100 with hard rotation no lower than checkpoint, positive heartbeat/checkpoint deadlines, whether `herdr-watchdog` may terminate a nonresponsive worker pane, and the fail-closed rule that termination cannot transfer the coordinator lease. Every executable bead receives a materialized exact assignment and the applicable lifecycle policy. An unavailable assignment blocks pending human-approved reassignment; it is never silently substituted and is not an escalation trigger.
 
-Completion criterion: the human has approved one preset with any overrides, and every executable bead has a resolved exact model assignment, escalation ladder, and correction allowance.
+Completion criterion: the human has approved one preset with any overrides, and every executable bead has a resolved exact model assignment, escalation ladder, correction allowance, and context-rotation policy.
 
-### 6. Create the graph and validate before activation
+### 6. Ingest atomically and validate before activation
 
-Create the root molecule in **draft**, then its complete work graph, then validate. Serialize every durable write per the `beads` skill and retry contention rather than skipping it.
+Select the Beads graph-ingestion branch and load its [`GRAPH-INGESTION.md`](../beads/GRAPH-INGESTION.md) Reference file. Probe the installed `bd` graph schema with a disposable dry run before compiling the reviewed plan; unknown-field warnings or silently dropped values are failures. Materialize the complete molecule through the proven graph surface in one atomic apply, with one planner-owned activation gate blocking every initial implementation frontier. Required fields unsupported by that release are materialized after creation while the gate remains open.
 
-Validate before exposing any ready work:
+Read the graph back from Beads and validate before exposing any ready implementation work:
 
 - complete scope coverage — every acceptance criterion maps to at least one slice;
+- exact node and edge counts and directions match the compiled plan;
 - acyclicity — `bd dep cycles` reports none;
-- every executable bead carries its exact assignment;
-- every applicable slice carries its trace; and
-- review and remediation topology matches the approved policy.
+- every executable bead carries its exact assignment and lifecycle policy;
+- every applicable slice carries its trace;
+- review and remediation topology matches the approved policy; and
+- only expected planner/control work is ready before gate closure.
 
-A partial or failing graph stays draft/blocked and MUST NOT expose slices as ready. Reconcile it or explicitly discard the draft. Only after validation passes, mark the molecule ready and push the initial semantic checkpoint.
+A partial, lossy, or failing graph remains blocked by the activation gate. Reconcile it or explicitly discard the draft; never fall back to a partially runnable sequential graph. Only after readback validation passes, record the evidence, transition the root to its executable state, close the activation gate, confirm the expected first frontier, and create the initial semantic checkpoint. Push once at this activation boundary when remote durability is configured and authorized; do not push after each node, edge, or field write.
 
-Report the root molecule id so execution can reference it explicitly.
+Report the root molecule id, installed Beads version, graph counts, validation evidence, activated frontier, and local/remote checkpoint state so execution can reference it explicitly.
 
-Completion criterion: one ready molecule exists with a validated acyclic graph, the initial checkpoint is pushed, the root id is reported, and no durable Markdown or source-repository `.beads/` state was created.
+Completion criterion: one ready molecule exists with a read-back, validated, acyclic graph; activation exposed exactly the expected frontier; checkpoint state is explicit; the root id is reported; and no durable Markdown or source-repository `.beads/` state was created.

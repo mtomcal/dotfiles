@@ -4,7 +4,7 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 
 ## Map
 
-<!-- TREE-HASH: 3d2e04faaedf8a8c02c3eb2b651fb743939f43b404281c7cd6c22cdedbca9f2a -->
+<!-- TREE-HASH: ddb7f58a572b1a3043ecee3a1a4b8fb8fd2f8b95050a398c3d5f8d7fe5411a7c -->
 
 <!-- TREE-START -->
 ```
@@ -34,8 +34,8 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 |   |   |-- audit-shared-skills -> ../../shared/skills/audit-shared-skills
 |   |   |-- beads -> ../../shared/skills/beads
 |   |   |-- bootstrap-specs -> ../../shared/skills/bootstrap-specs
-|   |   |-- code-review -> ../../shared/skills/code-review
 |   |   |-- codebase-design -> ../../shared/skills/codebase-design
+|   |   |-- code-review -> ../../shared/skills/code-review
 |   |   |-- create-agents-md -> ../../shared/skills/create-agents-md
 |   |   |-- create-engineering-plan -> ../../shared/skills/create-engineering-plan
 |   |   |-- curator -> ../../shared/skills/curator
@@ -47,6 +47,7 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 |   |   |-- herdr -> ../../shared/skills/herdr
 |   |   |-- herdr-claude-code -> ../../shared/skills/herdr-claude-code
 |   |   |-- herdr-supervise -> ../../shared/skills/herdr-supervise
+|   |   |-- herdr-watchdog -> ../../shared/skills/herdr-watchdog
 |   |   |-- improve-codebase-architecture -> ../../shared/skills/improve-codebase-architecture
 |   |   |-- playwright -> ../../shared/skills/playwright
 |   |   |-- prototype -> ../../shared/skills/prototype
@@ -67,8 +68,8 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 |       |-- audit-shared-skills
 |       |-- beads
 |       |-- bootstrap-specs
-|       |-- code-review
 |       |-- codebase-design
+|       |-- code-review
 |       |-- create-agents-md
 |       |   `-- scripts
 |       |-- create-engineering-plan
@@ -81,6 +82,7 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 |       |-- herdr
 |       |-- herdr-claude-code
 |       |-- herdr-supervise
+|       |-- herdr-watchdog
 |       |-- improve-codebase-architecture
 |       |-- playwright
 |       |   `-- references
@@ -95,6 +97,9 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 |       |-- ubiquitous-language
 |       |-- update-specs
 |       |-- video-to-contact-sheet
+|       |-- visual-explainer
+|       |   |-- references
+|       |   `-- templates
 |       `-- write-a-skill
 |-- specs
 |-- tests
@@ -106,7 +111,7 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 |-- yazi
 `-- zsh
 
-96 directories
+102 directories
 ```
 <!-- TREE-END -->
 

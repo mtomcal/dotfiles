@@ -1,6 +1,6 @@
 # Skill Library Specification
 
-> **Version**: 8.2.0
+> **Version**: 8.3.0
 > **Last Updated**: 2026-08-03
 > **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md), [Herdr Config](herdr-config.md), [Execution Coordination](execution-coordination.md)
 > **Depended By**: AI Agent Configuration (AIAGT)
@@ -110,6 +110,8 @@ All Skill Library parameters are authoritative in [Parameters > Skill Library](p
 | creation entry | skill | `create-engineering-plan` | Creates one execution-ready Beads engineering molecule directly from approved scope |
 | execution entry | skill | `execute-engineering-molecule` | Coordinates one explicit engineering molecule through Herdr and Beads |
 | workflow shapes | Reference file | Conditionally loaded; illustrative, not templates | Documents bead kinds, execution lifecycle, graph shapes, and state machines |
+| graph ingestion | Beads Reference file | Loaded only when materializing a reviewed graph | Owns installed-version probing, atomic apply, readback, and activation mechanics |
+| watchdog | skill | `herdr-watchdog` | Owns bounded worker liveness and authorized fail-closed pane termination |
 | durable mechanics owner | skill | `beads` | Single source of truth for `bd` operations composed by both entries |
 | durable authority | bounded context | Execution Coordination | Owns command-repo graph, assignments, attempts, evidence, synchronization, and recovery |
 | source | repository identity | Normalized remote or explicit key plus full fixed commit | Reproducible source baseline without a mandatory spec diff |
@@ -232,9 +234,10 @@ Reciprocal routing MAY compose workflows but MUST NOT transfer state or artifact
 | `visual-explainer` | Renders one self-contained explainer page with no interactive assessment, owning representation choice, aesthetic direction, Mermaid diagram-shell invariants, and layout invariants; it writes to a caller-supplied location or a temporary default and reports the absolute path |
 | `herdr` | Owns current generic Herdr CLI mechanics, including validated agent startup, atomic prompt submission, logical keys, output inspection, server-owned settled-state waiting, and failure inspection |
 | `herdr-claude-code` | Composes `herdr` and owns Claude's required native launch argument, task contract, settled-result interpretation, and blocked-agent steering without duplicating generic transport |
-| `beads` | Owns the canonical `bd` contract — command-repo routing verification, read-before-write inspection, single-writer durable-write serialization, work-bead and dependency mechanics, semantic checkpoint synchronization, write-ahead attempts, completion evidence, and Beads-only recovery |
-| `create-engineering-plan` | Gates on engineering work, pins a source fixed point, obtains a human-approved scope snapshot, proposes review/model policy, and creates one execution-ready command-repo molecule with context-sized TDD slices and traces |
-| `execute-engineering-molecule` | Requires one explicit execution-molecule id and Herdr, then coordinates Beads-backed leases, write-ahead attempts, isolated implementation, evidence-gated integration, configured reviews, synchronization, and crash recovery |
+| `herdr-watchdog` | Composes `herdr`; monitors one bounded worker's heartbeat/context protocol, requests rotation checkpoints, and may close only an explicitly authorized nonresponsive worker pane without mutating durable execution authority |
+| `beads` | Owns the canonical `bd` contract — command-repo routing verification, read-before-write inspection, single-writer durable-write serialization, version-aware graph ingestion, semantic checkpoint synchronization, write-ahead attempts, completion evidence, and Beads-only recovery |
+| `create-engineering-plan` | Gates on engineering work, pins a source fixed point, obtains a human-approved scope snapshot, proposes review/model/lifecycle policy, and atomically activates one validated command-repo molecule with context-sized TDD slices and traces |
+| `execute-engineering-molecule` | Requires one explicit execution-molecule id and Herdr, then coordinates Beads-backed leases, write-ahead attempts, context rotation, isolated implementation, evidence-gated integration, configured reviews, synchronization, and crash recovery |
 | `teach` | Requires an approved teaching workspace and preserves mission, resources, learning records, lessons, references, assets, and notes |
 | `grill-me` | Grounds terminology and evidence, probes consequential branches one question at a time, and defers durable edits until shared understanding |
 
@@ -254,11 +257,11 @@ Both entries are engineering-specific by contract, not merely by convention. The
 
 `create-engineering-plan` MUST resolve one normalized repository identity and full source fixed point, but MUST NOT require a specification diff. It reads available specs, code, tests, documentation, and risks as evidence, then obtains explicit human approval of objective, acceptance criteria, failure criteria, and exclusions. That scope snapshot becomes frozen; later changes require an approved decision bead.
 
-The caller's current exact model configuration is planner provenance. Before activation, `create-engineering-plan` MUST propose and obtain human approval for one review preset with overrides, exact role defaults and per-bead overrides, reviewer independence, exact coordinator assignment, escalation ladders, correction allowances, and critical-invariant triggers. Initial model assignments are exact and unavailable assignments block rather than silently substitute.
+The caller's current exact model configuration is planner provenance. Before activation, `create-engineering-plan` MUST propose and obtain human approval for one review preset with overrides, exact role defaults and per-bead overrides, reviewer independence, exact coordinator assignment, escalation ladders, correction allowances, critical-invariant triggers, context checkpoint/hard-rotation thresholds, acknowledgment deadlines, and Watchdog pane-close authority. Initial model assignments are exact and unavailable assignments block rather than silently substitute.
 
 Its only durable result is one execution-ready molecule in the external command repo. It directly creates context-sized vertical slices with explicit RED/GREEN/REFACTOR cycles, genuine dependency edges, public test seams, acceptance/failure criteria, focused commands, and applicable proposed execution traces. A trace remains an evidence-grounded intended call tree with binding order distinguished from permitted internal variance; it is not captured runtime evidence or an exhaustive graph.
 
-Creation MUST leave a partial graph draft/blocked, validate complete scope coverage, acyclicity, assignments, traces, and review topology before exposing ready work, then commit and push a semantic checkpoint. It MUST NOT write `PLAN.md`, `.plan`, slice files, verification files, or any `.beads/` state into a source repository.
+Creation MUST select the `beads` graph-ingestion branch and load its Reference file, probe the installed `bd` schema, and treat unknown or dropped fields as failures. It atomically materializes the graph behind one planner-owned activation gate, reads back exact nodes, fields, metadata, edges, and readiness, and keeps any partial or mismatched graph blocked. Only after coverage, acyclicity, assignments, traces, review topology, and expected frontier pass may it close the gate and create one activation checkpoint. Remote push occurs once at that semantic boundary when configured and authorized, never after each graph write. It MUST NOT write `PLAN.md`, `.plan`, slice files, verification files, or any `.beads/` state into a source repository.
 
 The execution workflow skills MUST share one **workflow shapes** Reference file documenting bead kinds and edge semantics, the per-slice execution lifecycle, worked graph shapes, and work-bead, attempt, and molecule state transitions. Its diagrams are illustrative models rather than templates to copy, and `execution-coordination.md` remains authoritative wherever they overlap. Creation loads it when dependency shape is not obvious; execution loads it when bead kinds, edge semantics, or terminal attempt states are unfamiliar. Both skills MUST retain a successful route that does not load it, and neither MAY generate a durable diagram artifact into a source repository.
 
@@ -268,13 +271,17 @@ The generic `herdr` skill MUST use Herdr's current agent facade for validated st
 
 `execute-engineering-molecule` MUST require one explicit execution-molecule id, valid global command-repo routing, and `HERDR_ENV=1`; there is no non-Herdr execution fallback. It validates repository identity, source fixed point, scope approval, review/model policy, graph integrity, and synchronization before mutation. The exact assigned coordinator model must acquire the non-expiring coordinator lease; conflicting authority stops unless evidence inspection and human-approved takeover create a new coordinator-session bead.
 
-The skill composes shared `herdr` for every launch, message, observation, and steering action while Beads remains durable authority. Claude Code assignments route through `herdr-claude-code`; other assignments use generic Herdr transport. Every consequential side effect first creates/checkpoints a unique planned worker attempt and durable instruction. Workers and reviewers write fixed-point evidence to that attempt before Herdr completion notification. Attempts are permanent non-blocking operational nodes and never pollute `bd ready`.
+The skill composes shared `herdr` for every launch, message, observation, and steering action while Beads remains durable authority. Claude Code assignments route through `herdr-claude-code`; other assignments use generic Herdr transport. Editable workers follow their approved context policy and compose `herdr-watchdog` for bounded heartbeat/checkpoint observation. At the checkpoint threshold they checkpoint and receive no new work; at the hard threshold they wind down and remaining work resumes under a fresh write-ahead attempt. Context is reported or native, never estimated.
+
+A Watchdog may close an explicitly authorized worker pane only after two bounded acknowledgment windows show no response or inspectable settled state. It cannot edit, mutate Beads/Git, accept work, launch a replacement, change scope, or transfer the coordinator lease. Coordinator termination also fails closed; takeover still requires reconciliation and human approval.
+
+Every consequential side effect first creates/checkpoints a unique planned worker attempt and durable instruction. Workers and reviewers write fixed-point evidence to that attempt before Herdr completion notification. Attempts are permanent non-blocking operational nodes and never pollute `bd ready`.
 
 The coordinator MAY run mechanical commands but MUST NOT implement or independently review. Editable slices and remediation use isolated worktrees and branches. A slice closes only after an implementation commit, independent `test-quality-verifier` audit, coordinator mechanical gates, mechanical integration, and post-integration checks. Correction behavior and automatic model escalation follow the slice's approved allowance, critical trigger, and molecule-specific exact escalation ladder; unavailable initial assignments and exhausted ladders block.
 
 Final work follows the approved Lean, Standard, or High-assurance review graph. Repository gates and independent Scope fidelity are always final requirements; integrated Test Quality, Standards, Premortem, Security, risk gates, redundant passes, exact reviewer models, and provider diversity follow the approved policy. Reviewers report findings without editing. Consolidated remediation uses its exact role assignment and ladder; affected gates rerun after changes and unaffected passing gates retain rationale.
 
-A fresh coordinator MUST recover from Beads without conversation or Herdr history, then use Herdr to rediscover sessions by durable attempt token. Unmatched uncertain attempts become lost and replacement work receives a new attempt id. Remote outages permit only leased-host work with `sync:pending`; takeover and completion wait for successful synchronization. Neither command-repo records, branches, worktrees, nor attempts are cleaned automatically.
+A fresh coordinator MUST recover from Beads without conversation or Herdr history, then use Herdr to rediscover sessions by durable attempt token. Unmatched uncertain attempts become lost and replacement work receives a new attempt id. Correlated local Beads writes form one semantic checkpoint; only the active sync authority pushes at recovery-relevant boundaries, so local commit and remote durability remain distinct. Remote outages permit only leased-host work with `sync:pending`; takeover and completion wait for successful synchronization. Neither command-repo records, branches, worktrees, nor attempts are cleaned automatically.
 
 The retired filesystem execution contract is removed. No shared skill may create or operate a filesystem implementation plan, execution ledger, slice packet, verification file, or repository-local `.plan` pointer. No grandfathered legacy ledger remains.
 
@@ -463,6 +470,22 @@ Preconditions: The execution workflow skills and their shared workflow-shapes Re
 Input: Plan a straightforward linear feature, then plan a wide migration with unclear dependency shape, then execute a molecule whose attempt states are unfamiliar, then inspect the source repository working tree afterward.
 Expected Output: The linear feature completes without loading the Reference file; the migration and the unfamiliar execution both load it; its diagrams are presented as illustrative models rather than templates; and no durable diagram artifact was written into the source repository.
 
+### TS-SKILL-020: Atomic Graph Ingestion and Activation
+
+Category: End-to-End
+Priority: Critical
+Preconditions: A reviewed execution graph and installed Beads CLI are available.
+Input: Exercise schema probing, graph creation, unsupported-field materialization, readback validation, and activation.
+Expected Output: Version/schema mismatch fails before activation; every implementation frontier remains blocked by one gate until exact readback passes; activation creates one semantic checkpoint and at most one authorized boundary push.
+
+### TS-SKILL-021: Watchdog Context Rotation
+
+Category: End-to-End
+Priority: Critical
+Preconditions: `herdr`, `herdr-watchdog`, and an editable worker lifecycle policy are available.
+Input: Exercise checkpoint/hard rotation, responsive blocking, two-window nonresponse, and coordinator disappearance.
+Expected Output: Responsive work checkpoints and rotates under a new attempt; blocked workers are not mislabeled; only an explicitly authorized nonresponsive worker pane may close; no Watchdog or process termination transfers the lease or mutates durable authority.
+
 ### TS-SKILL-016: Beads Base-Skill Composition
 
 Category: Integration
@@ -485,6 +508,7 @@ Expected Output: No shared skill creates or operates any of these artifacts, and
 
 | Version | Date | Change |
 |---------|------|--------|
+| 8.3.0 | 2026-08-03 | Registered version-aware Beads graph ingestion, planner activation gating, approved context rotation, the bounded `herdr-watchdog` skill, fail-closed lease behavior, and semantic local/remote checkpoint boundaries. |
 | 8.2.0 | 2026-08-03 | Registered `visual-explainer` as the communication-only explainer-page renderer, required explainer-producing workflows to compose it without transferring ownership, routed `improve-codebase-architecture` rendering through it, and made `teach` the sole owner of interactive learning artifacts after `create-explainer` was removed. |
 | 8.1.0 | 2026-08-02 | Replaced the per-run molecule map with a shared conditionally-loaded workflow-shapes Reference documenting bead kinds, execution lifecycle, graph shapes, and state machines. |
 | 8.0.0 | 2026-08-02 | Renamed the execution entries to `create-engineering-plan` and `execute-engineering-molecule`, constrained both to the engineering work domain by contract, and required non-engineering work without an owner to stop honestly. |

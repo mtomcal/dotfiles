@@ -15,6 +15,8 @@ allowed-tools: read,bash
 - **Frontier** — ready work beads whose blockers are closed, from `bd ready --mol <root>`.
 - **Fixed point** — full immutable commit hash under verification.
 - **Observation timeout** — maximum wait for the next expected Herdr evidence before the coordinator inspects and steers.
+- **Context rotation** — checkpoint-and-recreate lifecycle that prevents a worker from beginning new work after its approved context thresholds.
+- **Watchdog** — bounded liveness monitor that may request checkpoints and, when explicitly authorized, terminate only a nonresponsive worker pane.
 
 Beads is durable authority; Herdr is ephemeral transport. Herdr state is never a durable record.
 
@@ -32,7 +34,7 @@ Require **one explicit execution-molecule id**. Do not infer a latest molecule o
 
 - repository identity and source fixed point match the current canonical checkout;
 - the scope snapshot carries explicit human approval;
-- review policy and exact model assignments are materialized on executable beads;
+- review policy, exact model assignments, and context-rotation/watchdog policy are materialized on executable beads;
 - the graph is acyclic and complete — `bd dep cycles` reports none; and
 - sync state is clean or an explicitly accepted `sync:pending` on this host.
 
@@ -48,7 +50,7 @@ Verify this session's exact model matches the molecule's recorded coordinator as
 
 If another nonterminal session holds the lease, **stop**. No timeout or heartbeat transfers authority. Takeover requires all four: inspection of molecule, sync, Git, attempt, and prior-session state; explicit human approval; a linked decision bead recording rationale; and a new coordinator-session bead created before the root pointer changes. Prior sessions are preserved, never deleted.
 
-If either the implementation or oversight assignment selects Claude Code, load [`herdr-claude-code`](../herdr-claude-code/SKILL.md) before launching it; it owns Claude's launch arguments, readiness interpretation, atomic prompt submission, and blocked-agent steering. Other assignments use base Herdr transport. Record one observation timeout. Keep secrets out of bead state.
+If either the implementation or oversight assignment selects Claude Code, load [`herdr-claude-code`](../herdr-claude-code/SKILL.md) before launching it; it owns Claude's launch arguments, readiness interpretation, atomic prompt submission, and blocked-agent steering. Other assignments use base Herdr transport. When the lifecycle policy enables watchdog enforcement, load [`herdr-watchdog`](../herdr-watchdog/SKILL.md); it owns heartbeat/checkpoint observation and bounded worker-pane termination, never execution authority. Record the observation timeout, checkpoint and hard-rotation thresholds, acknowledgment deadline, and pane-close authority. Keep secrets out of bead state.
 
 Completion criterion: this session's model matches the coordinator assignment, exactly one nonterminal session holds the lease, the transport route per role is known, and any takeover has approval plus a decision bead.
 
@@ -73,6 +75,10 @@ For each frontier slice, create an isolated editable branch and worktree from th
 Follow the write-ahead ordering from the `beads` skill: create the planned attempt bead and persist its instruction, checkpoint, and only then launch through Herdr carrying the attempt id. Launch one implementation agent with the slice's exact assignment and authorize only that slice's scope.
 
 Observe through the composed Herdr skill using the recorded observation timeout. Read current evidence before waiting for future evidence. Steer immediately on blocked, premature-idle, error, missing-evidence, or input-needed states. A timeout triggers state and output inspection, not a conclusion — it is not proof of a stall or failure. Never infer success from idle, missing, or compacted panes. Workers never mutate graph structure or claim acceptance.
+
+Apply the bead's context-rotation policy to each editable worker. Include the Watchdog protocol in its write-ahead initial packet. At the checkpoint threshold, persist the consequential checkpoint instruction before the Watchdog sends it, request durable Git-state/test/handoff evidence, including a commit when changes exist, and assign no new work. At the hard-rotation threshold, likewise persist the wind-down instruction before sending it; after evidence is verified, end that attempt and recreate the worker in a fresh context under a new write-ahead attempt carrying the remaining scope. If context is unknown, record that threshold enforcement is unavailable rather than estimating it.
+
+A timeout or missed checkpoint invokes the Watchdog's two-window inspection rule. Only a worker that remains nonresponsive may have its explicitly authorized pane closed. Pane termination does not mark the attempt, accept work, launch a replacement, mutate Beads/Git, or transfer the coordinator lease; the coordinator reconciles durable and Git state first, then records the attempt outcome and chooses the next authorized action. Coordinator loss always fails closed pending reconciliation and human-approved lease takeover.
 
 The worker writes evidence to its attempt before reporting completion. Herdr completion is notification only; missing durable evidence leaves the attempt nonterminal and blocks progress.
 
@@ -104,6 +110,6 @@ Before closing the molecule, verify every acceptance criterion against integrate
 
 Never automatically merge the integration branch into an unapproved target, and never delete source branches, worktrees, molecule records, attempts, or decisions. Completion is blocked while sync is pending.
 
-On interruption, recover from Beads alone using the `beads` skill's recovery activity: pull, inspect the molecule, frontier, sessions, attempts, and sync state; reconcile recorded branches, worktrees, and commits against Git before any transition. Rediscover live Herdr resources by durable attempt token; mark unmatched nonterminal attempts `lost` and create new ids for resumed work. Never trust persisted pane identity. A fresh Herdr instance may be empty — the graph says which sessions and instructions to recreate.
+On interruption, recover from Beads alone using the `beads` skill's recovery activity: pull, inspect the molecule, frontier, sessions, attempts, and sync state; reconcile recorded branches, worktrees, and commits against Git before any transition. Rediscover live Herdr resources by durable attempt token; reconcile Watchdog termination evidence before marking an unmatched nonterminal attempt `lost`, and create new ids for resumed work. Never trust persisted pane identity. A fresh Herdr instance may be empty — the graph says which sessions and instructions to recreate. Coordinator termination or disappearance never transfers its lease; takeover requires the step 2 reconciliation and human approval.
 
 Completion criterion: either the molecule is closed at one fully passing fixed point with a successful checkpoint and another coordinator could audit it without conversation history, or it is blocked with the exact recovery action and every prior attempt intact.
