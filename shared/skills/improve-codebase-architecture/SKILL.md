@@ -36,7 +36,7 @@ Completion criterion: every Architecture candidate is grounded in files, observe
 
 ### 3. Create the mandatory HTML report
 
-Use `HTML-REPORT.md` as the static HTML skeleton, then write a fresh report to `${TMPDIR:-/tmp}/architecture-review-<timestamp>.html`. Include:
+Compose `visual-explainer` to render the report, supplying `${TMPDIR:-/tmp}/architecture-review-<timestamp>.html` as the output location. It owns representation choice, aesthetic direction, Mermaid diagram shells, and layout invariants; this skill retains the report's content contract, candidate ranking, and acceptance. Include:
 
 - the reviewed scope and Hotspot evidence
 - a comparison summary across all candidates
@@ -44,7 +44,7 @@ Use `HTML-REPORT.md` as the static HTML skeleton, then write a fresh report to `
 - side-by-side **Before and After diagrams** for every candidate
 - a top recommendation with rationale
 
-Use Mermaid where relationships are graph-shaped and hand-built HTML/SVG where module depth is the point. Attempt to open the report with the platform opener when available; always report its absolute path even if opening fails. Nothing from the report belongs in the repository.
+Specify Mermaid where relationships are graph-shaped and hand-built HTML/SVG where module depth is the point. Attempt to open the report with the platform opener when available; always report its absolute path even if opening fails. Nothing from the report belongs in the repository.
 
 Completion criterion: the HTML exists outside the repository, every candidate has a readable Before/After visual, all candidates are compared, and the absolute path is reported.
 

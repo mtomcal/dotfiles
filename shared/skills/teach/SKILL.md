@@ -114,7 +114,7 @@ Use these checks while designing the lesson:
 
 Make feedback prompt and preferably automatic when correctness can be judged reliably, while choosing timing for the task. Schedule important retrieval in later lessons, and interleave only related skills whose foundations are already known. End with one primary-source recommendation and an invitation for follow-up questions.
 
-When an interactive codebase-accurate lesson fits, compose `create-explainer` without weakening its source mapping, mandatory factual review, serving, or browser-validation process. Teach retains the mission, numbered lesson destination, workspace state, approved citations, lesson size, reusable assets, learner evidence, and acceptance; integrate the reviewed result as a teaching lesson rather than an unrelated explainer.
+Interactive lessons requiring learner response are owned here; this skill has no explainer composition target for them. When a lesson needs a static explanatory page — a diagram, architecture overview, or reference table with no learner response — compose `visual-explainer` and supply the numbered lesson destination as its output location. Teach retains the mission, lesson destination, workspace state, approved citations, lesson size, reusable assets, learner evidence, and acceptance; an explainer page is never a substitute for the retrieval, practice, and feedback loop.
 
 Completion criterion: the lesson has one mission-linked outcome, one retrieval/practice/feedback loop, trustworthy citations, reusable assets where applicable, no answer clues, and an observable success signal.
 
