@@ -46,8 +46,11 @@ bd show <root> --long --json |
 bd list --parent <root> --status in_progress,blocked --json |
   jq '[.[] | {id,status,labels,recovery:.metadata.recovery}]'
 bd ready --mol <root> --json |
-  jq '[.[] | {id,title,status,labels}]'
+  jq '[.steps[] | select(.parallel_info.is_ready == true) |
+       .issue | {id,title,status,labels}]'
 ```
+
+`bd ready --json` returns one object, not an array: `ready_steps` is a numeric count and the frontier records are under `.steps[]`; readiness is `.parallel_info.is_ready`, and each issue is nested under `.issue`. Do not pipe the whole response through `.[]` or index its scalar `ready_steps` value as an object.
 
 Reconcile projected branches, worktrees, and hashes with Git. Do not read all notes/attempts, transcripts, the complete coordination spec, or unfiltered frontier output. Expand `bd show <id> --long --json` only when an active projection is missing, over 1024 serialized bytes, contradictory, evidence-incomplete for its state, or inconsistent with Git. Notes never silently override current metadata.
 
