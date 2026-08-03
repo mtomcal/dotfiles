@@ -281,7 +281,8 @@ test_database_presence_is_probed_not_inferred_from_the_directory() {
     mkdir -p "$root/work/.beads" "$root/bin"
     cat >"$root/bin/bd" <<'STUB'
 #!/usr/bin/env bash
-[ "$1" = where ] && exit 1
+# Mirrors real bd: 'where' resolves a path regardless, 'list' needs a database.
+[ "$1" = list ] && exit 1
 exit 0
 STUB
     chmod +x "$root/bin/bd"
@@ -290,7 +291,7 @@ STUB
         || fail "a .beads directory without a database must not count as one"
 }
 
-test_database_presence_is_reported_when_bd_resolves_a_workspace() {
+test_database_presence_is_reported_when_the_database_is_readable() {
     local root
     new_tmp_var root
 
@@ -304,7 +305,32 @@ STUB
     chmod +x "$root/bin/bd"
 
     PATH="$root/bin:$PATH" beads_database_exists "$root/work" "$root/work/.beads" \
-        || fail "a resolvable workspace must count as an existing database"
+        || fail "a readable database must be reported as existing"
+}
+
+# Stubs are only as good as their fidelity to real bd; the probe regressed
+# once because 'bd where' succeeds with no database. Pin both verdicts
+# against the real binary when it is installed.
+
+test_database_probe_matches_real_bd_behaviour() {
+    local root
+    new_tmp_var root
+
+    command -v bd >/dev/null 2>&1 || return 0
+
+    source_install
+
+    mkdir -p "$root/config-only/.beads"
+    : >"$root/config-only/.beads/config.yaml"
+    ! beads_database_exists "$root/config-only" "$root/config-only/.beads" \
+        || fail "real bd: a config-only clone must not report a database"
+
+    mkdir -p "$root/real"
+    git -C "$root/real" init -q
+    (cd "$root/real" && BEADS_DIR="$root/real/.beads" bd init --quiet >/dev/null 2>&1) \
+        || return 0
+    beads_database_exists "$root/real" "$root/real/.beads" \
+        || fail "real bd: an initialized database must report as existing"
 }
 
 # A second machine has config but no database. Pulling there fails outright
@@ -324,7 +350,7 @@ test_config_without_a_database_clones_from_the_remote() {
     cat >"$root/bin/bd" <<STUB
 #!/usr/bin/env bash
 printf '%s\n' "\$*" >>"$log"
-[ "\$1" = where ] && exit 1
+[ "\$1" = list ] && exit 1
 exit 0
 STUB
     chmod +x "$root/bin/bd"

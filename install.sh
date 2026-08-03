@@ -1046,11 +1046,16 @@ beads_ensure_remote_has_branch() {
 # bootstrapped command repo brings down the git-tracked half — config.yaml —
 # while the issue data stays behind on the Dolt remote, so a second machine
 # starts with a populated directory and no database at all.
+#
+# The probe must read the database, not merely resolve its location:
+# `bd where` reports the path a workspace would occupy and succeeds even
+# when nothing has been created there. `bd list` fails with "no beads
+# database found", which is the distinction this predicate needs.
 beads_database_exists() {
     local local_path="$1"
     local beads_dir="$2"
 
-    (cd "$local_path" && BEADS_DIR="$beads_dir" bd where >/dev/null 2>&1)
+    (cd "$local_path" && BEADS_DIR="$beads_dir" bd list --limit 1 >/dev/null 2>&1)
 }
 
 # `bd bootstrap` plans a clone from the remote, which fails outright when a
