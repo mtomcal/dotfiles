@@ -1,7 +1,7 @@
 # Personal Dotfiles Manager Specification Suite
 
-> **Version**: 0.18.0
-> **Last Updated**: 2026-08-02
+> **Version**: 0.19.0
+> **Last Updated**: 2026-08-03
 > **Purpose**: Complete specification for the personal dotfiles manager — automates setup of a Herdr/tmux + Beads + Neovim + platform-scoped VS Code + zsh dev environment across Linux and macOS. Primarily for personal use, serves as reference/inspiration for others.
 
 ---
@@ -136,7 +136,7 @@ graph TD
 | [neovim-config.md](neovim-config.md) | Kickstart + custom plugin layer | 1.0.0 |
 | [vscode-config.md](vscode-config.md) | Managed VS Code/code-server configuration and extensions | 1.0.0 |
 | [execution-coordination.md](execution-coordination.md) | Beads command-repo execution and recovery contract | 1.3.0 |
-| [skill-library.md](skill-library.md) | Shared-skill catalog and authoring contracts | 8.1.0 |
+| [skill-library.md](skill-library.md) | Shared-skill catalog and authoring contracts | 8.2.0 |
 | [ai-agent-config.md](ai-agent-config.md) | AI agent runtime configs and catalog exposure | 4.1.0 |
 | [install-orchestrator.md](install-orchestrator.md) | Top-level idempotent setup orchestrator | 2.1.0 |
 
@@ -175,6 +175,7 @@ graph TD
 
 | Version | Date | Change |
 |---------|------|--------|
+| 0.19.0 | 2026-08-03 | Registered `visual-explainer` as the communication-only explainer-page renderer and separated explainer pages from `teach`-owned learning artifacts. |
 | 0.18.0 | 2026-08-02 | Replaced the per-run molecule map with a shared workflow-shapes Reference file. |
 | 0.17.0 | 2026-08-02 | Renamed the execution entries to `create-engineering-plan` and `execute-engineering-molecule`. |
 | 0.16.0 | 2026-08-02 | Added the execution planning scope boundary separating engineering work from authoring work. |

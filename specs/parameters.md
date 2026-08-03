@@ -1,7 +1,7 @@
 # Parameters
 
-> **Spec Version**: 2.3.0
-> **Last Updated**: 2026-08-01
+> **Spec Version**: 2.4.0
+> **Last Updated**: 2026-08-02
 > **Depends On**: None (foundational spec)
 > **Depended By**: All other specs
 
