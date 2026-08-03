@@ -915,7 +915,12 @@ beads_binary_is_embedded_capable() {
         return 0
     fi
 
-    ! strings "$binary" | grep -q '^build[[:space:]]\{1,\}CGO_ENABLED=0$'
+    # The Go build stamp is 'build<TAB>CGO_ENABLED=0', but Apple's strings
+    # treats the tab as a separator and emits 'build' and 'CGO_ENABLED=0' on
+    # separate lines, so the prefix must be optional or macOS never detects a
+    # CGO-less build. CGO-enabled builds stamp CGO_ENABLED=1, so the bare
+    # token is unambiguous.
+    ! strings "$binary" | grep -q '^\(build[[:space:]]\{1,\}\)\?CGO_ENABLED=0$'
 }
 
 print_beads_embedded_guidance() {
@@ -1074,6 +1079,19 @@ beads_reconcile_existing_database() {
     print_success "Existing command-repo database reconciled"
 }
 
+# Adding an existing remote is not an error: bootstrap is re-runnable, so the
+# second run always finds 'origin' already there.
+beads_configure_dolt_remote() {
+    local local_path="$1"
+    local beads_dir="$2"
+    local remote_url="$3"
+
+    print_info "Configuring the private Dolt remote..."
+    if ! (cd "$local_path" && BEADS_DIR="$beads_dir" bd dolt remote add origin "$remote_url" 2>/dev/null); then
+        print_info "Dolt remote 'origin' already configured"
+    fi
+}
+
 print_beads_bootstrap_usage() {
     print_error "Usage: ./install.sh --beads-bootstrap <absolute-local-path> <remote-url>"
     print_info "Remote must use Dolt's git transport, for example:"
@@ -1128,6 +1146,11 @@ beads_bootstrap() {
     fi
 
     if [ "$had_database" = true ]; then
+        # The remote must be configured before the pull, not after: it lives
+        # in gitignored local metadata, so a freshly cloned repo carries a
+        # database with no remote and `bd dolt pull` fails with "no remote".
+        beads_configure_dolt_remote "$local_path" "$beads_dir" "$remote_url"
+
         # An existing database is reconciled rather than recreated; bootstrap
         # must never discard operational state on a re-run.
         print_info "Existing Beads database found; reconciling..."
@@ -1151,9 +1174,10 @@ beads_bootstrap() {
         fi
     fi
 
-    print_info "Configuring the private Dolt remote..."
-    if ! (cd "$local_path" && BEADS_DIR="$beads_dir" bd dolt remote add origin "$remote_url" 2>/dev/null); then
-        print_info "Dolt remote 'origin' already configured"
+    # The reconcile path already configured the remote; the init and clone
+    # paths could not, because neither had a database to configure.
+    if [ "$had_database" != true ]; then
+        beads_configure_dolt_remote "$local_path" "$beads_dir" "$remote_url"
     fi
 
     # Two halves, both required: issue data rides the Dolt remote to
