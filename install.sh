@@ -4052,9 +4052,14 @@ main() {
         echo ""
     fi
 
+    # Flattened once with :- because bash 3.2, which macOS still ships, treats
+    # expanding an empty array as an unbound variable under 'set -u'. Membership
+    # is a literal substring test so a module name is never read as a pattern.
+    local failed_modules=" ${FAILED_MODULES[*]:-} "
+
     print_success "Successfully installed modules:"
     for module in "${SELECTED_MODULES[@]}"; do
-        if [[ ! " ${FAILED_MODULES[@]} " =~ " ${module} " ]]; then
+        if [[ "$failed_modules" != *" ${module} "* ]]; then
             echo "  ✓ $module"
         fi
     done
