@@ -1,7 +1,7 @@
 # Skill Library Specification
 
-> **Version**: 8.1.0
-> **Last Updated**: 2026-08-02
+> **Version**: 8.2.0
+> **Last Updated**: 2026-08-03
 > **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md), [Herdr Config](herdr-config.md), [Execution Coordination](execution-coordination.md)
 > **Depended By**: AI Agent Configuration (AIAGT)
 > **Prefix**: SKILL
@@ -205,7 +205,7 @@ A revision is complete only when:
 4. Terminal transport skills own terminal mechanics. Their callers retain task briefs, checkout decisions, workflow state, returned-evidence contracts, in-process fallbacks, and acceptance.
 5. Checkout isolation MUST be selected before terminal transport. Read-only delegates MAY share a checkout; editable delegates MUST use isolated checkouts; separate panes alone are not isolation.
 6. Generic Standards and Spec review remain owned by `code-review`.
-7. Visual work MUST preserve capture, optional recording conversion, evidence limitations, and caller or human acceptance. Capture and conversion workflows MUST return evidence directly without claiming final acceptance.
+7. Visual work MUST preserve capture, optional recording conversion, evidence limitations, and caller or human acceptance. Capture and conversion workflows MUST return evidence directly without claiming final acceptance. A workflow producing an explainer page MUST compose `visual-explainer` rather than duplicating rendering mechanics; composing it transfers no artifact location, content contract, or acceptance ownership, and the callee MUST NOT hardcode an output location that overrides its caller.
 8. Templates, output contracts, ranking models, and checklists remain owned by their domain producer rather than a universal schema.
 9. When a workflow performs durable coordination operations, it MUST compose the shared `beads` skill instead of duplicating `bd` mechanics. `beads` owns routing verification, durable-write serialization, graph operations, checkpointing, write-ahead attempts, and recovery; its callers retain scope approval, review policy, acceptance authority, and workflow state. Composing it transfers no artifact or acceptance ownership.
 10. When a workflow delegates through Herdr, it MUST compose the shared Herdr skill instead of duplicating terminal commands. It MUST retain an in-process fallback outside Herdr unless its protected contract declares Herdr a hard precondition; a hard-precondition workflow MUST stop outside Herdr rather than provide a reduced fallback.
@@ -228,7 +228,8 @@ Reciprocal routing MAY compose workflows but MUST NOT transfer state or artifact
 | `resolving-merge-conflicts` | Traces both intents, stages verified resolutions, and leaves commit or continue operations to explicit approval |
 | `handoff` | Writes redacted timestamped Markdown under the operating system's temporary handoff directory and reports its absolute path |
 | `research` | Produces durable primary-source-backed notes using the repository convention or an approved location |
-| `improve-codebase-architecture` | Produces a temporary visual HTML report with before-and-after diagrams and candidate comparison |
+| `improve-codebase-architecture` | Produces a temporary visual HTML report with before-and-after diagrams and candidate comparison, composing `visual-explainer` for rendering while retaining report content, candidate ranking, artifact location, and acceptance |
+| `visual-explainer` | Renders one self-contained explainer page with no interactive assessment, owning representation choice, aesthetic direction, Mermaid diagram-shell invariants, and layout invariants; it writes to a caller-supplied location or a temporary default and reports the absolute path |
 | `herdr` | Owns current generic Herdr CLI mechanics, including validated agent startup, atomic prompt submission, logical keys, output inspection, server-owned settled-state waiting, and failure inspection |
 | `herdr-claude-code` | Composes `herdr` and owns Claude's required native launch argument, task contract, settled-result interpretation, and blocked-agent steering without duplicating generic transport |
 | `beads` | Owns the canonical `bd` contract — command-repo routing verification, read-before-write inspection, single-writer durable-write serialization, work-bead and dependency mechanics, semantic checkpoint synchronization, write-ahead attempts, completion evidence, and Beads-only recovery |
@@ -277,7 +278,7 @@ A fresh coordinator MUST recover from Beads without conversation or Herdr histor
 
 The retired filesystem execution contract is removed. No shared skill may create or operate a filesystem implementation plan, execution ledger, slice packet, verification file, or repository-local `.plan` pointer. No grandfathered legacy ledger remains.
 
-The teaching workflow MUST obtain approval for a dedicated workspace before scaffolding. It MUST ground lessons in an agreed mission, use primary-source research, maintain durable resources and demonstrated-learning records, prefer reusable lesson assets, and distinguish knowledge acquisition, skill practice, and wisdom from real-world interaction. Interactive codebase lessons SHOULD compose `create-explainer` without weakening teaching-workspace ownership or citation requirements.
+The teaching workflow MUST obtain approval for a dedicated workspace before scaffolding. It MUST ground lessons in an agreed mission, use primary-source research, maintain durable resources and demonstrated-learning records, prefer reusable lesson assets, and distinguish knowledge acquisition, skill practice, and wisdom from real-world interaction. `teach` solely owns interactive learning artifacts requiring learner response; it has no explainer composition target. `visual-explainer` renders explainer pages for communication only and MUST NOT be used for retrieval practice.
 
 ### Provenance
 
@@ -484,6 +485,7 @@ Expected Output: No shared skill creates or operates any of these artifacts, and
 
 | Version | Date | Change |
 |---------|------|--------|
+| 8.2.0 | 2026-08-03 | Registered `visual-explainer` as the communication-only explainer-page renderer, required explainer-producing workflows to compose it without transferring ownership, routed `improve-codebase-architecture` rendering through it, and made `teach` the sole owner of interactive learning artifacts after `create-explainer` was removed. |
 | 8.1.0 | 2026-08-02 | Replaced the per-run molecule map with a shared conditionally-loaded workflow-shapes Reference documenting bead kinds, execution lifecycle, graph shapes, and state machines. |
 | 8.0.0 | 2026-08-02 | Renamed the execution entries to `create-engineering-plan` and `execute-engineering-molecule`, constrained both to the engineering work domain by contract, and required non-engineering work without an owner to stop honestly. |
 | 7.1.0 | 2026-08-02 | Added the execution planning scope boundary requiring `create-engineering-plan` to gate on engineering work, exclude authoring work with a named owner, and `execute-engineering-molecule` to refuse authoring molecules. |

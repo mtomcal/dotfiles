@@ -716,6 +716,36 @@ if any, to sign a "copyright disclaimer" for the program, if necessary.
 For more information on this, and how to apply and follow the GNU AGPL, see
 <https://www.gnu.org/licenses/>.
 
+## Visual Explainer
+
+`shared/skills/visual-explainer/` contains material adapted in August 2026 from [`nicobailon/visual-explainer`](https://github.com/nicobailon/visual-explainer) at commit `528b71feb85dab5d92b82c3554880826f50a75da` (release v0.8.1). The adapted material comprises the four files under `references/` and the four files under `templates/` from `plugins/visual-explainer/`. The `templates/` files are unmodified. `references/slide-patterns.md` and `references/css-patterns.md` are modified: upstream's `surf-cli` integration, which shells out to `surf gemini --generate-image` and probes for the binary with `which surf`, is removed in favor of harness-native image generation only. This repository does not invoke third-party binaries or network services from a skill workflow.
+
+`shared/skills/visual-explainer/SKILL.md` is repository-authored. It preserves the upstream rendering contract — representation routing, Mermaid diagram-shell invariants, aesthetic direction, and layout rules — while restructuring placement for this repository's progressive-disclosure contract, replacing the upstream `~/.agent/diagrams/` output path with caller-specified locations defaulting to the system temporary directory, and omitting the upstream slash commands and Pi extension.
+
+It is a one-time local fork adapted for this repository's cross-agent catalog and is not automatically synchronized with upstream.
+
+### MIT License
+
+Copyright (c) 2025 Nico Bailon
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
 ## Microsoft Playwright CLI
 
 `shared/skills/playwright/SKILL.md` and all nine files under `shared/skills/playwright/references/` are substantially adapted from [`microsoft/playwright-cli/skills/playwright-cli`](https://github.com/microsoft/playwright-cli/tree/fac6ebbe68167aa95078d5b8196817c533d9dfb7/skills/playwright-cli) at commit `fac6ebbe68167aa95078d5b8196817c533d9dfb7`. The upstream package author is Microsoft Corporation. The corpus was introduced locally at commit `236096bd22f2da9b5d999bbb3bb02ed1a615ec3d` and later renamed and rerouted at commit `26119dbf3ed18cd7c6b05ae20acfb2b6f9f0d677`. It is locally maintained and is not automatically synchronized with upstream.

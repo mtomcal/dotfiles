@@ -4,7 +4,7 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 
 ## Map
 
-<!-- TREE-HASH: adf495f765be3b243aac9e4f35911171d7557ab6f2f90b294cedbd8acc7cc873 -->
+<!-- TREE-HASH: 3d2e04faaedf8a8c02c3eb2b651fb743939f43b404281c7cd6c22cdedbca9f2a -->
 
 <!-- TREE-START -->
 ```
@@ -28,22 +28,19 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 |       `-- plugins
 |-- pi
 |   |-- extensions
-|   |   |-- herdr-agent-state
 |   |   |-- inherit-last-model
 |   |   `-- web-search
 |   |-- skills
 |   |   |-- audit-shared-skills -> ../../shared/skills/audit-shared-skills
 |   |   |-- beads -> ../../shared/skills/beads
 |   |   |-- bootstrap-specs -> ../../shared/skills/bootstrap-specs
-|   |   |-- codebase-design -> ../../shared/skills/codebase-design
 |   |   |-- code-review -> ../../shared/skills/code-review
+|   |   |-- codebase-design -> ../../shared/skills/codebase-design
 |   |   |-- create-agents-md -> ../../shared/skills/create-agents-md
 |   |   |-- create-engineering-plan -> ../../shared/skills/create-engineering-plan
-|   |   |-- create-explainer -> ../../shared/skills/create-explainer
 |   |   |-- curator -> ../../shared/skills/curator
 |   |   |-- design-md -> ../../shared/skills/design-md
 |   |   |-- diagnosing-bugs -> ../../shared/skills/diagnosing-bugs
-|   |   |-- em-train -> ../../shared/skills/em-train
 |   |   |-- execute-engineering-molecule -> ../../shared/skills/execute-engineering-molecule
 |   |   |-- grill-me -> ../../shared/skills/grill-me
 |   |   |-- handoff -> ../../shared/skills/handoff
@@ -62,6 +59,7 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 |   |   |-- ubiquitous-language -> ../../shared/skills/ubiquitous-language
 |   |   |-- update-specs -> ../../shared/skills/update-specs
 |   |   |-- video-to-contact-sheet -> ../../shared/skills/video-to-contact-sheet
+|   |   |-- visual-explainer -> ../../shared/skills/visual-explainer
 |   |   `-- write-a-skill -> ../../shared/skills/write-a-skill
 |   `-- tests
 |-- shared
@@ -69,18 +67,14 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 |       |-- audit-shared-skills
 |       |-- beads
 |       |-- bootstrap-specs
-|       |-- codebase-design
 |       |-- code-review
+|       |-- codebase-design
 |       |-- create-agents-md
 |       |   `-- scripts
 |       |-- create-engineering-plan
-|       |-- create-explainer
-|       |   `-- lab
 |       |-- curator
 |       |-- design-md
 |       |-- diagnosing-bugs
-|       |-- em-train
-|       |   `-- scripts
 |       |-- execute-engineering-molecule
 |       |-- grill-me
 |       |-- handoff
@@ -92,6 +86,7 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 |       |   `-- references
 |       |-- prototype
 |       |-- python-tracing
+|       |   `-- references
 |       |-- research
 |       |-- resolving-merge-conflicts
 |       |-- tdd
@@ -105,10 +100,13 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 |-- tests
 |   `-- lib
 |-- tmux
+|-- vscode
+|   |-- extensions
+|   `-- snippets
 |-- yazi
 `-- zsh
 
-93 directories
+96 directories
 ```
 <!-- TREE-END -->
 
@@ -116,7 +114,7 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 
 ### Agent configs (`claude/`, `codex/`, `pi/`, `copilot/`)
 - **Purpose**: Each directory holds one AI agent's role files, tracked configuration, commands, or runtime wrappers. All are deployed by `install.sh`; Claude and Pi keep mutable settings in their local runtime directories.
-- **Owns**: Per-agent: `agents/` where supported, `commands/` where supported, and tracked configuration such as `config.toml` or `models.json`. Pi also owns `extensions/` (custom TypeScript), `skills/` (Pi-visible shared skill symlinks), and the `pi`/`pis` wrappers.
+- **Owns**: Per-agent: `agents/` where supported, `commands/` where supported, and tracked configuration such as `config.toml` or `models.json`. Pi also owns `extensions/` (custom TypeScript — currently `inherit-last-model` and `web-search`), `skills/` (Pi-visible shared skill symlinks), and the `pi`/`pis` wrappers.
 - **Depends on**: `shared/skills/` for cross-agent skills. Pi's runtime skills path resolves to `pi/skills/`, which is a visibility layer of symlinks to shared skills.
 - **Rules**: Agents never reference each other's configs. Shared skills `npx skills@latest add` into any non-Pi agent lands in `shared/skills/` automatically. Claude's `~/.claude/settings.json` and Pi's `~/.pi/agent/settings.json` are unversioned local state while tracked resources remain repo-owned. Pi has one runtime config at `~/.pi/agent`; do not reintroduce Pi profiles, `pim`, subagent roles, or the subagent extension.
 - **Entry points**: Agent root dirs. Each contains the settings file(s), wrappers, or config sources the agent loads at startup.
@@ -134,6 +132,13 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 - **Depends on**: Docker at build time; no runtime dependency on agent configs.
 - **Rules**: Agent-specific sandbox images (`pi/Dockerfile`, `codex/Dockerfile`) build FROM the shared base image tagged as `dotfiles-dev-base:{UID}-{GID}`. Keep agent-specific npm packages, labels, entrypoints, and auth mounts in the agent modules, not in the shared base.
 - **Entry points**: `docker/dev-base.Dockerfile`; built automatically by `pis --build`, `cods --build`, and the matching install modules.
+
+### `vscode/`
+- **Purpose**: One repository-authoritative VS Code managed layer serving two editor targets — Visual Studio Code Desktop on macOS, and `code-server` on Ubuntu/Debian as an explicitly selected private-network browser endpoint.
+- **Owns**: `vscode/settings.json`, `vscode/keybindings.json`, `vscode/snippets/global.code-snippets`, `vscode/capture.sh`, and the extension manifests `vscode/extensions/{shared,desktop,code-server}.txt`.
+- **Depends on**: `specs/vscode-config.md` for behavior; `install.sh` for deployment via `deploy_vscode_managed_layer` and `reconcile_vscode_extensions`.
+- **Rules**: Tracked sources carry no credentials, private endpoints, hostnames, or machine-specific paths — the code-server bind override is runtime-only and never written to a tracked file. Mutable editor state, profiles, and certificates stay untracked. `shared.txt` applies to both targets; `desktop.txt` and `code-server.txt` absorb marketplace and licensing differences. Desktop VS Code is macOS-only; `code-server` is custom-profile-only because selecting it enables a persistent authenticated network service.
+- **Entry points**: `install.sh` module `vscode`; behavior contract at `specs/vscode-config.md`. Covered by 67 tests in `tests/`.
 
 ### `nvim/`
 - **Purpose**: Custom Neovim plugins layered on top of kickstart.nvim (the base at `~/.config/nvim`).
@@ -153,7 +158,7 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 - **Purpose**: Single canonical source for cross-agent skills. Non-Pi agents' skills dirs symlink here; Pi consumes shared skills through symlinks inside `pi/skills/`. High-change area (skills added/removed frequently).
 - **Owns**: Everything under `shared/skills/*/`. Current skills visible in the tree above. Each skill has a `SKILL.md`.
 - **Depends on**: none — leaf dependency. Skills never reference agent configs.
-- **Rules**: Skills installed via `npx skills@latest add` into non-Pi agents land here automatically. Repo-wide workflows such as `update-specs` belong here, not in `pi/skills/`. New shared skills must have the union frontmatter schema. Run `audit-shared-skills` to verify cross-agent compatibility after changes.
+- **Rules**: Skills installed via `npx skills@latest add` into non-Pi agents land here automatically. Repo-wide workflows such as `update-specs` belong here, not in `pi/skills/`. New shared skills must have the union frontmatter schema. Run `audit-shared-skills` to verify cross-agent compatibility after changes. Imported skill material is a locally maintained fork, never auto-synced upstream; record its source, revision, and license in `THIRD_PARTY_NOTICES.md` before moving or rewriting it. Adding a skill also requires a matching `pi/skills/` symlink.
 - **Entry points**: `ls shared/skills/` to list current skills, then load the relevant `SKILL.md`.
 
 ### `pi/skills/`

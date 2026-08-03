@@ -1,7 +1,7 @@
 # Ubiquitous Language
 
-> **Version**: 2.1.0
-> **Last Updated**: 2026-08-01
+> **Version**: 2.2.0
+> **Last Updated**: 2026-08-03
 > **Purpose**: Shared vocabulary for all specs. Every term used in multiple specs MUST be defined here. Read this before any other spec.
 
 > **Usage note**: Throughout all specs, the bare term "install" should be disambiguated using one of the three defined terms: **install** (the complete install.sh run), **install (dependency)** (a single package), or **install (Mason)** (a Neovim package). Use the specific term wherever context is ambiguous.
@@ -83,6 +83,8 @@
 | **agent config** | An agent-specific configuration directory managed from the dotfiles repo | — | Each supported agent has one repo-owned config surface. Pi's config deploys to `~/.pi/agent`. |
 | **catalog exposure** | An agent config directory's role of exposing the shared skill catalog and repo-managed commands and agents to a runtime | "catalog directory", "skills folder" | Copilot separates catalog exposure (`~/.config/copilot`) from its runtime settings and Herdr hook directory (`~/.copilot`); other agents combine both in one config directory. |
 | **unshipping** | Removing a feature, tool, config surface, or workflow entirely from the repo's tracked and deployed contract | "disable", "hide" | Includes implementation, tests, docs, specs, generated artifacts, and installer surfaces unless explicitly scoped otherwise. |
+| **explainer page** | A self-contained HTML artifact that conveys a system, change, plan, or dataset to a reader, carrying no interactive assessment | "diagram", "report", "visual" | Owned by `visual-explainer`. Distinct from a **learning artifact**, which requires learner response, and from the architecture review report, which is one explainer page with a caller-owned content contract. |
+| **learning artifact** | An interactive retrieval-practice artifact that requires a learner response, such as a quiz, prediction exercise, or sequencing problem | "explainer", "lesson" | Owned solely by `teach`. The catalog currently ships no learning-artifact templates. |
 
 ## Agent Workflow Domain
 
@@ -208,6 +210,7 @@
 
 | Version | Date | Change |
 |---------|------|--------|
+| 2.2.0 | 2026-08-03 | Added **explainer page** and **learning artifact** to separate communication rendering from interactive retrieval practice after `create-explainer` was removed. |
 | 2.1.0 | 2026-08-02 | Replaced the "Dolt server" term with single-writer **embedded Dolt**. |
 | 2.0.0 | 2026-08-01 | Replaced filesystem plans and ledgers with command-repo execution molecules, exact model and review policy, coordinator leases/sessions, and write-ahead worker-attempt graphs. |
 | 1.5.0 | 2026-08-01 | Added `catalog exposure` to name the agent config role that exposes the shared skill catalog, distinguishing Copilot's catalog exposure directory from its runtime settings directory. |
