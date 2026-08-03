@@ -266,6 +266,83 @@ STUB
         || fail "expected a dolt pull to reconcile; got: $(cat "$log")"
 }
 
+# --- detecting a database vs. a bare config ----------------------------------
+#
+# Cloning an already bootstrapped command repo brings down .beads/config.yaml
+# while the issue data stays on the Dolt remote. The directory is therefore
+# present with no database behind it, and the two states must not be confused.
+
+test_database_presence_is_probed_not_inferred_from_the_directory() {
+    local root
+    new_tmp_var root
+
+    source_install
+
+    mkdir -p "$root/work/.beads" "$root/bin"
+    cat >"$root/bin/bd" <<'STUB'
+#!/usr/bin/env bash
+[ "$1" = where ] && exit 1
+exit 0
+STUB
+    chmod +x "$root/bin/bd"
+
+    ! PATH="$root/bin:$PATH" beads_database_exists "$root/work" "$root/work/.beads" \
+        || fail "a .beads directory without a database must not count as one"
+}
+
+test_database_presence_is_reported_when_bd_resolves_a_workspace() {
+    local root
+    new_tmp_var root
+
+    source_install
+
+    mkdir -p "$root/work/.beads" "$root/bin"
+    cat >"$root/bin/bd" <<'STUB'
+#!/usr/bin/env bash
+exit 0
+STUB
+    chmod +x "$root/bin/bd"
+
+    PATH="$root/bin:$PATH" beads_database_exists "$root/work" "$root/work/.beads" \
+        || fail "a resolvable workspace must count as an existing database"
+}
+
+# A second machine has config but no database. Pulling there fails outright
+# with 'no beads database found'; the repo must be cloned from the remote.
+
+test_config_without_a_database_clones_from_the_remote() {
+    local root
+    local log
+    new_tmp_var root
+    log="$(tmp_artifact bd-clone-calls.log)"
+    : >"$log"
+
+    source_install
+
+    mkdir -p "$root/work/.beads" "$root/bin"
+    : >"$root/work/.beads/config.yaml"
+    cat >"$root/bin/bd" <<STUB
+#!/usr/bin/env bash
+printf '%s\n' "\$*" >>"$log"
+[ "\$1" = where ] && exit 1
+exit 0
+STUB
+    chmod +x "$root/bin/bd"
+
+    # A second machine arrives by clone, so the repo always has history;
+    # without it the branchless-remote guard fires before the branch here.
+    git -C "$root/work" init -q
+    git -C "$root/work" commit -q --allow-empty -m "seed"
+
+    PATH="$root/bin:$PATH" beads_bootstrap \
+        "$root/work" "git+https://example.com/repo.git" >/dev/null 2>&1 || true
+
+    grep -q '^bootstrap' "$log" \
+        || fail "expected 'bd bootstrap' to clone the database; got: $(cat "$log")"
+    ! grep -q 'dolt pull' "$log" \
+        || fail "must not pull into a nonexistent database: $(cat "$log")"
+}
+
 # --- install boundary --------------------------------------------------------
 
 test_bootstrap_is_not_a_module() {

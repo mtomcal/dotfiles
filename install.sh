@@ -1042,6 +1042,17 @@ beads_ensure_remote_has_branch() {
     print_success "Command repo has an initial branch"
 }
 
+# The presence of .beads/ does not imply a database. Cloning an already
+# bootstrapped command repo brings down the git-tracked half — config.yaml —
+# while the issue data stays behind on the Dolt remote, so a second machine
+# starts with a populated directory and no database at all.
+beads_database_exists() {
+    local local_path="$1"
+    local beads_dir="$2"
+
+    (cd "$local_path" && BEADS_DIR="$beads_dir" bd where >/dev/null 2>&1)
+}
+
 # `bd bootstrap` plans a clone from the remote, which fails outright when a
 # local database already exists. A re-run wants pull semantics instead: keep
 # the local database and reconcile it with the remote.
@@ -1106,11 +1117,27 @@ beads_bootstrap() {
     # which is the state a newly created GitHub repo is in.
     beads_ensure_remote_has_branch "$local_path" || return 1
 
-    if [ -d "$beads_dir" ]; then
+    local had_database=false
+    if beads_database_exists "$local_path" "$beads_dir"; then
+        had_database=true
+    fi
+
+    if [ "$had_database" = true ]; then
         # An existing database is reconciled rather than recreated; bootstrap
         # must never discard operational state on a re-run.
         print_info "Existing Beads database found; reconciling..."
         beads_reconcile_existing_database "$local_path" "$beads_dir" || return 1
+    elif [ -f "$beads_dir/config.yaml" ]; then
+        # Config without a database is the second-machine case: the clone
+        # carried sync.remote, and the issue data is still on the Dolt
+        # remote. `bd bootstrap` is the command that resolves exactly this.
+        print_info "Command repo config found without a database; cloning from the remote..."
+        if ! (cd "$local_path" && BEADS_DIR="$beads_dir" bd bootstrap --yes); then
+            print_error "Could not clone the command-repo database from its remote"
+            print_info "Check remote access, then re-run bootstrap"
+            return 1
+        fi
+        print_success "Command-repo database cloned from the remote"
     else
         print_info "Initializing Beads in embedded mode..."
         if ! (cd "$local_path" && BEADS_DIR="$beads_dir" bd init --quiet); then
