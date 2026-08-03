@@ -78,7 +78,7 @@ test_language_formatter_mappings_are_exactly_the_managed_set() {
 [jsonc]=esbenp.prettier-vscode
 [css]=esbenp.prettier-vscode
 [html]=esbenp.prettier-vscode
-[markdown]=esbenp.prettier-vscode
+[markdown]=yzhang.markdown-all-in-one
 [yaml]=esbenp.prettier-vscode'
     assert_set_equal 'language formatter mappings' "$actual" "$expected"
 }
@@ -653,6 +653,10 @@ test_shared_extension_catalog_membership_is_exact() {
 charliermarsh.ruff
 dbaeumer.vscode-eslint
 esbenp.prettier-vscode
+yzhang.markdown-all-in-one
+tamasfe.even-better-toml
+MermaidChart.vscode-mermaid-chart
+GitHub.vscode-github-actions
 vscodevim.vim'
     [[ -f "$EXTENSIONS_DIR/shared.txt" ]] || fail "missing shared extension manifest"
     assert_set_equal 'shared catalog' "$(parse_extension_catalog "$EXTENSIONS_DIR/shared.txt")" "$expected"
@@ -736,7 +740,7 @@ approved_settings_contract() {
 [javascriptreact]	{"editor.defaultFormatter":"esbenp.prettier-vscode"}
 [json]	{"editor.defaultFormatter":"esbenp.prettier-vscode"}
 [jsonc]	{"editor.defaultFormatter":"esbenp.prettier-vscode"}
-[markdown]	{"editor.defaultFormatter":"esbenp.prettier-vscode"}
+[markdown]	{"editor.defaultFormatter":"yzhang.markdown-all-in-one"}
 [python]	{"editor.codeActionsOnSave":{"source.fixAll.ruff":"explicit","source.organizeImports.ruff":"explicit"},"editor.defaultFormatter":"charliermarsh.ruff","editor.formatOnSave":true}
 [typescript]	{"editor.defaultFormatter":"esbenp.prettier-vscode"}
 [typescriptreact]	{"editor.defaultFormatter":"esbenp.prettier-vscode"}

@@ -116,6 +116,10 @@ An unpinned entry has the form `publisher.name`. A pinned entry has the form `pu
 | Shared | `charliermarsh.ruff` | Python linting and formatting |
 | Shared | `dbaeumer.vscode-eslint` | JavaScript/TypeScript linting and fix actions |
 | Shared | `esbenp.prettier-vscode` | Project-conditioned formatting |
+| Shared | `yzhang.markdown-all-in-one` | Markdown authoring and formatting |
+| Shared | `tamasfe.even-better-toml` | TOML language support |
+| Shared | `MermaidChart.vscode-mermaid-chart` | Mermaid diagram authoring and preview |
+| Shared | `GitHub.vscode-github-actions` | Workflow authoring and run visibility |
 | Shared | `vscodevim.vim` | Portable Vim emulation |
 | Desktop | `ms-python.python` | Python language, environment, and test integration |
 | Desktop | `ms-python.vscode-pylance` | Python code intelligence and basic type checking |
@@ -228,6 +232,10 @@ Unlisted extensions MUST NOT be removed, disabled, or added to a manifest automa
 5. Prettier MUST remain the formatter when both Prettier and ESLint are configured; ESLint MUST provide fix actions rather than compete as a formatter.
 6. TypeScript, ESLint, Prettier, Node.js, and test frameworks MUST NOT be installed globally by editor configuration.
 7. No global Jest, Vitest, or Playwright test adapter MUST be selected; projects MAY provide their own.
+
+### Markdown Editor Support
+
+1. Markdown MUST format through Markdown All in One rather than Prettier, so list numbering, table alignment, and table-of-contents structure are maintained by the extension that owns them.
 
 ### VSCodeVim Behavior
 

@@ -12,5 +12,13 @@ charliermarsh.ruff
 dbaeumer.vscode-eslint
 esbenp.prettier-vscode
 
+# Markup and configuration languages
+yzhang.markdown-all-in-one
+tamasfe.even-better-toml
+MermaidChart.vscode-mermaid-chart
+
+# Repository workflows
+GitHub.vscode-github-actions
+
 # Modal editing
 vscodevim.vim
