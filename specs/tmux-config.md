@@ -2,7 +2,7 @@
 
 > **Version**: 1.1.0
 > **Last Updated**: 2026-07-05
-> **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md), [Design Language](DESIGN_LANGUAGE.md)
+> **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](../UBIQUITOUS-LANGUAGE.md), [Design Language](DESIGN_LANGUAGE.md)
 > **Depended By**: Install Orchestrator, Shell Config
 
 ---
@@ -40,7 +40,7 @@ The configuration is deployed as a single symlink from `~/.tmux.conf` pointing t
 | Spec | Reason |
 |------|--------|
 | [Parameters](parameters.md) | Authoritative source for `TMUX_PREFIX`, `TMUX_ESCAPE_TIME`, `TMUX_DEFAULT_TERMINAL`, `TMUX_FOCUS_EVENTS`, `NESTED_SESSION_KEY` |
-| [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md) | Shared terms: prefix key, deploy, backup, idempotent |
+| [Ubiquitous Language](../UBIQUITOUS-LANGUAGE.md) | Shared terms: prefix key, deploy, backup, idempotent |
 | [Design Language](DESIGN_LANGUAGE.md) | Visual tokens: `multiplexer-prefix-key`, `tmux-nested-dim`, prefix command patterns |
 
 ---

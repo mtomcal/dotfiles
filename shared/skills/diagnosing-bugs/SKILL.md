@@ -18,7 +18,7 @@ allowed-tools: read,write,edit,bash
 
 ## Workflow
 
-Build evidence before theories. Read relevant repository guidance, specs, and `specs/UBIQUITOUS_LANGUAGE.md` when present so the symptom and hypotheses use the project's terms.
+Build evidence before theories. Read relevant repository guidance, proposals, and `UBIQUITOUS-LANGUAGE.md` when present so the symptom and hypotheses use the project's terms.
 
 1. **Establish one tight command.** Create the smallest command that exercises the real bug path and asserts the user's exact symptom. Prefer, in order: an existing focused test; a test invocation with a fixture; a CLI or HTTP reproduction; a headless browser script; captured-trace replay; a throwaway harness; a seeded stress, differential, or bisection loop.
 

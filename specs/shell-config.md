@@ -2,7 +2,7 @@
 
 > **Version**: 2.0.0
 > **Last Updated**: 2026-08-01
-> **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md), [Design Language](DESIGN_LANGUAGE.md), [Herdr Config](herdr-config.md), [Execution Coordination](execution-coordination.md)
+> **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](../UBIQUITOUS-LANGUAGE.md), [Design Language](DESIGN_LANGUAGE.md), [Herdr Config](herdr-config.md), [Execution Coordination](execution-coordination.md)
 > **Depended By**: Install Orchestrator
 
 ---
@@ -36,7 +36,7 @@ The design is deliberately additive: the custom shell config is sourced at the e
 | Spec | Relationship |
 |------|-------------|
 | [Parameters](parameters.md) | Provides `ZSH_CUSTOM_FILE`, `ZSH_ALIAS_LAZYGIT`, `ZSH_ALIAS_YAZI`, `ZSH_ALIAS_ZOXIDE`, `SHELL_NAME` |
-| [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md) | Defines terms: custom shell config, deploy, backup, idempotent |
+| [Ubiquitous Language](../UBIQUITOUS-LANGUAGE.md) | Defines terms: custom shell config, deploy, backup, idempotent |
 | [Design Language](DESIGN_LANGUAGE.md) | Defines visual tokens for CLI output and naming conventions |
 | [Execution Coordination](execution-coordination.md) | Defines the external command repo and global Beads routing contract |
 

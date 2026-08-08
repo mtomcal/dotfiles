@@ -2,7 +2,7 @@
 
 > **Version**: 4.1.0
 > **Last Updated**: 2026-08-01
-> **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md), [Design Language](DESIGN_LANGUAGE.md), [Symlink Manager](symlink-manager.md), [Tool Provisioning](tool-provisioning.md), [Herdr Config](herdr-config.md), [Skill Library](skill-library.md)
+> **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](../UBIQUITOUS-LANGUAGE.md), [Design Language](DESIGN_LANGUAGE.md), [Symlink Manager](symlink-manager.md), [Tool Provisioning](tool-provisioning.md), [Herdr Config](herdr-config.md), [Skill Library](skill-library.md)
 > **Depended By**: Install Orchestrator (INSTL)
 > **Prefix**: AIAGT
 

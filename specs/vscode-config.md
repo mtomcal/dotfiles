@@ -3,7 +3,7 @@
 > **Version**: 1.0.0
 > **Last Updated**: 2026-07-31
 > **Implementation Status**: Approved desired behavior; not yet implemented
-> **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md), [Design Language](DESIGN_LANGUAGE.md), [Symlink Manager](symlink-manager.md), [Tool Provisioning](tool-provisioning.md)
+> **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](../UBIQUITOUS-LANGUAGE.md), [Design Language](DESIGN_LANGUAGE.md), [Symlink Manager](symlink-manager.md), [Tool Provisioning](tool-provisioning.md)
 > **Depended By**: Install Orchestrator
 
 ---
@@ -41,7 +41,7 @@ Desktop Visual Studio Code is included in the macOS `full` and `work` installati
 | Spec | Reason |
 |------|--------|
 | [Parameters](parameters.md) | Authoritative editor distribution, Python version, bind address, port, paths, and extension catalog values |
-| [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md) | Canonical editor, extension, managed-layer, and private-network terms |
+| [Ubiquitous Language](../UBIQUITOUS-LANGUAGE.md) | Canonical editor, extension, managed-layer, and private-network terms |
 | [Design Language](DESIGN_LANGUAGE.md) | VS Code command, Vim leader command, and browser endpoint interface vocabulary |
 | [Symlink Manager](symlink-manager.md) | Individual managed-file deployment, directory backup, and idempotency |
 | [Tool Provisioning](tool-provisioning.md) | Visual Studio Code, code-server, and Python installation/update behavior |

@@ -1,10 +1,10 @@
 # Ubiquitous Language
 
-> **Version**: 3.0.0
-> **Last Updated**: 2026-08-03
-> **Purpose**: Shared vocabulary for all specs. Every term used in multiple specs MUST be defined here. Read this before any other spec.
+> **Version**: 3.1.0
+> **Last Updated**: 2026-08-08
+> **Purpose**: Canonical project-wide vocabulary. Terms shared across proposals, workflows, documentation, and implementation are defined here independently of any retired specification suite.
 
-> **Usage note**: Throughout all specs, the bare term "install" should be disambiguated using one of the three defined terms: **install** (the complete install.sh run), **install (dependency)** (a single package), or **install (Mason)** (a Neovim package). Use the specific term wherever context is ambiguous.
+> **Usage note**: Throughout the repository, the bare term "install" should be disambiguated using one of the three defined terms: **install** (the complete install.sh run), **install (dependency)** (a single package), or **install (Mason)** (a Neovim package). Use the specific term wherever context is ambiguous.
 
 ---
 
@@ -197,7 +197,7 @@
 - **"config"** is used to mean a source file in the dotfiles repo, a deployed file on disk, or an application's own config format. Use **dotfiles** (repo source), **symlink** (deployed pointer), or name the specific application config format.
 - **"manager"** could mean the overall dotfiles manager concept, fnm (Fast Node Manager), or Mason (LSP manager). Use **dotfiles** (the system), **fnm**, or **Mason** specifically.
 - **"custom"** could mean the nvim/custom/ symlink layer, user customization in general, or the .zshrc.custom file. Use **custom layer** (Neovim), **custom shell config** (zsh), or **user customization** (general) respectively.
-- **"strong model"** or **"weak model"** are informal terms that should be avoided in specs. Prefer specific model/provider names and rationale.
+- **"strong model"** or **"weak model"** are informal terms that should be avoided in durable project artifacts. Prefer specific model/provider names and rationale.
 - **"profile"** refers to install profiles (Full, Minimal, Work, Custom). Pi profiles are no longer a supported concept in this repo.
 - **"integration"** is overloaded between Herdr integrations, shell integrations, and editor integrations. Use **Herdr integration** when referring to Herdr agent lifecycle/session hooks.
 - **"workspace"** is overloaded between a project workspace, **teaching workspace**, **command repo**, and **Herdr workspace**. Use the qualified term for each durable or terminal context.
@@ -207,7 +207,7 @@
 - **"stronger model"** has no runtime meaning outside an approved **escalation ladder**; use the exact higher rung rather than reputation-based labels.
 - **"parent"** or **"parent owner"** formerly named the actor controlling implementation state. Use **coordinator** for the execution-molecule authority.
 - **"current pane"** can mean the **caller pane** or **focused pane**. Discover the caller from runtime context rather than inferring it from focus.
-- Skill-local definitions belong in the owning **skill body**; terms shared by specs or multiple workflows belong in this project glossary.
+- Skill-local definitions belong in the owning **skill body**; terms shared by proposals, documentation, implementation, or multiple workflows belong in this project glossary.
 - Bare **"Reference"** can mean the section, pointer, or target file. Use **Reference section**, **Reference pointer**, or **Reference file**; a universally required companion file is not a Reference file.
 - **"progressive disclosure"** is sometimes used for any delayed file load. In the Skill Library it requires a branch outcome and a successful supported route that does not load the selected file.
 - **"prefix key"** is ambiguous after Herdr adoption. Use **multiplexer prefix key** for shared behavior, **tmux prefix key** for tmux, and **Herdr prefix key** for Herdr.
@@ -219,6 +219,7 @@
 
 | Version | Date | Change |
 |---------|------|--------|
+| 3.1.0 | 2026-08-08 | Moved the canonical glossary from the retired `specs/` suite to repository-root `UBIQUITOUS-LANGUAGE.md` and broadened its ownership to all durable project language. |
 | 3.0.0 | 2026-08-03 | Replaced coordinator leases and takeover terminology with solo coordination, a non-authoritative **coordinator run marker**, and compact **current-state recovery projections**; removed Watchdog as a current term while preserving historical records as audit provenance. |
 | 2.3.0 | 2026-08-03 | Added **activation gate**, **semantic checkpoint**, **remote checkpoint**, **context rotation**, and **Watchdog** for atomic planning and fail-closed Herdr execution. |
 | 2.2.0 | 2026-08-03 | Added **explainer page** and **learning artifact** to separate communication rendering from interactive retrieval practice after `create-explainer` was removed. |

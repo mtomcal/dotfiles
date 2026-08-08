@@ -22,7 +22,7 @@ General architecture vocabulary remains owned by `codebase-design`.
 
 Load `codebase-design` once as the source of truth for Module, Interface, Implementation, Depth, Seam, Adapter, Leverage, and Locality. If the user names an area or pain point, prioritize it. Otherwise inspect a meaningful stretch of Git history and rank repeatedly changing files or subsystems before widening the scan. State the chosen scope and why it is likely to repay deepening work.
 
-Read `specs/README.md`, `specs/SPEC-OF-SPECS.md`, `specs/UBIQUITOUS_LANGUAGE.md`, and relevant specs when present. Use their domain terms and preserve their invariants. Read repository-native design records linked from those specs; do not require a separate context or ADR convention.
+Read `UBIQUITOUS-LANGUAGE.md`, applicable proposals, and repository-native design records when present. Use their domain terms and preserve their durable intent; do not require a separate context or ADR convention.
 
 Completion criterion: the scope is tied to user intent or Hotspot evidence, and relevant constraints are cited.
 

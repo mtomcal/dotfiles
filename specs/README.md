@@ -42,7 +42,7 @@ For an extracting or implementing agent, read specs in this order:
 
 ### Phase 1: Foundation
 
-1. **[UBIQUITOUS_LANGUAGE.md](UBIQUITOUS_LANGUAGE.md)** — Shared domain vocabulary
+1. **[UBIQUITOUS-LANGUAGE.md](../UBIQUITOUS-LANGUAGE.md)** — Canonical project-wide vocabulary
 2. **[DESIGN_LANGUAGE.md](DESIGN_LANGUAGE.md)** — Interface vocabulary (CLI + config UI)
 3. **[parameters.md](parameters.md)** — All tuning values with rationale
 

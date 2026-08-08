@@ -18,7 +18,7 @@ allowed-tools: Bash(herdr:*)
 - **Done** — agent output finished but not yet observed.
 - **Idle** — agent is awaiting input or its completion has already been observed.
 
-Workspace, tab, and pane use the project definitions in `specs/UBIQUITOUS_LANGUAGE.md` rather than skill-local definitions.
+Workspace, tab, and pane use the project definitions in `UBIQUITOUS-LANGUAGE.md` rather than skill-local definitions.
 
 ## Activities
 
@@ -217,6 +217,6 @@ Completion: the explicitly requested topology change is confirmed from its respo
 
 ## Reference
 
-- When changing or auditing this adapted skill, load the [repository Herdr notice](../../THIRD_PARTY_NOTICES.md#herdr) and the [upstream skill revision used for the Herdr 0.7.5 migration](https://github.com/herdrdev/herdr/blob/ef4c23f5775bb8cfec05f05d0844226ff959a07a/SKILL.md) to verify source revision, local-fork status, and AGPL-3.0-or-later attribution before editing.
+- When changing or auditing this adapted skill, load the [repository Herdr notice](../../../THIRD_PARTY_NOTICES.md#herdr) and the [upstream skill revision used for the Herdr 0.7.5 migration](https://github.com/herdrdev/herdr/blob/ef4c23f5775bb8cfec05f05d0844226ff959a07a/SKILL.md) to verify source revision, local-fork status, and AGPL-3.0-or-later attribution before editing.
 - When installed help and remembered behavior differ, inspect the relevant command-group help first, then consult the current upstream skill to understand newer operating guidance while keeping the installed binary authoritative for executable syntax.
 - When implementing a raw protocol client, direct request/response control, or a long-lived event subscriber, load the [socket API documentation](https://herdr.dev/docs/socket-api/); ordinary operation should stay on the CLI Activities above.

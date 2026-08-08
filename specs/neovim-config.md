@@ -2,7 +2,7 @@
 
 > **Version**: 1.0.0
 > **Last Updated**: 2026-05-01
-> **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md), [Design Language](DESIGN_LANGUAGE.md)
+> **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](../UBIQUITOUS-LANGUAGE.md), [Design Language](DESIGN_LANGUAGE.md)
 > **Depended By**: Install Orchestrator
 
 ---
@@ -38,7 +38,7 @@ The system ensures that kickstart remains independently updatable (via git opera
 | Spec | Reason |
 |------|--------|
 | [Parameters](parameters.md) | Authoritative values for `NVIM_LEADER_KEY`, `FORMAT_ON_SAVE`, `PRETTIER_PRIORITY`, `MASON_TOOLS_GO`, `MASON_TOOLS_PYTHON` |
-| [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md) | Terms: kickstart, custom layer, plugin (Neovim), install (Mason), formatter, LSP server |
+| [Ubiquitous Language](../UBIQUITOUS-LANGUAGE.md) | Terms: kickstart, custom layer, plugin (Neovim), install (Mason), formatter, LSP server |
 | [Design Language](DESIGN_LANGUAGE.md) | Leader command, Which-key menu, Statusline component definitions |
 
 ---

@@ -10,7 +10,7 @@ allowed-tools: read,bash
 
 ## Language Definitions
 
-Prefer the project's domain terms from `specs/`, especially `specs/UBIQUITOUS_LANGUAGE.md`, when they overlap with this skill's operational vocabulary.
+Prefer the project's domain terms from `UBIQUITOUS-LANGUAGE.md` when they overlap with this skill's operational vocabulary.
 
 - **Module** — anything with an interface and hidden implementation.
 - **Interface** — everything callers must know, including operations, types, invariants, ordering, errors, configuration, and relevant performance constraints.

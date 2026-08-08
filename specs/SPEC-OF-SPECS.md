@@ -105,14 +105,14 @@ See [Symlink Manager > Backup Strategy](symlink-manager.md#backup-strategy) for 
 
 ---
 
-## Preamble Files
+## Vocabulary Files
 
-Two special files live in `specs/` but do NOT follow the spec template:
+Vocabulary contracts do not follow the spec template:
 
-- `UBIQUITOUS_LANGUAGE.md` — Domain glossary (terms, definitions, aliases, relationships)
-- `DESIGN_LANGUAGE.md` — Interface vocabulary and visual tokens (CLI + config UI surfaces)
+- `../UBIQUITOUS-LANGUAGE.md` — Canonical repository glossary (terms, definitions, aliases, relationships)
+- `DESIGN_LANGUAGE.md` — Legacy spec-suite interface vocabulary and visual tokens (CLI + config UI surfaces)
 
-These are vocabulary contracts, not behavior contracts. They define shared meaning that all specs reference.
+The root glossary is independent of the spec suite and defines shared meaning across proposals, workflows, documentation, and implementation.
 
 ---
 

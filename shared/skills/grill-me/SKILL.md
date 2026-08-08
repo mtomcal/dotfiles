@@ -27,11 +27,11 @@ Do not edit project files or durable artifacts during this workflow. First reach
 Before the first question:
 
 1. Find the repository root when one exists.
-2. Read both `specs/UBIQUITOUS_LANGUAGE.md` and root `UBIQUITOUS_LANGUAGE.md` when present. A spec-suite glossary governs its bounded context; a root glossary governs uncovered contexts. Flag conflicting definitions rather than silently choosing one.
-3. Read relevant specs, plans, research, code, and tests for the proposal.
+2. Read root `UBIQUITOUS-LANGUAGE.md` when present; it is the project-wide canonical glossary. Flag conflicting definitions in other evidence rather than silently choosing one.
+3. Read relevant proposals, plans, research, code, and tests for the decision under discussion.
 4. If no glossary exists, mention that `ubiquitous-language` can establish one, then continue with precise provisional language.
 
-If a question can be answered by code, tests, or relevant specs, investigate it instead of asking the user to recall it. Cross-check factual user claims against those sources and surface mismatches neutrally: distinguish implemented behavior, specified behavior, and desired behavior.
+If a question can be answered by code, tests, or relevant proposals, investigate it instead of asking the user to recall it. Cross-check factual user claims against those sources and surface mismatches neutrally: distinguish implemented behavior, specified behavior, and desired behavior.
 
 Completion criterion: the first question uses the best available canonical terms and does not ask for an already discoverable fact.
 
@@ -82,7 +82,7 @@ When no consequential branches remain, summarize:
 Ask the user to confirm or correct the summary. Only after confirmation:
 
 - route accepted terminology to `ubiquitous-language`
-- route durable behavioral or design decisions to `update-specs`
+- route durable behavioral or design decisions to `proposal-first`
 - route approved spec changes that need a single-agent implementation plan to `create-engineering-plan`
 - route an explicit execution molecule that is ready for Herdr execution to `execute-engineering-molecule`
 - return unresolved, multi-session uncertainty and its evidence directly to the caller, then stop

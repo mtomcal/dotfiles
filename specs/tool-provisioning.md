@@ -2,7 +2,7 @@
 
 > **Version**: 1.6.0
 > **Last Updated**: 2026-08-02
-> **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md), [Design Language](DESIGN_LANGUAGE.md), [Symlink Manager](symlink-manager.md)
+> **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](../UBIQUITOUS-LANGUAGE.md), [Design Language](DESIGN_LANGUAGE.md), [Symlink Manager](symlink-manager.md)
 > **Depended By**: [VS Code Configuration](vscode-config.md), [Execution Coordination](execution-coordination.md), Install Orchestrator
 
 ---
@@ -40,7 +40,7 @@ The Python, Visual Studio Code Desktop, code-server, Beads, command-repo bootstr
 ### Spec Dependencies
 
 - [Parameters](parameters.md) — all tuning values (`REQUIRED_NVIM_VERSION`, `REQUIRED_GO_VERSION`, `NODE_LTS_VERSION`, `MASON_TOOLS_GO`, `MASON_TOOLS_PYTHON`, `BACKUP_TIMESTAMP_FMT`)
-- [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md) — terms: install, install (dependency), install (Mason), TUI tool, LSP server, formatter, deploy, backup, idempotent
+- [Ubiquitous Language](../UBIQUITOUS-LANGUAGE.md) — terms: install, install (dependency), install (Mason), TUI tool, LSP server, formatter, deploy, backup, idempotent
 - [Design Language](DESIGN_LANGUAGE.md) — CLI output tokens: `phase-header-fmt`, `success-msg`, `warning-msg`, `error-msg`
 
 ---

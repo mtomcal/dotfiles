@@ -2,7 +2,7 @@
 
 > **Version**: 2.0.0
 > **Last Updated**: 2026-08-03
-> **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md), [Tool Provisioning](tool-provisioning.md), [Herdr Config](herdr-config.md)
+> **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](../UBIQUITOUS-LANGUAGE.md), [Tool Provisioning](tool-provisioning.md), [Herdr Config](herdr-config.md)
 > **Depended By**: [Skill Library](skill-library.md), [Install Orchestrator](install-orchestrator.md)
 > **Prefix**: EXEC
 
@@ -40,7 +40,7 @@ The system MUST ensure that:
 | Spec | Relationship |
 |------|--------------|
 | [Parameters](parameters.md) | Command-repo paths, installer channels, presets, statuses, and correction limits |
-| [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md) | Canonical coordination artifacts, actors, and lifecycle terms |
+| [Ubiquitous Language](../UBIQUITOUS-LANGUAGE.md) | Canonical coordination artifacts, actors, and lifecycle terms |
 | [Tool Provisioning](tool-provisioning.md) | Installs Beads and exposes explicit command-repo bootstrap |
 | [Herdr Config](herdr-config.md) | Supplies live transport and non-durable runtime identity rules |
 

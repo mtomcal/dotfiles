@@ -2,7 +2,7 @@
 
 > **Version**: 1.0.0
 > **Last Updated**: 2026-08-03
-> **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md), [Design Language](DESIGN_LANGUAGE.md), [Symlink Manager](symlink-manager.md), [Tool Provisioning](tool-provisioning.md)
+> **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](../UBIQUITOUS-LANGUAGE.md), [Design Language](DESIGN_LANGUAGE.md), [Symlink Manager](symlink-manager.md), [Tool Provisioning](tool-provisioning.md)
 > **Depended By**: Shell Config, Skill Library, AI Agent Config, Install Orchestrator
 > **Prefix**: HERDR
 
@@ -34,7 +34,7 @@ The tracked configuration source is `herdr/config.toml`, deployed as a symlink t
 | Spec | Reason |
 |------|--------|
 | [Parameters](parameters.md) | Authoritative source for Herdr paths, aliases, and migration defaults |
-| [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md) | Defines Herdr config, Herdr workspace, Herdr runtime state, and repo-owned Herdr integration |
+| [Ubiquitous Language](../UBIQUITOUS-LANGUAGE.md) | Defines Herdr config, Herdr workspace, Herdr runtime state, and repo-owned Herdr integration |
 | [Symlink Manager](symlink-manager.md) | Defines deployment and backup rules for `~/.config/herdr/config.toml` |
 | [Tool Provisioning](tool-provisioning.md) | Defines direct curl installer behavior |
 

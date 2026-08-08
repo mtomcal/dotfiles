@@ -20,7 +20,7 @@ allowed-tools: read,write,bash
 
 Gather runtime evidence before theorizing. This skill observes execution; it does not optimize CPU time. Route CPU/memory questions to a sampling profiler instead.
 
-1. **Frame the invariant and the falsifier.** State the expected calls, the state boundary, the allowed transition, and the side effects. State what runtime evidence would falsify it. Read relevant project guidance, specs, and `specs/UBIQUITOUS_LANGUAGE.md` when present so the invariant uses project terms.
+1. **Frame the invariant and the falsifier.** State the expected calls, the state boundary, the allowed transition, and the side effects. State what runtime evidence would falsify it. Read relevant project guidance, proposals, and `UBIQUITOUS-LANGUAGE.md` when present so the invariant uses project terms.
 
    Completion criterion: the invariant and its falsifier are explicit, and the target is one narrow deterministic script or pytest node.
 

@@ -2,7 +2,7 @@
 
 > **Spec Version**: 2.1.0
 > **Last Updated**: 2026-08-02
-> **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md), [Design Language](DESIGN_LANGUAGE.md), [Tool Provisioning](tool-provisioning.md), [Symlink Manager](symlink-manager.md), [Herdr Config](herdr-config.md), [VS Code Configuration](vscode-config.md), [Execution Coordination](execution-coordination.md)
+> **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](../UBIQUITOUS-LANGUAGE.md), [Design Language](DESIGN_LANGUAGE.md), [Tool Provisioning](tool-provisioning.md), [Symlink Manager](symlink-manager.md), [Herdr Config](herdr-config.md), [VS Code Configuration](vscode-config.md), [Execution Coordination](execution-coordination.md)
 > **Depended By**: None (this is the top-level orchestrator)
 
 ---
@@ -36,7 +36,7 @@ The orchestrator does NOT implement any module's internal logic (package install
 | Spec                                                | Relationship                                                                                |
 | --------------------------------------------------- | ------------------------------------------------------------------------------------------- |
 | [Parameters](parameters.md)                         | All tuning values (versions, URLs, thresholds) live there                                   |
-| [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md)       | Shared term definitions                                                                     |
+| [Ubiquitous Language](../UBIQUITOUS-LANGUAGE.md)       | Shared term definitions                                                                     |
 | [Design Language](DESIGN_LANGUAGE.md)               | CLI output formatting tokens                                                                |
 | [Tool Provisioning](tool-provisioning.md)           | Per-module install/configure function specifications                                        |
 | [Symlink Manager](symlink-manager.md)               | Cross-cutting symlink deployment and backup rules                                           |

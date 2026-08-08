@@ -1,6 +1,6 @@
 ---
 name: ubiquitous-language
-description: Extract a DDD-style ubiquitous language glossary from the current conversation, specs, plans, or brownfield domain language, flagging ambiguities and proposing canonical terms. Writes the repository's canonical glossary. Use when user wants to define domain terms, build a glossary, harden terminology, create or update a ubiquitous language, refine spec-suite vocabulary, extract bounded-context terms from brownfield systems, or mentions "domain model" or "DDD".
+description: Extract a DDD-style ubiquitous language glossary from the current conversation, proposals, plans, documentation, or brownfield domain language, flagging ambiguities and proposing canonical terms. Writes the repository's canonical root glossary. Use when users want to define domain terms, build a glossary, harden terminology, create or update ubiquitous language, refine project vocabulary, extract bounded-context terms from brownfield systems, or discuss a domain model or DDD.
 metadata:
   short-description: Extract DDD glossary from conversation
 allowed-tools: read,write,edit,bash
@@ -27,7 +27,7 @@ Choose **create** when no applicable glossary exists and **update** when refinin
 1. Use the glossary path declared by repository guidance or the applicable spec suite.
 2. Otherwise, use the existing glossary for the requested bounded context.
 3. Otherwise, follow the repository's established documentation or spec convention.
-4. Only when no authority, applicable glossary, or convention exists, create `UBIQUITOUS_LANGUAGE.md` at the repository root.
+4. Only when no authority, applicable glossary, or convention exists, create `UBIQUITOUS-LANGUAGE.md` at the repository root.
 
 If multiple locations remain plausibly authoritative, ask the user which bounded context and glossary owns the terms; do not create a competing file. In update mode, read the complete canonical glossary before proceeding.
 
@@ -35,7 +35,7 @@ Completion criterion: create/update mode, applicable bounded context, and exactl
 
 ### 2. Gather domain evidence
 
-Scan the current conversation, relevant specs and plans, and brownfield system evidence such as domain-facing source, tests, and documentation. Extract domain-relevant nouns, verbs, and concepts, then identify:
+Scan the current conversation, relevant proposals, plans, and documentation, and brownfield system evidence such as domain-facing source and tests. Extract domain-relevant nouns, verbs, and concepts, then identify:
 
 - one word used for different concepts;
 - different words used for the same concept;

@@ -73,4 +73,4 @@ Practices and methodologies the team follows:
 
 ### Ubiquitous Language
 
-[Linked or referenced from specs/UBIQUITOUS_LANGUAGE.md if it exists]
+[Linked or referenced from root UBIQUITOUS-LANGUAGE.md if it exists]

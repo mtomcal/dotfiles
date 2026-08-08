@@ -1,6 +1,6 @@
 ---
 name: create-engineering-plan
-description: Create one execution-ready Beads molecule from a human-approved scope snapshot, with context-sized TDD slices, genuine dependencies, execution traces, and exact model and review policy. Use when a feature, fix, migration, or refactor needs a durable implementation graph before execution begins. Plans engineering work only — route skill, spec, glossary, and documentation authoring to write-a-skill, update-specs, or ubiquitous-language instead.
+description: Create one execution-ready Beads molecule from a human-approved scope snapshot, with context-sized TDD slices, genuine dependencies, execution traces, and exact model and review policy. Use when a feature, fix, migration, or refactor needs a durable implementation graph before execution begins. Plans engineering work only — route skill, proposal, glossary, and documentation authoring to write-a-skill, proposal-first, or ubiquitous-language instead.
 metadata:
   short-description: Create an execution-ready Beads molecule
 allowed-tools: read,bash
@@ -39,7 +39,7 @@ Authoring work — prose, instruction, and vocabulary artifacts — has establis
 |---|---|
 | Write, revise, split, or audit a skill | [`write-a-skill`](../write-a-skill/SKILL.md) |
 | Verify skill frontmatter across agents | [`audit-shared-skills`](../audit-shared-skills/SKILL.md) |
-| Change specs, contracts, or requirements | [`update-specs`](../update-specs/SKILL.md) |
+| Capture or revise durable feature intent, contracts, or requirements | [`proposal-first`](../proposal-first/SKILL.md) |
 | Define or reconcile domain vocabulary | [`ubiquitous-language`](../ubiquitous-language/SKILL.md) |
 | Produce an `AGENTS.md` codebase map | [`create-agents-md`](../create-agents-md/SKILL.md) |
 

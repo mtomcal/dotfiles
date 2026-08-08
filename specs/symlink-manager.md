@@ -2,7 +2,7 @@
 
 > **Version**: 2.0.0
 > **Last Updated**: 2026-08-01
-> **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md)
+> **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](../UBIQUITOUS-LANGUAGE.md)
 > **Depended By**: [AI Agent Config](ai-agent-config.md), [Herdr Config](herdr-config.md), [Install Orchestrator](install-orchestrator.md), [Neovim Config](neovim-config.md), [VS Code Configuration](vscode-config.md), [Shell Config](shell-config.md), [Tmux Config](tmux-config.md)
 
 ---
@@ -35,7 +35,7 @@ The VS Code managed-layer mappings introduced in version 1.6.0 are approved desi
 ### Spec Dependencies
 
 - **[Parameters](parameters.md)** — defines `BACKUP_TIMESTAMP_FMT` used in backup filenames
-- **[Ubiquitous Language](UBIQUITOUS_LANGUAGE.md)** — defines terms: *symlink*, *deploy*, *backup*, *dotfiles*, *idempotent*, *agent config*, *shared skills directory*, *custom layer*, *kickstart*
+- **[Ubiquitous Language](../UBIQUITOUS-LANGUAGE.md)** — defines terms: *symlink*, *deploy*, *backup*, *dotfiles*, *idempotent*, *agent config*, *shared skills directory*, *custom layer*, *kickstart*
 
 ---
 

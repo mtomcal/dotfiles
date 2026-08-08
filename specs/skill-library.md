@@ -2,7 +2,7 @@
 
 > **Version**: 9.0.0
 > **Last Updated**: 2026-08-03
-> **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md), [Herdr Config](herdr-config.md), [Execution Coordination](execution-coordination.md)
+> **Depends On**: [Parameters](parameters.md), [Ubiquitous Language](../UBIQUITOUS-LANGUAGE.md), [Herdr Config](herdr-config.md), [Execution Coordination](execution-coordination.md)
 > **Depended By**: AI Agent Configuration (AIAGT)
 > **Prefix**: SKILL
 
@@ -28,7 +28,7 @@ The system MUST ensure that:
 | Dependency | Required For |
 |------------|--------------|
 | [Parameters](parameters.md) | Catalog paths, naming, discovery limits, Reference depth, and canonical section order |
-| [Ubiquitous Language](UBIQUITOUS_LANGUAGE.md) | Canonical Skill Library, Reference, workflow-artifact, and ownership terminology |
+| [Ubiquitous Language](../UBIQUITOUS-LANGUAGE.md) | Canonical Skill Library, Reference, workflow-artifact, and ownership terminology |
 | [Herdr Config](herdr-config.md) | Herdr delegation terminology, runtime identity, and integration boundaries |
 | [Execution Coordination](execution-coordination.md) | Command-repo execution molecules, Beads ownership, model/review policy, attempts, synchronization, and recovery |
 | Repository provenance notice | Source, revision, license, and attribution for imported skill material |
