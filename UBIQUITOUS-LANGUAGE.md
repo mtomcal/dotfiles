@@ -1,6 +1,6 @@
 # Ubiquitous Language
 
-> **Version**: 3.2.0
+> **Version**: 3.3.0
 > **Last Updated**: 2026-08-08
 > **Purpose**: Canonical project-wide vocabulary. Terms shared across proposals, workflows, documentation, and implementation are defined here independently of any retired specification suite.
 
@@ -102,30 +102,35 @@
 | **hill climbing** | Avoidable repository navigation required to reconstruct an executable contract that should be locally available | "code exploration" | Universally loaded companion files create hill climbing without progressive-disclosure benefit |
 | **behavior-preservation ledger** | An audit record mapping each required behavior to its retained location or replacement owner | "change summary", "checklist" | Covers triggers, branches, gates, failures, guardrails, outputs, ownership, and completion conditions |
 | **command repo** | The private external repository whose Beads database is authoritative for execution coordination across multiple source repositories | "planning repo", "central beads folder" | It stores operational state rather than source code or dotfiles configuration, and source repositories contain no `.beads/` state. |
-| **scope snapshot** | The frozen human-approved objective, acceptance criteria, failure criteria, and exclusions that authorize one execution molecule | "spec diff", "mutable brief" | A specification diff is optional evidence rather than a creation precondition; changing scope requires an approved decision bead. |
-| **execution molecule** | A Beads molecule whose root scope and dependency-ordered work beads form one execution-ready implementation and review graph | "implementation plan", "execution ledger", "plan file" | Created directly by `create-engineering-plan`; it combines planning and execution state without durable workflow Markdown. |
+| **scope snapshot** | The frozen human-approved objective, observable completion conditions, and material failure boundaries or exclusions that authorize one execution molecule | "spec diff", "mutable brief" | Coordinated mode records the complete failure and exclusion contract; lightweight mode omits fields that would be empty ceremony. |
+| **execution molecule** | A Beads root whose approved scope and work-bead graph durably represent one engineering effort in lightweight or coordinated mode | "implementation plan", "execution ledger", "plan file" | Created directly by `create-engineering-plan`; it combines planning and execution state without durable workflow Markdown. |
+| **execution mode** | The approved strategy governing how an execution molecule runs, either lightweight through one direct executor or coordinated through separate execution roles | "workflow size", "simple plan", "heavy workflow" | Planning recommends a mode, while policy constraints can make coordinated mode mandatory. |
+| **delivery intent** | The approved standard for an execution molecule's output, either shippable maintained behavior or exploratory learning through a runnable demonstration | "prototype flag", "quality level" | Lightweight mode supports either intent; coordinated mode currently requires shippable intent. |
+| **exploration disposition** | The human-approved outcome of exploratory work: discard it, retain it as-is with known limitations, or rebuild it through a linked shippable molecule | "prototype status", "promotion" | Rebuild treats exploratory code as evidence rather than the presumed production base. |
+| **molecule map** | A temporary non-authoritative visual explainer of an execution molecule's work beads, dependencies, frontier, execution mode, and gates | "Beads dashboard", "graph authority" | It is disposable, refreshable on demand, and replaced when a durable dashboard provides equivalent visibility. |
 | **legacy execution ledger** | The single grandfathered filesystem execution record allowed to reach a terminal state during Beads adoption | "current plan", "new ledger" | No new legacy execution ledger may be created, and support is removed after it becomes terminal. |
 | **work bead** | A dependency-aware executable or decision record within an execution molecule | "task file", "slice file" | Work beads include slices, review beads, remediation beads, mechanical gates, and decision beads. |
-| **activation gate** | The planner-owned blocker that keeps every initial implementation frontier unrunnable until graph materialization and readback validation succeed | "draft status", "root blocker" | Closing it is the one transition from a validated inactive graph to executable work. |
+| **activation gate** | The coordinated-mode planner-owned blocker that keeps every initial implementation frontier unrunnable until graph materialization and readback validation succeed | "draft status", "root blocker" | Lightweight graphs use complete ordinary creation and readback instead of materializing this blocker. |
 | **semantic checkpoint** | A recovery-relevant transition whose correlated local Beads writes are complete and durably committed by verified auto-commits or one explicit batch commit | "every write", "automatic push" | It is locally durable; remote durability is a separate **remote checkpoint**. |
-| **remote checkpoint** | A semantic checkpoint successfully pushed to the configured Dolt remote by an authorized coordinator process | "local commit", "sync call", "lease-owner push" | Pushes occur at authorized recovery boundaries, not after each field, edge, heartbeat, or evidence write. |
-| **review policy** | The human-approved review breadth, depth, and independence requirements selected when an execution molecule is created | "review budget", "review configuration" | Lean, Standard, and High-assurance presets provide defaults with explicit overrides. |
+| **remote checkpoint** | A semantic checkpoint successfully pushed to the configured Dolt remote by an authorized workflow actor | "local commit", "sync call", "lease-owner push" | Pushes occur at authorized recovery boundaries, not after each field, edge, heartbeat, or evidence write. |
+| **review policy** | The human-approved review breadth, depth, and independence requirements selected for coordinated execution or explicitly added to lightweight execution | "review budget", "review configuration" | Lean, Standard, and High-assurance presets provide coordinated-mode defaults with explicit overrides. |
 | **review gate** | A required acceptance condition in a review policy, satisfied by mechanical evidence or one or more independent review beads | "review pass", "review step" | Repository gates and Scope fidelity form the minimum final floor; other gates and redundant passes are creation-time choices. |
 | **review bead** | A work bead representing one independent pass for a review gate against a fixed candidate | "verification artifact", "review file" | A gate may have multiple review beads when its approved depth exceeds one. |
 | **proposed execution trace** | An evidence-grounded representation of intended runtime call order and depth for a slice, with binding order distinguished from permitted internal variance | "call graph", "stack trace", "sequence diagram" | It lives on the slice bead and is neither a captured runtime trace nor an exhaustive control-flow diagram. |
-| **coordinator** | The solo workflow actor responsible for an execution molecule's structure, scope, acceptance, integration, and recovery without implementing or independently reviewing | "parent owner", "parent agent", "lease holder" | Beads stores durable workflow state while Herdr provides live transport and communication. |
+| **direct executor** | The single lightweight-mode agent that implements, verifies, commits, and records work without claiming independent review | "self-coordinator", "worker fleet" | It can operate in the caller's current session without Herdr or worker-attempt beads. |
+| **coordinator** | The solo coordinated-mode actor responsible for an execution molecule's structure, scope, acceptance, integration, and recovery without implementing or independently reviewing | "parent owner", "parent agent", "lease holder" | Beads stores durable workflow state while Herdr provides live transport and communication. |
 | **coordinator run marker** | An optional non-authoritative current-run hint used to warn about a verifiably live duplicate local coordinator process | "coordinator lease", "authority pointer", "takeover token" | It never grants or transfers authority, never expires as a lock, and stale data cannot block recovery. |
 | **current-state recovery projection** | A compact canonical metadata cache on an active Beads record containing its state, next action, applicable Git fixed points, attempt/correction/review summary, and evidence completeness | "recovery brief", "notes summary", "active pointer" | It is at most 1 KB per active record; detailed notes remain audit history rather than ordinary startup input. |
 | **coordinator session** | A historical provenance bead representing one coordinator incarnation under an earlier or explicitly recorded run model | "coordinator pane", "current coordinator", "lease owner" | Existing session beads remain auditable but do not grant current mutation authority or require takeover ceremony. |
 | **context rotation** | The coordinator-owned lifecycle that checkpoints an editable worker at one approved context threshold and winds it down for fresh-context recreation at a hard threshold | "compaction", "estimated context", "Watchdog heartbeat" | Context comes from a native signal or explicit worker report; no independent liveness monitor or worker-pane-termination workflow is shipped. |
-| **model assignment** | The exact command, provider, model id, thinking level, role, and applicable independence rule approved for an executable bead or coordinator | "model hint", "strong model" | An unavailable initial assignment blocks until approved reassignment. |
+| **model assignment** | The exact command, provider, model id, thinking level, role, and applicable independence rule approved for a coordinated-mode executable bead or coordinator | "model hint", "strong model" | Lightweight execution records actual model provenance instead of requiring advance assignment. |
 | **escalation ladder** | The human-approved ordered list of exact model assignments permitted for automatic escalation within one execution molecule | "stronger model ranking", "fallback guess" | Runtime escalation moves only to an available higher approved rung. |
 | **worker attempt** | A permanent non-blocking bead recording one agent launch, its exact model, durable instructions, semantic transitions, evidence, and outcome | "worker pane", "attempt comment" | Attempts link to their owning work bead but never determine the executable frontier directly. |
 | **write-ahead attempt** | A worker attempt durably created and checkpointed before its corresponding Herdr launch or consequential message | "launch record", "post-hoc attempt" | It makes coordinator death between intent and side effect recoverable. |
 | **worker-attempt graph** | The non-blocking operational graph of coordinator sessions and worker attempts linked to executable work beads | "Herdr topology", "terminal graph" | Beads owns durable attempt history while Herdr owns live sessions, communication, and observation. |
 | **teaching workspace** | The dedicated durable directory containing one learner's mission, resources, lessons, references, assets, and evidence | "command repo", "Herdr workspace" | Teaching state has its own owner and lifecycle. |
-| **frontier** | The derived set of currently actionable work beads whose blocking dependencies are closed after integration | "queue", "backlog" | Worker attempts are non-blocking and never appear in the frontier. |
-| **slice** | A context-sized work bead that delivers one vertical behavior through ordered red, green, and refactor cycles | "task", "ticket", "slice file" | Editable slices receive isolated worktrees and close only after verification and integration. |
+| **frontier** | The derived set of currently actionable work beads whose blocking dependencies have passed their execution mode's closure gate | "queue", "backlog" | Worker attempts are non-blocking and never appear in the frontier. |
+| **slice** | A context-sized coordinated-mode work bead that delivers one vertical behavior through ordered red, green, and refactor cycles | "task", "ticket", "slice file" | Lightweight implementation work follows repository-required TDD without requiring slice review topology. |
 | **decision bead** | A durable approval record authorizing a change to frozen scope, review policy, model assignment, escalation policy, or another human-gated execution decision | "decision comment", "silent override", "takeover record" | The prior contract and approved replacement remain auditable; ordinary solo coordinator restart needs no decision bead. |
 
 ## Tooling Domain
@@ -164,15 +169,18 @@
 - The **Herdr skill** and **Claude Code Herdr skill** live in the **shared skills directory** and are visible to supported agents through their skills deployment paths
 - The **Claude Code Herdr skill** composes the **Herdr skill**, which retains generic terminal transport and server-owned settled-state waiting
 - One **command repo** contains one **Beads** database backed by **embedded Dolt** and zero or more **execution molecules** for multiple source repositories, while each source repository contains no Beads workspace
-- One **execution molecule** contains one frozen **scope snapshot**, multiple dependency-ordered **work beads**, one approved **review policy**, and one non-blocking **worker-attempt graph**
-- A **slice** carries its TDD contract and applicable **proposed execution traces** directly as Beads content rather than a Markdown packet
+- One **execution molecule** contains one frozen **scope snapshot**, one **execution mode**, one **delivery intent**, and one or more dependency-ordered **work beads**
+- A lightweight **execution molecule** has one **direct executor**, while a coordinated **execution molecule** has one **coordinator**, an approved **review policy**, and a non-blocking **worker-attempt graph**
+- Exploratory **delivery intent** ends in one **exploration disposition**; `rebuild` links to a new shippable **execution molecule**
+- A **molecule map** renders one **execution molecule** without replacing Beads as authority
+- A coordinated **slice** carries its TDD contract and applicable **proposed execution traces** directly as Beads content rather than a Markdown packet
 - A **review policy** contains one or more **review gates**, and a review gate may require multiple independent **review beads**
-- A **model assignment** is materialized onto every executable bead, while an **escalation ladder** constrains automatic runtime escalation
+- A **model assignment** is materialized onto every coordinated executable bead, while lightweight work records the **direct executor**'s actual provenance
 - A **current-state recovery projection** supplies ordinary startup state, while detailed notes and historical **coordinator sessions** remain audit provenance
 - A **coordinator run marker** may warn about a verified live duplicate process but never grants authority or blocks recovery by itself
-- An **activation gate** blocks initial implementation frontiers until graph readback passes
-- A **semantic checkpoint** is local; its authorized successful push creates a **remote checkpoint**
-- **Context rotation** governs editable worker checkpoint and recreation through coordinator write-ahead instructions and worker-reported/native context; it grants no independent pane-termination authority
+- A coordinated **activation gate** blocks initial implementation frontiers until graph readback passes; lightweight creation activates only after complete ordinary readback
+- A **semantic checkpoint** is local; its authorized successful push creates a **remote checkpoint**, while lightweight completion may remain explicitly pending remote synchronization
+- **Context rotation** governs editable coordinated-mode worker checkpoint and recreation through coordinator write-ahead instructions and worker-reported/native context; it grants no independent pane-termination authority
 - A **write-ahead attempt** precedes every Herdr agent side effect, while the owning **worker attempt** stores instructions and evidence
 - The **worker-attempt graph** is durable in Beads, while Herdr provides ephemeral agent transport, communication, and observation
 - An execution **frontier** contains ready **work beads** only after every blocker closes following integration; worker attempts never enter it
@@ -201,6 +209,8 @@
 - **"integration"** is overloaded between Herdr integrations, shell integrations, and editor integrations. Use **Herdr integration** when referring to Herdr agent lifecycle/session hooks.
 - **"workspace"** is overloaded between a project workspace, **teaching workspace**, **command repo**, and **Herdr workspace**. Use the qualified term for each durable or terminal context.
 - **"plan"** is overloaded between an **execution molecule** and an informal proposed approach. Use the qualified artifact or describe the proposed approach directly.
+- **"lightweight"** and **"coordinated"** describe **execution mode**, not importance or code quality; use **delivery intent** to distinguish shippable work from exploratory learning.
+- **"prototype"** may mean exploratory **delivery intent** or a narrower throwaway reaction surface; name the delivery intent when discussing molecule lifecycle.
 - **"review"** may mean a **review policy**, **review gate**, or **review bead**. Use policy for topology, gate for an acceptance condition, and bead for one executable pass.
 - **"trace"** is ambiguous between a **proposed execution trace** and an actual captured runtime stack trace. Slice beads use the proposed form; they never claim captured runtime evidence.
 - **"stronger model"** has no runtime meaning outside an approved **escalation ladder**; use the exact higher rung rather than reputation-based labels.
@@ -218,6 +228,7 @@
 
 | Version | Date | Change |
 |---------|------|--------|
+| 3.3.0 | 2026-08-08 | Added lightweight and coordinated execution modes, direct execution, delivery intent, exploration disposition, and temporary molecule-map visibility. |
 | 3.2.0 | 2026-08-08 | Removed the retired spec-extraction-plan term and relationships after the specification suite was decommissioned. |
 | 3.1.0 | 2026-08-08 | Moved the canonical glossary from the retired `specs/` suite to repository-root `UBIQUITOUS-LANGUAGE.md` and broadened its ownership to all durable project language. |
 | 3.0.0 | 2026-08-03 | Replaced coordinator leases and takeover terminology with solo coordination, a non-authoritative **coordinator run marker**, and compact **current-state recovery projections**; removed Watchdog as a current term while preserving historical records as audit provenance. |
@@ -256,7 +267,13 @@
 > **Dev**: "Where does universally required behavior go?"
 > **Domain Expert**: "Keep it as a compact **core instruction** in the skill body; **semantic YAGNI** removes unnecessary detail instead of creating **hill climbing**."
 > **Dev**: "Does `create-engineering-plan` write a `PLAN.md` before execution?"
-> **Domain Expert**: "No. It creates one execution-ready **execution molecule** whose **slices**, review policy, and model assignments are already explicit."
+> **Domain Expert**: "No. It creates one **execution molecule** and recommends its **execution mode** and **delivery intent**."
+> **Dev**: "Does lightweight mode mean the result can be low quality?"
+> **Domain Expert**: "No. **Execution mode** controls orchestration; **delivery intent** distinguishes shippable verification from exploratory learning."
+> **Dev**: "Who performs lightweight work?"
+> **Domain Expert**: "One **direct executor** implements and records it without claiming independent review; coordinated mode instead separates the **coordinator** from workers and reviewers."
+> **Dev**: "What happens when an exploration reveals the right production design?"
+> **Domain Expert**: "Choose the `rebuild` **exploration disposition** and create a linked shippable **execution molecule**; the exploratory branch remains evidence."
 > **Dev**: "Should `execute-engineering-molecule` own Claude-specific launch or waiting mechanics?"
 > **Domain Expert**: "No. It composes the **Herdr skill** for generic transport and server-owned settled-state waiting, and the **Claude Code Herdr skill** for Claude-specific launch arguments, task interpretation, and steering behavior."
 > **Dev**: "Is a **proposed execution trace** a real stack trace I captured at runtime?"

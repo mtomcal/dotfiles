@@ -1,6 +1,6 @@
 # 0004 — Recoverable agent engineering
 
-**Status:** Accepted
+**Status:** Superseded by [0012](0012-right-sized-agent-engineering.md)
 
 **Created:** 2026-08-08
 

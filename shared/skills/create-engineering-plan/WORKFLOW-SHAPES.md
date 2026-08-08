@@ -1,12 +1,12 @@
 # Workflow Shapes
 
-Reference for the Beads execution model: what kinds of beads exist, how a molecule is executed, what shapes real engineering work takes, and how states transition.
+Reference for coordinated-mode Beads execution: what kinds of beads exist, how coordinated molecules run, what shapes multi-agent engineering work takes, and how states transition.
 
-Diagrams here are **illustrative models, not templates**. Real bead ids come from `bd`; real graphs encode only genuine blockers. The active `beads`, `create-engineering-plan`, and `execute-engineering-molecule` skill contracts govern mechanics; `proposals/0004-recoverable-agent-engineering.md` preserves durable intent.
+Diagrams here are **illustrative models, not templates**. Real bead ids come from `bd`; real graphs encode only genuine blockers. The active `beads`, `create-engineering-plan`, and `execute-engineering-molecule` skill contracts govern mechanics; `proposals/0012-right-sized-agent-engineering.md` preserves current durable intent.
 
 ## Bead taxonomy
 
-A molecule is a root epic plus everything hanging off it. Two edge kinds do very different jobs:
+A coordinated molecule is a root epic plus everything hanging off it. Two edge kinds do very different jobs:
 
 - **Blocking edges** connect work beads and determine readiness. `bd ready --mol <root>` walks these.
 - **Operational edges** connect attempts to the work they track. They never block anything, so retries and lost attempts cannot pollute the frontier.
@@ -35,7 +35,7 @@ Solid lines are containment; dotted lines are the non-blocking operational edges
 
 ## Execution lifecycle
 
-What `execute-engineering-molecule` actually does per slice. The ordering constraint that matters most: **the durable attempt record is written before the agent is launched**, so a coordinator that dies mid-launch can reconcile rather than blindly relaunch.
+What the coordinated branch of `execute-engineering-molecule` does per slice. The ordering constraint that matters most: **the durable attempt record is written before the agent is launched**, so a coordinator that dies mid-launch can reconcile rather than blindly relaunch.
 
 ```mermaid
 sequenceDiagram

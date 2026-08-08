@@ -83,8 +83,8 @@ Ask the user to confirm or correct the summary. Only after confirmation:
 
 - route accepted terminology to `ubiquitous-language`
 - route durable behavioral or design decisions to `proposal-first`
-- route approved spec changes that need a single-agent implementation plan to `create-engineering-plan`
-- route an explicit execution molecule that is ready for Herdr execution to `execute-engineering-molecule`
+- route approved executable scope that needs a right-sized Beads plan to `create-engineering-plan`
+- route an explicit execution molecule that is ready for lightweight direct or coordinated Herdr execution to `execute-engineering-molecule`
 - return unresolved, multi-session uncertainty and its evidence directly to the caller, then stop
 
 Completion criterion: the user confirms the shared-understanding summary before any durable files are changed.

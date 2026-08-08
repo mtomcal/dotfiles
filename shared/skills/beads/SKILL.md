@@ -1,6 +1,6 @@
 ---
 name: beads
-description: Operate the external Beads command repo as durable execution authority — issue and dependency mechanics, compact current-state recovery, graph ingestion, work frontiers, write-ahead attempts, and serialized synchronization. Use when creating or executing a molecule, claiming or closing work, recording attempt evidence, recovering after a crash, or when another skill needs the canonical bd contract.
+description: Operate the external Beads command repo as durable execution authority—issue and dependency mechanics, compact recovery, graph ingestion, work frontiers, direct-execution evidence, write-ahead attempts, and serialized synchronization. Use when creating or executing a molecule, claiming or closing work, recording evidence, recovering after interruption, or when another skill needs the canonical bd contract.
 metadata:
   short-description: Canonical bd and recovery contract
 allowed-tools: read,bash
@@ -11,7 +11,7 @@ allowed-tools: read,bash
 ## Language Definitions
 
 - **Command repo** — private external checkout holding the authoritative `.beads/` database for all source repositories.
-- **Execution molecule** — one root epic and work-bead graph from an approved scope; not a `bd mol` template.
+- **Execution molecule** — one root and work-bead graph from an approved scope, execution mode, and delivery intent; not a `bd mol` template.
 - **Frontier** — ready work beads whose blockers are closed.
 - **Attempt** — permanent non-blocking bead recording one agent launch, instruction, and evidence.
 - **Fixed point** — full Git commit under implementation, review, or integration.
@@ -66,7 +66,7 @@ Completion: every write landed exactly once, obsolete current keys are absent, a
 
 ### 4. Maintain recovery projections
 
-Every active root, work bead, and attempt has a projection at most 1024 serialized bytes containing, as applicable:
+Every active root and work bead, plus every coordinated-mode attempt, has a projection at most 1024 serialized bytes containing, as applicable:
 
 - state and one next action;
 - branch, worktree, and base/candidate/integration fixed points;
@@ -81,25 +81,25 @@ Completion: each changed active projection is within limit and agrees with Git a
 
 ### 5. Create, claim, and close work
 
-Create work with observable acceptance and genuine blockers; keep partial graphs behind an activation gate and validate cycles. Claim ready work atomically. Attempts use non-blocking `tracks` or `validates` relations and never affect the frontier.
+Create work with observable completion conditions and genuine blockers, and validate cycles. Coordinated graphs keep partial topology behind an activation gate; lightweight planners do not hand off or begin execution until ordinary creation and complete readback finish. Claim ready work atomically. Coordinated attempts use non-blocking `tracks` or `validates` relations and never affect the frontier.
 
-Close a slice only after candidate evidence, independent per-slice Test Quality, focused checks, mechanical integration, and post-integration checks.
+In lightweight mode, close implementation work only after the direct executor records a full commit and complete verification or demonstration evidence. In coordinated mode, close a slice only after candidate evidence, independent per-slice Test Quality, focused checks, mechanical integration, and post-integration checks.
 
-Completion: readiness derives only from work edges, writes survive readback, and no slice closes before verified integration.
+Completion: readiness derives only from work edges, writes survive readback, and work closes only after its execution mode's evidence gate passes.
 
 ### 6. Checkpoint without push churn
 
 Inspect `bd config get dolt.auto-commit` and installed help. Verify local commits; use supported batch mode for correlated writes when useful. Push only with caller authority and only at semantic boundaries, never per field, edge, heartbeat, or evidence write.
 
-Without an authorized successful push, set root `sync_state: pending`. Pending sync blocks completion but creates no coordinator lease or takeover gate. A fresh process reconciles pull results, local commits, projections, and Git.
+Without an authorized successful push, set root `sync_state: pending`. Pending sync blocks coordinated completion but permits lightweight local completion when all other gates pass; it creates no coordinator lease or takeover gate. The next Beads operation reconciles pull results, local commits, projections, and Git.
 
-Completion: local durability is verified; remote durability is verified once or explicitly pending; no push is claimed without evidence.
+Completion: local durability is verified; remote durability is verified once or explicitly pending under the approved mode; no push is claimed without evidence.
 
 ## Activities
 
-### Write ahead an agent side effect
+### Write ahead a coordinated agent side effect
 
-Before a consequential launch or message: create a unique planned attempt with a non-blocking owner relation; persist its exact instruction and projection; checkpoint; then perform the Herdr side effect with the attempt id; finally record the observed semantic state and refresh affected projections.
+This Activity applies when a coordinator launches or materially instructs a separate agent; a direct executor does not create write-ahead attempts for its own actions. Before a consequential launch or message: create a unique planned attempt with a non-blocking owner relation; persist its exact instruction and projection; checkpoint; then perform the Herdr side effect with the attempt id; finally record the observed semantic state and refresh affected projections.
 
 Initial packets, clarifications, consolidated corrections, escalation handoffs, and evidence requests are consequential. Keypresses, liveness probes, pane output, public Herdr ids, and transcripts are ephemeral.
 
@@ -107,9 +107,9 @@ Completion: no side effect preceded durable intent and no uncertain id was reuse
 
 ### Record completion evidence
 
-Before transport completion, record exact model, full candidate/review fixed point, changed files when applicable, commands/results, acceptance/failure evidence, findings or `none`, risks, and outcome. Set `evidence_returned`, mark evidence completeness accurately, and refresh the owner projection. Missing evidence blocks verification and integration.
+For direct execution, record actual model provenance, full commit, changed files, commands/results or demonstration observations, completion/failure evidence, limitations and risks, self-check status, and outcome on the implementation work bead. For coordinated transport, record exact assigned model, full candidate/review fixed point, changed files when applicable, commands/results, acceptance/failure evidence, findings or `none`, risks, and outcome before transport completion. Mark evidence completeness accurately and refresh the owner projection; missing evidence blocks closure.
 
-Completion: readback contains the fixed point, results, outcome, and matching projection.
+Completion: readback contains the applicable fixed point, results, provenance, outcome, and matching projection.
 
 ### Recover after a crash
 
@@ -121,4 +121,4 @@ Completion: contradictions are reconciled, uncertain attempts are resumed or los
 
 ## Reference
 
-- When a reviewed graph is large enough that sequential creation risks partial or runnable state, load [`GRAPH-INGESTION.md`](GRAPH-INGESTION.md) before materialization for version probing, atomic apply, readback, and activation. Ordinary issue, attempt, projection, and recovery operations do not load it.
+- When coordinated planning selects a graph large enough that sequential creation risks partial or runnable state, load [`GRAPH-INGESTION.md`](GRAPH-INGESTION.md) before materialization for version probing, atomic apply, readback, and activation. Lightweight creation and ordinary issue, attempt, projection, and recovery operations do not load it.
