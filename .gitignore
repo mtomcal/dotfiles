@@ -28,5 +28,3 @@ coverage/
 
 # Local Claude Code config (machine-specific, not the tracked claude/ directory)
 .claude/
-
-specs/reviews/

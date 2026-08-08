@@ -2,7 +2,7 @@
 
 Reference for the Beads execution model: what kinds of beads exist, how a molecule is executed, what shapes real engineering work takes, and how states transition.
 
-Diagrams here are **illustrative models, not templates**. Real bead ids come from `bd`; real graphs encode only genuine blockers. `specs/execution-coordination.md` is authoritative wherever this file and it disagree.
+Diagrams here are **illustrative models, not templates**. Real bead ids come from `bd`; real graphs encode only genuine blockers. The active `beads`, `create-engineering-plan`, and `execute-engineering-molecule` skill contracts govern mechanics; `proposals/0004-recoverable-agent-engineering.md` preserves durable intent.
 
 ## Bead taxonomy
 
@@ -20,20 +20,18 @@ graph TD
     ROOT --- RM["remediation<br/>consolidated findings<br/>isolated worker"]
     ROOT --- D["decision<br/>approved scope or<br/>policy change"]
     ROOT --- MG["mechanical gate<br/>tests, lint, type, build"]
-    ROOT --- CS["coordinator-session<br/>one per boot<br/>holds the lease"]
-
     S -.tracks.-> A1["attempt<br/>one agent launch"]
     RV -.validates.-> A2["attempt<br/>one review pass"]
 
     classDef work fill:#2d4a3e,stroke:#5a8f73,color:#e8f5ee
     classDef op fill:#3d3a2d,stroke:#8f8259,color:#f5f0e8
     classDef root fill:#2d3a4a,stroke:#5a7a9f,color:#e8f0f5
-    class ROOT,CS root
+    class ROOT root
     class S,RV,RM,D,MG work
     class A1,A2 op
 ```
 
-Solid lines are containment; dotted lines are the non-blocking operational edges. Only `slice`, `review`, `remediation`, `decision`, and `mechanical gate` are work beads. Attempts and coordinator sessions are permanent records, never frontier candidates.
+Solid lines are containment; dotted lines are the non-blocking operational edges. Only `slice`, `review`, `remediation`, `decision`, and `mechanical gate` are work beads. Attempts are permanent records and never frontier candidates; historical coordinator-session records remain provenance rather than current authority.
 
 ## Execution lifecycle
 
@@ -47,8 +45,8 @@ sequenceDiagram
     participant W as Worker
     participant V as Verifier
 
-    C->>B: pull, validate molecule, acquire lease
-    B-->>C: lease held (non-expiring)
+    C->>B: pull, validate molecule and assignment
+    B-->>C: compact current state
     C->>B: bd ready --mol root
     B-->>C: frontier slices
 
@@ -195,11 +193,11 @@ stateDiagram-v2
     direction LR
     [*] --> draft
     draft --> ready: validation passes
-    ready --> executing: lease acquired
+    ready --> executing: coordination starts
     executing --> blocked: gate or ladder exhausted
     blocked --> executing: approved decision
     executing --> complete: all gates + checkpoint
     complete --> [*]
 ```
 
-Sync state is orthogonal: `clean` normally, `pending` when the remote is unreachable. Under `pending` only the leased host may continue working, and both lease transfer and completion stay blocked until pull and push succeed.
+Sync state is orthogonal: `clean` normally, `pending` when the remote is unreachable. Reconciled local work may continue under `pending`, but completion stays blocked until pull and push succeed.

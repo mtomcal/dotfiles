@@ -4,7 +4,7 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 
 ## Map
 
-<!-- TREE-HASH: 386d9ba94679962af548e6ce0ec6c632d87cb4c0e0bb3149075cba8eb6d4298c -->
+<!-- TREE-HASH: cd35d32ed6b56a05602fb82cc2fd0df5803b82304af3ceab4df7aab3d725bc55 -->
 
 <!-- TREE-START -->
 ```
@@ -33,7 +33,6 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 |   |-- skills
 |   |   |-- audit-shared-skills -> ../../shared/skills/audit-shared-skills
 |   |   |-- beads -> ../../shared/skills/beads
-|   |   |-- bootstrap-specs -> ../../shared/skills/bootstrap-specs
 |   |   |-- codebase-design -> ../../shared/skills/codebase-design
 |   |   |-- code-review -> ../../shared/skills/code-review
 |   |   |-- create-agents-md -> ../../shared/skills/create-agents-md
@@ -49,6 +48,7 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 |   |   |-- herdr-supervise -> ../../shared/skills/herdr-supervise
 |   |   |-- improve-codebase-architecture -> ../../shared/skills/improve-codebase-architecture
 |   |   |-- playwright -> ../../shared/skills/playwright
+|   |   |-- proposal-first -> ../../shared/skills/proposal-first
 |   |   |-- prototype -> ../../shared/skills/prototype
 |   |   |-- python-tracing -> ../../shared/skills/python-tracing
 |   |   |-- research -> ../../shared/skills/research
@@ -57,16 +57,15 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 |   |   |-- teach -> ../../shared/skills/teach
 |   |   |-- test-quality-verifier -> ../../shared/skills/test-quality-verifier
 |   |   |-- ubiquitous-language -> ../../shared/skills/ubiquitous-language
-|   |   |-- update-specs -> ../../shared/skills/update-specs
 |   |   |-- video-to-contact-sheet -> ../../shared/skills/video-to-contact-sheet
 |   |   |-- visual-explainer -> ../../shared/skills/visual-explainer
 |   |   `-- write-a-skill -> ../../shared/skills/write-a-skill
 |   `-- tests
+|-- proposals
 |-- shared
 |   `-- skills
 |       |-- audit-shared-skills
 |       |-- beads
-|       |-- bootstrap-specs
 |       |-- codebase-design
 |       |-- code-review
 |       |-- create-agents-md
@@ -84,6 +83,8 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 |       |-- improve-codebase-architecture
 |       |-- playwright
 |       |   `-- references
+|       |-- proposal-first
+|       |   `-- reference
 |       |-- prototype
 |       |-- python-tracing
 |       |   `-- references
@@ -93,13 +94,11 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 |       |-- teach
 |       |-- test-quality-verifier
 |       |-- ubiquitous-language
-|       |-- update-specs
 |       |-- video-to-contact-sheet
 |       |-- visual-explainer
 |       |   |-- references
 |       |   `-- templates
 |       `-- write-a-skill
-|-- specs
 |-- tests
 |   `-- lib
 |-- tmux
@@ -109,7 +108,7 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 |-- yazi
 `-- zsh
 
-101 directories
+99 directories
 ```
 <!-- TREE-END -->
 
@@ -139,9 +138,9 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 ### `vscode/`
 - **Purpose**: One repository-authoritative VS Code managed layer serving two editor targets — Visual Studio Code Desktop on macOS, and `code-server` on Ubuntu/Debian as an explicitly selected private-network browser endpoint.
 - **Owns**: `vscode/settings.json`, `vscode/keybindings.json`, `vscode/snippets/global.code-snippets`, `vscode/capture.sh`, and the extension manifests `vscode/extensions/{shared,desktop,code-server}.txt`.
-- **Depends on**: `specs/vscode-config.md` for behavior; `install.sh` for deployment via `deploy_vscode_managed_layer` and `reconcile_vscode_extensions`.
+- **Depends on**: `proposals/0008-two-target-vscode-managed-layer.md` for durable intent; `install.sh` for deployment via `deploy_vscode_managed_layer` and `reconcile_vscode_extensions`.
 - **Rules**: Tracked sources carry no credentials, private endpoints, hostnames, or machine-specific paths — the code-server bind override is runtime-only and never written to a tracked file. Mutable editor state, profiles, and certificates stay untracked. `shared.txt` applies to both targets; `desktop.txt` and `code-server.txt` absorb marketplace and licensing differences. Desktop VS Code is macOS-only; `code-server` is custom-profile-only because selecting it enables a persistent authenticated network service.
-- **Entry points**: `install.sh` module `vscode`; behavior contract at `specs/vscode-config.md`. Covered by 67 tests in `tests/`.
+- **Entry points**: `install.sh` module `vscode`; durable intent at `proposals/0008-two-target-vscode-managed-layer.md`. Covered by 67 tests in `tests/`.
 
 ### `nvim/`
 - **Purpose**: Custom Neovim plugins layered on top of kickstart.nvim (the base at `~/.config/nvim`).
@@ -161,7 +160,7 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 - **Purpose**: Single canonical source for cross-agent skills. Non-Pi agents' skills dirs symlink here; Pi consumes shared skills through symlinks inside `pi/skills/`. High-change area (skills added/removed frequently).
 - **Owns**: Everything under `shared/skills/*/`. Current skills visible in the tree above. Each skill has a `SKILL.md`.
 - **Depends on**: none — leaf dependency. Skills never reference agent configs.
-- **Rules**: Skills installed via `npx skills@latest add` into non-Pi agents land here automatically. Repo-wide workflows such as `update-specs` belong here, not in `pi/skills/`. New shared skills must have the union frontmatter schema. Run `audit-shared-skills` to verify cross-agent compatibility after changes. Imported skill material is a locally maintained fork, never auto-synced upstream; record its source, revision, and license in `THIRD_PARTY_NOTICES.md` before moving or rewriting it. Adding a skill also requires a matching `pi/skills/` symlink.
+- **Rules**: Skills installed via `npx skills@latest add` into non-Pi agents land here automatically. Durable feature intent is authored and maintained through `proposal-first`. New shared skills must have the union frontmatter schema. Run `audit-shared-skills` to verify cross-agent compatibility after changes. Imported skill material is a locally maintained fork, never auto-synced upstream; record its source, revision, and license in `THIRD_PARTY_NOTICES.md` before moving or rewriting it. Adding a skill also requires a matching `pi/skills/` symlink.
 - **Entry points**: `ls shared/skills/` to list current skills, then load the relevant `SKILL.md`.
 
 ### `pi/skills/`
@@ -171,12 +170,12 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 - **Rules**: Do not move general cross-agent skills here. If a Pi-visible workflow becomes useful across Codex, Claude, Copilot, and Pi in this repo, promote it to `shared/skills/` and keep only the Pi symlink here. When adding a shared skill, add a matching symlink in `pi/skills/` if Pi should see it.
 - **Entry points**: `ls pi/skills/` to list Pi-visible skills; entries should be symlinks to shared skills.
 
-### `specs/`
-- **Purpose**: Specification suite for the dotfiles manager — business rules, behavior contracts, and design language. Built via the bootstrap-specs skill.
-- **Owns**: `specs/*.md`. Spec files define what symlink management, install orchestration, and tool provisioning must do.
-- **Depends on**: none — specs inform all implementation modules.
-- **Rules**: Specs are the behavioral source of truth. `install.sh` and all configs conform to specs, not the reverse. Changes to deployment or tool setup must be reflected here.
-- **Entry points**: `specs/SPEC-OF-SPECS.md`, `specs/README.md`.
+### `proposals/`
+- **Purpose**: Permanent feature-intent records written as shipped announcements with decision FAQs and observable revisit triggers.
+- **Owns**: Numbered proposal files describing beneficiaries, capabilities, exclusions, and consequential decisions without implementation detail.
+- **Depends on**: `UBIQUITOUS-LANGUAGE.md` for canonical project terms; implementation and tests provide current mechanical evidence.
+- **Rules**: Proposals preserve historical intent. Do not rewrite shipped announcements to hide changed intent; supersede them with a new numbered proposal. Implementation plans and tests own mechanics, schemas, paths, and acceptance details.
+- **Entry points**: Enumerate `proposals/` by sequence; use `proposal-first` to author, migrate, or maintain an artifact.
 
 ## Installation
 
@@ -185,7 +184,7 @@ Primary entry point: `./install.sh` — idempotent, safe to re-run. Auto-detects
 ## Dependency Rules
 
 - **`shared/skills/` is a cross-agent leaf**: Shared skills never depend on or reference individual agent configs. Dependency flows one way: agents → skills.
-- **`specs/` informs all modules**: Implementation conforms to specs, not the reverse.
+- **`proposals/` preserves durable intent**: Implementation and tests own current mechanics; changed feature intent requires a new or maintained proposal rather than a specification suite.
 - **Agent configs are independent**: `claude/`, `codex/`, `pi/`, and `copilot/` never reference each other. Cross-agent skills stay in `shared/skills/`.
 - **Neovim extends kickstart, never patches**: Custom plugins must work with current kickstart without monkey-patching. Must survive `git pull` updates to kickstart.
 - **install.sh is the sole deployment entry point**: No other script replicates installation logic.

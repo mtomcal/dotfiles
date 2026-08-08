@@ -1,6 +1,6 @@
 # Ubiquitous Language
 
-> **Version**: 3.1.0
+> **Version**: 3.2.0
 > **Last Updated**: 2026-08-08
 > **Purpose**: Canonical project-wide vocabulary. Terms shared across proposals, workflows, documentation, and implementation are defined here independently of any retired specification suite.
 
@@ -123,7 +123,6 @@
 | **worker attempt** | A permanent non-blocking bead recording one agent launch, its exact model, durable instructions, semantic transitions, evidence, and outcome | "worker pane", "attempt comment" | Attempts link to their owning work bead but never determine the executable frontier directly. |
 | **write-ahead attempt** | A worker attempt durably created and checkpointed before its corresponding Herdr launch or consequential message | "launch record", "post-hoc attempt" | It makes coordinator death between intent and side effect recoverable. |
 | **worker-attempt graph** | The non-blocking operational graph of coordinator sessions and worker attempts linked to executable work beads | "Herdr topology", "terminal graph" | Beads owns durable attempt history while Herdr owns live sessions, communication, and observation. |
-| **spec-extraction plan** | The brownfield Bootstrap Specs artifact that directs extraction of specifications from implementation evidence | "execution molecule", "slice graph" | It does not direct code implementation or execution orchestration. |
 | **teaching workspace** | The dedicated durable directory containing one learner's mission, resources, lessons, references, assets, and evidence | "command repo", "Herdr workspace" | Teaching state has its own owner and lifecycle. |
 | **frontier** | The derived set of currently actionable work beads whose blocking dependencies are closed after integration | "queue", "backlog" | Worker attempts are non-blocking and never appear in the frontier. |
 | **slice** | A context-sized work bead that delivers one vertical behavior through ordered red, green, and refactor cycles | "task", "ticket", "slice file" | Editable slices receive isolated worktrees and close only after verification and integration. |
@@ -183,7 +182,7 @@
 - **Semantic YAGNI** removes unnecessary content instead of moving it into a Reference file, reducing avoidable **hill climbing**
 - A **behavior-preservation ledger** is required before a material skill-body restructure
 - One **legacy execution ledger** may finish during migration, but every new execution uses an **execution molecule**
-- An **execution molecule**, **spec-extraction plan**, **teaching workspace**, **command repo**, and **Herdr workspace** have distinct owners and lifecycles
+- An **execution molecule**, **teaching workspace**, **command repo**, and **Herdr workspace** have distinct owners and lifecycles
 
 ---
 
@@ -201,7 +200,7 @@
 - **"profile"** refers to install profiles (Full, Minimal, Work, Custom). Pi profiles are no longer a supported concept in this repo.
 - **"integration"** is overloaded between Herdr integrations, shell integrations, and editor integrations. Use **Herdr integration** when referring to Herdr agent lifecycle/session hooks.
 - **"workspace"** is overloaded between a project workspace, **teaching workspace**, **command repo**, and **Herdr workspace**. Use the qualified term for each durable or terminal context.
-- **"plan"** is overloaded between an **execution molecule**, a **spec-extraction plan**, and an informal proposed approach. Use the qualified artifact or process name.
+- **"plan"** is overloaded between an **execution molecule** and an informal proposed approach. Use the qualified artifact or describe the proposed approach directly.
 - **"review"** may mean a **review policy**, **review gate**, or **review bead**. Use policy for topology, gate for an acceptance condition, and bead for one executable pass.
 - **"trace"** is ambiguous between a **proposed execution trace** and an actual captured runtime stack trace. Slice beads use the proposed form; they never claim captured runtime evidence.
 - **"stronger model"** has no runtime meaning outside an approved **escalation ladder**; use the exact higher rung rather than reputation-based labels.
@@ -219,6 +218,7 @@
 
 | Version | Date | Change |
 |---------|------|--------|
+| 3.2.0 | 2026-08-08 | Removed the retired spec-extraction-plan term and relationships after the specification suite was decommissioned. |
 | 3.1.0 | 2026-08-08 | Moved the canonical glossary from the retired `specs/` suite to repository-root `UBIQUITOUS-LANGUAGE.md` and broadened its ownership to all durable project language. |
 | 3.0.0 | 2026-08-03 | Replaced coordinator leases and takeover terminology with solo coordination, a non-authoritative **coordinator run marker**, and compact **current-state recovery projections**; removed Watchdog as a current term while preserving historical records as audit provenance. |
 | 2.3.0 | 2026-08-03 | Added **activation gate**, **semantic checkpoint**, **remote checkpoint**, **context rotation**, and **Watchdog** for atomic planning and fail-closed Herdr execution. |
