@@ -4,7 +4,7 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 
 ## Map
 
-<!-- TREE-HASH: cd35d32ed6b56a05602fb82cc2fd0df5803b82304af3ceab4df7aab3d725bc55 -->
+<!-- TREE-HASH: 5b622f0a4f8672185a0e5c944c2b2fbb1f7d044a0d2932b5a69aefe4c8d72409 -->
 
 <!-- TREE-START -->
 ```
@@ -49,7 +49,6 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 |   |   |-- improve-codebase-architecture -> ../../shared/skills/improve-codebase-architecture
 |   |   |-- playwright -> ../../shared/skills/playwright
 |   |   |-- proposal-first -> ../../shared/skills/proposal-first
-|   |   |-- prototype -> ../../shared/skills/prototype
 |   |   |-- python-tracing -> ../../shared/skills/python-tracing
 |   |   |-- research -> ../../shared/skills/research
 |   |   |-- resolving-merge-conflicts -> ../../shared/skills/resolving-merge-conflicts
@@ -85,7 +84,6 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 |       |   `-- references
 |       |-- proposal-first
 |       |   `-- reference
-|       |-- prototype
 |       |-- python-tracing
 |       |   `-- references
 |       |-- research
@@ -108,7 +106,7 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 |-- yazi
 `-- zsh
 
-99 directories
+97 directories
 ```
 <!-- TREE-END -->
 

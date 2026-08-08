@@ -11,7 +11,6 @@ The following locally maintained skills contain material adapted in July 2026 fr
 - `diagnosing-bugs`
 - `handoff`
 - `improve-codebase-architecture`
-- `prototype`
 - `research`
 - `resolving-merge-conflicts`
 - `tdd`
