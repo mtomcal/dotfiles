@@ -207,7 +207,7 @@ dotfiles/
 
 │   └── README.md          # Claude Code documentation
 ├── pi/
-│   ├── extensions/        # Pi extensions (web-search, inherit-last-model, herdr-agent-state)
+│   ├── extensions/        # Pi extensions (context-first-footer, web-search, inherit-last-model, herdr-agent-state)
 │   ├── models.json        # Pi model/provider config (~/.pi/agent/models.json)
 │   ├── skills/            # Pi-visible skills
 │   ├── pi.sh              # Pi wrapper (~/.local/bin/pi)
@@ -1023,8 +1023,11 @@ The installer preserves the npm-installed executable as `~/.local/bin/pi-bin`, t
 | `~/.pi/agent/models.json` | `pi/models.json` |
 | `~/.pi/agent/skills` | `pi/skills` |
 | `~/.pi/agent/extensions/herdr-agent-state.ts` | `pi/extensions/herdr-agent-state.ts` |
+| `~/.pi/agent/extensions/context-first-footer.ts` | `pi/extensions/context-first-footer.ts` |
 | `~/.pi/agent/extensions/inherit-last-model` | `pi/extensions/inherit-last-model` |
 | `~/.pi/agent/extensions/web-search` | `pi/extensions/web-search` |
+
+The `context-first-footer` extension places `Context: N.N% used` on the first footer line so context monitoring remains readable in narrow terminal panes; the model and Git branch are moved to an optional second line.
 
 Settings, sessions, and auth stay local under `~/.pi/agent/` and are not tracked.
 

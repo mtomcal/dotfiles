@@ -114,7 +114,7 @@ This file provides guidance to AI coding agents when working with this dotfiles 
 
 ### Agent configs (`claude/`, `codex/`, `pi/`, `copilot/`)
 - **Purpose**: Each directory holds one AI agent's role files, tracked configuration, commands, or runtime wrappers. All are deployed by `install.sh`; Claude and Pi keep mutable settings in their local runtime directories.
-- **Owns**: Per-agent: `agents/` where supported, `commands/` where supported, and tracked configuration such as `config.toml` or `models.json`. Pi also owns `extensions/` (custom TypeScript — currently `inherit-last-model` and `web-search`), `skills/` (Pi-visible shared skill symlinks), and the `pi`/`pis` wrappers.
+- **Owns**: Per-agent: `agents/` where supported, `commands/` where supported, and tracked configuration such as `config.toml` or `models.json`. Pi also owns `extensions/` (custom TypeScript — `context-first-footer`, `inherit-last-model`, and `web-search`), `skills/` (Pi-visible shared skill symlinks), and the `pi`/`pis` wrappers.
 - **Depends on**: `shared/skills/` for cross-agent skills. Pi's runtime skills path resolves to `pi/skills/`, which is a visibility layer of symlinks to shared skills.
 - **Rules**: Agents never reference each other's configs. Shared skills `npx skills@latest add` into any non-Pi agent lands in `shared/skills/` automatically. Claude's `~/.claude/settings.json` and Pi's `~/.pi/agent/settings.json` are unversioned local state while tracked resources remain repo-owned. Pi has one runtime config at `~/.pi/agent`; do not reintroduce Pi profiles, `pim`, subagent roles, or the subagent extension.
 - **Entry points**: Agent root dirs. Each contains the settings file(s), wrappers, or config sources the agent loads at startup.

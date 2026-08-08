@@ -61,6 +61,7 @@ test_deploys_pi_config_with_local_settings() {
     assert_symlink_to "$agent/models.json" "$DOTFILES_DIR/pi/models.json"
     assert_symlink_to "$agent/skills" "$DOTFILES_DIR/pi/skills"
     assert_symlink_to "$agent/extensions/herdr-agent-state.ts" "$DOTFILES_DIR/pi/extensions/herdr-agent-state.ts"
+    assert_symlink_to "$agent/extensions/context-first-footer.ts" "$DOTFILES_DIR/pi/extensions/context-first-footer.ts"
     assert_absent "$agent/extensions/herdr-agent-state"
     assert_symlink_to "$agent/extensions/inherit-last-model" "$DOTFILES_DIR/pi/extensions/inherit-last-model"
     assert_symlink_to "$agent/extensions/web-search" "$DOTFILES_DIR/pi/extensions/web-search"

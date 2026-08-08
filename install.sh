@@ -1831,7 +1831,7 @@ prepare_pi_agent_auth() {
 deploy_pi_config() {
     local agent="$HOME/.pi/agent"
     local source_extensions="$DOTFILES_DIR/pi/extensions"
-    local enabled_extensions="herdr-agent-state.ts inherit-last-model web-search"
+    local enabled_extensions="herdr-agent-state.ts context-first-footer.ts inherit-last-model web-search"
     local extension
 
     mkdir -p "$agent/extensions" "$agent/sessions"
