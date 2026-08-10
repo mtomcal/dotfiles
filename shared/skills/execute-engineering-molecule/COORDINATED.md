@@ -2,6 +2,12 @@
 
 Use this branch only for an explicit root whose approved execution mode is coordinated.
 
+## Execution-owned tab lifecycle
+
+Label every tab created for coordinated work `exec:<root-id>:<work-bead-id>:<role>`, substituting explicit ids and a concrete lowercase-hyphenated role. The label marks runtime ownership, never workflow evidence. A work bead's exact prefix becomes cleanup-eligible only after Beads records it closed with complete evidence; apply that cleanup after startup reconciliation and immediately after each work-bead closure. After successful molecule closure, sweep the exact `exec:<root-id>:` prefix. Compose `herdr` for fresh candidate selection, live-agent safety, closure, and verification. Report contradictions and residual tabs; cleanup failure never reopens evidenced engineering work.
+
+Completion: every created task tab carries the exact ownership label, and every eligible work-bead or final-root prefix is removed or reported through the Herdr cleanup contract.
+
 ## 1. Gate and start from summaries
 
 Require `HERDR_ENV=1` and one explicit molecule id; never infer the latest. Load [`herdr`](../herdr/SKILL.md) only before live control. There is no non-Herdr fallback.
@@ -10,7 +16,9 @@ Match provider, model, and thinking to the coordinator assignment. Validate repo
 
 Run the `beads` compact startup: root and active-child projections, filtered frontier, then projected Git paths and hashes. Do not load the complete coordination spec, all notes/attempts, transcripts, or irrelevant branches. Expand only missing, oversized, contradictory, or evidence-incomplete records. Invoked skill prose plus filtered startup output must remain below 20 KB before work resumes.
 
-Completion: runtime, molecule, policies, compact state, frontier, sync, and Git agree; only contradictions expanded; no live duplicate is performing side effects.
+After durable state agrees, apply the execution-owned tab lifecycle to previously closed work before launching more.
+
+Completion: runtime, molecule, policies, compact state, frontier, sync, and Git agree; only contradictions expanded; no live duplicate is performing side effects; and eligible residual owned tabs were removed or reported.
 
 ## 2. Reconcile integration and frontier
 
@@ -52,9 +60,9 @@ Completion: candidate Test Quality has no unresolved findings, commands pass, an
 
 Only after step 4 passes, integrate mechanically and record the full integration commit. On conflict or semantic change, abort and route evidence to the implementer; the coordinator does not edit behavior.
 
-Run post-integration checks, refresh root/slice projections, close only after success, checkpoint locally, and recompute the frontier. Push only when authorized; otherwise set root sync pending.
+Run post-integration checks, refresh root/slice projections, close only after success, checkpoint locally, and recompute the frontier. Push only when authorized; otherwise set root sync pending. After the slice is durably closed with complete evidence, apply the execution-owned tab lifecycle to its work-bead prefix.
 
-Completion: each closed slice has implementation evidence, independent Test Quality, coordinator gates, integration commit, and post-integration checks before releasing dependents.
+Completion: each closed slice has implementation evidence, independent Test Quality, coordinator gates, integration commit, and post-integration checks before releasing dependents; its eligible owned tabs are gone or reported as residual.
 
 ## 6. Run final reviews and remediation
 
@@ -62,9 +70,9 @@ After implementation closes, hold one integrated fixed point for repository gate
 
 Use fresh contexts and exact independence rules. Compose `test-quality-verifier` for integrated Test Quality and [`code-review`](../code-review/SKILL.md) for Standards/Spec. Every review is a write-ahead attempt with findings and no edits.
 
-Consolidate without collapsing axes. One isolated remediation agent uses the exact assignment and complete batch. Integrate mechanically, rerun repository gates and affected reviews, and record rationale for unaffected non-reruns. Remediation exhaustion blocks.
+Consolidate without collapsing axes. One isolated remediation agent uses the exact assignment and complete batch. Integrate mechanically, rerun repository gates and affected reviews, and record rationale for unaffected non-reruns. Remediation exhaustion blocks. Whenever a review or remediation work bead closes with complete evidence, apply the execution-owned tab lifecycle to its work-bead prefix; residual tabs do not alter the recorded verdict.
 
-Completion: every configured gate passes at one current fixed point with rerun evidence, or the molecule records exact blockers and next action.
+Completion: every configured gate passes at one current fixed point with rerun evidence, or the molecule records exact blockers and next action; eligible tabs for closed review and remediation work are removed or reported.
 
 ## 7. Complete or recover
 
@@ -76,4 +84,6 @@ Stale run markers or historical active-session labels have no authority. Reconci
 
 Before the final completion decision, perform a mandatory active-worker pre-final check: read the root recovery projection and every active attempt/slice projection, then verify no active attempt is left without complete evidence or an explicit durable next action. For example, if the root is executing and one worker has settled but its evidence is absent, the coordinator must persist the evidence request, steer that exact worker, and wait; returning only “worker is idle” fails the gate. If any active attempt remains, keep the root executing and repeat the coordination cycle. Only zero active attempts plus all configured gates and synchronized Git/Beads state may pass final closure.
 
-Completion: close at one synchronized fully passing fixed point, or remain explicitly blocked/executing with compact state sufficient for fresh recovery without conversation.
+After successful closure, apply the execution-owned tab lifecycle's final root-prefix sweep.
+
+Completion: close at one synchronized fully passing fixed point and remove or report every residual execution-owned tab, or remain explicitly blocked/executing with compact state sufficient for fresh recovery without conversation.

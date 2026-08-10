@@ -33,7 +33,7 @@ Completion criterion: the selected branch reaches a recorded completed, blocked,
 
 ### 3. Report authoritative state
 
-Report the root id, mode, delivery intent, current/full final commit when applicable, checks or demonstration evidence, exploration disposition when applicable, frontier or blocker, and local/remote sync state. Do not treat terminal status or a generated visual as evidence.
+Report the root id, mode, delivery intent, current/full final commit when applicable, checks or demonstration evidence, exploration disposition when applicable, frontier or blocker, local/remote sync state, and coordinated tab-cleanup result when applicable. Do not treat terminal status, an ownership label, or a generated visual as evidence.
 
 Completion criterion: a fresh executor can identify the next safe action from Beads and Git without conversation history.
 

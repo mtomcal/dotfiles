@@ -199,6 +199,8 @@ Primary entry point: `./install.sh` — idempotent, safe to re-run. Auto-detects
 
 ### Test-Driven Development (extension/plugin/script work)
 
+Text-only changes to skills, proposals, glossaries, and documentation use behavior-preservation review, semantic review, and applicable audits rather than RED/GREEN TDD.
+
 For Pi extensions (`pi/extensions/`), Neovim plugins (`nvim/custom/plugins/`), or `install.sh` changes — use TDD with vertical (tracer-bullet) slices:
 
 1. **Plan**: Confirm interface changes and which behaviors to test. Keep modules deep (small interface, deep implementation).

@@ -83,7 +83,7 @@ Completion: the requested current state or transcript was read in the format tha
 
 ### Create a named task tab, then run or launch
 
-For every command, server, test, or agent started for your work, create a new task-owned **named tab** in the caller's workspace, preserve caller focus, parse the root pane from the creation response, then run, wait, and read. Name the tab for the concrete task; never use a default numbered label. Do not split the caller pane, add work to the caller's tab, or reuse another existing tab or pane merely because it is idle.
+For every command, server, test, or agent started for your work, create a new task-owned **named tab** in the caller's workspace, preserve caller focus, parse the root pane from the creation response, then run, wait, and read. Name the tab for the concrete task; never use a default numbered label. When a composing workflow supplies an ownership label, preserve it exactly rather than inventing another naming scheme. Do not split the caller pane, add work to the caller's tab, or reuse another existing tab or pane merely because it is idle.
 
 ```bash
 TASK_LABEL=${TASK_LABEL:?set a concrete task label}
@@ -173,9 +173,12 @@ Without `--until`, `agent wait` matches `idle`, `done`, or `blocked`, including 
 
 Pane-output and agent waits print JSON on success. Completion: the expected state or output was observed, or timeout/current evidence was returned with the applicable limitation.
 
-### Manage explicitly requested resources
+### Manage and clean explicitly owned resources
 
-Use current IDs from environment, list, or mutation responses. Resource management changes terminal topology or user context, so create, label, rename, or focus resources only for the explicitly requested task. Prefer `--no-focus` for background creation.
+Use current IDs from environment, list, or mutation responses. Resource management changes terminal topology or user context, so create, label, rename, focus, or close resources only for the explicitly requested task. Prefer `--no-focus` for background creation.
+
+A composing workflow may request cleanup through an exact ownership-label prefix. The prefix selects candidates but never proves they are disposable; the caller retains eligibility and acceptance authority. List fresh tabs and panes, require the caller's durable completion gate, and inspect every candidate. When a pane reports a hosted agent, refuse automatic closure while that agent is `working`, `blocked`, or `unknown`; `idle` and `done` permit closure only after the caller independently establishes completion. A pane with no reported agent remains eligible under the caller's completion gate, even if its aggregate tab status is `unknown`. Close candidates by fresh tab ID, list the workspace again, and return every residual matching label; a close request alone is not evidence. Never select unprefixed resources or use project wording, cwd, display number, inactivity, or terminal status as a substitute for the exact ownership prefix.
+
 
 Workspace capabilities:
 
@@ -209,11 +212,11 @@ Close a pane only under the ownership rule below:
 herdr pane close "$TARGET_PANE"
 ```
 
-Close resources created for the current task when its cleanup contract requires it. Do not close a workspace, tab, pane, or session you did not create unless the user explicitly asks or approves it. Do not stop the active Herdr server unless the user explicitly intends to stop it and its pane processes.
+Close resources created for the current task when its cleanup contract requires it. Do not close the caller's tab or a workspace, tab, pane, or session the current task did not create unless the user explicitly asks or approves it. Do not stop the active Herdr server unless the user explicitly intends to stop it and its pane processes.
 
 Parse every mutation response before continuing. Workspace create returns `result.workspace`, `result.tab`, and `result.root_pane`; tab create returns `result.tab` and `result.root_pane`; pane split returns the new ID at `result.pane.pane_id`. Workspace/tab management, pane list/get/split, agent operations, and waits return JSON on success. `pane read` and `agent read` return text; `pane send-text`, `pane send-keys`, and `pane run` are silent on success.
 
-Completion: the explicitly requested topology change is confirmed from its response, fresh IDs replace stale ones, user context moved only when requested, and cleanup respects resource ownership.
+Completion: the explicitly requested topology change is confirmed from its response, fresh IDs replace stale ones, user context moved only when requested, and cleanup respects exact ownership, caller-provided eligibility, live-agent safety, and fresh-list verification.
 
 ## Reference
 

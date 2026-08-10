@@ -2,6 +2,8 @@
 
 **Status:** Shipped
 
+**Later change:** The tab-cleanup exclusion is superseded by [0013](0013-execution-owned-tab-cleanup.md); independent liveness monitoring and active-worker termination remain excluded.
+
 **Created:** 2026-08-08
 
 ## What shipped
@@ -29,7 +31,7 @@ The owner needs a gradual replacement path that is useful every day while remain
 - Supporting Herdr-inside-Herdr nesting.
 - Tracking sessions, pane history, sockets, logs, or other generated Herdr runtime state.
 - Giving a generic Herdr transport layer ownership of agent-specific interaction behavior.
-- Shipping an independent liveness monitor or autonomous worker-pane termination workflow.
+- Shipping an independent liveness monitor or autonomous active-worker termination workflow. Post-completion cleanup of execution-owned tabs is governed by [0013](0013-execution-owned-tab-cleanup.md).
 
 ## FAQ
 

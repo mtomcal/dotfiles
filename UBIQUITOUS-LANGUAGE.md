@@ -1,7 +1,7 @@
 # Ubiquitous Language
 
-> **Version**: 3.3.0
-> **Last Updated**: 2026-08-08
+> **Version**: 3.4.0
+> **Last Updated**: 2026-08-10
 > **Purpose**: Canonical project-wide vocabulary. Terms shared across proposals, workflows, documentation, and implementation are defined here independently of any retired specification suite.
 
 > **Usage note**: Throughout the repository, the bare term "install" should be disambiguated using one of the three defined terms: **install** (the complete install.sh run), **install (dependency)** (a single package), or **install (Mason)** (a Neovim package). Use the specific term wherever context is ambiguous.
@@ -59,6 +59,7 @@
 | **Herdr config** | The version-controlled TOML configuration for Herdr, sourced from `~/dotfiles/herdr/config.toml` and deployed to `~/.config/herdr/config.toml` | "Herdr settings" | The config is tracked; session state and pane history are not tracked |
 | **Herdr workspace** | Herdr's top-level workspace unit for a repo, task, or investigation | "tmux session" | Replaces tmux session/window mental models for new work; contains tabs and panes |
 | **Herdr tab** | A tab inside a Herdr workspace, analogous to a daily-use tmux window | "Herdr window" | Use "tab" because that is Herdr's term |
+| **execution-owned Herdr tab** | A Herdr tab created by coordinated execution whose label identifies its execution molecule, work bead, and role so eligible runtime resources can be rediscovered and cleaned without persisting public Herdr IDs | "worker tab", "temporary tab" | Beads closure and evidence determine cleanup eligibility; the label marks ownership but never becomes workflow authority |
 | **Herdr pane** | A terminal pane inside a Herdr tab | "terminal", "split" | Panes may run shells, editors, or agents |
 | **caller pane** | The Herdr pane whose process invoked an operation | "current pane", "focused pane" | Identified through environment or current-pane discovery, never inferred from UI focus |
 | **focused pane** | The Herdr pane currently selected in the interface | "caller pane", "current pane" | May differ from the caller pane |
@@ -162,6 +163,7 @@
 - **Tool provisioning** depends on **symlink management** for config deployment of TUI tools
 - The **SSH multiplexer** defaults to Herdr and MAY fall back to tmux through an environment override
 - A **Herdr workspace** contains one or more **Herdr tabs**, and a **Herdr tab** contains one or more **Herdr panes**
+- An **execution-owned Herdr tab** belongs to one **execution molecule** and **work bead** through its ownership label, while Beads rather than the label determines whether its work is closed and evidenced
 - The **caller pane** invokes an operation, while the **focused pane** reflects UI selection; they MAY differ
 - A **public Herdr ID** MUST be refreshed after topology changes, while a **legacy display selector** MUST NOT be treated as durable identity
 - **Herdr config** is deployed by the **dotfiles** repo, while **Herdr runtime state** remains local-only and out of git
@@ -228,6 +230,7 @@
 
 | Version | Date | Change |
 |---------|------|--------|
+| 3.4.0 | 2026-08-10 | Added execution-owned Herdr tabs and their Beads-gated cleanup relationship. |
 | 3.3.0 | 2026-08-08 | Added lightweight and coordinated execution modes, direct execution, delivery intent, exploration disposition, and temporary molecule-map visibility. |
 | 3.2.0 | 2026-08-08 | Removed the retired spec-extraction-plan term and relationships after the specification suite was decommissioned. |
 | 3.1.0 | 2026-08-08 | Moved the canonical glossary from the retired `specs/` suite to repository-root `UBIQUITOUS-LANGUAGE.md` and broadened its ownership to all durable project language. |
