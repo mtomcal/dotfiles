@@ -1,72 +1,8 @@
 # Dotfiles
 
-Personal development environment configuration for tmux, neovim, zsh, and a small set of coding-agent harnesses.
+Personal development environment for tmux, Neovim, Zsh, and three coding-agent harnesses. The installer supports Ubuntu/Debian and macOS while keeping mutable credentials, histories, sessions, and machine-specific settings outside Git.
 
-## Table of Contents
-
-- [Features](#features)
-- [Quick Start](#quick-start)
-  - [Installation](#installation)
-  - [Post-Installation](#post-installation)
-- [Testing](#testing)
-- [Structure](#structure)
-- [Configuration Details](#configuration-details)
-  - [Tmux](#tmux)
-    - [Session Management](#session-management)
-    - [Windows & Panes](#windows--panes)
-    - [Copy Mode](#copy-mode)
-    - [Pane Layout Bindings](#pane-layout-bindings)
-    - [Nested Sessions](#nested-sessions)
-  - [Neovim](#neovim)
-    - [General Navigation](#general-navigation)
-    - [LSP (all languages)](#lsp-all-languages)
-    - [Git (inside Neovim)](#git-inside-neovim)
-    - [Adding Custom Plugins](#adding-custom-plugins)
-  - [Zsh](#zsh)
-  - [Node.js (fnm)](#nodejs-fnm)
-  - [Language Development](#language-development)
-    - [Python Development](#python-development)
-    - [Go (Golang) Development](#go-golang-development)
-  - [TUI Tools](#tui-tools)
-    - [Lazygit](#lazygit)
-    - [Yazi (File Manager)](#yazi-file-manager)
-    - [Zoxide (Smart cd)](#zoxide-smart-cd)
-  - [AI Coding Tools](#ai-coding-tools)
-    - [Harness-specific Skills](#harness-specific-skills)
-    - [Codex CLI](#codex-cli)
-    - [Claude Code](#claude-code)
-    - [GitHub Copilot CLI](#github-copilot-cli)
-- [Platform-Specific Notes](#platform-specific-notes)
-  - [Ubuntu/Debian](#ubuntudebian)
-  - [macOS](#macos)
-- [Updating](#updating)
-- [Customization](#customization)
-- [Deploying to New Servers](#deploying-to-new-servers)
-- [Troubleshooting](#troubleshooting)
-- [Requirements](#requirements)
-- [Credits](#credits)
-
-## Features
-
-- **Tmux**: Default terminal workspace manager with vim-style navigation and keybindings optimized for neovim
-- **Neovim**: Official [kickstart.nvim](https://github.com/nvim-lua/kickstart.nvim) base with custom plugin layer
-- **Zsh**: Oh My Zsh with custom aliases and tmux SSH auto-attach
-- **TUI Tools**: lazygit, yazi file manager, zoxide smart directory jumping
-- **AI Coding Tools**: Codex CLI, Claude Code, and GitHub Copilot CLI with harness-specific skills
-- **Language Support**:
-  - **Python**: Pyright LSP + Ruff linting/formatting with Poetry auto-detection
-  - **Go (Golang)**: Full toolchain (gopls, delve debugger, gofumpt, goimports) with testing and debugging support
-  - **Lua**: stylua formatting
-- **Node.js**: fnm (Fast Node Manager) with auto-version switching
-- **Git Integration**: diffview and neogit for comprehensive code review workflows
-- **Cross-platform**: Supports both Ubuntu/Debian (apt) and macOS (Homebrew)
-
-
-## Quick Start
-
-### Installation
-
-Clone this repository and run the install script:
+## Install
 
 ```bash
 git clone https://github.com/mtomcal/dotfiles.git ~/dotfiles
@@ -74,990 +10,251 @@ cd ~/dotfiles
 ./install.sh
 ```
 
-The installer provides a **menu-driven interface** with multiple installation profiles:
+The interactive installer offers three profiles:
 
-**Interactive Mode** (default):
-- Choose from preset profiles: Full, Minimal, or Work
-- Or customize by selecting specific components
+| Profile | Purpose |
+|---------|---------|
+| `full` | Complete development environment, including Go, Node.js, TUI tools, Codex, Claude Code, Playwright, and Copilot |
+| `minimal` | Neovim and tmux with their managed configuration |
+| `work` | Neovim, tmux, Python, TUI tools, and Copilot |
 
-**Preset Profiles**:
+On macOS, the `full` and `work` profiles also install and configure Visual Studio Code Desktop. The browser-based code-server target is Ubuntu/Debian-only and must be selected explicitly.
 
-| Profile | Includes | Best For |
-|---------|----------|----------|
-| **Full** | Everything (Neovim, Tmux, Zsh, Go dev, Node.js, TUI tools, AI agents) | Complete development setup |
-| **Minimal** | Neovim + Tmux | Quick editor and workspace setup |
-| **Work** | Neovim, Tmux, TUI tools, Copilot CLI | Work machines |
+Profiles and individual modules can also be selected non-interactively:
 
-**Non-Interactive Mode** (command-line flags):
 ```bash
-# Install everything (includes Go development environment)
 ./install.sh --profile full
-
-# Minimal installation (editors only)
 ./install.sh --profile minimal
-
-# Work profile
 ./install.sh --profile work
-
-# Custom module selection
 ./install.sh --modules neovim,nvim_config,tmux_config
-
-# Go development environment
 ./install.sh --modules golang_full,neovim,nvim_config
-
-# View all options
+./install.sh --modules code_server --code-server-bind 127.0.0.1:8080
 ./install.sh --help
 ```
 
-**Available Modules**:
-- `base_tools` - Git, curl, tmux, zsh, ripgrep, jq, gh
-- `neovim` - Neovim 0.10+ (AppImage on Ubuntu, Homebrew on macOS)
-- `nvim_config` - Kickstart.nvim + custom plugins
-- `tmux_config` - Tmux configuration with vim bindings
-- `zsh_ohmyzsh` - Zsh + Oh My Zsh installation
-- `zsh_config` - Custom zsh configuration
-- `golang` - Go 1.24+ toolchain only (basic)
-- `golang_full` - Complete Go development environment:
-  - Go 1.24+ toolchain
-  - gopls (LSP server)
-  - delve (debugger)
-  - gofumpt (formatter)
-  - goimports (import manager)
-  - govulncheck (security scanner)
-- `nodejs` - Node.js LTS via fnm
-- `tui_tools` - TUI tools (lazygit, yazi, zoxide)
-- `codex` - Codex CLI + Codex-specific skills
-- `claude` - Claude Code CLI + MCP servers
-- `copilot` - GitHub Copilot CLI (curl installer, work-network friendly)
+The installer resolves missing prerequisites, reports each module independently, and is designed to be rerun. Agent authentication, generated secrets, editor runtime state, and other mutable tool data remain local.
 
-**Features**:
-- Automatic dependency resolution
-- Idempotent (safe to run multiple times)
-- Handles partial failures gracefully
-- Cross-platform (Ubuntu/Debian and macOS)
-
-### Post-Installation
-
-After installation completes:
+After installation, restart the shell:
 
 ```bash
-# Restart your shell
-source ~/.zshrc
-
-# Attach to the default tmux session
-tmux new-session -A -s main
-
-# Launch neovim
-nvim
+exec zsh
 ```
+
+## Tmux
+
+Tmux is the default terminal multiplexer. SSH shells automatically attach to or create the stable `main` session:
+
+```bash
+tmux new-session -A -s main
+```
+
+Set `DOTFILES_TMUX_AUTO_ATTACH=0` before starting the shell to opt out on a particular host. Local shells and shells already inside tmux do not auto-attach.
+
+The prefix is `Ctrl-a`.
+
+### Sessions and windows
+
+| Command or key | Action |
+|----------------|--------|
+| `tn work` | Create session `work` |
+| `ta work` | Attach to session `work` |
+| `tl` | List sessions |
+| `tk work` | Kill session `work` |
+| `td` / `Ctrl-a d` | Detach |
+| `Ctrl-a c` | Create an adjacent window in the current directory |
+| `Ctrl-a Ctrl-h` / `Ctrl-a Ctrl-l` | Select previous/next window |
+| `Ctrl-a <` / `Ctrl-a >` | Move the current window left/right |
+| `Ctrl-a r` | Reload `~/.tmux.conf` |
+
+### Panes
+
+| Key | Action |
+|-----|--------|
+| `Ctrl-a \|` | Split horizontally in the current directory |
+| `Ctrl-a -` | Split vertically in the current directory |
+| `Ctrl-a h/j/k/l` | Navigate panes |
+| `Ctrl-a H/J/K/L` | Resize panes |
+| `Ctrl-a M` | Merge panes into the previous window |
+| `Ctrl-a B` | Break the current pane into a new window |
+| `Ctrl-a E` | Break every pane into its own window |
+| `Ctrl-a V` | Arrange panes as equal columns |
+| `Ctrl-a R` | Reverse pane order |
+
+### Copy mode and nesting
+
+Copy mode uses Vim keys. `Ctrl-a [` enters copy mode, `v` begins selection, and `y` copies through the configured tmux buffer/clipboard command. Tmux also enables clipboard passthrough for terminals that support it.
+
+Nested tmux remains supported:
+
+| Key | Action |
+|-----|--------|
+| `F12` | Toggle control between outer and inner sessions; the outer status bar dims while disabled |
+| `Ctrl-a Ctrl-a` | Send the prefix to an inner session |
+
+The tracked source is [`tmux/.tmux.conf`](tmux/.tmux.conf).
+
+## Neovim
+
+The installer maintains an official kickstart.nvim checkout at `~/.config/nvim` and links `nvim/custom` into `~/.config/nvim/lua/custom`. Repository-owned plugin modules use `vim.pack` and are loaded by `nvim/custom/plugins/init.lua`.
+
+The custom layer currently owns:
+
+- Explicit-yank clipboard behavior and persistent yank history.
+- Formatting through conform.nvim.
+- Python Pyright and Ruff integration.
+- Go debugging and neotest integration.
+- Neo-tree, Diffview, Neogit, and rendered Markdown.
+- Indentation detection and statusline indentation display.
+
+### Repository-owned keybindings
+
+| Key | Action |
+|-----|--------|
+| `\` | Reveal the current file in Neo-tree |
+| `gp` / `gP` | Paste the last explicit yank from register `0` |
+| `<leader>pr` | Show registers |
+| `<leader>py` | Browse yank history with Telescope |
+| `<leader>f` | Format the current buffer or selection |
+| `<leader>l` | Run Python linting manually |
+| `<leader>gg` | Open Neogit |
+| `<leader>gc` | Open Neogit commit |
+| `<leader>gp` / `<leader>gP` | Pull/push through Neogit |
+| `<leader>dv` | Open Diffview |
+| `<leader>dh` / `<leader>df` | Current/all-file Git history |
+
+Go-specific bindings:
+
+| Key | Action |
+|-----|--------|
+| `<leader>dt` | Debug nearest test |
+| `<leader>db` | Toggle breakpoint |
+| `<leader>dc` | Continue debugging |
+| `<leader>tn` | Run nearest test |
+| `<leader>tf` | Run tests in the current file |
+| `<leader>to` | Open test output |
+| `<leader>ts` | Toggle test summary |
+
+To add a plugin, create a self-contained module under `nvim/custom/plugins`:
+
+```lua
+vim.pack.add({
+  { src = 'https://github.com/author/plugin-name' },
+})
+
+require('plugin-name').setup({})
+```
+
+See [`nvim/custom/README.md`](nvim/custom/README.md) for the loader contract.
+
+## Zsh and terminal tools
+
+The custom Zsh layer sets Neovim as `$EDITOR`, keeps user-local agent commands early in `$PATH`, initializes fnm and zoxide when installed, and exposes these shortcuts:
+
+| Alias | Command |
+|-------|---------|
+| `vim`, `vi` | `nvim` |
+| `t` | `tmux` |
+| `ta`, `tn`, `tl`, `tk`, `td` | Common tmux session operations |
+| `lg` | `lazygit` |
+| `y` | `yazi` |
+| `cx` | `codex` |
+| `cop` | `copilot` |
+
+Repository-owned Yazi jumps are:
+
+| Key | Destination |
+|-----|-------------|
+| `g h` | Home directory |
+| `g d` | `~/dotfiles` |
+| `g p` | `~/projects` |
+| `g t` | `/tmp` |
+
+Lazygit uses Neovim as its editor and enables automatic fetch/refresh. The tracked configurations live under `zsh/`, `lazygit/`, and `yazi/`.
+
+## Coding-agent harnesses
+
+The supported harnesses are Codex CLI, Claude Code, and GitHub Copilot CLI.
+
+```bash
+codex login
+claude auth login
+copilot login
+```
+
+Runtime credentials, histories, conversations, and generated settings are not stored in this repository. Codex configuration is documented in [`codex/README.md`](codex/README.md); Claude Code configuration is documented in [`claude/README.md`](claude/README.md).
+
+### Harness-specific skills
+
+Skills are intentionally separated by harness because different models benefit from different information and instruction styles:
+
+| Repository source | Runtime exposure |
+|-------------------|------------------|
+| `skills/claude` | `~/.claude/skills` |
+| `skills/codex` | `~/.agents/skills` and individual links under `~/.codex/skills` |
+| `skills/copilot` | `~/.config/copilot/skills` |
+
+Codex’s sync helper preserves its built-in `.system` skills while reconciling repository-owned links. Each catalog starts empty. Add a skill only when model-native capability lacks required material or when a repeatable tool contract needs durable instructions.
+
+## Managed editor targets
+
+The repository owns a shared VS Code settings, keybindings, snippets, and extension layer under `vscode/`.
+
+- Visual Studio Code Desktop is supported on macOS and participates in the `full` and `work` profiles.
+- code-server is supported on Ubuntu/Debian as an explicit module.
+- Machine-specific endpoint configuration, generated credentials, extension state, and service state remain local.
+- Settings Sync for managed Desktop settings and extensions must remain disabled manually so the repository stays authoritative.
+
+The capture helper at `vscode/capture.sh` can import an existing target configuration into the managed layer for review. It is never invoked during normal installation.
 
 ## Testing
 
-Run the shell test suite with:
+Run the shell suite from the repository root:
 
 ```bash
 bash tests/run.sh
 ```
 
-The runner syntax-checks the shell test files, discovers `tests/*.test.sh` in sorted order, and runs each file. Use this before committing changes to `install.sh`, installer helpers, or shell test coverage. Full installer changes still need platform/idempotency checks beyond these unit-style tests.
+The runner:
 
-## Structure
+- Checks shell syntax.
+- Applies a static Bash 3.2 compatibility guard for macOS.
+- Discovers and runs `tests/*.test.sh` in sorted order.
+- Cleans suite-owned temporary state after success or failure.
 
-```
-dotfiles/
-├── install.sh              # Installation script (Ubuntu + macOS)
-├── README.md              # This file
-├── AGENTS.md              # Shared AI agent instructions (all agents read this)
-├── tests/                 # Shell test runner, harness, and install-script tests
-├── skills/                 # Small, harness-specific skill catalogs
-│   ├── claude/
-│   ├── codex/
-│   └── copilot/
-├── codex/
-│   ├── config.toml        # Codex config template (copied to ~/.codex/config.toml)
-│   ├── sync-skills.sh     # Preserves Codex built-ins while linking skills/codex
-│   └── README.md          # Codex documentation
-├── claude/
-│   ├── statusline.sh      # Claude Code status line
-│   └── README.md          # Claude Code documentation
-├── copilot/
-│   └── agents/            # Copilot CLI agents
-├── lazygit/
-│   └── config.yml             # lazygit configuration
-├── yazi/
-│   ├── yazi.toml              # Yazi general settings
-│   ├── keymap.toml            # Vim keybindings + quick jumps
-│   └── theme.toml             # ASCII-friendly icons (no Nerd Fonts)
-├── docs/
-│   └── PYTHON_DEVELOPMENT.md  # Python development guide
-├── tmux/
-│   ├── .tmux.conf         # Tmux configuration
-│   └── reverse-panes.sh   # Helper script for Ctrl-a R pane reversal
-├── zsh/
-│   └── .zshrc.custom      # Custom zsh configuration
-└── nvim/
-    └── custom/            # Custom neovim configs (symlinked)
-        └── plugins/       # Your custom plugins (6 plugins)
-            ├── go.lua     # Go debugging and testing
-            ├── python.lua # Python LSP (pyright) + ruff linting
-            ├── markdown.lua   # Markdown rendering
-            ├── neo-tree.lua   # File explorer
-            ├── diffview.lua   # Git diff viewer
-            └── neogit.lua     # Git operations
-```
+Installer changes still require proportional real-platform and idempotency validation; the static compatibility guard does not prove runtime behavior on macOS Bash 3.2.
 
-## Configuration Details
+## Updating and customization
 
-### Tmux
-
-**Prefix Key**: `Ctrl-a` (changed from default `Ctrl-b`)
-
-### Session Management
-
-| Command | Action |
-|---------|--------|
-| `tn work` | New session named "work" |
-| `ta work` | Attach to session "work" |
-| `tl` | List all sessions |
-| `tk work` | Kill session "work" |
-| `td` | Detach from current session |
-| `Ctrl-a d` | Detach (inside tmux) |
-
-### Windows & Panes
-
-| Key | Action |
-|-----|--------|
-| `Ctrl-a c` | New window (adjacent to current) |
-| `Ctrl-a \|` | Split into side-by-side panes (left/right) |
-| `Ctrl-a -` | Split into stacked panes (top/bottom) |
-| `Ctrl-a h/j/k/l` | Navigate panes (vim-style) |
-| `Ctrl-a H/J/K/L` | Resize panes |
-| `Ctrl-a Ctrl-h` | Previous window |
-| `Ctrl-a Ctrl-l` | Next window |
-| `Ctrl-a <` | Move current window left (swap with previous) |
-| `Ctrl-a >` | Move current window right (swap with next) |
-| `Ctrl-a r` | Reload config |
-
-### Copy Mode
-
-| Key | Action |
-|-----|--------|
-| `Ctrl-a [` | Enter copy mode |
-| `v` | Start selection (in copy mode) |
-| `y` | Yank selection to clipboard (tmux buffer + system via xclip/OSC 52) |
-| `q` | Exit copy mode |
-| `Ctrl-a =` | Choose from all tmux buffers to paste |
-
-### Copy & Paste over SSH (Tmux + Neovim)
-
-Copying and pasting between a remote server and your local machine is a multi-layer problem: your local terminal emulator, the SSH connection, tmux, and neovim all have their own clipboard/buffer systems. Here's how to make it seamless.
-
-#### How the Layers Work
-
-```
-Local Machine                          Remote Server
-┌──────────────┐     SSH      ┌─────────────────────────┐
-│ Terminal     │◄───────────►│ tmux (buffers)          │
-│ (OS clip)    │              │  ├─ neovim (registers)   │
-│              │              │  └─ shell (stdin/stdout) │
-└──────────────┘              └─────────────────────────┘
-```
-
-By default, the remote server has no direct access to your local clipboard. Tmux's `set-clipboard on` and the `xclip` pipe only work when the remote has a running X server. Over SSH, you need **OSC 52** — a terminal escape sequence that writes to your local clipboard through the terminal emulator itself.
-
-#### Method 1: Tmux Copy Mode (Works Everywhere, Zero Setup)
-
-The simplest approach — yank text into tmux's internal buffer, then use your terminal's native selection to get it locally.
-
-**Copy from remote to local:**
-
-1. `Ctrl-a [` — enter tmux copy mode
-2. Navigate with vim keys (`h/j/k/l`, `/` to search, `w/b` for words)
-3. `v` — start visual selection
-4. Move to select text, then `y` — yank to tmux buffer
-5. Hold **Shift** and select the text with your mouse — this bypasses tmux mouse handling and uses your terminal's native selection, which goes straight to your local system clipboard
-
-**Why this works:** Most terminals (iTerm2, kitty, Alacritty, Terminal.app) copy mouse-selected text to the system clipboard. Holding Shift tells the terminal to use its own selection rather than forwarding the mouse event to tmux.
-
-**Paste from local to remote:**
-- **In any tmux pane:** `⌘V` (macOS) or `Ctrl+Shift+V` (Linux) in your terminal — this sends text as keyboard input
-- **From tmux buffer:** `Ctrl-a ]` pastes the last tmux buffer
-- **Choose buffer:** `Ctrl-a =` to browse all tmux buffers and pick one
-
-#### Method 2: OSC 52 Clipboard (Seamless Neovim Integration)
-
-OSC 52 lets the remote server write directly to your local clipboard via terminal escape codes. Configure this once and `"+y` / `"+p` in neovim will work over SSH — just like they do on your local machine.
-
-**Step 1: Check your terminal supports OSC 52**
-
-| Terminal | OSC 52 Support |
-|----------|---------------|
-| iTerm2 | ✅ Built-in (enable in Preferences → General → "Applications in terminal may access clipboard") |
-| kitty | ✅ Built-in (no config needed) |
-| WezTerm | ✅ Built-in |
-| Alacritty | ✅ Built-in |
-| Terminal.app (macOS) | ❌ Not supported |
-| Windows Terminal | ✅ Built-in |
-| Ghostty | ✅ Built-in |
-
-**Step 2: Enable OSC 52 passthrough in tmux**
-
-This config ships with OSC 52 terminal features enabled. These lines in `tmux/.tmux.conf` tell tmux to forward the escape sequences instead of eating them:
-
-```tmux
-# Already in your tmux/.tmux.conf — no changes needed
-set -g set-clipboard on
-set -as terminal-features ",tmux-256color*:clipboard"
-set -as terminal-features ",xterm-256color*:clipboard"
-```
-
-Reload after changes: `Ctrl-a r` or `tmux source-file ~/.tmux.conf`
-
-**Step 3: Configure neovim for OSC 52**
-
-Neovim 0.10+ includes `vim.ui.clipboard.osc52` built-in — no plugins required. Add this to your neovim config:
-
-```lua
--- Add to lua/custom/init.lua (create if it doesn't exist)
--- or add as a new plugin file in lua/custom/plugins/
-
--- OSC 52 clipboard provider — makes "+y / "+p work over SSH
-vim.g.clipboard = {
-  name = 'OSC 52',
-  copy = {
-    ['+'] = require('vim.ui.clipboard.osc52').copy('+'),
-    ['*'] = require('vim.ui.clipboard.osc52').copy('*'),
-  },
-  paste = {
-    ['+'] = require('vim.ui.clipboard.osc52').paste('+'),
-    ['*'] = require('vim.ui.clipboard.osc52').paste('*'),
-  },
-}
-```
-
-**After setup, these neovim commands work over SSH:**
-- `"+y` / `"*y` — yank to local system clipboard
-- `"+p` / `"*p` — paste from local system clipboard
-- `"+d` / `"*d` — cut to local system clipboard
-- Visual select then `y` (with `set clipboard+=unnamedplus`) — auto-yanks to system clipboard
-
-#### Method 3: Tmux Buffers as a Bridge (No Terminal Support Needed)
-
-When OSC 52 isn't available (e.g., Terminal.app on macOS), use tmux buffers and shell pipes:
-
-```bash
-# Remote → Local: dump last tmux buffer to local clipboard
-# Run this on the remote machine — the pipe writes through SSH to your local:
-tmux show-buffer | pbcopy           # macOS local machine
-
-# If you're on a Linux remote SSH'd from a Linux local:
-tmux show-buffer | ssh $LOCAL_HOST 'xclip -selection clipboard'
-
-# Local → Remote: send local clipboard to tmux buffer
-pbpaste | tmux load-buffer -         # macOS local → remote tmux
-xclip -o -selection clipboard | tmux load-buffer -   # Linux local → remote tmux
-# Then paste in tmux with: Ctrl-a ]
-```
-
-#### Quick Reference: Copy/Paste Cheat Sheet
-
-| Task | Where | How |
-|------|-------|-----|
-| Copy remote text to local | Tmux | `Ctrl-a [`, `v`, select, `y`, then **Shift+mouse-select** |
-| Paste local text to remote | Terminal | `⌘V` or `Ctrl+Shift+V` |
-| Yank to system clipboard | Neovim (SSH) | `"+y` (requires OSC 52 from Method 2) |
-| Paste from system clipboard | Neovim (SSH) | `"+p` (requires OSC 52 from Method 2) |
-| Paste last tmux buffer | Tmux/Shell | `Ctrl-a ]` |
-| Browse all tmux buffers | Tmux | `Ctrl-a =` (select with `j/k`, Enter to paste) |
-| List all tmux buffers | Shell | `tmux list-buffers` |
-| Copy tmux buffer to macOS clipboard | Shell (SSH) | `tmux show-buffer \| pbcopy` |
-| Send macOS clipboard to tmux buffer | Shell (SSH) | `pbpaste \| tmux load-buffer -` |
-
-#### Common SSH Copy/Paste Pitfalls
-
-| Problem | Cause | Fix |
-|---------|-------|-----|
-| `"+y` in neovim does nothing over SSH | No clipboard provider configured for headless remote | Set up OSC 52 (Method 2) or use tmux copy mode (Method 1) |
-| Mouse selection disappears when I release the button | Tmux mouse mode is intercepting | Hold **Shift** while selecting — forces terminal-native selection |
-| `xclip: command not found` or DISPLAY errors on remote | Remote has no X display | Use OSC 52 (Method 2), or Shift+mouse-select (Method 1) |
-| Pasting indented code gets cascading indentation | Neovim auto-indent in insert mode | Use `:set paste` before pasting, or paste with `"+p` in normal mode |
-| Large copies (>1MB) are slow with OSC 52 | Escape sequence overhead | Use `scp` or `rsync` for files; OSC 52 is for snippets |
-
-### Pane Layout Bindings
-
-| Key | Action |
-|-----|--------|
-| `Ctrl-a M` | Merge current window's panes into previous window as side-by-side splits |
-| `Ctrl-a B` | Break current pane into a new window |
-| `Ctrl-a E` | Explode all panes into separate windows |
-| `Ctrl-a V` | Rearrange panes into equal vertical columns |
-| `Ctrl-a R` | Reverse order of all panes in current window |
-
-**Features**:
-- True color support
-- Zero escape delay (optimized for neovim)
-- Mouse support enabled
-- 50,000 line scrollback
-- Vim-style copy mode
-- Fallback SSH multiplexer when `DOTFILES_SSH_MULTIPLEXER=tmux`
-- Automatic window naming with folder name and current process
-- Adjacent window creation for parallel development workflows
-- Nested tmux session support for orchestration systems
-
-**Nested Sessions**:
-
-Perfect for managing tmux orchestration systems (like Claude Code session managers) within your existing tmux workflow.
-
-| Key | Action |
-|-----|--------|
-| `F12` | Toggle control to inner session (status bar dims) |
-| `F12` again | Toggle back to outer session |
-| `Ctrl-a Ctrl-a <key>` | Send command to inner session directly |
-
-*Two methods available:*
-
-1. **F12 Toggle** (Recommended) — status bar dims as visual indicator
-2. **Double Prefix** — `Ctrl-a Ctrl-a` followed by your command
-
-*Example workflow:*
-```bash
-# In your outer tmux session (human windows)
-tmux new-window -n orchestrator
-
-# Inside that window, start nested tmux for orchestration
-tmux new-session -s claude-orchestrator
-
-# Now press F12 to control the inner session
-# Status bar will dim to show you're in "inner mode"
-# All commands now go to the orchestrator session
-
-# Press F12 again to return control to outer session
-```
-
-*Use cases:*
-- Outer session: Your human development windows
-- Inner session: Automated orchestration managing AI agent sessions
-- Clear visual separation prevents accidentally controlling the wrong session
-
-### Neovim
-
-Uses official **kickstart.nvim** as the base configuration with a custom plugin layer.
-
-**Philosophy**: Keep kickstart.nvim clean and update-able, add customizations in a separate layer.
-
-**Directory Structure**:
-- `~/.config/nvim/` - Official kickstart.nvim (git repo)
-- `~/.config/nvim/lua/custom/` - Your customizations (symlink to `~/dotfiles/nvim/custom/`)
-
-**Updating Kickstart**:
-```bash
-cd ~/.config/nvim
-git pull
-```
-
-Your custom configs persist across updates!
-
-### General Navigation
-
-| Key | Action |
-|-----|--------|
-| `\` | Toggle file explorer (neo-tree) |
-| `<leader>sf` | Search files (Telescope) |
-| `<leader>sg` | Search by grep (Telescope) |
-| `<leader>sb` | Search buffers |
-| `<leader>sh` | Search help tags |
-| `<leader>sd` | Search diagnostics |
-| `K` | Hover documentation |
-
-### Clipboard & Yank History
-
-A `TextYankPost` autocmd syncs **only explicit yanks** (`y`, `yw`, `yiw`, etc.) to the system clipboard (`+` register). Deletes (`dd`, `x`, `c`) stay in the unnamed register only — `vim.v.event.operator == 'y'` gates the sync.
-
-**How it works**: kickstart.nvim sets `clipboard=unnamedplus` via `vim.schedule` at startup, which would push deletes to the OS clipboard. Our custom layer queues a later `vim.schedule` to clear it — no patching of kickstart required. The autocmd then handles yank→`+` explicitly, preserving register type (char/line/block). For SSH clipboard, see [Copy & Paste over SSH](#copy--paste-over-ssh-tmux--neovim).
-
-**The delete-crushes-yank problem**: you `yiw` to yank a word, then `dd` deletes a line, and your yank is gone from the unnamed register (`""`). Two defenses:
-
-| Method | Key | What it does |
-|--------|-----|-------------|
-| Paste last yank | `gp` / `gP` | Paste from register `0` — never overwritten by deletes |
-| Browse registers | `<leader>pr` | Open `:registers` to find lost text in any register |
-
-**Yank history** — yanky.nvim (loaded via `vim.pack.add`, same as other custom plugins) provides a searchable, persistent yank ring:
-
-| Key | Action |
-|-----|--------|
-| `<leader>py` | Browse yank history with Telescope (search, preview, paste) |
-| `y` | Yank to unnamed register + yank ring |
-| `p` / `P` | Paste; repeat `p` to cycle through recent yanks |
-
-Example: recover a yank crushed by a delete:
-```
-yiw                  # Yank inner word
-dd                   # Delete a line (crushed your yank)
-gp                   # Paste from register 0 — your yank is still there!
-
-# Or browse all history:
-<leader>py           # Telescope yank history — search, preview, paste
-```
-
-**Numbered registers reference:**
-
-| Register | Holds | Recover with |
-|----------|-------|-------------|
-| `""` | Last yank or delete (unnamed) | `p` |
-| `"0` | Last yank only | `"0p` or `gp` |
-| `"1` | Last delete (>1 line) | `"1p` |
-| `"2`–`"9` | Older deletes (shift down) | `"2p`, `"3p`, ... |
-| `"-` | Small deletes (<1 line) | `"-p` |
-| `"+` | System clipboard | `"+p` (synced from unnamed) |
-
-### LSP (all languages)
-
-| Key | Action |
-|-----|--------|
-| `grd` | Go to definition |
-| `grr` | Go to references |
-| `gri` | Go to implementation |
-| `grt` | Go to type definition |
-| `grn` | Rename symbol |
-| `gra` | Code action |
-| `<leader>f` | Format buffer |
-
-### Git (inside Neovim)
-
-**Neogit** (interactive git):
-
-| Key | Action |
-|-----|--------|
-| `<leader>gg` | Open Neogit status |
-| `<leader>gc` | Git commit |
-| `<leader>gp` | Git pull |
-| `<leader>gP` | Git push |
-
-**Diffview** (code review):
-
-| Key | Action |
-|-----|--------|
-| `<leader>dv` | Open diff view (unstaged changes) |
-| `<leader>dc` | Close diff view |
-| `<leader>dh` | File history (current file) |
-| `<leader>df` | File history (all files) |
-
-**Current Custom Plugins**:
-
-1. **go.lua** - Go development with debugging and testing
-   - nvim-dap-go for debugging
-   - neotest-golang for test running
-
-2. **python.lua** - Python LSP (pyright) + ruff linting
-   - pyright: go-to-definition, hover, autocomplete, type checking
-   - ruff: fast linting with Poetry auto-detection
-   - Real-time linting on save
-
-3. **markdown.lua** - Beautiful markdown rendering
-   - MeanderingProgrammer/render-markdown.nvim
-   - Only loads for markdown files
-
-4. **neo-tree.lua** - File explorer
-   - SSH-friendly ASCII icons
-   - Git status tracking
-
-5. **diffview.nvim** - Git diff viewer for code review
-
-6. **neogit.nvim** - Interactive git operations
-
-**Adding Custom Plugins**:
-
-Create a file in `~/dotfiles/nvim/custom/plugins/`:
-
-```lua
--- ~/dotfiles/nvim/custom/plugins/my-plugin.lua
-return {
-  'author/plugin-name',
-  config = function()
-    require('plugin-name').setup({
-      -- your config
-    })
-  end,
-}
-```
-
-**Adding Custom Keymaps**:
-
-Add to `~/dotfiles/nvim/custom/init.lua`:
-
-```lua
--- Custom keymaps
-vim.keymap.set('n', '<leader>x', '<cmd>MyCommand<CR>', { desc = 'My custom command' })
-```
-
-### Zsh
-
-**Features**:
-- Oh My Zsh framework
-- Custom aliases for tmux and neovim
-- Neovim set as default editor
-- Auto-attach to tmux session `main` on SSH
-- fnm (Fast Node Manager) integration
-
-**SSH auto-attach**:
-
-| Setting | Behavior |
-|---------|----------|
-| unset / `DOTFILES_TMUX_AUTO_ATTACH=1` | Run `tmux new-session -A -s main` on SSH login |
-| `DOTFILES_TMUX_AUTO_ATTACH=0` | Remain in a plain SSH shell |
-
-**Aliases**:
-
-| Alias | Expands To |
-|-------|------------|
-| `vim`, `vi` | `nvim` |
-| `lg` | `lazygit` |
-| `y` | `yazi` |
-| `t` | `tmux` |
-| `ta <name>` | `tmux attach -t <name>` |
-| `tn <name>` | `tmux new -s <name>` |
-| `tl` | `tmux ls` |
-| `tk <name>` | `tmux kill-session -t <name>` |
-| `td` | `tmux detach` |
-| `cx` | `codex` |
-| `cop` | `copilot` |
-
-### Node.js (fnm)
-
-**Fast Node Manager (fnm)** is included for managing Node.js versions.
-
-**Features**:
-- Automatically installed during setup
-- Node.js LTS installed by default
-- Auto-switches Node versions based on `.node-version` or `.nvmrc` files
-- Much faster than nvm
-
-**Usage**:
-```bash
-# List available Node versions
-fnm list
-
-# Install a specific version
-fnm install 20
-
-# Use a specific version
-fnm use 20
-
-# Set default version
-fnm default 20
-
-# Install latest LTS
-fnm install --lts
-```
-
-**Auto-switching**: fnm automatically switches Node versions when you `cd` into directories with `.node-version` or `.nvmrc` files.
-
-### Language Development
-
-#### Python Development
-
-Full Python development environment with LSP, linting, and formatting.
-
-**Features**:
-- **Pyright LSP**: Type checking and code intelligence
-- **Ruff**: Fast linting and formatting
-- **Poetry Detection**: Automatically uses Poetry virtual environment when detected
-- **Real-time linting**: Triggers on save and edit
-
-**Keybindings**:
-- `<leader>f` - Format buffer with Ruff
-- `<leader>l` - Manually trigger linting
-- `K` - Show hover documentation
-- `grd` - Go to definition
-- `grr` - Find references
-
-
-
-#### Go (Golang) Development
-
-Complete Go development toolchain with debugging and testing support.
-
-**Features**:
-- **gopls**: Official Go LSP server
-- **delve**: Go debugger with DAP integration
-- **gofumpt**: Go formatter (requires Go 1.24+)
-- **goimports**: Import organizer
-- **neotest-golang**: Test runner integration
-
-**Debugging Keybindings**:
-- `<leader>dt` - Debug nearest test
-- `<leader>db` - Toggle breakpoint
-- `<leader>dc` - Continue debugging
-
-**Testing Keybindings**:
-- `<leader>tn` - Run nearest test
-- `<leader>tf` - Run all tests in file
-- `<leader>to` - Show test output panel
-- `<leader>ts` - Toggle test summary
-
-**Installation**:
-- macOS: Via Homebrew (automatic)
-- Ubuntu: Official binary with architecture detection (amd64/arm64)
-- Version check: Ensures Go 1.24+ is installed
-
-### TUI Tools
-
-Terminal UI tools for file management, git, and navigation.
-
-#### Lazygit
-
-A terminal UI for git commands. Launch with `lg`.
-
-### Navigation
-
-| Key | Action |
-|-----|--------|
-| `1-5` | Switch panels (status, files, branches, commits, stash) |
-| `h/l` | Cycle panels left/right |
-| `j/k` | Move up/down in panel |
-| `Enter` | Focus/expand item |
-| `q` | Quit |
-| `?` | Show all keybindings |
-
-### Common Operations
-
-| Key | Panel | Action |
-|-----|-------|--------|
-| `Space` | Files | Stage/unstage file |
-| `a` | Files | Stage/unstage all |
-| `c` | Files | Commit staged changes |
-| `P` | Files | Push |
-| `p` | Files | Pull |
-| `e` | Files | Edit file in neovim |
-| `Space` | Branches | Checkout branch |
-| `n` | Branches | New branch |
-| `M` | Branches | Merge into current |
-| `r` | Branches | Rebase onto current |
-| `z` | Any | Undo last action |
-
-**Workflow**:
-```
-lg                    # Launch lazygit
-Space (on files)      # Stage files
-c                     # Open commit message editor
-:wq                   # Save commit message
-P                     # Push to remote
-q                     # Quit
-```
-
-**Config**: `~/dotfiles/lazygit/config.yml` (auto-fetch enabled, neovim as editor)
-
-#### Yazi (File Manager)
-
-Blazing-fast terminal file manager with vim keybindings. Launch with `y`.
-
-### Navigation
-
-| Key | Action |
-|-----|--------|
-| `h` | Go to parent directory |
-| `l` or `Enter` | Open file / enter directory |
-| `j/k` | Move down/up |
-| `G` | Jump to bottom |
-| `g g` | Jump to top |
-| `/` | Search in current directory |
-| `z` | Fuzzy jump with zoxide |
-| `Z` | Fuzzy jump with fzf |
-
-### Quick Directory Jumps (custom)
-
-| Key | Action |
-|-----|--------|
-| `g h` | Go to `~` (home) |
-| `g d` | Go to `~/dotfiles` |
-| `g p` | Go to `~/projects` |
-| `g t` | Go to `/tmp` |
-
-### File Operations
-
-| Key | Action |
-|-----|--------|
-| `y` | Yank (copy) |
-| `x` | Cut (mark for move) |
-| `p` | Paste (complete copy/move) |
-| `d` | Delete (trash) |
-| `D` | Permanent delete |
-| `r` | Rename |
-| `a` | Create new file |
-| `A` | Create new directory |
-| `.` | Toggle hidden files |
-| `e` | Edit in neovim |
-
-### Selection
-
-| Key | Action |
-|-----|--------|
-| `Space` | Toggle select current file |
-| `v` | Enter visual mode (select range) |
-| `V` | Select all in directory |
-| `Esc` | Clear selection |
-
-**Workflow: Move Files**:
-```
-j/k          # Navigate to file
-x            # Cut (mark for move)
-h/l          # Navigate to destination directory
-p            # Paste (completes the move)
-```
-
-**Config**: `~/dotfiles/yazi/` (SSH-friendly ASCII icons, no Nerd Fonts required)
-
-#### Zoxide (Smart cd)
-
-Tracks your most-visited directories and jumps to them with partial matches.
-
-| Command | Action |
-|---------|--------|
-| `z foo` | Jump to highest-ranked directory matching "foo" |
-| `z foo bar` | Jump to directory matching both "foo" and "bar" |
-| `z ~/projects` | Works like regular `cd` for full paths |
-| `zi` | Interactive selection with fzf |
-| `zoxide query -ls` | Show all tracked directories with scores |
-
-Also integrates with yazi (`z` key).
-
-### AI Coding Tools
-
-Three AI coding assistants are configured:
-
-#### Harness-specific Skills
-
-Skills live under `skills/claude/`, `skills/codex/`, and `skills/copilot/`. Each catalog is intentionally empty by default and is linked only into its matching harness. Add a skill only when the model lacks required knowledge or when a repeatable tool contract warrants durable instructions. Harness-specific copies may differ because models and skill formats differ.
-
-#### Codex CLI
-
-Codex CLI is configured via `codex/` (instructions, config, and skill linking). See `codex/README.md`.
-
-**Authentication**:
-```bash
-codex login
-```
-
-#### Claude Code
-
-See [claude/README.md](claude/README.md) for details.
-
-**Authentication**:
-```bash
-claude auth login
-```
-
-
-#### GitHub Copilot CLI
-
-GitHub's AI coding assistant for the terminal, requires an active Copilot subscription.
-
-**Installation**: Uses `curl -fsSL https://gh.io/copilot-install | bash` (work-network friendly, no npm required).
-
-**Authentication**:
-```bash
-copilot login
-```
-
-**Features**:
-- Skills in `~/.config/copilot/skills/` (symlinked to `skills/copilot/`)
-- Included in both **full** and **work** profiles
-
-**Usage**:
-```bash
-copilot  # or `cop`
-```
-
-**Adding Copilot Skills**:
-
-```bash
-# Add only when Copilot needs durable knowledge or a tool contract
-mkdir ~/dotfiles/skills/copilot/my-skill
-nvim ~/dotfiles/skills/copilot/my-skill/SKILL.md
-```
-
-
-## Platform-Specific Notes
-
-### Ubuntu/Debian
-
-**Dependencies Installed**:
-- git, curl, tmux, neovim, zsh
-- build-essential (C compiler)
-- ripgrep, fd-find (telescope searching)
-- xclip (clipboard support)
-- python3-venv (Python virtual environments)
-
-**Neovim Installation**:
-- Downloads official AppImage (v0.11.5) with architecture detection (x86_64/arm64)
-- Script offers upgrade if current version is < 0.10
-- Installs to `/usr/local/bin/nvim` (with sudo) or `~/.local/bin/nvim` (without)
-
-**Go Installation**:
-- Official binary from golang.org
-- Architecture detection (amd64/arm64)
-- Version 1.24+ installed
-- PATH: `/usr/local/go/bin` and `$HOME/go/bin`
-
-**Clipboard**:
-- Uses xclip for system clipboard integration
-
-### macOS
-
-**Dependencies Installed**:
-- git, curl, tmux, neovim, zsh
-- gcc (C compiler via Homebrew)
-- ripgrep, fd (telescope searching)
-
-**Neovim Installation**:
-- Installs/updates neovim via Homebrew (always latest)
-
-**Go Installation**:
-- Via Homebrew (go package)
-- Version checking and upgrade prompts
-- Automatic PATH configuration
-
-**Clipboard**:
-- Uses built-in pbcopy/pbpaste
-
-**Homebrew**:
-- Script will install Homebrew if not present
-- Supports both Intel and Apple Silicon Macs
-
-## Updating
-
-### Update Kickstart.nvim
-
-```bash
-cd ~/.config/nvim
-git pull
-```
-
-### Update Your Dotfiles
+Update the repository and converge the selected environment again:
 
 ```bash
 cd ~/dotfiles
 git pull
-```
-
-### Re-run Install Script
-
-Safe to run multiple times - it will update packages and configs:
-
-```bash
-cd ~/dotfiles
 ./install.sh
 ```
 
-## Customization
+Common configuration sources:
 
-### Modifying Tmux Config
+| Area | Source |
+|------|--------|
+| Tmux | `tmux/.tmux.conf` |
+| Zsh | `zsh/.zshrc.custom` |
+| Neovim | `nvim/custom/plugins/` |
+| Lazygit | `lazygit/config.yml` |
+| Yazi | `yazi/` |
+| Codex template | `codex/config.toml` |
+| Claude status line | `claude/statusline.sh` |
+| VS Code layer | `vscode/` |
 
-Edit `~/dotfiles/tmux/.tmux.conf` and reload:
-
-```bash
-tmux source-file ~/.tmux.conf
-# or inside tmux: Ctrl-a r
-```
-
-### Modifying Zsh Config
-
-Edit `~/dotfiles/zsh/.zshrc.custom` and reload:
-
-```bash
-source ~/.zshrc
-```
-
-### Adding Neovim Plugins
-
-1. Create a new file in `~/dotfiles/nvim/custom/plugins/`
-2. Restart neovim - lazy.nvim will auto-install
-
-### Version Control
-
-Commit your customizations:
-
-```bash
-cd ~/dotfiles
-git add .
-git commit -m "feat: add custom neovim plugins"
-git push
-```
-
-## Deploying to New Servers
-
-On a new Ubuntu server or Mac:
-
-```bash
-# Clone your dotfiles
-git clone https://github.com/mtomcal/dotfiles.git ~/dotfiles
-
-# Run install script
-cd ~/dotfiles
-./install.sh
-
-# Restart shell
-exec zsh
-```
-
-Everything will be configured automatically!
-
-## Troubleshooting
-
-### Neovim plugins not loading
-
-Clean cache and reinstall:
-```bash
-rm -rf ~/.local/share/nvim ~/.local/state/nvim ~/.cache/nvim
-nvim --headless "+Lazy! sync" +qa
-```
-
-### Tmux colors look wrong
-
-Ensure your terminal supports true color. Check with:
-```bash
-echo $TERM
-```
-
-Should be `xterm-256color` or similar.
-
-### Zsh not default shell
-
-Run:
-```bash
-chsh -s $(which zsh)
-```
-
-Then log out and back in.
-
-### Custom configs not loading in neovim
-
-Check symlink:
-```bash
-ls -la ~/.config/nvim/lua/custom
-```
-
-Should point to `~/dotfiles/nvim/custom`
+Reload tmux with `Ctrl-a r` and Zsh with `source ~/.zshrc`. Neovim installs `vim.pack` additions when its custom modules load.
 
 ## Requirements
 
-### Ubuntu/Debian
-- Ubuntu 20.04+ or Debian 11+
-- sudo access
-- Internet connection
+- Ubuntu/Debian with `apt`, or macOS with Homebrew support.
+- Internet access for tool and package installation.
+- `sudo` access where system packages or `/usr/local` installations require it.
 
-### macOS
-- macOS 11+ (Big Sur or later)
-- Xcode Command Line Tools (installed automatically if needed)
-- Internet connection
-
-## Credits
-
-- [kickstart.nvim](https://github.com/nvim-lua/kickstart.nvim) - Neovim configuration by TJ DeVries
-- [Oh My Zsh](https://github.com/ohmyzsh/ohmyzsh) - Zsh framework
-- [tmux](https://github.com/tmux/tmux) - Terminal multiplexer
-- [mattpocock/skills](https://github.com/mattpocock/skills) - Original source for `improve-codebase-architecture`, `ubiquitous-language`, `grill-me`, and `write-a-skill` skills (modified for cross-agent compatibility)
+Run `./install.sh --help` for the current module catalog, platform restrictions, and command-line options.
 
 ## License
 
