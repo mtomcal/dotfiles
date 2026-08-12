@@ -48,8 +48,7 @@ test_install_claude_runs_latest_installer_when_claude_already_exists() {
     [[ "$(cat "$installer_log")" == "latest" ]] || fail "expected Claude installer target latest"
     [[ -x "$home/.local/bin/claude" ]] || fail "expected Claude binary at ~/.local/bin/claude"
     assert_symlink_to "$home/.claude/commands" "$DOTFILES_DIR/claude/commands"
-    assert_symlink_to "$home/.claude/agents" "$DOTFILES_DIR/claude/agents"
-    assert_symlink_to "$home/.claude/skills" "$DOTFILES_DIR/shared/skills"
+    assert_symlink_to "$home/.claude/skills" "$DOTFILES_DIR/skills/claude"
 }
 
 test_install_claude_fails_when_latest_installer_does_not_create_binary() {

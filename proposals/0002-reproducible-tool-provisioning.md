@@ -2,6 +2,8 @@
 
 **Status:** Accepted
 
+**Later change:** Beads, Herdr, Pi, and agent-sandbox provisioning are superseded by [0014](0014-model-native-agent-environment.md).
+
 **Created:** 2026-08-08
 
 ## What shipped

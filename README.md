@@ -1,6 +1,6 @@
 # Dotfiles
 
-Personal development environment configuration for Herdr, tmux fallback, neovim, and zsh.
+Personal development environment configuration for tmux, neovim, zsh, and a small set of coding-agent harnesses.
 
 ## Table of Contents
 
@@ -11,8 +11,6 @@ Personal development environment configuration for Herdr, tmux fallback, neovim,
 - [Testing](#testing)
 - [Structure](#structure)
 - [Configuration Details](#configuration-details)
-  - [Herdr](#herdr)
-    - [Agent Integrations](#agent-integrations)
   - [Tmux](#tmux)
     - [Session Management](#session-management)
     - [Windows & Panes](#windows--panes)
@@ -34,11 +32,9 @@ Personal development environment configuration for Herdr, tmux fallback, neovim,
     - [Yazi (File Manager)](#yazi-file-manager)
     - [Zoxide (Smart cd)](#zoxide-smart-cd)
   - [AI Coding Tools](#ai-coding-tools)
-    - [Shared Skills](#shared-skills)
+    - [Harness-specific Skills](#harness-specific-skills)
     - [Codex CLI](#codex-cli)
     - [Claude Code](#claude-code)
-    - [Pi Coding Agent](#pi-coding-agent)
-      - [Pi Sandbox (`pis`)](#pi-sandbox-pis)
     - [GitHub Copilot CLI](#github-copilot-cli)
 - [Platform-Specific Notes](#platform-specific-notes)
   - [Ubuntu/Debian](#ubuntudebian)
@@ -52,12 +48,11 @@ Personal development environment configuration for Herdr, tmux fallback, neovim,
 
 ## Features
 
-- **Herdr**: Default terminal workspace manager for persistent agent/workspace sessions
-- **Tmux**: Legacy fallback with vim-style navigation and keybindings optimized for neovim
+- **Tmux**: Default terminal workspace manager with vim-style navigation and keybindings optimized for neovim
 - **Neovim**: Official [kickstart.nvim](https://github.com/nvim-lua/kickstart.nvim) base with custom plugin layer
-- **Zsh**: Oh My Zsh with custom aliases and Herdr-first SSH auto-attach
+- **Zsh**: Oh My Zsh with custom aliases and tmux SSH auto-attach
 - **TUI Tools**: lazygit, yazi file manager, zoxide smart directory jumping
-- **AI Coding Tools**: Codex CLI, Claude Code, Pi, and GitHub Copilot CLI with shared instructions
+- **AI Coding Tools**: Codex CLI, Claude Code, and GitHub Copilot CLI with harness-specific skills
 - **Language Support**:
   - **Python**: Pyright LSP + Ruff linting/formatting with Poetry auto-detection
   - **Go (Golang)**: Full toolchain (gopls, delve debugger, gofumpt, goimports) with testing and debugging support
@@ -89,9 +84,9 @@ The installer provides a **menu-driven interface** with multiple installation pr
 
 | Profile | Includes | Best For |
 |---------|----------|----------|
-| **Full** | Everything (Neovim, Tmux fallback, Herdr, Zsh, Go dev, Node.js, TUI tools, AI agents) | Complete development setup |
-| **Minimal** | Neovim + Tmux fallback + Herdr | Quick editor and workspace setup |
-| **Work** | Neovim, Tmux fallback, Herdr, TUI tools, Copilot CLI | Work machines |
+| **Full** | Everything (Neovim, Tmux, Zsh, Go dev, Node.js, TUI tools, AI agents) | Complete development setup |
+| **Minimal** | Neovim + Tmux | Quick editor and workspace setup |
+| **Work** | Neovim, Tmux, TUI tools, Copilot CLI | Work machines |
 
 **Non-Interactive Mode** (command-line flags):
 ```bash
@@ -110,9 +105,6 @@ The installer provides a **menu-driven interface** with multiple installation pr
 # Go development environment
 ./install.sh --modules golang_full,neovim,nvim_config
 
-# Herdr workspace manager and agent integrations
-./install.sh --modules herdr,herdr_config,herdr_integrations
-
 # View all options
 ./install.sh --help
 ```
@@ -122,9 +114,6 @@ The installer provides a **menu-driven interface** with multiple installation pr
 - `neovim` - Neovim 0.10+ (AppImage on Ubuntu, Homebrew on macOS)
 - `nvim_config` - Kickstart.nvim + custom plugins
 - `tmux_config` - Tmux configuration with vim bindings
-- `herdr` - Herdr terminal workspace manager via official curl installer
-- `herdr_config` - Symlinks `herdr/config.toml` to `~/.config/herdr/config.toml`
-- `herdr_integrations` - Deploys repo-owned Herdr hooks and Pi integration wiring
 - `zsh_ohmyzsh` - Zsh + Oh My Zsh installation
 - `zsh_config` - Custom zsh configuration
 - `golang` - Go 1.24+ toolchain only (basic)
@@ -137,10 +126,8 @@ The installer provides a **menu-driven interface** with multiple installation pr
   - govulncheck (security scanner)
 - `nodejs` - Node.js LTS via fnm
 - `tui_tools` - TUI tools (lazygit, yazi, zoxide)
-- `codex` - Codex CLI + skills + agent roles
+- `codex` - Codex CLI + Codex-specific skills
 - `claude` - Claude Code CLI + MCP servers
-- `pi` - Pi Coding Agent
-- `pi_sandbox` - Pi Sandbox (Docker image + `pis` script)
 - `copilot` - GitHub Copilot CLI (curl installer, work-network friendly)
 
 **Features**:
@@ -157,8 +144,8 @@ After installation completes:
 # Restart your shell
 source ~/.zshrc
 
-# Start Herdr
-herdr
+# Attach to the default tmux session
+tmux new-session -A -s main
 
 # Launch neovim
 nvim
@@ -182,42 +169,18 @@ dotfiles/
 ├── README.md              # This file
 ├── AGENTS.md              # Shared AI agent instructions (all agents read this)
 ├── tests/                 # Shell test runner, harness, and install-script tests
-├── shared/
-│   └── skills/            # Canonical skill catalog — exposed to all agents
-│       ├── playwright/
-│       ├── video-to-contact-sheet/
-│       ├── create-engineering-plan/
-│       ├── execute-engineering-molecule/
-│       ├── beads/
-│       ├── teach/
-│       ├── research/
-│       ├── code-review/
-│       ├── herdr/
-│       ├── herdr-claude-code/
-│       ├── herdr-supervise/
-│       ├── ubiquitous-language/
-│       ├── audit-shared-skills/
-│       └── grill-me/
+├── skills/                 # Small, harness-specific skill catalogs
+│   ├── claude/
+│   ├── codex/
+│   └── copilot/
 ├── codex/
-│   ├── agents/            # Codex agent role configs (~/.codex/agents)
 │   ├── config.toml        # Codex config template (copied to ~/.codex/config.toml)
+│   ├── sync-skills.sh     # Preserves Codex built-ins while linking skills/codex
 │   └── README.md          # Codex documentation
 ├── claude/
-│   ├── agents/            # Claude Code subagents
-
+│   ├── statusline.sh      # Claude Code status line
 │   └── README.md          # Claude Code documentation
-├── pi/
-│   ├── extensions/        # Pi extensions (context-first-footer, web-search, inherit-last-model, herdr-agent-state)
-│   ├── models.json        # Pi model/provider config (~/.pi/agent/models.json)
-│   ├── skills/            # Pi-visible skills
-│   ├── pi.sh              # Pi wrapper (~/.local/bin/pi)
-│   ├── pis.sh             # Pi sandbox wrapper (~/.local/bin/pis)
-│   └── Dockerfile         # Pi sandbox Docker image
-├── herdr/
-│   ├── config.toml        # Herdr config (~/.config/herdr/config.toml)
-│   └── integrations/      # Repo-owned Herdr hooks for claude/codex/copilot
 ├── copilot/
-
 │   └── agents/            # Copilot CLI agents
 ├── lazygit/
 │   └── config.yml             # lazygit configuration
@@ -244,44 +207,6 @@ dotfiles/
 ```
 
 ## Configuration Details
-
-### Herdr
-
-Herdr is the primary terminal workspace manager for persistent workspaces, tabs, panes, and AI agent session reporting. Tmux remains installed and configured as a fallback, especially for older workflows and sandboxed sessions.
-
-**Config**:
-
-| Source | Target |
-|--------|--------|
-| `herdr/config.toml` | `~/.config/herdr/config.toml` |
-
-**Basic commands**:
-
-| Command | Action |
-|---------|--------|
-| `herdr` or `h` | Start Herdr |
-| `ha` | Attach to a Herdr session |
-| `hl` | List Herdr sessions |
-| `hu` | Update Herdr |
-
-#### Agent Integrations
-
-The `herdr_integrations` module deploys repo-owned integration artifacts from `herdr/integrations/{claude,codex,copilot}/` so Herdr can report agent session state:
-
-| Agent | Integration |
-|-------|-------------|
-| Claude Code | `herdr/integrations/claude/herdr-agent-state.sh` symlinked into `~/.claude/hooks/` |
-| Codex CLI | `herdr/integrations/codex/herdr-agent-state.sh` symlinked into `~/.codex/` |
-| GitHub Copilot CLI | `herdr/integrations/copilot/herdr-agent-state.sh` symlinked into `~/.copilot/hooks/` |
-| Pi | `pi/extensions/herdr-agent-state.ts` deployed to `~/.pi/agent/extensions/herdr-agent-state.ts` |
-
-Agents also share the generic `shared/skills/herdr/` skill, which owns Herdr CLI transport and server-owned settled-state observation. `shared/skills/herdr-claude-code/` composes that base for validated Claude Code launch, atomic prompt submission, and blocked-agent steering. `shared/skills/herdr-supervise/` composes the same transport for bounded editable-worker supervision, preflight model and escalation selection, independent acceptance, cost tracking, and an efficiency verdict. Execution-molecule context rotation is coordinator-owned; no separate liveness-monitor or worker-pane-termination skill is shipped.
-
-Re-run integrations after changing agent config:
-
-```bash
-./install.sh --modules herdr,herdr_config,herdr_integrations
-```
 
 ### Tmux
 
@@ -672,16 +597,15 @@ vim.keymap.set('n', '<leader>x', '<cmd>MyCommand<CR>', { desc = 'My custom comma
 - Oh My Zsh framework
 - Custom aliases for tmux and neovim
 - Neovim set as default editor
-- Auto-attach to Herdr on SSH, with tmux fallback via `DOTFILES_SSH_MULTIPLEXER=tmux`
+- Auto-attach to tmux session `main` on SSH
 - fnm (Fast Node Manager) integration
 
-**SSH multiplexer selection**:
+**SSH auto-attach**:
 
 | Setting | Behavior |
 |---------|----------|
-| unset / `DOTFILES_SSH_MULTIPLEXER=herdr` | Start Herdr on SSH login |
-| `DOTFILES_SSH_MULTIPLEXER=tmux` | Attach/create tmux session `${TMUX_AUTO_SESSION:-0}` |
-| `DOTFILES_SSH_MULTIPLEXER=none` | Do not auto-start a multiplexer |
+| unset / `DOTFILES_TMUX_AUTO_ATTACH=1` | Run `tmux new-session -A -s main` on SSH login |
+| `DOTFILES_TMUX_AUTO_ATTACH=0` | Remain in a plain SSH shell |
 
 **Aliases**:
 
@@ -690,17 +614,12 @@ vim.keymap.set('n', '<leader>x', '<cmd>MyCommand<CR>', { desc = 'My custom comma
 | `vim`, `vi` | `nvim` |
 | `lg` | `lazygit` |
 | `y` | `yazi` |
-| `h` | `herdr` |
-| `ha` | `herdr session attach` |
-| `hl` | `herdr session list` |
-| `hu` | `herdr update` |
 | `t` | `tmux` |
 | `ta <name>` | `tmux attach -t <name>` |
 | `tn <name>` | `tmux new -s <name>` |
 | `tl` | `tmux ls` |
 | `tk <name>` | `tmux kill-session -t <name>` |
 | `td` | `tmux detach` |
-| `pi` | Pi coding agent (no alias, binary name) |
 | `cx` | `codex` |
 | `cop` | `copilot` |
 
@@ -905,76 +824,15 @@ Also integrates with yazi (`z` key).
 
 ### AI Coding Tools
 
-Four AI coding assistants are configured:
+Three AI coding assistants are configured:
 
-#### Shared Skills
+#### Harness-specific Skills
 
-Codex, Claude, Pi, and Copilot share a single skills directory at `shared/skills/`. Non-Pi agents symlink their skills path directly to it; Pi exposes shared skills through `pi/skills/`.
-
-**Workflow highlights** (run `ls shared/skills/` for the complete catalog):
-
-| Skill | Description |
-|-------|-------------|
-| `playwright` | Browser automation, scripted capture, and Playwright test workflows |
-| `video-to-contact-sheet` | Convert recordings into trimmed clips, contact sheets, and focused crops |
-| `create-engineering-plan` | Atomically create and activate one validated Beads engineering molecule from approved scope |
-| `execute-engineering-molecule` | Coordinate a Beads execution molecule through Herdr with compact recovery, write-ahead attempts, and configured reviews |
-| `beads` | Canonical `bd` contract — command-repo routing, compact recovery projections, work beads, attempts, and sync |
-| `teach` | Build a durable, researched teaching workspace with HTML lessons and learning records |
-| `code-review` | Review a fixed diff independently against repository standards and originating requirements |
-| `research` | Produce durable primary-source-backed investigation artifacts |
-| `test-quality-verifier` | Audit tests for vague assertions, improve coverage, produce a structured report |
-| `improve-codebase-architecture` | Find architecture deepening opportunities and present a visual HTML review _(adapted from [mattpocock/skills](https://github.com/mattpocock/skills))_ |
-| `herdr` | Control Herdr workspaces, tabs, panes, output, and concurrent agent status from inside Herdr |
-| `herdr-claude-code` | Reliably launch, prompt, observe, and steer Claude Code by composing base Herdr transport |
-| `herdr-supervise` | Supervise one bounded editable worker with preflight model selection, escalation, independent acceptance, cost tracking, and an efficiency verdict |
-| `ubiquitous-language` | Extract a DDD-style glossary from project evidence _(adapted from [mattpocock/skills](https://github.com/mattpocock/skills))_ |
-| `audit-shared-skills` | Audit `shared/skills/` for cross-agent frontmatter compatibility, flag and fix issues |
-| `grill-me` | Resolve design branches through evidence-grounded, term-aware interviewing |
-| `write-a-skill` | Create or revise cross-agent skills with progressive disclosure and completion criteria |
-
-**Adding a new skill**:
-
-Skills from any GitHub-hosted collection can be installed with one command. Because shared skills are canonical, installing into a supported agent puts the skill in `shared/skills/`.
-
-```bash
-# Install from a GitHub skills repo (e.g. mattpocock/skills)
-npx skills@latest add mattpocock/skills/tdd
-npx skills@latest add mattpocock/skills/grill-me
-npx skills@latest add mattpocock/skills/git-guardrails-claude-code
-
-# Browse all available skills in a collection first
-npx skills@latest list mattpocock/skills
-
-# Or create a skill from scratch (interactive)
-npx skills@latest add
-```
-
-After installing, run the `audit-shared-skills` skill to verify the new skill's frontmatter is compatible across all agents.
-
-```bash
-# Or create a skill file manually
-mkdir shared/skills/my-skill
-nvim shared/skills/my-skill/SKILL.md
-```
-
-**Skill frontmatter schema** (required fields for all agents):
-
-```yaml
----
-name: skill-name
-description: What it does. Use when [trigger condition].  # max 1024 chars
-metadata:
-  short-description: Short label (≤6 words)   # Codex/Pi
-allowed-tools: Bash(cmd:*)                    # Claude Code only, if needed
----
-```
-
-Run the `audit-shared-skills` skill in any agent to verify all skills are compatible.
+Skills live under `skills/claude/`, `skills/codex/`, and `skills/copilot/`. Each catalog is intentionally empty by default and is linked only into its matching harness. Add a skill only when the model lacks required knowledge or when a repeatable tool contract warrants durable instructions. Harness-specific copies may differ because models and skill formats differ.
 
 #### Codex CLI
 
-Codex CLI is configured via `codex/` (agents + config). See `codex/README.md`.
+Codex CLI is configured via `codex/` (instructions, config, and skill linking). See `codex/README.md`.
 
 **Authentication**:
 ```bash
@@ -991,89 +849,6 @@ claude auth login
 ```
 
 
-#### Pi Coding Agent
-
-Minimal, extensible terminal-based AI coding agent with 30+ provider support. Built from the [pi-mono](https://github.com/nickvdyck/pi-mono) project.
-
-**Authentication**:
-```bash
-pi  # First launch prompts for authentication
-```
-
-**Features**:
-- 30+ LLM providers (Anthropic, OpenAI, Google, and more)
-- Ollama Cloud models (GLM 5.2, MiniMax M3, Kimi K2.7 Code, Qwen 3.5 397B, DeepSeek V4 Pro/Flash)
-- TypeScript extensions for custom tools and workflows
-- Herdr agent-state extension enabled in the Pi runtime
-- Session tree navigation and branching
-- Multiple modes: interactive TUI, print, JSON, RPC
-
-**Usage**:
-```bash
-pi                 # Start interactive session
-```
-
-**Config layout**:
-
-The installer preserves the npm-installed executable as `~/.local/bin/pi-bin`, then installs the repo wrapper at `~/.local/bin/pi`. Pi reads one config tree at `~/.pi/agent`; mutable settings stay local while shared resources come from the repository.
-
-| Target | Source |
-|--------|--------|
-| `~/.pi/agent/settings.json` | Local runtime state (not tracked) |
-| `~/.pi/agent/models.json` | `pi/models.json` |
-| `~/.pi/agent/skills` | `pi/skills` |
-| `~/.pi/agent/extensions/herdr-agent-state.ts` | `pi/extensions/herdr-agent-state.ts` |
-| `~/.pi/agent/extensions/context-first-footer.ts` | `pi/extensions/context-first-footer.ts` |
-| `~/.pi/agent/extensions/inherit-last-model` | `pi/extensions/inherit-last-model` |
-| `~/.pi/agent/extensions/web-search` | `pi/extensions/web-search` |
-
-The `context-first-footer` extension places `Context: N.N% used` on the first footer line so context monitoring remains readable in narrow terminal panes; the model and Git branch are moved to an optional second line.
-
-Settings, sessions, and auth stay local under `~/.pi/agent/` and are not tracked.
-
-##### Pi Sandbox (`pis`)
-
-Run Pi inside a Docker container for safe agentic coding. The container is ephemeral — destroyed after each session. Your project directory is mounted read-write; everything else on the host is isolated. Pi runs inside a tmux session for stable terminal behavior inside the container.
-
-**Prerequisites**: Docker must be installed. The image builds automatically on first run.
-
-**Basic usage**:
-```bash
-pis                     # Run Pi in cwd (sandboxed)
-pis --build             # Rebuild the Docker image
-```
-
-**Mounting extra directories** (read-only by default):
-```bash
-pis ~/Code/shared-lib                    # Mount read-only
-pis -rw ~/Code/shared-lib               # Mount read-write
-pis ~/Code/lib1 ~/Code/lib2             # Multiple dirs (both read-only)
-pis -rw ~/Code/lib1 ~/Code/lib2         # First read-write, second read-only
-```
-
-**Passing arguments to Pi** (use `--` separator):
-```bash
-pis -- --mode print -p "fix the tests"  # Pi args after --
-pis ~/Code/lib -- --mode rpc            # Extra dir + pi args
-```
-
-**What's mounted in the container**:
-
-| Host path | Container path | Mode |
-|-----------|---------------|------|
-| Current directory | Same absolute path | read-write |
-| Extra directories | Same absolute path | read-only (or `-rw`) |
-| `~/.pi/agent/sessions/` | `/home/<user>/.pi/agent/sessions/` | read-write |
-| `~/.pi/agent/auth.json` | `/home/<user>/.pi/agent/auth.json` | read-only |
-| `~/.pi/agent/settings.json` | `/home/<user>/.pi/agent/settings.json` | read-only |
-| `~/.pi/agent/models.json` | `/home/<user>/.pi/agent/models.json` | read-only |
-| `~/.pi/agent/skills/` | `/home/<user>/.pi/agent/skills/` | read-only |
-| `~/.pi/agent/extensions/` | `/home/<user>/.pi/agent/extensions/` | read-only |
-
-**Environment**: API key env vars (`*_API_KEY`) are forwarded automatically.
-
-**Container toolchains**: Ubuntu 24.04, Node.js LTS (fnm), Python 3, Go 1.24+, tmux, git, ripgrep, fd, jq, gh, build-essential, zsh.
-
 #### GitHub Copilot CLI
 
 GitHub's AI coding assistant for the terminal, requires an active Copilot subscription.
@@ -1086,7 +861,7 @@ copilot login
 ```
 
 **Features**:
-- Skills in `~/.config/copilot/skills/` (symlinked to `shared/skills/`)
+- Skills in `~/.config/copilot/skills/` (symlinked to `skills/copilot/`)
 - Included in both **full** and **work** profiles
 
 **Usage**:
@@ -1094,15 +869,12 @@ copilot login
 copilot  # or `cop`
 ```
 
-**Adding Custom Skills** (shared across all agents):
+**Adding Copilot Skills**:
 
 ```bash
-# Install from a GitHub skills collection
-npx skills@latest add mattpocock/skills/tdd
-
-# Or create manually — lands in shared/skills/ and is available everywhere
-mkdir ~/dotfiles/shared/skills/my-skill
-nvim ~/dotfiles/shared/skills/my-skill/SKILL.md
+# Add only when Copilot needs durable knowledge or a tool contract
+mkdir ~/dotfiles/skills/copilot/my-skill
+nvim ~/dotfiles/skills/copilot/my-skill/SKILL.md
 ```
 
 
@@ -1176,12 +948,6 @@ Safe to run multiple times - it will update packages and configs:
 ```bash
 cd ~/dotfiles
 ./install.sh
-```
-
-To refresh only Herdr and its managed integrations:
-
-```bash
-./install.sh --modules herdr,herdr_config,herdr_integrations
 ```
 
 ## Customization
@@ -1273,33 +1039,6 @@ ls -la ~/.config/nvim/lua/custom
 ```
 
 Should point to `~/dotfiles/nvim/custom`
-
-### Herdr agent sessions not showing
-
-Refresh Herdr and the managed agent integrations:
-
-```bash
-cd ~/dotfiles
-./install.sh --modules herdr,herdr_config,herdr_integrations
-```
-
-Then verify the expected links exist:
-
-```bash
-ls -la ~/.config/herdr/config.toml
-ls -la ~/.claude/hooks/herdr-agent-state.sh
-ls -la ~/.codex/herdr-agent-state.sh
-ls -la ~/.copilot/hooks/herdr-agent-state.sh
-ls -la ~/.pi/agent/extensions/herdr-agent-state.ts
-```
-
-Start an agent inside Herdr and check that the pane reports agent state:
-
-```bash
-herdr pane list
-```
-
-For Pi, rerun the `pi` install module after changing tracked Pi config or extension sources.
 
 ## Requirements
 

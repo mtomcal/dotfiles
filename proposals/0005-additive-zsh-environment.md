@@ -2,6 +2,8 @@
 
 **Status:** Shipped
 
+**Later change:** Herdr selection and Beads routing are superseded by the tmux-only shell behavior in [0014](0014-model-native-agent-environment.md).
+
 **Created:** 2026-08-08
 
 ## What shipped

@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Keep Codex's per-skill symlink farm in sync with shared/skills.
+# Keep Codex's per-skill symlink farm in sync with skills/codex.
 #
 # Codex owns ~/.codex/skills/.system, so ~/.codex/skills cannot be a direct
-# symlink to shared/skills. This script preserves .system while exposing every
-# shared skill as an immediate child of ~/.codex/skills.
+# symlink to the repository directory. This script preserves .system while
+# exposing every Codex-specific skill as an immediate child of ~/.codex/skills.
 
 set -euo pipefail
 
@@ -21,7 +21,8 @@ done
 
 SCRIPT_DIR="$(cd "$(dirname "$SOURCE")" && pwd)"
 DOTFILES_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-SHARED_SKILLS_DIR="${DOTFILES_DIR}/shared/skills"
+CODEX_SKILLS_SOURCE="${DOTFILES_DIR}/skills/codex"
+LEGACY_SHARED_SKILLS_SOURCE="${DOTFILES_DIR}/shared/skills"
 CODEX_SKILLS_DIR="${CODEX_HOME:-$HOME/.codex}/skills"
 
 log() {
@@ -34,7 +35,7 @@ mkdir -p "$CODEX_SKILLS_DIR"
 
 shopt -s nullglob
 
-for skill_dir in "$SHARED_SKILLS_DIR"/*; do
+for skill_dir in "$CODEX_SKILLS_SOURCE"/*; do
     [[ -d "$skill_dir" && -f "$skill_dir/SKILL.md" ]] || continue
 
     skill_name="$(basename "$skill_dir")"
@@ -60,7 +61,11 @@ for target in "$CODEX_SKILLS_DIR"/*; do
 
     link_target="$(readlink "$target")"
     case "$link_target" in
-        "$SHARED_SKILLS_DIR"/*)
+        "$LEGACY_SHARED_SKILLS_SOURCE"/*)
+            rm "$target"
+            log "Removed legacy shared skill $(basename "$target")"
+            ;;
+        "$CODEX_SKILLS_SOURCE"/*)
             if [[ ! -f "$link_target/SKILL.md" ]]; then
                 rm "$target"
                 log "Removed stale $(basename "$target")"

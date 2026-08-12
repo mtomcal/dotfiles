@@ -1,8 +1,8 @@
 # 0003 — Herdr-first terminal workspaces
 
-**Status:** Shipped
+**Status:** Superseded by [0014](0014-model-native-agent-environment.md)
 
-**Later change:** The tab-cleanup exclusion is superseded by [0013](0013-execution-owned-tab-cleanup.md); independent liveness monitoring and active-worker termination remain excluded.
+**Later change:** [0013](0013-execution-owned-tab-cleanup.md) changed tab cleanup before the complete Herdr workflow was retired by [0014](0014-model-native-agent-environment.md).
 
 **Created:** 2026-08-08
 

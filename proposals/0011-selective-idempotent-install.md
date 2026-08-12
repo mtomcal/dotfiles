@@ -2,6 +2,8 @@
 
 **Status:** Shipped
 
+**Later change:** Standard profile contents are simplified by [0014](0014-model-native-agent-environment.md); the selective, idempotent module design remains.
+
 **Created:** 2026-08-08
 
 ## What shipped

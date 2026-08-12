@@ -7,8 +7,8 @@ This directory contains version-controlled configuration for Codex CLI.
 ```
 codex/
 ├── config.toml                 # Base Codex config template (copied to ~/.codex/config.toml)
-├── agents/                     # Agent role configs (symlinked to ~/.codex/agents/)
 ├── AGENTS.md                   # Optional global instructions for Codex (symlinked to ~/.codex/AGENTS.md)
+├── sync-skills.sh              # Exposes skills/codex while preserving built-ins
 └── .gitignore                  # Prevents committing sensitive data
 ```
 
@@ -19,24 +19,20 @@ The install script will:
 - Create `~/.codex/config.toml` from `~/dotfiles/codex/config.toml` if missing
 - Convert old `~/.codex/config.toml` symlink installs into local files
 - Optionally refresh local config from template with `--codex-config-template overwrite`
-- Symlink `~/.codex/agents/` → `~/dotfiles/codex/agents/`
 - Symlink `~/.codex/AGENTS.md` → `~/dotfiles/codex/AGENTS.md` (optional)
-- Symlink `~/.agents/skills/` → `~/dotfiles/shared/skills/`
-- Symlink each shared skill into `~/.codex/skills/` while preserving Codex's built-in `~/.codex/skills/.system/`
+- Symlink `~/.agents/skills/` → `~/dotfiles/skills/codex/`
+- Symlink each Codex-specific skill into `~/.codex/skills/` while preserving Codex's built-in `~/.codex/skills/.system/`
 - Preserve existing local `~/.codex/config.toml` values (for runtime keys like trusted projects)
 
 Codex's `.system` skills mean `~/.codex/skills` cannot be a direct symlink to
-`shared/skills/`. The `codex/sync-skills.sh` helper keeps the per-skill symlink
-farm fresh. It runs during install, before `cods` launches, and from the zsh
-`codex`/`cx` wrapper functions, so dropping a new skill in `shared/skills/`
+`skills/codex/`. The `codex/sync-skills.sh` helper keeps the per-skill symlink
+farm fresh. It runs during install and from the zsh `codex`/`cx` wrapper
+functions, so dropping a new skill in `skills/codex/`
 is picked up before the next Codex session starts.
 
 Directly executing `~/.local/bin/codex` bypasses the zsh wrapper. For script or
 non-zsh usage, run `~/dotfiles/codex/sync-skills.sh` first or re-run the Codex
 install module to refresh the symlink farm.
-
-The `cods` sandbox wrapper also mounts this dotfiles repo into the container so
-those `~/.codex/skills/*` symlinks resolve when Codex runs outside the repo.
 
 ## Privacy
 

@@ -6,8 +6,6 @@ Custom commands and settings for [Claude Code](https://claude.com/claude-code).
 
 ```
 claude/
-├── agents/                       # Custom AI agents
-│   └── test-quality-verifier.md  # Test-quality specialist
 ├── statusline.sh                 # Custom status line script
 └── .gitignore                    # Prevents committing sensitive data
 ```
@@ -17,7 +15,7 @@ claude/
 The install script will automatically:
 1. Create `~/.claude/` directory if needed
 2. Symlink `~/.claude/commands` → `~/dotfiles/claude/commands`
-3. Symlink `~/.claude/agents` → `~/dotfiles/claude/agents`
+3. Symlink `~/.claude/skills` → `~/dotfiles/skills/claude`
 4. Preserve local `~/.claude/settings.json` across installer updates and migrate the legacy managed symlink to local state
 5. Symlink `~/.claude/statusline.sh` → `~/dotfiles/claude/statusline.sh` and configure it in local settings
 6. Remove legacy Playwright MCP server if present

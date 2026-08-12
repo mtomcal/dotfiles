@@ -1,5 +1,5 @@
 -- Diffview.nvim - Single tabpage interface for reviewing diffs
--- Perfect for reviewing AI-generated code changes from Claude Code or Pi
+-- Useful for reviewing AI-generated code changes
 
 vim.pack.add({
   { src = 'https://github.com/sindrets/diffview.nvim' },

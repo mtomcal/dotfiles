@@ -11,14 +11,8 @@ export VISUAL='nvim'
 export PATH="$HOME/.local/bin:$PATH"
 
 # ===========================
-# Herdr + Tmux + Neovim Configuration
+# Tmux + Neovim Configuration
 # ===========================
-
-# Herdr aliases
-alias h='herdr'
-alias ha='herdr session attach'
-alias hl='herdr session list'
-alias hu='herdr update'
 
 # Tmux aliases
 alias t='tmux'
@@ -28,22 +22,15 @@ alias tl='tmux ls'
 alias tk='tmux kill-session -t'
 alias td='tmux detach'
 
-# Start the selected multiplexer on SSH login.
-# DOTFILES_SSH_MULTIPLEXER accepts: herdr (default), tmux, none.
-if [[ -n "$SSH_CONNECTION" ]] && [[ -z "$HERDR_ENV" ]] && [[ -z "$TMUX" ]]; then
-  case "${DOTFILES_SSH_MULTIPLEXER:-herdr}" in
-    herdr)
-      herdr
-      ;;
-    tmux)
-      if command -v tmux >/dev/null 2>&1; then
-        tmux attach -t "${TMUX_AUTO_SESSION:-0}" || tmux new -s "${TMUX_AUTO_SESSION:-0}"
-      fi
-      ;;
-    none)
-      ;;
-  esac
+# Attach to the stable tmux session on SSH login. Set
+# DOTFILES_TMUX_AUTO_ATTACH=0 on a host that should remain in a plain shell.
+# TMUX-AUTO-ATTACH-START
+if [[ -n "$SSH_CONNECTION" ]] && [[ -z "$TMUX" ]] && [[ "${DOTFILES_TMUX_AUTO_ATTACH:-1}" != "0" ]]; then
+  if command -v tmux >/dev/null 2>&1; then
+    tmux new-session -A -s main
+  fi
 fi
+# TMUX-AUTO-ATTACH-END
 
 # Neovim aliases
 alias vim='nvim'
@@ -60,7 +47,7 @@ alias y='yazi'
 # AI Coding Assistant aliases
 alias cop='copilot'
 
-_sync_codex_shared_skills() {
+_sync_codex_skills() {
   local sync_script="$HOME/dotfiles/codex/sync-skills.sh"
   if [[ -x "$sync_script" ]]; then
     "$sync_script" --quiet 2>/dev/null
@@ -68,7 +55,7 @@ _sync_codex_shared_skills() {
 }
 
 codex() {
-  _sync_codex_shared_skills
+  _sync_codex_skills
   command codex "$@"
 }
 
@@ -108,23 +95,3 @@ if [ -d "$FNM_PATH" ]; then
   # Keep user-local npm binaries (for example Codex) ahead of fnm-managed globals.
   export PATH="$HOME/.local/bin:$PATH"
 fi
-
-# ===========================
-# Beads Command Repo
-# ===========================
-
-# Route bd at the private external command repo so issue state never lands in
-# a source checkout. The path comes from explicit bootstrap, which writes
-# machine-local state that is deliberately untracked. Anything unusable is
-# ignored silently: a machine that never bootstrapped still gets a working
-# shell, and execution workflows report the missing route themselves.
-# BEADS-ROUTING-START
-: "${BEADS_COMMAND_CONFIG_PATH:=$HOME/.config/beads-command/env}"
-if [ -r "$BEADS_COMMAND_CONFIG_PATH" ]; then
-  __beads_dir="$(sed -n 's/^BEADS_DIR=//p' "$BEADS_COMMAND_CONFIG_PATH" 2>/dev/null | tail -n1)"
-  case "$__beads_dir" in
-    /*) [ -d "$__beads_dir" ] && export BEADS_DIR="$__beads_dir" ;;
-  esac
-  unset __beads_dir
-fi
-# BEADS-ROUTING-END

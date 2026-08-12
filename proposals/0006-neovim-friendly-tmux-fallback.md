@@ -2,6 +2,8 @@
 
 **Status:** Shipped
 
+**Later change:** The tmux configuration remains, but tmux becomes the default rather than a fallback in [0014](0014-model-native-agent-environment.md).
+
 **Created:** 2026-08-08
 
 ## What shipped

@@ -1,6 +1,6 @@
 # 0009 — Portable Skill Library
 
-**Status:** Shipped
+**Status:** Superseded by [0014](0014-model-native-agent-environment.md)
 
 **Created:** 2026-08-08
 

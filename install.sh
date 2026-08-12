@@ -53,9 +53,6 @@ CODEX_CONFIG_TEMPLATE_MODE="preserve"
 REQUESTED_PROFILE=""
 # Runtime-only code-server bind override; never written to a tracked file.
 CODE_SERVER_BIND=""
-# Explicit command-repo bootstrap request; empty during ordinary installs.
-BEADS_BOOTSTRAP_PATH=""
-BEADS_BOOTSTRAP_REMOTE=""
 
 # ===========================
 # Core Functions
@@ -848,417 +845,7 @@ configure_tmux() {
     print_success "Tmux configuration linked"
 }
 
-install_herdr() {
-    print_header "Installing Herdr"
-
-    if command -v herdr &> /dev/null; then
-        print_success "Herdr is already installed"
-        return 0
-    fi
-
-    if ! command -v curl &> /dev/null; then
-        print_error "curl not found. Install base tools first."
-        return 1
-    fi
-
-    print_info "Installing Herdr via official installer..."
-    curl -fsSL https://herdr.dev/install.sh | sh
-    export PATH="$HOME/.local/bin:$PATH"
-
-    if ! command -v herdr &> /dev/null; then
-        print_error "Herdr install failed: herdr not found on PATH"
-        print_info "Ensure ~/.local/bin is on PATH, then re-run the herdr module"
-        return 1
-    fi
-
-    print_success "Herdr installed"
-}
-
-configure_herdr() {
-    print_header "Configuring Herdr"
-
-    if [ ! -f "$DOTFILES_DIR/herdr/config.toml" ]; then
-        print_error "Herdr config source not found: $DOTFILES_DIR/herdr/config.toml"
-        return 1
-    fi
-
-    replace_symlink "$DOTFILES_DIR/herdr/config.toml" "$HOME/.config/herdr/config.toml"
-    print_success "Herdr configuration linked"
-}
-
-# Beads stores execution-coordination state in one private external command
-# repo. Dolt is linked into the bd binary and runs in-process as a single
-# writer, so no separate Dolt binary, server, or port is provisioned.
-BEADS_INSTALL_SCRIPT="https://raw.githubusercontent.com/gastownhall/beads/main/scripts/install.sh"
-BEADS_REQUIRED_VERSION="0.59.0"
-
-beads_reported_version() {
-    "$1" version 2>/dev/null | head -n1 | sed -n 's/.*[Vv]ersion[[:space:]]\{1,\}\([0-9][0-9.]*\).*/\1/p'
-}
-
-beads_version_meets_requirement() {
-    [ -n "$1" ] || return 1
-    ! version_lt "$1" "$BEADS_REQUIRED_VERSION"
-}
-
-# The official installer downloads a release binary first, which is
-# embedded-capable. Its `go install` fallback can produce a CGO_ENABLED=0
-# build that is server-mode-only and fails only later at `bd init`, so the
-# capability is checked here rather than deferred to first use.
-beads_binary_is_embedded_capable() {
-    local binary="$1"
-
-    [ -f "$binary" ] || return 1
-
-    if ! command -v strings &> /dev/null; then
-        print_warning "'strings' not found; cannot verify embedded Dolt support in $binary"
-        return 0
-    fi
-
-    # The Go build stamp is 'build<TAB>CGO_ENABLED=0', but Apple's strings
-    # treats the tab as a separator and emits 'build' and 'CGO_ENABLED=0' on
-    # separate lines, so the prefix must be optional or macOS never detects a
-    # CGO-less build. CGO-enabled builds stamp CGO_ENABLED=1, so the bare
-    # token is unambiguous.
-    ! strings "$binary" | grep -q '^\(build[[:space:]]\{1,\}\)\?CGO_ENABLED=0$'
-}
-
-print_beads_embedded_guidance() {
-    print_info "A CGO_ENABLED=0 build cannot use embedded Dolt and would fail at 'bd init'."
-    print_info "Install a C toolchain (Ubuntu: build-essential pkg-config libzstd-dev) and re-run,"
-    print_info "or install the release binary directly from the Beads GitHub releases page."
-}
-
-install_beads() {
-    print_header "Installing Beads"
-
-    local binary="$HOME/.local/bin/bd"
-    local version
-
-    print_info "Installing/updating Beads to the latest stable release..."
-    if ! curl -fsSL "$BEADS_INSTALL_SCRIPT" | bash; then
-        print_error "Beads install failed: official installer returned an error"
-        return 1
-    fi
-    export PATH="$HOME/.local/bin:$PATH"
-
-    if [ ! -x "$binary" ]; then
-        print_error "Beads install failed: $binary not found or not executable"
-        return 1
-    fi
-
-    version="$(beads_reported_version "$binary")"
-    if [ -z "$version" ]; then
-        print_error "Could not read a Beads version from $binary"
-        return 1
-    fi
-
-    if ! beads_version_meets_requirement "$version"; then
-        print_error "Beads reports '$version' (required: $BEADS_REQUIRED_VERSION or newer)"
-        return 1
-    fi
-
-    if ! beads_binary_is_embedded_capable "$binary"; then
-        print_error "Beads binary at $binary was built without embedded Dolt support"
-        print_beads_embedded_guidance
-        return 1
-    fi
-
-    if command -v bd &> /dev/null && [ "$(command -v bd)" != "$binary" ]; then
-        print_warning "Another bd binary is earlier in PATH: $(command -v bd)"
-        print_info "Ensure ~/.local/bin comes first in PATH"
-    fi
-
-    print_success "Beads $version installed at ~/.local/bin/bd (embedded storage)"
-    print_info "Run './install.sh --beads-bootstrap <path> <remote-url>' to set up the command repo"
-}
-
-# --- Command-repo bootstrap --------------------------------------------------
-#
-# Explicit and idempotent, never an install side effect. Normal module runs
-# install binaries only; creating, routing, or synchronizing the private
-# command repo happens here and nowhere else.
-
-beads_bootstrap_arguments_valid() {
-    local local_path="$1"
-    local remote_url="$2"
-
-    case "$local_path" in
-        /*) ;;
-        *) return 1 ;;
-    esac
-
-    # Dolt needs its git+ transport prefix. A bare git URL bootstraps cleanly
-    # and then fails at push time, long after the mistake was made.
-    case "$remote_url" in
-        git+ssh://*|git+https://*) ;;
-        *) return 1 ;;
-    esac
-
-    # These are URL-form remotes, so the host ends at '/'. Pasting the
-    # scp-style form GitHub shows keeps ':' as the path separator, which SSH
-    # reads as a port and resolves "github.com:owner" as a hostname. An
-    # explicit numeric port is still valid and must pass.
-    local authority="${remote_url#git+*://}"
-    authority="${authority%%/*}"
-    case "$authority" in
-        *:*)
-            case "${authority##*:}" in
-                ''|*[!0-9]*) return 1 ;;
-            esac
-            ;;
-    esac
-
-    return 0
-}
-
-# Only the resolved path is persisted. The remote URL may carry credentials
-# and is never written to disk or logged.
-write_beads_command_config() {
-    local beads_dir="$1"
-    local config_dir="$HOME/.config/beads-command"
-
-    mkdir -p "$config_dir" || return 1
-    printf 'BEADS_DIR=%s\n' "$beads_dir" > "$config_dir/env" || return 1
-    print_success "Command-repo route recorded at ~/.config/beads-command/env"
-}
-
-# A freshly created GitHub repo has no branches, and Dolt refuses to push to
-# a branchless remote. Seed one initial commit so `bd dolt push` has somewhere
-# to land. A repo that already has history is left untouched.
-beads_ensure_remote_has_branch() {
-    local local_path="$1"
-
-    (
-        cd "$local_path" || exit 1
-
-        if git rev-parse HEAD >/dev/null 2>&1; then
-            exit 0
-        fi
-
-        git commit -q --allow-empty -m "chore: initialize command repo" >/dev/null 2>&1 || exit 1
-        git push -q -u origin HEAD >/dev/null 2>&1 || exit 1
-    ) || {
-        print_error "Could not create an initial commit on the command repo"
-        print_info "Dolt cannot push to a remote with no branches"
-        return 1
-    }
-
-    print_success "Command repo has an initial branch"
-}
-
-# The presence of .beads/ does not imply a database. Cloning an already
-# bootstrapped command repo brings down the git-tracked half — config.yaml —
-# while the issue data stays behind on the Dolt remote, so a second machine
-# starts with a populated directory and no database at all.
-#
-# The probe must read the database, not merely resolve its location:
-# `bd where` reports the path a workspace would occupy and succeeds even
-# when nothing has been created there. `bd list` fails with "no beads
-# database found", which is the distinction this predicate needs.
-beads_database_exists() {
-    local local_path="$1"
-    local beads_dir="$2"
-
-    (cd "$local_path" && BEADS_DIR="$beads_dir" bd list --limit 1 >/dev/null 2>&1)
-}
-
-# `bd bootstrap` plans a clone from the remote, which fails outright when a
-# local database already exists. A re-run wants pull semantics instead: keep
-# the local database and reconcile it with the remote.
-beads_reconcile_existing_database() {
-    local local_path="$1"
-    local beads_dir="$2"
-
-    if ! (cd "$local_path" && BEADS_DIR="$beads_dir" bd dolt pull); then
-        print_error "Could not pull the command repo from its remote"
-        print_info "Resolve the remote state, then re-run bootstrap"
-        return 1
-    fi
-
-    print_success "Existing command-repo database reconciled"
-}
-
-# Adding an existing remote is not an error: bootstrap is re-runnable, so the
-# second run always finds 'origin' already there.
-beads_configure_dolt_remote() {
-    local local_path="$1"
-    local beads_dir="$2"
-    local remote_url="$3"
-
-    print_info "Configuring the private Dolt remote..."
-    if ! (cd "$local_path" && BEADS_DIR="$beads_dir" bd dolt remote add origin "$remote_url" 2>/dev/null); then
-        print_info "Dolt remote 'origin' already configured"
-    fi
-}
-
-print_beads_bootstrap_usage() {
-    print_error "Usage: ./install.sh --beads-bootstrap <absolute-local-path> <remote-url>"
-    print_info "Remote must use Dolt's git transport, for example:"
-    print_info "  git+ssh://git@github.com/<you>/<command-repo>.git"
-    print_info "  git+https://github.com/<you>/<command-repo>.git"
-    print_info "Use '/' after the host, not the scp-style ':' GitHub displays:"
-    print_info "  correct: git+ssh://git@github.com/you/repo.git"
-    print_info "  wrong:   git+ssh://git@github.com:you/repo.git"
-}
-
-beads_bootstrap() {
-    local local_path="$1"
-    local remote_url="$2"
-    local beads_dir="$local_path/.beads"
-
-    print_header "Bootstrapping Beads Command Repo"
-
-    if ! beads_bootstrap_arguments_valid "$local_path" "$remote_url"; then
-        print_beads_bootstrap_usage
-        return 1
-    fi
-
-    if ! command -v bd &> /dev/null; then
-        print_error "bd not found on PATH; run the beads module first"
-        return 1
-    fi
-
-    if ! command -v git &> /dev/null; then
-        print_error "git not found on PATH; the command repo needs ordinary git"
-        return 1
-    fi
-
-    if [ ! -d "$local_path/.git" ]; then
-        print_info "Cloning the private command repo..."
-        mkdir -p "$(dirname "$local_path")" || return 1
-        if ! git clone "$(beads_git_clone_url "$remote_url")" "$local_path"; then
-            print_error "Could not clone the command repo"
-            print_info "Create the private repository first, then re-run bootstrap"
-            return 1
-        fi
-    else
-        print_success "Command repo already present at $local_path"
-    fi
-
-    # Must precede any Beads work: Dolt cannot push to a branchless remote,
-    # which is the state a newly created GitHub repo is in.
-    beads_ensure_remote_has_branch "$local_path" || return 1
-
-    local had_database=false
-    if beads_database_exists "$local_path" "$beads_dir"; then
-        had_database=true
-    fi
-
-    if [ "$had_database" = true ]; then
-        # The remote must be configured before the pull, not after: it lives
-        # in gitignored local metadata, so a freshly cloned repo carries a
-        # database with no remote and `bd dolt pull` fails with "no remote".
-        beads_configure_dolt_remote "$local_path" "$beads_dir" "$remote_url"
-
-        # An existing database is reconciled rather than recreated; bootstrap
-        # must never discard operational state on a re-run.
-        print_info "Existing Beads database found; reconciling..."
-        beads_reconcile_existing_database "$local_path" "$beads_dir" || return 1
-    elif [ -f "$beads_dir/config.yaml" ]; then
-        # Config without a database is the second-machine case: the clone
-        # carried sync.remote, and the issue data is still on the Dolt
-        # remote. `bd bootstrap` is the command that resolves exactly this.
-        print_info "Command repo config found without a database; cloning from the remote..."
-        if ! (cd "$local_path" && BEADS_DIR="$beads_dir" bd bootstrap --yes); then
-            print_error "Could not clone the command-repo database from its remote"
-            print_info "Check remote access, then re-run bootstrap"
-            return 1
-        fi
-        print_success "Command-repo database cloned from the remote"
-    else
-        print_info "Initializing Beads in embedded mode..."
-        if ! (cd "$local_path" && BEADS_DIR="$beads_dir" bd init --quiet); then
-            print_error "bd init failed"
-            return 1
-        fi
-    fi
-
-    # The reconcile path already configured the remote; the init and clone
-    # paths could not, because neither had a database to configure.
-    if [ "$had_database" != true ]; then
-        beads_configure_dolt_remote "$local_path" "$beads_dir" "$remote_url"
-    fi
-
-    # Two halves, both required: issue data rides the Dolt remote to
-    # refs/dolt/data, while .beads/config.yaml reaches other machines only
-    # through ordinary git. Without the git half, `bd bootstrap` elsewhere
-    # has no sync.remote to resolve.
-    if ! (cd "$local_path" && BEADS_DIR="$beads_dir" bd dolt push); then
-        print_error "bd dolt push failed; check remote access and credentials"
-        return 1
-    fi
-
-    if ! beads_commit_command_config "$local_path"; then
-        return 1
-    fi
-
-    write_beads_command_config "$beads_dir" || return 1
-
-    print_success "Command repo ready at $local_path"
-    print_info "Open a new shell (or re-source ~/.zshrc) so BEADS_DIR is exported"
-}
-
-# Dolt's git+ transport prefix is not understood by git itself.
-beads_git_clone_url() {
-    printf '%s' "${1#git+}"
-}
-
-# bd commits .beads/config.yaml itself when it records sync.remote, so the
-# work here is usually pushing an already-made commit rather than creating
-# one. Staging is still checked because a manual edit may be outstanding.
-beads_commit_command_config() {
-    local local_path="$1"
-
-    (
-        cd "$local_path" || exit 1
-
-        git add .beads/config.yaml 2>/dev/null || true
-        if ! git diff --cached --quiet 2>/dev/null; then
-            git commit -m "chore: record beads sync remote" >/dev/null || exit 1
-        fi
-
-        # Push whenever the branch is ahead or has no upstream yet; an
-        # unpushed sync.remote commit leaves other machines unable to
-        # bootstrap, which is exactly the failure this step must prevent.
-        if git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' >/dev/null 2>&1; then
-            if [ -z "$(git log --oneline '@{upstream}..HEAD' 2>/dev/null)" ]; then
-                exit 0
-            fi
-            git push >/dev/null 2>&1 || exit 1
-        else
-            git push -u origin HEAD >/dev/null 2>&1 || exit 1
-        fi
-    ) || {
-        print_error "Could not commit and push .beads/config.yaml"
-        print_info "Other machines need this file pushed before 'bd bootstrap' works"
-        return 1
-    }
-
-    print_success "Recorded sync configuration in git"
-}
-
-shell_single_quote() {
-    printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\"'\"'/g")"
-}
-
-herdr_hook_command() {
-    local hook_path="$1"
-    local action="${2:-}"
-    local command
-
-    command="bash $(shell_single_quote "$hook_path")"
-    if [ -n "$action" ]; then
-        command="$command $action"
-    fi
-    printf '%s\n' "$command"
-}
-
-portable_claude_herdr_hook_command() {
-    printf '%s\n' 'bash "$HOME/.claude/hooks/herdr-agent-state.sh" session'
-}
-
-ensure_json_object_file() {
+ ensure_json_object_file() {
     local path="$1"
 
     if [ ! -f "$path" ]; then
@@ -1330,22 +917,6 @@ prepare_claude_agent_settings() {
     fi
 }
 
-has_nested_session_hook() {
-    local settings_path="$1"
-    local command="$2"
-    local matcher="${3:-}"
-
-    if [ -n "$matcher" ]; then
-        jq -e --arg command "$command" --arg matcher "$matcher" '
-            any(.hooks.SessionStart[]?; .matcher == $matcher and any(.hooks[]?; .type == "command" and .command == $command))
-        ' "$settings_path" >/dev/null
-    else
-        jq -e --arg command "$command" '
-            any(.hooks.SessionStart[]?; any(.hooks[]?; .type == "command" and .command == $command))
-        ' "$settings_path" >/dev/null
-    fi
-}
-
 jq_update_file() {
     local path="$1"
     shift
@@ -1372,199 +943,6 @@ ensure_claude_statusline_setting() {
             command: "~/.claude/statusline.sh"
         }
     '
-}
-
-add_nested_session_hook() {
-    local settings_path="$1"
-    local command="$2"
-    local matcher="${3:-}"
-
-    if [ -n "$matcher" ]; then
-        jq_update_file "$settings_path" --arg command "$command" --arg matcher "$matcher" '
-            .hooks = (.hooks // {}) |
-            .hooks.SessionStart = (.hooks.SessionStart // []) |
-            if any(.hooks.SessionStart[]?; any(.hooks[]?; .type == "command" and .command == $command)) then
-                .
-            else
-                .hooks.SessionStart += [{
-                    matcher: $matcher,
-                    hooks: [{ type: "command", command: $command, timeout: 10 }]
-                }]
-            end
-        '
-    else
-        jq_update_file "$settings_path" --arg command "$command" '
-            .hooks = (.hooks // {}) |
-            .hooks.SessionStart = (.hooks.SessionStart // []) |
-            if any(.hooks.SessionStart[]?; any(.hooks[]?; .type == "command" and .command == $command)) then
-                .
-            else
-                .hooks.SessionStart += [{
-                    hooks: [{ type: "command", command: $command, timeout: 10 }]
-                }]
-            end
-        '
-    fi
-}
-
-add_direct_session_hook() {
-    local settings_path="$1"
-    local command="$2"
-
-    jq_update_file "$settings_path" --arg command "$command" '
-        .hooks = (.hooks // {}) |
-        .hooks.SessionStart = (.hooks.SessionStart // []) |
-        if any(.hooks.SessionStart[]?; (.bash == $command) or (.command == $command) or (.powershell == $command)) then
-            .
-        else
-            .hooks.SessionStart += [{
-                type: "command",
-                bash: $command,
-                timeoutSec: 10
-            }]
-        end
-    '
-}
-
-ensure_codex_hooks_feature() {
-    local config_path="$1"
-    local tmp
-
-    if [ ! -f "$config_path" ]; then
-        printf '[features]\nhooks = true\n' > "$config_path"
-        return 0
-    fi
-
-    tmp="$(mktemp "$config_path.tmp.XXXXXX")" || return 1
-    awk '
-        BEGIN { in_features = 0; saw_features = 0; saw_hooks = 0 }
-        /^[[:space:]]*codex_hooks[[:space:]]*=/ { next }
-        /^\[[^]]+\][[:space:]]*$/ {
-            if (in_features && !saw_hooks) {
-                print "hooks = true"
-            }
-            in_features = 0
-        }
-        /^\[features\][[:space:]]*$/ {
-            saw_features = 1
-            in_features = 1
-            saw_hooks = 0
-        }
-        in_features && /^[[:space:]]*hooks[[:space:]]*=/ {
-            print "hooks = true"
-            saw_hooks = 1
-            next
-        }
-        { print }
-        END {
-            if (in_features && !saw_hooks) {
-                print "hooks = true"
-            }
-            if (!saw_features) {
-                print ""
-                print "[features]"
-                print "hooks = true"
-            }
-        }
-    ' "$config_path" > "$tmp" && mv "$tmp" "$config_path" || {
-        rm -f "$tmp"
-        return 1
-    }
-}
-
-migrate_legacy_copilot_herdr_integration() {
-    # Remove the dotfiles-managed legacy ~/.config/copilot Herdr hook symlink
-    # and its exact-matching SessionStart entry, preserving unrelated settings
-    # and hooks. Only the recognized symlink and exact command are touched.
-    local legacy_root="$HOME/.config/copilot"
-    local legacy_hook="$legacy_root/hooks/herdr-agent-state.sh"
-    local legacy_settings="$legacy_root/settings.json"
-    local tracked_source="$DOTFILES_DIR/herdr/integrations/copilot/herdr-agent-state.sh"
-
-    if [ -L "$legacy_hook" ] && [ "$(readlink "$legacy_hook")" = "$tracked_source" ]; then
-        rm "$legacy_hook"
-    fi
-
-    if [ -f "$legacy_settings" ] && jq -e 'type == "object"' "$legacy_settings" >/dev/null 2>&1; then
-        local legacy_command
-        legacy_command="$(herdr_hook_command "$legacy_hook")"
-        jq_update_file "$legacy_settings" --arg cmd "$legacy_command" '
-            if ((.hooks.SessionStart // []) | any(.bash == $cmd)) then
-                .hooks.SessionStart = (.hooks.SessionStart | map(select(.bash != $cmd)))
-                | if (.hooks.SessionStart | length) == 0 then del(.hooks.SessionStart) else . end
-                | if ((.hooks // {}) | length) == 0 then del(.hooks) else . end
-            else . end
-        ' || return 1
-    fi
-}
-
-configure_herdr_integrations() {
-    print_header "Configuring Herdr Integrations"
-
-    if ! command -v jq &> /dev/null; then
-        print_error "jq not found. Install base tools first."
-        return 1
-    fi
-
-    local configured=0
-
-    if [ -d "$HOME/.claude" ]; then
-        local claude_hook="$HOME/.claude/hooks/herdr-agent-state.sh"
-        mkdir -p "$HOME/.claude/hooks"
-        replace_symlink "$DOTFILES_DIR/herdr/integrations/claude/herdr-agent-state.sh" "$claude_hook"
-        local claude_settings_were_managed=0
-        if is_dotfiles_managed_claude_settings "$HOME/.claude/settings.json"; then
-            claude_settings_were_managed=1
-        fi
-        prepare_claude_agent_settings || return 1
-        ensure_json_object_file "$HOME/.claude/settings.json" || return 1
-        if [ "$claude_settings_were_managed" -eq 1 ]; then
-            add_nested_session_hook "$HOME/.claude/settings.json" "$(portable_claude_herdr_hook_command)" "*" || return 1
-        elif ! has_nested_session_hook "$HOME/.claude/settings.json" "$(portable_claude_herdr_hook_command)" "*"; then
-            add_nested_session_hook "$HOME/.claude/settings.json" "$(herdr_hook_command "$claude_hook" session)" "*" || return 1
-        fi
-        print_success "Claude Herdr integration configured"
-        configured=$((configured + 1))
-    else
-        print_info "Skipping Claude Herdr integration; ~/.claude not found"
-    fi
-
-    if [ -d "$HOME/.codex" ]; then
-        local codex_hook="$HOME/.codex/herdr-agent-state.sh"
-        replace_symlink "$DOTFILES_DIR/herdr/integrations/codex/herdr-agent-state.sh" "$codex_hook"
-        ensure_json_object_file "$HOME/.codex/hooks.json" || return 1
-        add_nested_session_hook "$HOME/.codex/hooks.json" "$(herdr_hook_command "$codex_hook" session)" || return 1
-        ensure_codex_hooks_feature "$HOME/.codex/config.toml" || return 1
-        print_success "Codex Herdr integration configured"
-        configured=$((configured + 1))
-    else
-        print_info "Skipping Codex Herdr integration; ~/.codex not found"
-    fi
-
-    if [ -d "$HOME/.copilot" ] || [ -d "$HOME/.config/copilot" ]; then
-        local copilot_hook="$HOME/.copilot/hooks/herdr-agent-state.sh"
-        mkdir -p "$HOME/.copilot/hooks"
-        replace_symlink "$DOTFILES_DIR/herdr/integrations/copilot/herdr-agent-state.sh" "$copilot_hook"
-        ensure_json_object_file "$HOME/.copilot/settings.json" || return 1
-        add_direct_session_hook "$HOME/.copilot/settings.json" "$(herdr_hook_command "$copilot_hook")" || return 1
-        migrate_legacy_copilot_herdr_integration || return 1
-        print_success "Copilot Herdr integration configured"
-        configured=$((configured + 1))
-    else
-        print_info "Skipping Copilot Herdr integration; ~/.copilot not found"
-    fi
-
-    if [ -d "$HOME/.pi" ]; then
-        deploy_pi_config || return 1
-        print_success "Pi Herdr integration deployed through Pi agent config"
-        configured=$((configured + 1))
-    else
-        print_info "Skipping Pi Herdr integration; ~/.pi not found"
-    fi
-
-    if [ "$configured" -eq 0 ]; then
-        print_info "No existing managed agent configs found for Herdr integrations"
-    fi
 }
 
 configure_zsh() {
@@ -1640,15 +1018,6 @@ install_claude() {
     fi
     ln -s "$DOTFILES_DIR/claude/commands" "$HOME/.claude/commands"
 
-    # Link agents
-    if [ -L "$HOME/.claude/agents" ]; then
-        rm "$HOME/.claude/agents"
-    elif [ -d "$HOME/.claude/agents" ]; then
-        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-        mv "$HOME/.claude/agents" "$HOME/.claude/agents.backup.$TIMESTAMP"
-    fi
-    ln -s "$DOTFILES_DIR/claude/agents" "$HOME/.claude/agents"
-
     # Link skills
     if [ -L "$HOME/.claude/skills" ]; then
         rm "$HOME/.claude/skills"
@@ -1656,7 +1025,7 @@ install_claude() {
         TIMESTAMP=$(date +%Y%m%d_%H%M%S)
         mv "$HOME/.claude/skills" "$HOME/.claude/skills.backup.$TIMESTAMP"
     fi
-    ln -s "$DOTFILES_DIR/shared/skills" "$HOME/.claude/skills"
+    ln -s "$DOTFILES_DIR/skills/claude" "$HOME/.claude/skills"
 
     # Link statusline
     if [ -L "$HOME/.claude/statusline.sh" ]; then
@@ -1679,49 +1048,6 @@ install_claude() {
         claude mcp remove playwright 2>/dev/null || true
         print_success "Playwright MCP server removed"
     fi
-}
-
-install_pi() {
-    print_header "Installing Pi Coding Agent"
-
-    # Pi is distributed as an npm package.
-    # Install to ~/.local so it is shared across fnm Node versions.
-    if ! command -v npm &> /dev/null; then
-        print_warning "npm not found. Installing Node.js first..."
-        install_nodejs || return 1
-    fi
-
-    mkdir -p "$HOME/.local/bin"
-
-    # Clean up old deprecated package and binary to allow rename from @mariozechner -> @earendil-works
-    if npm ls --prefix "$HOME/.local" -g @mariozechner/pi-coding-agent &>/dev/null 2>&1; then
-        print_info "Removing deprecated @mariozechner/pi-coding-agent..."
-        npm uninstall -g --prefix "$HOME/.local" @mariozechner/pi-coding-agent || true
-    fi
-
-    print_info "Installing/updating Pi coding agent via npm into ~/.local..."
-    npm install -g --prefix "$HOME/.local" @earendil-works/pi-coding-agent@latest
-
-    if [ ! -x "$HOME/.local/bin/pi" ]; then
-        print_error "Pi coding agent install failed: ~/.local/bin/pi not found"
-        return 1
-    fi
-
-    if [ ! -L "$HOME/.local/bin/pi" ] || [ "$(readlink "$HOME/.local/bin/pi" 2>/dev/null || true)" != "$DOTFILES_DIR/pi/pi.sh" ]; then
-        mv "$HOME/.local/bin/pi" "$HOME/.local/bin/pi-bin"
-    fi
-
-    if command -v pi &> /dev/null && [ "$(command -v pi)" != "$HOME/.local/bin/pi" ]; then
-        print_warning "Another pi binary is earlier in PATH: $(command -v pi)"
-        print_info "Ensure ~/.local/bin is first in PATH to use the shared Pi install"
-    fi
-    print_success "Pi coding agent installed/updated at ~/.local/bin/pi-bin"
-
-    deploy_pi_config || return 1
-    deploy_pi_wrappers
-
-    print_success "Pi coding agent configured"
-    print_info "Run 'pi' to start (first launch prompts for authentication)"
 }
 
 backup_existing_path() {
@@ -1747,160 +1073,8 @@ replace_symlink() {
     ln -s "$source" "$target"
 }
 
-prune_pi_extension_symlinks() {
-    local source_extensions="$1"
-    local runtime_extensions="$2"
-    local allowed="$3"
-    local entry name
-
-    [ -d "$runtime_extensions" ] || return 0
-
-    for entry in "$runtime_extensions"/*; do
-        [ -e "$entry" ] || [ -L "$entry" ] || continue
-        name="$(basename "$entry")"
-        if printf '%s\n' $allowed | grep -qx "$name" && { [ -e "$source_extensions/$name" ] || [ -L "$source_extensions/$name" ]; }; then
-            continue
-        fi
-        if [ -L "$entry" ]; then
-            rm "$entry"
-        else
-            print_error "Unmanaged Pi runtime extension exists: $entry"
-            return 1
-        fi
-    done
-}
-
-deploy_pi_wrappers() {
-    local bin_dir="$HOME/.local/bin"
-    local wrapper target
-    mkdir -p "$bin_dir"
-
-    replace_symlink "$DOTFILES_DIR/pi/pi.sh" "$bin_dir/pi"
-    replace_symlink "$DOTFILES_DIR/pi/pis.sh" "$bin_dir/pis"
-
-    if [ -L "$bin_dir/pim" ]; then
-        rm "$bin_dir/pim"
-    fi
-    for wrapper in "$bin_dir"/pi-* "$bin_dir"/pis-*; do
-        [ -L "$wrapper" ] || continue
-        target="$(readlink "$wrapper")"
-        if [ "$target" = "$DOTFILES_DIR/pi/pi.sh" ] || [ "$target" = "$DOTFILES_DIR/pi/pis.sh" ]; then
-            rm "$wrapper"
-        fi
-    done
-}
-
-prepare_pi_agent_settings() {
-    local agent="$HOME/.pi/agent"
-    local settings="$agent/settings.json"
-    local migrated_settings
-
-    mkdir -p "$agent"
-    if [ -L "$settings" ]; then
-        if [ -f "$settings" ]; then
-            migrated_settings="$agent/.settings.json.migrate.$$"
-            cp "$settings" "$migrated_settings" || return 1
-            rm "$settings" || return 1
-            mv "$migrated_settings" "$settings" || return 1
-        else
-            rm "$settings"
-        fi
-    fi
-    if [ ! -f "$settings" ]; then
-        printf '{}\n' > "$settings"
-    fi
-}
-
-prepare_pi_agent_auth() {
-    local agent="$HOME/.pi/agent"
-
-    mkdir -p "$agent"
-    if [ -L "$agent/auth.json" ]; then
-        rm "$agent/auth.json"
-    fi
-    if [ -f "$agent/auth.json" ]; then
-        return 0
-    fi
-    if [ -f "$HOME/.pi/auth.json" ]; then
-        cp "$HOME/.pi/auth.json" "$agent/auth.json"
-    else
-        printf '{}\n' > "$agent/auth.json"
-    fi
-}
-
-deploy_pi_config() {
-    local agent="$HOME/.pi/agent"
-    local source_extensions="$DOTFILES_DIR/pi/extensions"
-    local enabled_extensions="herdr-agent-state.ts context-first-footer.ts inherit-last-model web-search"
-    local extension
-
-    mkdir -p "$agent/extensions" "$agent/sessions"
-    prepare_pi_agent_settings
-    prepare_pi_agent_auth
-
-    replace_symlink "$DOTFILES_DIR/pi/models.json" "$agent/models.json"
-    replace_symlink "$DOTFILES_DIR/pi/skills" "$agent/skills"
-
-    prune_pi_extension_symlinks "$source_extensions" "$agent/extensions" "$enabled_extensions" || return 1
-    for extension in $enabled_extensions; do
-        if [ ! -e "$source_extensions/$extension" ] && [ ! -L "$source_extensions/$extension" ]; then
-            print_error "Pi extension missing: $source_extensions/$extension"
-            return 1
-        fi
-        replace_symlink "$source_extensions/$extension" "$agent/extensions/$extension"
-    done
-}
-
-install_pi_sandbox() {
-    print_header "Installing Pi Sandbox (Docker)"
-
-    if ! command -v docker &> /dev/null; then
-        print_error "Docker not found. Install Docker first."
-        return 1
-    fi
-
-    # Build the Docker image (pin Pi version from npm so the image label is accurate)
-    print_info "Resolving latest Pi version for sandbox image..."
-    PI_SANDBOX_VER=$(npm view @earendil-works/pi-coding-agent version 2>/dev/null || echo "latest")
-    SANDBOX_BASE_IMAGE="dotfiles-dev-base:$(id -u)-$(id -g)"
-    print_info "Ensuring shared sandbox base image (${SANDBOX_BASE_IMAGE})..."
-    if ! docker build \
-        -f "$DOTFILES_DIR/docker/dev-base.Dockerfile" \
-        --build-arg HOST_USER="$(whoami)" \
-        --build-arg HOST_UID="$(id -u)" \
-        --build-arg HOST_GID="$(id -g)" \
-        -t "$SANDBOX_BASE_IMAGE" "$DOTFILES_DIR"; then
-        print_error "Failed to build shared sandbox base image"
-        return 1
-    fi
-    print_info "Building Pi sandbox Docker image (Pi @${PI_SANDBOX_VER})..."
-    if docker build \
-        --build-arg BASE_IMAGE="$SANDBOX_BASE_IMAGE" \
-        --build-arg PI_VERSION="$PI_SANDBOX_VER" \
-        --build-arg HOST_USER="$(whoami)" \
-        --build-arg HOST_GID="$(id -g)" \
-        -t "pis:latest" "$DOTFILES_DIR/pi/"; then
-        print_success "Pi sandbox Docker image built (Pi @${PI_SANDBOX_VER})"
-    else
-        print_error "Failed to build Pi sandbox Docker image"
-        return 1
-    fi
-
-    # Symlink pis script
-    mkdir -p "$HOME/.local/bin"
-    if [ -L "$HOME/.local/bin/pis" ]; then
-        rm "$HOME/.local/bin/pis"
-    elif [ -f "$HOME/.local/bin/pis" ]; then
-        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-        mv "$HOME/.local/bin/pis" "$HOME/.local/bin/pis.backup.$TIMESTAMP"
-    fi
-    ln -s "$DOTFILES_DIR/pi/pis.sh" "$HOME/.local/bin/pis"
-
-    print_success "Pi sandbox configured (run 'pis' to launch)"
-}
-
-link_codex_shared_skills() {
-    "$DOTFILES_DIR/codex/sync-skills.sh" || print_warning "Failed to sync Codex shared skills"
+link_codex_skills() {
+    "$DOTFILES_DIR/codex/sync-skills.sh" || print_warning "Failed to sync Codex skills"
 }
 
 install_codex() {
@@ -1952,15 +1126,6 @@ install_codex() {
         fi
     fi
 
-    # Link agents directory
-    if [ -L "$HOME/.codex/agents" ]; then
-        rm "$HOME/.codex/agents"
-    elif [ -d "$HOME/.codex/agents" ]; then
-        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-        mv "$HOME/.codex/agents" "$HOME/.codex/agents.backup.$TIMESTAMP"
-    fi
-    ln -s "$DOTFILES_DIR/codex/agents" "$HOME/.codex/agents"
-
     # Link global AGENTS.md (optional)
     if [ -f "$DOTFILES_DIR/codex/AGENTS.md" ]; then
         if [ -f "$HOME/.codex/AGENTS.md" ] && [ ! -L "$HOME/.codex/AGENTS.md" ]; then
@@ -1973,72 +1138,22 @@ install_codex() {
         ln -s "$DOTFILES_DIR/codex/AGENTS.md" "$HOME/.codex/AGENTS.md"
     fi
 
-    # Link user skills directory for cross-agent installers that still use ~/.agents.
+    # Link Codex-authored skills for installers that use the cross-harness
+    # ~/.agents discovery path.
     if [ -L "$HOME/.agents/skills" ]; then
         rm "$HOME/.agents/skills"
     elif [ -e "$HOME/.agents/skills" ]; then
         TIMESTAMP=$(date +%Y%m%d_%H%M%S)
         mv "$HOME/.agents/skills" "$HOME/.agents/skills.backup.$TIMESTAMP"
     fi
-    ln -s "$DOTFILES_DIR/shared/skills" "$HOME/.agents/skills"
+    ln -s "$DOTFILES_DIR/skills/codex" "$HOME/.agents/skills"
 
     # Codex loads skills from ~/.codex/skills. Keep Codex's built-in .system
-    # directory intact and expose each shared skill as an individual symlink.
-    link_codex_shared_skills
+    # directory intact and expose each Codex skill as an individual symlink.
+    link_codex_skills
 
     print_success "Codex configured"
     print_info "Run 'codex login' to authenticate"
-}
-
-install_codex_sandbox() {
-    print_header "Installing Codex Sandbox (Docker)"
-
-    if ! command -v docker &> /dev/null; then
-        print_error "Docker not found. Install Docker first."
-        return 1
-    fi
-
-    if ! command -v npm &> /dev/null; then
-        print_warning "npm not found. Installing Node.js first..."
-        install_nodejs || return 1
-    fi
-
-    print_info "Resolving latest Codex version for sandbox image..."
-    CODEX_SANDBOX_VER=$(npm view @openai/codex version 2>/dev/null || echo "latest")
-    SANDBOX_BASE_IMAGE="dotfiles-dev-base:$(id -u)-$(id -g)"
-    print_info "Ensuring shared sandbox base image (${SANDBOX_BASE_IMAGE})..."
-    if ! docker build \
-        -f "$DOTFILES_DIR/docker/dev-base.Dockerfile" \
-        --build-arg HOST_USER="$(whoami)" \
-        --build-arg HOST_UID="$(id -u)" \
-        --build-arg HOST_GID="$(id -g)" \
-        -t "$SANDBOX_BASE_IMAGE" "$DOTFILES_DIR"; then
-        print_error "Failed to build shared sandbox base image"
-        return 1
-    fi
-    print_info "Building Codex sandbox Docker image (Codex @${CODEX_SANDBOX_VER})..."
-    if docker build \
-        --build-arg BASE_IMAGE="$SANDBOX_BASE_IMAGE" \
-        --build-arg CODEX_VERSION="$CODEX_SANDBOX_VER" \
-        --build-arg HOST_USER="$(whoami)" \
-        --build-arg HOST_GID="$(id -g)" \
-        -t "cods:latest" "$DOTFILES_DIR/codex/"; then
-        print_success "Codex sandbox Docker image built (Codex @${CODEX_SANDBOX_VER})"
-    else
-        print_error "Failed to build Codex sandbox Docker image"
-        return 1
-    fi
-
-    mkdir -p "$HOME/.local/bin"
-    if [ -L "$HOME/.local/bin/cods" ]; then
-        rm "$HOME/.local/bin/cods"
-    elif [ -f "$HOME/.local/bin/cods" ]; then
-        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-        mv "$HOME/.local/bin/cods" "$HOME/.local/bin/cods.backup.$TIMESTAMP"
-    fi
-    ln -s "$DOTFILES_DIR/codex/cods.sh" "$HOME/.local/bin/cods"
-
-    print_success "Codex sandbox configured (run 'cods' to launch)"
 }
 
 install_copilot() {
@@ -2089,7 +1204,7 @@ install_copilot() {
         TIMESTAMP=$(date +%Y%m%d_%H%M%S)
         mv "$HOME/.config/copilot/skills" "$HOME/.config/copilot/skills.backup.$TIMESTAMP"
     fi
-    ln -s "$DOTFILES_DIR/shared/skills" "$HOME/.config/copilot/skills"
+    ln -s "$DOTFILES_DIR/skills/copilot" "$HOME/.config/copilot/skills"
 
     print_success "GitHub Copilot CLI configured"
     print_info "Run 'copilot login' to authenticate with GitHub"
@@ -3313,13 +2428,13 @@ expand_profile() {
 
     case "$profile" in
         full)
-            common=(base_tools neovim nvim_config tmux_config herdr herdr_config zsh_ohmyzsh zsh_config python golang_full nodejs tui_tools beads codex codex_sandbox claude playwright pi pi_sandbox copilot herdr_integrations)
+            common=(base_tools neovim nvim_config tmux_config zsh_ohmyzsh zsh_config python golang_full nodejs tui_tools codex claude playwright copilot)
             ;;
         minimal)
-            common=(base_tools neovim nvim_config tmux_config herdr herdr_config herdr_integrations)
+            common=(base_tools neovim nvim_config tmux_config)
             ;;
         work)
-            common=(base_tools neovim nvim_config tmux_config herdr herdr_config python tui_tools beads copilot herdr_integrations)
+            common=(base_tools neovim nvim_config tmux_config python tui_tools copilot)
             ;;
         *)
             print_error "Unknown profile: $profile" >&2
@@ -3385,49 +2500,6 @@ resolve_dependencies() {
                 fi
                 resolved+=("tmux_config")
                 ;;
-            "herdr")
-                # Herdr direct installer needs curl.
-                if ! command -v curl &> /dev/null; then
-                    print_warning "Adding curl (required by Herdr)" >&2
-                    resolved+=("base_tools")
-                fi
-                resolved+=("herdr")
-                ;;
-            "beads")
-                # Beads direct installer needs curl. Embedded Dolt storage is
-                # linked into the bd binary, so no Dolt module is required.
-                if ! command -v curl &> /dev/null; then
-                    print_warning "Adding curl (required by Beads)" >&2
-                    resolved+=("base_tools")
-                fi
-                resolved+=("beads")
-                ;;
-            "herdr_config")
-                if ! command -v herdr &> /dev/null; then
-                    print_warning "Adding Herdr (required by Herdr config)" >&2
-                    if ! command -v curl &> /dev/null; then
-                        print_warning "Adding curl (required by Herdr)" >&2
-                        resolved+=("base_tools")
-                    fi
-                    resolved+=("herdr")
-                fi
-                resolved+=("herdr_config")
-                ;;
-            "herdr_integrations")
-                if ! command -v jq &> /dev/null; then
-                    print_warning "Adding jq (required by Herdr integrations)" >&2
-                    resolved+=("base_tools")
-                fi
-                if ! command -v herdr &> /dev/null; then
-                    print_warning "Adding Herdr (required by Herdr integrations)" >&2
-                    if ! command -v curl &> /dev/null; then
-                        print_warning "Adding curl (required by Herdr)" >&2
-                        resolved+=("base_tools")
-                    fi
-                    resolved+=("herdr")
-                fi
-                resolved+=("herdr_integrations")
-                ;;
             "zsh_config")
                 # Zsh config needs zsh
                 if ! command -v zsh &> /dev/null; then
@@ -3443,33 +2515,6 @@ resolve_dependencies() {
                     resolved+=("base_tools")
                 fi
                 resolved+=("claude")
-                ;;
-            "pi")
-                # Pi coding agent uses npm
-                if ! command -v npm &> /dev/null; then
-                    print_warning "Adding Node.js (required by Pi coding agent)" >&2
-                    resolved+=("nodejs")
-                fi
-                resolved+=("pi")
-                ;;
-            "pi_sandbox")
-                # Pi sandbox needs Docker (not installed by this script) and pi
-                if ! command -v docker &> /dev/null; then
-                    print_warning "Docker required for Pi sandbox (install Docker separately)" >&2
-                fi
-                resolved+=("pi_sandbox")
-                ;;
-            "codex_sandbox")
-                # Codex sandbox needs Docker (not installed by this script), npm, and Codex config.
-                if ! command -v docker &> /dev/null; then
-                    print_warning "Docker required for Codex sandbox (install Docker separately)" >&2
-                fi
-                if ! command -v npm &> /dev/null; then
-                    print_warning "Adding Node.js (required by Codex sandbox)" >&2
-                    resolved+=("nodejs")
-                fi
-                resolved+=("codex")
-                resolved+=("codex_sandbox")
                 ;;
             "codex")
                 # Codex CLI install uses npm
@@ -3534,9 +2579,6 @@ base_tools:Base Tools (git, curl, tmux, zsh, etc.)
 neovim:Neovim 0.12+
 nvim_config:Neovim Configuration (kickstart + custom)
 tmux_config:Tmux Configuration
-herdr:Herdr Terminal Workspace Manager
-herdr_config:Herdr Configuration
-herdr_integrations:Herdr Agent Integrations
 zsh_ohmyzsh:Zsh + Oh My Zsh
 zsh_config:Zsh Custom Configuration
 python:Python 3.10+ (native interpreter + venv)
@@ -3544,12 +2586,8 @@ golang:Go 1.24+ Toolchain (basic)
 golang_full:Go Development (toolchain + LSP + tools + govulncheck)
 nodejs:Node.js LTS (fnm)
 codex:Codex CLI
-codex_sandbox:Codex Sandbox (Docker)
 claude:Claude Code CLI
-pi:Pi Coding Agent
-pi_sandbox:Pi Sandbox (Docker)
 tui_tools:TUI Tools (lazygit, yazi, zoxide)
-beads:Beads Execution Coordination (bd, embedded storage)
 playwright:Playwright CLI (browser automation)
 copilot:GitHub Copilot CLI
 vscode:Visual Studio Code Desktop (macOS)
@@ -3590,13 +2628,13 @@ show_profile_menu() {
     echo "Select installation profile:"
     echo ""
     echo "  1) Full Installation"
-    echo "     Everything: Neovim, Tmux, Herdr, Zsh, Go, Node.js, AI agents"
+    echo "     Everything: Neovim, Tmux, Zsh, Go, Node.js, AI agents"
     echo ""
     echo "  2) Minimal (editors only)"
-    echo "     Neovim + config, Tmux fallback, Herdr"
+    echo "     Neovim + config, Tmux"
     echo ""
     echo "  3) Work Profile"
-    echo "     Neovim, Tmux fallback, Herdr, TUI tools, Copilot CLI"
+    echo "     Neovim, Tmux, TUI tools, Copilot CLI"
     echo ""
     echo "  4) Custom (pick components)"
     echo "     Interactive component selection"
@@ -3769,7 +2807,6 @@ run_module() {
 
 execute_modules() {
     local modules=("$@")
-    local run_herdr_integrations=0
 
     for module in "${modules[@]}"; do
         case "$module" in
@@ -3777,12 +2814,6 @@ execute_modules() {
             "neovim") run_module neovim install_neovim ;;
             "nvim_config") run_module nvim_config configure_neovim ;;
             "tmux_config") run_module tmux_config configure_tmux ;;
-            "herdr") run_module herdr install_herdr ;;
-            "herdr_config") run_module herdr_config configure_herdr ;;
-            "herdr_integrations")
-                # Deferred so agent configs exist before integrations deploy.
-                run_herdr_integrations=1
-                ;;
             "zsh_ohmyzsh") run_module zsh_ohmyzsh install_zsh ;;
             "zsh_config") run_module zsh_config configure_zsh ;;
             "python") run_module python install_python ;;
@@ -3790,12 +2821,8 @@ execute_modules() {
             "golang_full") run_module golang_full install_golang_full ;;
             "nodejs") run_module nodejs install_nodejs ;;
             "codex") run_module codex install_codex ;;
-            "codex_sandbox") run_module codex_sandbox install_codex_sandbox ;;
             "claude") run_module claude install_claude ;;
-            "pi") run_module pi install_pi ;;
-            "pi_sandbox") run_module pi_sandbox install_pi_sandbox ;;
             "tui_tools") run_module tui_tools install_tui_tools ;;
-            "beads") run_module beads install_beads ;;
             "playwright") run_module playwright install_playwright ;;
             "copilot") run_module copilot install_copilot ;;
             "vscode") run_module vscode install_vscode ;;
@@ -3807,10 +2834,6 @@ execute_modules() {
                 ;;
         esac
     done
-
-    if [ "$run_herdr_integrations" -eq 1 ]; then
-        run_module herdr_integrations configure_herdr_integrations
-    fi
 }
 
 # ===========================
@@ -3886,17 +2909,6 @@ parse_arguments() {
                 CODE_SERVER_BIND="$2"
                 shift 2
                 ;;
-            --beads-bootstrap)
-                # Explicit command-repo bootstrap; runs alone and never as
-                # part of profile or module execution.
-                if [ $# -lt 3 ]; then
-                    print_beads_bootstrap_usage
-                    exit 1
-                fi
-                BEADS_BOOTSTRAP_PATH="$2"
-                BEADS_BOOTSTRAP_REMOTE="$3"
-                shift 3
-                ;;
             --help)
                 show_help
                 exit 0
@@ -3937,25 +2949,18 @@ Options:
                        Override the local code-server bind value for this run
                        (e.g. 0.0.0.0:8080 or [::1]:8080); stored only in local
                        code-server configuration, never in tracked files
-  --beads-bootstrap PATH REMOTE_URL
-                       Set up the private Beads command repo at PATH against
-                       REMOTE_URL (git+ssh:// or git+https://) and record the
-                       machine-local route. Runs alone; installs nothing.
   --help              Show this help message
 
 Profiles:
   full                Everything (includes Go development environment)
-  minimal             Editors plus terminal workspace (Neovim + Tmux fallback + Herdr)
-  work                Work setup (Neovim, Tmux fallback, Herdr, Copilot - no Go)
+  minimal             Editors plus terminal workspace (Neovim + Tmux)
+  work                Work setup (Neovim, Tmux, Copilot - no Go)
 
 Modules:
   base_tools          Base tools (git, curl, tmux, zsh, etc.)
   neovim              Neovim 0.12+
   nvim_config         Neovim configuration (kickstart + custom)
   tmux_config         Tmux configuration
-  herdr               Herdr terminal workspace manager
-  herdr_config        Herdr configuration
-  herdr_integrations  Herdr agent integrations
   zsh_ohmyzsh         Zsh + Oh My Zsh
   zsh_config          Zsh custom configuration
   python              Python 3.10+ native interpreter and venv support
@@ -3963,12 +2968,8 @@ Modules:
   golang_full         Go development (toolchain + LSP + tools + govulncheck)
   nodejs              Node.js LTS (fnm)
   codex               Codex CLI
-  codex_sandbox       Codex Sandbox (Docker image + cods script)
   tui_tools           TUI tools (lazygit, yazi, zoxide)
-  beads               Beads execution coordination (bd, embedded storage)
   claude              Claude Code CLI
-  pi                  Pi Coding Agent
-  pi_sandbox          Pi Sandbox (Docker image + pis script)
   copilot             GitHub Copilot CLI
   playwright          Playwright CLI (browser automation)
   vscode              Visual Studio Code Desktop (macOS only)
@@ -3981,7 +2982,6 @@ Examples:
   $0 --profile minimal                     # Minimal installation
   $0 --profile work                        # Work profile (no Go)
   $0 --modules neovim,nvim_config,tmux_config  # Custom modules
-  $0 --modules herdr,herdr_config,herdr_integrations  # Herdr only
   $0 --modules golang_full,neovim          # Go dev environment
   $0 --modules codex --codex-config-template overwrite  # Refresh ~/.codex/config.toml
   $0 --modules code_server --code-server-bind 0.0.0.0:8080  # Browser endpoint
@@ -3996,13 +2996,6 @@ EOF
 main() {
     # Parse command line arguments first (for --help)
     parse_arguments "$@"
-
-    # Command-repo bootstrap is a standalone operation: it installs nothing
-    # and no profile or module may trigger it.
-    if [ -n "$BEADS_BOOTSTRAP_PATH" ]; then
-        beads_bootstrap "$BEADS_BOOTSTRAP_PATH" "$BEADS_BOOTSTRAP_REMOTE"
-        exit $?
-    fi
 
     print_header "Dotfiles Installation Script"
     print_info "Dotfiles directory: $DOTFILES_DIR"
@@ -4070,13 +3063,12 @@ main() {
     echo ""
     print_info "Next steps:"
     echo "  1. Restart your shell or run: source ~/.zshrc"
-    echo "  2. Start Herdr: herdr"
+    echo "  2. Launch tmux: tmux new-session -A -s main"
     echo "  3. Launch neovim: nvim"
     echo ""
     print_info "For AI agents:"
     echo "  • Codex: codex login"
     echo "  • Claude Code: claude auth login"
-    echo "  • Pi: pi (first launch prompts for auth)"
     echo "  • Copilot CLI: copilot login"
     echo ""
     print_success "Happy coding!"

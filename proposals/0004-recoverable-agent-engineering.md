@@ -2,6 +2,8 @@
 
 **Status:** Superseded by [0012](0012-right-sized-agent-engineering.md)
 
+**Later change:** The remaining Beads and Herdr execution model is retired by [0014](0014-model-native-agent-environment.md).
+
 **Created:** 2026-08-08
 
 ## What shipped
