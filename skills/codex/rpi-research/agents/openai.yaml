@@ -1,0 +1,7 @@
+interface:
+  display_name: "RPI Research"
+  short_description: "Research current behavior with cited evidence"
+  default_prompt: "Use $rpi-research to answer the current task research questions with code evidence."
+
+policy:
+  allow_implicit_invocation: false

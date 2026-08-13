@@ -1,0 +1,7 @@
+interface:
+  display_name: "RPI Implement"
+  short_description: "Implement, validate, review, and commit one phase"
+  default_prompt: "Use $rpi-implement to implement the next incomplete phase and stop for my review."
+
+policy:
+  allow_implicit_invocation: false

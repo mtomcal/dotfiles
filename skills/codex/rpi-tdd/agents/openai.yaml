@@ -1,0 +1,7 @@
+interface:
+  display_name: "RPI TDD"
+  short_description: "Interview and write an approved technical design"
+  default_prompt: "Use $rpi-tdd to interview me and write the technical design for this task."
+
+policy:
+  allow_implicit_invocation: false

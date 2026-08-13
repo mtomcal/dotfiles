@@ -1,0 +1,7 @@
+interface:
+  display_name: "RPI Structure"
+  short_description: "Split approved design into testable phases"
+  default_prompt: "Use $rpi-structure to split this design into vertical, testable implementation phases."
+
+policy:
+  allow_implicit_invocation: false

@@ -1,0 +1,7 @@
+interface:
+  display_name: "RPI PRD"
+  short_description: "Interview and write a product requirements doc"
+  default_prompt: "Use $rpi-prd to interview me and write the product requirements for this task."
+
+policy:
+  allow_implicit_invocation: false

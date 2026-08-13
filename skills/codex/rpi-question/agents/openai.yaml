@@ -1,0 +1,7 @@
+interface:
+  display_name: "RPI Question"
+  short_description: "Frame neutral questions for codebase research"
+  default_prompt: "Use $rpi-question to create neutral codebase research questions for this task."
+
+policy:
+  allow_implicit_invocation: false
