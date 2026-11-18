@@ -1,0 +1,481 @@
+#!/usr/bin/env python3
+"""Start a durable, named Codex app-server thread."""
+
+import argparse
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+import threading
+from datetime import datetime, timezone
+
+
+VERSION = "1.0.0"
+
+
+class CodexTaskError(Exception):
+    pass
+
+
+class AppServer:
+    def __init__(self, command, transport):
+        self.command = command
+        self.transport = transport
+        self.next_id = 1
+        self.on_message = None
+        self.stderr_lines = []
+        self.stderr_lock = threading.Lock()
+        try:
+            self.process = subprocess.Popen(
+                command,
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                bufsize=1,
+            )
+        except OSError as exc:
+            raise CodexTaskError("could not start %s: %s" % (command[0], exc))
+        self.stderr_thread = threading.Thread(target=self._read_stderr, daemon=True)
+        self.stderr_thread.start()
+
+    def _read_stderr(self):
+        if self.process.stderr is None:
+            return
+        for line in self.process.stderr:
+            with self.stderr_lock:
+                self.stderr_lines.append(line.rstrip("\n"))
+
+    def send(self, message):
+        if self.process.stdin is None:
+            raise CodexTaskError("app-server stdin is unavailable")
+        try:
+            self.process.stdin.write(json.dumps(message, separators=(",", ":")) + "\n")
+            self.process.stdin.flush()
+        except (BrokenPipeError, OSError) as exc:
+            raise CodexTaskError("lost the app-server connection: %s" % exc)
+
+    def notify(self, method, params=None):
+        message = {"method": method}
+        if params is not None:
+            message["params"] = params
+        self.send(message)
+
+    def request(self, method, params=None):
+        request_id = self.next_id
+        self.next_id += 1
+        message = {"id": request_id, "method": method}
+        if params is not None:
+            message["params"] = params
+        self.send(message)
+
+        while True:
+            incoming = self.read()
+            if incoming.get("id") == request_id and "method" not in incoming:
+                if "error" in incoming:
+                    raise CodexTaskError(
+                        "%s failed: %s" % (method, format_rpc_error(incoming["error"]))
+                    )
+                return incoming.get("result")
+            self.handle(incoming)
+
+    def read(self):
+        if self.process.stdout is None:
+            raise CodexTaskError("app-server stdout is unavailable")
+        while True:
+            line = self.process.stdout.readline()
+            if line == "":
+                code = self.process.poll()
+                with self.stderr_lock:
+                    detail = "\n".join(self.stderr_lines[-20:])
+                message = "app-server closed its output"
+                if code is not None:
+                    message += " (exit %s)" % code
+                if detail:
+                    message += ":\n" + detail
+                raise CodexTaskError(message)
+            try:
+                return json.loads(line)
+            except json.JSONDecodeError:
+                if self.on_message:
+                    self.on_message(
+                        {
+                            "method": "codex-task/nonJsonOutput",
+                            "params": line.rstrip(),
+                        }
+                    )
+
+    def handle(self, message):
+        if "method" in message and "id" in message:
+            self._answer_server_request(message)
+        elif self.on_message:
+            self.on_message(message)
+
+    def _answer_server_request(self, message):
+        method = message.get("method")
+        if method in (
+            "item/commandExecution/requestApproval",
+            "item/fileChange/requestApproval",
+        ):
+            self.send({"id": message["id"], "result": {"decision": "cancel"}})
+        elif method == "item/permissions/requestApproval":
+            self.send(
+                {
+                    "id": message["id"],
+                    "result": {"permissions": {}, "scope": "turn"},
+                }
+            )
+        else:
+            self.send(
+                {
+                    "id": message["id"],
+                    "error": {
+                        "code": -32601,
+                        "message": "codex-task cannot answer %s" % method,
+                    },
+                }
+            )
+        if self.on_message:
+            self.on_message(
+                {
+                    "method": "codex-task/serverRequestRejected",
+                    "params": {"method": method},
+                }
+            )
+
+    def close(self):
+        if self.process.stdin is not None:
+            try:
+                self.process.stdin.close()
+            except OSError:
+                pass
+        try:
+            self.process.wait(timeout=3)
+        except subprocess.TimeoutExpired:
+            self.process.terminate()
+            try:
+                self.process.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                self.process.kill()
+                self.process.wait()
+
+
+def format_rpc_error(error):
+    if isinstance(error, dict):
+        message = error.get("message", json.dumps(error, sort_keys=True))
+        if error.get("data") is not None:
+            message += " (data: %s)" % json.dumps(error["data"], sort_keys=True)
+        return message
+    return str(error)
+
+
+def daemon_is_available():
+    try:
+        result = subprocess.run(
+            ["codex", "app-server", "daemon", "version"],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=3,
+            check=False,
+        )
+        return result.returncode == 0
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+
+
+def connect():
+    candidates = []
+    if daemon_is_available():
+        candidates.append((["codex", "app-server", "proxy"], "daemon proxy"))
+    candidates.append((["codex", "app-server", "--stdio"], "standalone stdio"))
+
+    errors = []
+    for command, transport in candidates:
+        server = None
+        try:
+            server = AppServer(command, transport)
+            server.request(
+                "initialize",
+                {
+                    "clientInfo": {
+                        "name": "codex-task",
+                        "title": "codex-task",
+                        "version": VERSION,
+                    }
+                },
+            )
+            server.notify("initialized")
+            return server
+        except CodexTaskError as exc:
+            errors.append("%s: %s" % (transport, exc))
+            if server is not None:
+                server.close()
+    raise CodexTaskError("; ".join(errors))
+
+
+class Transcript:
+    def __init__(self, path):
+        self.path = path
+        self.lock = threading.Lock()
+
+    def append(self, text):
+        with self.lock:
+            with self.path.open("a", encoding="utf-8") as stream:
+                stream.write(text.rstrip() + "\n\n")
+
+
+def pretty_json(value):
+    return json.dumps(value, indent=2, sort_keys=True, ensure_ascii=False)
+
+
+def format_item(item):
+    item_type = item.get("type", "unknown")
+    if item_type == "agentMessage":
+        phase = item.get("phase") or "unknown phase"
+        return "## Assistant (%s)\n\n%s" % (phase, item.get("text", ""))
+    if item_type == "plan":
+        return "## Plan\n\n%s" % item.get("text", "")
+    if item_type == "reasoning":
+        summary = item.get("summary") or []
+        if summary:
+            return "## Reasoning summary\n\n%s" % "\n".join(summary)
+        return None
+    if item_type == "commandExecution":
+        parts = [
+            "## Command",
+            "cwd: `%s`" % item.get("cwd", ""),
+            "```sh\n%s\n```" % item.get("command", ""),
+            "status: %s; exit: %s" % (item.get("status"), item.get("exitCode")),
+        ]
+        output = item.get("aggregatedOutput")
+        if output:
+            parts.append("```text\n%s\n```" % output.rstrip())
+        return "\n\n".join(parts)
+    if item_type == "fileChange":
+        return "## File changes (%s)\n\n```json\n%s\n```" % (
+            item.get("status"),
+            pretty_json(item.get("changes", [])),
+        )
+    if item_type == "mcpToolCall":
+        details = {
+            "arguments": item.get("arguments"),
+            "error": item.get("error"),
+            "result": item.get("result"),
+        }
+        return "## Tool %s/%s (%s)\n\n```json\n%s\n```" % (
+            item.get("server"),
+            item.get("tool"),
+            item.get("status"),
+            pretty_json(details),
+        )
+    if item_type == "userMessage":
+        return None
+    return "## Item: %s\n\n```json\n%s\n```" % (item_type, pretty_json(item))
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        prog="codex-task",
+        description="Start a durable named Codex thread through app-server.",
+        allow_abbrev=False,
+    )
+    parser.add_argument("--cwd", required=True, help="working directory for the thread")
+    parser.add_argument("--name", required=True, help="thread title shown in Codex")
+    parser.add_argument("--prompt-file", help="read the prompt from this file")
+    parser.add_argument("--model", help="override the configured model")
+    parser.add_argument("--effort", help="override reasoning effort for the turn")
+    parser.add_argument(
+        "--full-access",
+        action="store_true",
+        help="disable the sandbox and approval prompts",
+    )
+    parser.add_argument("prompt", nargs="?", help="prompt text")
+    args = parser.parse_args()
+
+    if bool(args.prompt_file) == bool(args.prompt is not None):
+        parser.error("provide exactly one of --prompt-file FILE or PROMPT")
+    if not args.name.strip():
+        parser.error("--name must not be empty")
+
+    cwd = Path(args.cwd).expanduser().resolve()
+    if not cwd.is_dir():
+        parser.error("--cwd is not a directory: %s" % cwd)
+    args.cwd = str(cwd)
+
+    if args.prompt_file:
+        prompt_path = Path(args.prompt_file).expanduser()
+        try:
+            args.prompt = prompt_path.read_text(encoding="utf-8")
+        except OSError as exc:
+            parser.error("cannot read --prompt-file %s: %s" % (prompt_path, exc))
+    if not args.prompt:
+        parser.error("prompt must not be empty")
+    return args
+
+
+def main():
+    args = parse_args()
+    server = None
+    transcript = None
+    last_path = None
+    completed_items = set()
+    agent_messages = []
+    completion = {"turn": None}
+
+    def record_message(message):
+        if transcript is None:
+            return
+        method = message.get("method")
+        params = message.get("params", {})
+        if method == "item/completed":
+            item = params.get("item", {})
+            item_id = item.get("id")
+            if item_id:
+                completed_items.add(item_id)
+            rendered = format_item(item)
+            if rendered:
+                transcript.append(rendered)
+            if item.get("type") == "agentMessage":
+                agent_messages.append((item.get("phase"), item.get("text", "")))
+        elif method == "turn/completed":
+            turn = params.get("turn", {})
+            for item in turn.get("items", []):
+                if item.get("id") not in completed_items:
+                    rendered = format_item(item)
+                    if rendered:
+                        transcript.append(rendered)
+                    if item.get("type") == "agentMessage":
+                        agent_messages.append((item.get("phase"), item.get("text", "")))
+            completion["turn"] = turn
+        elif method == "error":
+            transcript.append("## App-server error\n\n```json\n%s\n```" % pretty_json(params))
+        elif method == "codex-task/serverRequestRejected":
+            transcript.append(
+                "## Approval or input required\n\n"
+                "Rejected `%s`; rerun with `--full-access` if appropriate."
+                % params.get("method")
+            )
+        elif method == "codex-task/nonJsonOutput":
+            transcript.append("## Non-JSON app-server output\n\n%s" % params)
+
+    try:
+        server = connect()
+        start_params = {
+            "cwd": args.cwd,
+            "ephemeral": False,
+            "threadSource": "codex-task",
+        }
+        if args.model:
+            start_params["model"] = args.model
+        if args.full_access:
+            start_params["sandbox"] = "danger-full-access"
+            start_params["approvalPolicy"] = "never"
+
+        started = server.request("thread/start", start_params)
+        thread_id = started["thread"]["id"]
+        print(thread_id, flush=True)
+
+        runs_dir = Path.home() / ".codex-runs"
+        runs_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+        transcript_path = runs_dir / (thread_id + ".log")
+        last_path = runs_dir / (thread_id + ".last.md")
+        transcript = Transcript(transcript_path)
+        server.on_message = record_message
+
+        transcript.append(
+            "# %s\n\n"
+            "- thread: `%s`\n"
+            "- started: `%s`\n"
+            "- transport: `%s`\n"
+            "- cwd: `%s`\n"
+            "- model: `%s`\n"
+            "- effort: `%s`\n"
+            "- full access: `%s`"
+            % (
+                args.name,
+                thread_id,
+                datetime.now(timezone.utc).isoformat(),
+                server.transport,
+                args.cwd,
+                args.model or "config.toml default",
+                args.effort or "config.toml default",
+                str(args.full_access).lower(),
+            )
+        )
+        transcript.append("## User\n\n%s" % args.prompt)
+
+        server.request("thread/name/set", {"threadId": thread_id, "name": args.name})
+        turn_params = {
+            "threadId": thread_id,
+            "input": [{"type": "text", "text": args.prompt}],
+        }
+        if args.effort:
+            turn_params["effort"] = args.effort
+        server.request("turn/start", turn_params)
+
+        while completion["turn"] is None:
+            server.handle(server.read())
+
+        turn = completion["turn"]
+        status = turn.get("status")
+
+        final_text = ""
+        for phase, text in reversed(agent_messages):
+            if phase == "final_answer":
+                final_text = text
+                break
+        if not final_text and agent_messages:
+            final_text = agent_messages[-1][1]
+        temporary_last = last_path.with_name(last_path.name + ".tmp")
+        temporary_last.write_text(
+            final_text.rstrip() + "\n" if final_text else "", encoding="utf-8"
+        )
+        os.replace(str(temporary_last), str(last_path))
+
+        # This installed app-server rewrites the initial title from the first user
+        # message when that turn is persisted. Reassert and verify the requested
+        # name after completion so the durable sidebar title wins.
+        server.request("thread/name/set", {"threadId": thread_id, "name": args.name})
+        named_thread = server.request(
+            "thread/read", {"threadId": thread_id, "includeTurns": False}
+        )["thread"]
+        if named_thread.get("name") != args.name:
+            raise CodexTaskError(
+                "thread name did not persist (expected %r, got %r)"
+                % (args.name, named_thread.get("name"))
+            )
+        transcript.append(
+            "## Turn completed\n\nstatus: `%s`%s"
+            % (
+                status,
+                "\n\nerror:\n```json\n%s\n```" % pretty_json(turn.get("error"))
+                if turn.get("error")
+                else "",
+            )
+        )
+
+        return 0 if status == "completed" else 1
+    except (CodexTaskError, KeyError, TypeError) as exc:
+        if transcript is not None:
+            transcript.append("## codex-task error\n\n%s" % exc)
+        print("codex-task: %s" % exc, file=sys.stderr)
+        return 1
+    except KeyboardInterrupt:
+        print("codex-task: interrupted", file=sys.stderr)
+        return 130
+    finally:
+        if server is not None:
+            if transcript is not None:
+                with server.stderr_lock:
+                    stderr_text = "\n".join(server.stderr_lines)
+                if stderr_text:
+                    transcript.append("## App-server diagnostics\n\n```text\n%s\n```" % stderr_text)
+            server.close()
+
+
+if __name__ == "__main__":
+    sys.exit(main())
